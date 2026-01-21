@@ -2,18 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/system/bluez_battery_provider.h"
+
 #include <memory>
 #include <utility>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
-
-#include "power_manager/powerd/system/bluez_battery_provider.h"
 
 namespace power_manager::system {
 
@@ -181,7 +180,7 @@ void BluezBatteryProvider::HandleRegisterBatteryProviderResponse(
 
 BluezBattery* BluezBatteryProvider::CreateBattery(const std::string& address,
                                                   int level) {
-  CHECK(!base::Contains(batteries_, address));
+  CHECK(!batteries_.contains(address));
 
   if (!battery_exported_object_manager_) {
     return nullptr;
@@ -200,7 +199,7 @@ BluezBattery* BluezBatteryProvider::CreateBattery(const std::string& address,
 }
 
 BluezBattery* BluezBatteryProvider::GetBattery(const std::string& address) {
-  if (base::Contains(batteries_, address)) {
+  if (batteries_.contains(address)) {
     return batteries_[address].get();
   }
 

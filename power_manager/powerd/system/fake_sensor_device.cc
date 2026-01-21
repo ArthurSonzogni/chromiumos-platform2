@@ -4,11 +4,12 @@
 
 #include "power_manager/powerd/system/fake_sensor_device.h"
 
+#include <algorithm>
+#include <map>
 #include <optional>
 #include <utility>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/logging.h>
 
 namespace power_manager::system {
@@ -59,7 +60,8 @@ void FakeSensorDevice::OnEventUpdated(cros::mojom::IioEventPtr event) {
 
   for (auto it = events_observers_.begin(); it != events_observers_.end();
        ++it) {
-    if (!base::Contains(events_enabled_indices_[it.id()], event->channel)) {
+    if (!std::ranges::contains(events_enabled_indices_[it.id()],
+                               event->channel)) {
       continue;
     }
 

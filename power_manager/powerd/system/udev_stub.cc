@@ -4,11 +4,10 @@
 
 #include "power_manager/powerd/system/udev_stub.h"
 
+#include <base/check.h>
+
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 #include "power_manager/powerd/system/udev_tagged_device_observer.h"
-
-#include <base/check.h>
-#include <base/containers/contains.h>
 
 namespace power_manager::system {
 
@@ -160,8 +159,7 @@ void UdevStub::SetPowerdRole(const std::string& syspath,
 
 bool UdevStub::HasPowerdRole(const std::string& syspath,
                              const std::string& role) {
-  return base::Contains(powerd_roles_, syspath) &&
-         powerd_roles_[syspath] == role;
+  return powerd_roles_.contains(syspath) && powerd_roles_[syspath] == role;
 }
 
 }  // namespace power_manager::system

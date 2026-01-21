@@ -11,7 +11,6 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -40,7 +39,7 @@ power_manager::CellularRegulatoryDomain GetRegulatoryDomainFromCountryCode(
   for (const auto& m : kRdCcMappings) {
     const auto country_code = base::SplitString(
         m.country_code, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-    if (base::Contains(country_code, cc)) {
+    if (std::ranges::contains(country_code, cc)) {
       return m.domain;
     }
   }
@@ -357,9 +356,10 @@ void CellularController::UpdateTransmitPower() {
 #if USE_CELLULAR
   if (use_modemmanager_for_dynamic_sar_) {
     SetCellularTransmitPowerInModemManager(wanted_power);
-  } else
+    return;
+  }
 #endif  // USE_CELLULAR
-    delegate_->SetCellularTransmitPower(wanted_power, dpr_gpio_number_);
+  delegate_->SetCellularTransmitPower(wanted_power, dpr_gpio_number_);
 }
 
 #if USE_CELLULAR
@@ -401,7 +401,7 @@ void CellularController::ModemManagerInterfacesAdded(
     const system::DBusInterfaceToProperties& properties) {
   brillo::ErrorPtr error;
   VLOG(1) << __func__ << ": " << object_path.value();
-  if (!base::Contains(properties, modemmanager::kModemManager1SarInterface)) {
+  if (!properties.contains(modemmanager::kModemManager1SarInterface)) {
     VLOG(1) << __func__ << "Interfaces added, but not modem sar interface.";
     return;
   }
@@ -419,7 +419,8 @@ void CellularController::ModemManagerInterfacesAdded(
 void CellularController::ModemManagerInterfacesRemoved(
     const dbus::ObjectPath& object_path,
     const std::vector<std::string>& interfaces) {
-  if (!base::Contains(interfaces, modemmanager::kModemManager1SarInterface)) {
+  if (!std::ranges::contains(interfaces,
+                             modemmanager::kModemManager1SarInterface)) {
     // In theory, a modem could drop, say, 3GPP, but not CDMA.  In
     // practice, we don't expect this.
     VLOG(1) << __func__ << "Interfaces removed, but not modem sar interface";

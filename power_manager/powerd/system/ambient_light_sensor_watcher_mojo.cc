@@ -8,8 +8,6 @@
 #include <optional>
 #include <utility>
 
-#include <base/containers/contains.h>
-
 namespace power_manager::system {
 
 AmbientLightSensorWatcherMojo::AmbientLightSensorWatcherMojo(
@@ -31,7 +29,7 @@ void AmbientLightSensorWatcherMojo::OnNewDeviceAdded(
     }
   }
 
-  if (base::Contains(device_remotes_, iio_device_id)) {
+  if (device_remotes_.contains(iio_device_id)) {
     // Has already added this device.
     return;
   }

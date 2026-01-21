@@ -10,7 +10,6 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
@@ -255,7 +254,7 @@ void BluetoothController::UnapplyAutosuspendQuirk() {
       std::string current_value;
 
       // Restore the state of autosuspend before quirks were applied.
-      if (base::Contains(autosuspend_state_before_quirks_, device.second)) {
+      if (autosuspend_state_before_quirks_.contains(device.second)) {
         restore = autosuspend_state_before_quirks_[device.second];
       }
 
@@ -286,7 +285,7 @@ void BluetoothController::OnTaggedDeviceChanged(
   }
 
   // Device is already in connected list.
-  if (base::Contains(connected_bluetooth_input_devices_, device.syspath())) {
+  if (connected_bluetooth_input_devices_.contains(device.syspath())) {
     return;
   }
 
@@ -298,7 +297,7 @@ void BluetoothController::OnTaggedDeviceChanged(
 
   // If this is the first instance of a connected device for this path, set the
   // long autosuspend delay and set the count.
-  if (!base::Contains(delay_path_connected_count_, delay_path)) {
+  if (!delay_path_connected_count_.contains(delay_path)) {
     std::string long_autosuspend(kLongAutosuspendTimeout);
 
     delay_path_connected_count_.emplace(std::make_pair(delay_path, 1));
@@ -311,7 +310,7 @@ void BluetoothController::OnTaggedDeviceChanged(
 void BluetoothController::OnTaggedDeviceRemoved(
     const system::TaggedDevice& device) {
   // Ignore unknown devices.
-  if (!base::Contains(connected_bluetooth_input_devices_, device.syspath())) {
+  if (!connected_bluetooth_input_devices_.contains(device.syspath())) {
     return;
   }
 
@@ -326,7 +325,7 @@ void BluetoothController::OnTaggedDeviceRemoved(
       connected_bluetooth_input_devices_[device.syspath()];
   connected_bluetooth_input_devices_.erase(device.syspath());
 
-  if (base::Contains(delay_path_connected_count_, delay_path)) {
+  if (delay_path_connected_count_.contains(delay_path)) {
     delay_path_connected_count_[delay_path]--;
 
     // If this is the final connection, reset autosuspend delay.

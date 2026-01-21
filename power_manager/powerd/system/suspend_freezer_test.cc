@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <gtest/gtest.h>
@@ -258,10 +257,10 @@ TEST_F(SuspendFreezerTest, TestMultipleDeps) {
   suspend_freezer_.Init(&prefs_);
   EXPECT_EQ(FreezeResult::SUCCESS, suspend_freezer_.FreezeUserspace(1, true));
   EXPECT_EQ(test_state_, mock_sys_utils_->freeze_order_[0]);
-  EXPECT_TRUE(base::Contains(mock_sys_utils_->freeze_order_, test1));
-  EXPECT_TRUE(base::Contains(mock_sys_utils_->freeze_order_, test2));
-  EXPECT_TRUE(base::Contains(mock_sys_utils_->freeze_order_, test3));
-  EXPECT_TRUE(base::Contains(mock_sys_utils_->freeze_order_, test4));
+  EXPECT_TRUE(std::ranges::contains(mock_sys_utils_->freeze_order_, test1));
+  EXPECT_TRUE(std::ranges::contains(mock_sys_utils_->freeze_order_, test2));
+  EXPECT_TRUE(std::ranges::contains(mock_sys_utils_->freeze_order_, test3));
+  EXPECT_TRUE(std::ranges::contains(mock_sys_utils_->freeze_order_, test4));
 
   const auto test1_it = std::find(mock_sys_utils_->freeze_order_.begin(),
                                   mock_sys_utils_->freeze_order_.end(), test1);
