@@ -8,9 +8,8 @@
 
 #include <algorithm>
 
-#include <base/containers/contains.h>
-#include <base/functional/callback.h>
 #include <base/format_macros.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
@@ -251,7 +250,7 @@ void UnknownMessage::Print(int header_log_level,
 
 bool NetlinkMessageFactory::AddFactoryMethod(uint16_t message_type,
                                              FactoryMethod factory) {
-  if (base::Contains(factories_, message_type)) {
+  if (factories_.contains(message_type)) {
     LOG(WARNING) << "Message type " << message_type << " already exists.";
     return false;
   }
@@ -276,7 +275,7 @@ std::unique_ptr<NetlinkMessage> NetlinkMessageFactory::CreateMessage(
     message = std::make_unique<OverrunMessage>();
   } else if (message_type == ErrorAckMessage::kMessageType) {
     message = std::make_unique<ErrorAckMessage>();
-  } else if (base::Contains(factories_, message_type)) {
+  } else if (factories_.contains(message_type)) {
     std::map<uint16_t, FactoryMethod>::const_iterator factory;
     factory = factories_.find(message_type);
     message = factory->second.Run(*packet);

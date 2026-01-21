@@ -11,7 +11,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/task/single_thread_task_runner.h>
@@ -444,8 +443,7 @@ bool NetlinkManager::RegisterHandlersAndSendMessage(
   // Register handlers for replies to this message.
   if (!pending_message.handler) {
     VLOG(2) << "Handler for message was null.";
-  } else if (base::Contains(message_handlers_,
-                            pending_message.sequence_number)) {
+  } else if (message_handlers_.contains(pending_message.sequence_number)) {
     LOG(ERROR) << "A handler already existed for sequence: "
                << pending_message.sequence_number;
     return false;
@@ -480,7 +478,7 @@ bool NetlinkManager::SendMessageInternal(
 
 bool NetlinkManager::IsBroadcastPacket(const NetlinkPacket& packet) const {
   const uint32_t sequence_number = packet.GetMessageSequence();
-  return !base::Contains(message_handlers_, sequence_number) &&
+  return !message_handlers_.contains(sequence_number) &&
          packet.GetMessageType() != ErrorAckMessage::kMessageType;
 }
 
@@ -523,7 +521,7 @@ uint32_t NetlinkManager::PendingDumpSequenceNumber() {
 }
 
 bool NetlinkManager::RemoveMessageHandler(const NetlinkMessage& message) {
-  if (!base::Contains(message_handlers_, message.sequence_number())) {
+  if (!message_handlers_.contains(message.sequence_number())) {
     return false;
   }
   message_handlers_.erase(message.sequence_number());
@@ -537,12 +535,12 @@ uint32_t NetlinkManager::GetSequenceNumber() {
 
 bool NetlinkManager::SubscribeToEvents(const std::string& family_id,
                                        const std::string& group_name) {
-  if (!base::Contains(message_types_, family_id)) {
+  if (!message_types_.contains(family_id)) {
     LOG(ERROR) << "Family '" << family_id << "' doesn't exist";
     return false;
   }
 
-  if (!base::Contains(message_types_[family_id].groups, group_name)) {
+  if (!message_types_[family_id].groups.contains(group_name)) {
     LOG(ERROR) << "Group '" << group_name << "' doesn't exist in family '"
                << family_id << "'";
     return false;
@@ -635,7 +633,7 @@ void NetlinkManager::OnNlMessageReceived(NetlinkPacket* packet) {
     if (error_code) {
       CallErrorHandler(sequence_number, kErrorFromKernel, message.get());
     } else {
-      if (base::Contains(message_handlers_, sequence_number)) {
+      if (message_handlers_.contains(sequence_number)) {
         VLOG(6) << "Found message-specific ACK handler";
         if (message_handlers_[sequence_number]->HandleAck()) {
           VLOG(6) << "ACK handler invoked -- removing callback";
@@ -648,7 +646,7 @@ void NetlinkManager::OnNlMessageReceived(NetlinkPacket* packet) {
     return;
   }
 
-  if (base::Contains(message_handlers_, sequence_number)) {
+  if (message_handlers_.contains(sequence_number)) {
     VLOG(6) << "Found message-specific handler";
     if ((message->flags() & NLM_F_MULTI) &&
         (message->message_type() == NLMSG_DONE)) {
@@ -707,7 +705,7 @@ void NetlinkManager::ResendPendingDumpMessage() {
 void NetlinkManager::CallErrorHandler(uint32_t sequence_number,
                                       AuxiliaryMessageType type,
                                       const NetlinkMessage* netlink_message) {
-  if (base::Contains(message_handlers_, sequence_number)) {
+  if (message_handlers_.contains(sequence_number)) {
     VLOG(6) << "Found message-specific error handler";
     message_handlers_[sequence_number]->HandleError(type, netlink_message);
     message_handlers_.erase(sequence_number);

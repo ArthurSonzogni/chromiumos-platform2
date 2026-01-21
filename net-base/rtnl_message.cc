@@ -621,13 +621,12 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeLink(
   }
 
   std::optional<std::string> kind_option;
-  if (base::Contains(*attrs, IFLA_LINKINFO)) {
+  if (attrs->contains(IFLA_LINKINFO)) {
     auto& bytes = attrs->find(IFLA_LINKINFO)->second;
     struct rtattr* link_data = reinterpret_cast<struct rtattr*>(bytes.data());
     size_t link_len = bytes.size();
     std::unique_ptr<RTNLAttrMap> linkinfo = ParseAttrs(link_data, link_len);
-
-    if (linkinfo && base::Contains(*linkinfo, IFLA_INFO_KIND)) {
+    if (linkinfo && linkinfo->contains(IFLA_INFO_KIND)) {
       const auto& kind_bytes = linkinfo->find(IFLA_INFO_KIND)->second;
       const auto kind_string =
           net_base::byte_utils::StringFromCStringBytes(kind_bytes);
@@ -978,7 +977,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodePrefix(
     return nullptr;
   }
   std::optional<IPv6CIDR> cidr;
-  if (base::Contains(*attrs, PREFIX_ADDRESS)) {
+  if (attrs->contains(PREFIX_ADDRESS)) {
     cidr = IPv6CIDR::CreateFromBytesAndPrefix(
         attrs->find(PREFIX_ADDRESS)->second, pm->prefix_len);
   }

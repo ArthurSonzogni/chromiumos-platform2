@@ -22,7 +22,6 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -364,8 +363,8 @@ void RTNLHandler::ParseRTNL(base::span<const uint8_t> data) {
             std::string error_msg = base::StringPrintf(
                 "sequence %d%s received error %d (%s)", hdr->nlmsg_seq,
                 request_str.c_str(), error_number, strerror(error_number));
-            if (base::Contains(GetAndClearErrorMask(hdr->nlmsg_seq),
-                               error_number) ||
+            if (std::ranges::contains(GetAndClearErrorMask(hdr->nlmsg_seq),
+                                      error_number) ||
                 (error_number == EEXIST && mode == RTNLMessage::kModeAdd) ||
                 (mode == RTNLMessage::kModeDelete &&
                  (error_number == ENOENT || error_number == ESRCH ||

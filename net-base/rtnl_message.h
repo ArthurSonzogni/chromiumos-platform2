@@ -11,7 +11,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/containers/span.h>
 #include <brillo/brillo_export.h>
 
@@ -244,9 +243,7 @@ class BRILLO_EXPORT RTNLMessage {
   // GLint hates "unsigned short", and I don't blame it, but that's the
   // type that's used in the system headers.  Use uint16_t instead and hope
   // that the conversion never ends up truncating on some strange platform.
-  bool HasAttribute(uint16_t attr) const {
-    return base::Contains(attributes_, attr);
-  }
+  bool HasAttribute(uint16_t attr) const { return attributes_.contains(attr); }
   std::vector<uint8_t> GetAttribute(uint16_t attr) const {
     return HasAttribute(attr) ? attributes_.find(attr)->second
                               : std::vector<uint8_t>();
