@@ -4,6 +4,7 @@
 
 #include "lorgnette/sane_device_impl.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <iostream>
@@ -12,7 +13,6 @@
 #include <string>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -988,8 +988,8 @@ TEST(SaneDeviceImplFakeSaneTest, LoadOptionsMultipleOptionsInGroups) {
   // Just look up the names.  Assume the actual option parsing has been tested
   // in SaneOption tests.
   EXPECT_EQ(device.GetAllOptions().size(), 2);
-  EXPECT_TRUE(base::Contains(device.GetAllOptions(), "first-option"));
-  EXPECT_TRUE(base::Contains(device.GetAllOptions(), "second-option"));
+  EXPECT_TRUE(device.GetAllOptions().contains("first-option"));
+  EXPECT_TRUE(device.GetAllOptions().contains("second-option"));
 
   ASSERT_EQ(device.GetOptionGroups().size(), 3);
   EXPECT_EQ(device.GetOptionGroups()[0].title(), "First Group");
@@ -1033,10 +1033,10 @@ TEST(SaneDeviceImplFakeSaneTest, LoadOptionsOneKnownOption) {
   EXPECT_TRUE(device.LoadOptions(&error));
   EXPECT_EQ(error, nullptr);
   EXPECT_EQ(device.GetAllOptions().size(), 1);
-  EXPECT_TRUE(base::Contains(device.GetAllOptions(), "resolution"));
+  EXPECT_TRUE(device.GetAllOptions().contains("resolution"));
   EXPECT_EQ(device.GetKnownOptions().size(), 1);
-  EXPECT_TRUE(base::Contains(device.GetKnownOptions(),
-                             SaneDeviceImplPeer::ScanOption::kResolution));
+  EXPECT_TRUE(device.GetKnownOptions().contains(
+      SaneDeviceImplPeer::ScanOption::kResolution));
   EXPECT_EQ(device.GetOptionGroups().size(), 0);
 }
 
@@ -1118,8 +1118,9 @@ TEST(SaneDeviceImplFakeSaneTest, SupportedFormatsIncludesInternalFormats) {
   ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
   SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
 
-  EXPECT_TRUE(base::Contains(device.GetSupportedFormats(), "image/jpeg"));
-  EXPECT_TRUE(base::Contains(device.GetSupportedFormats(), "image/png"));
+  EXPECT_TRUE(
+      std::ranges::contains(device.GetSupportedFormats(), "image/jpeg"));
+  EXPECT_TRUE(std::ranges::contains(device.GetSupportedFormats(), "image/png"));
 }
 
 TEST(SaneDeviceImplFakeSaneTest, StartScanNoJobForInvalidHandle) {

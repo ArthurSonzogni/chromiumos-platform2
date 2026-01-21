@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/notreached.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_util.h>
@@ -125,7 +124,7 @@ void PrintConstraintList(const lorgnette::ScannerOption& option,
   std::vector<std::string> values;
   values.reserve(allowed.size());
   for (const auto& val : allowed) {
-    if (base::Contains(setvals, val)) {
+    if (std::ranges::contains(setvals, val)) {
       values.push_back(base::StrCat({"[", to_string(val), "]"}));
     } else {
       values.push_back(to_string(val));

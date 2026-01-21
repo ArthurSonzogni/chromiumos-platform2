@@ -7,7 +7,6 @@
 #include <optional>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/containers/flat_map.h>
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
@@ -141,7 +140,7 @@ std::optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
                                                          200, 300, 600};
 
     for (const uint32_t resolution : resolutions.value()) {
-      if (base::Contains(supported_resolutions, resolution)) {
+      if (std::ranges::contains(supported_resolutions, resolution)) {
         source.add_resolutions(resolution);
       }
     }
@@ -261,13 +260,13 @@ bool SaneDeviceImpl::SetScanRegion(brillo::ErrorPtr* error,
                                    const ScanRegion& region) {
   // If the scanner exposes page-width and page-height options, these need to be
   // set before the main scan region coordinates will be accepted.
-  if (base::Contains(known_options_, kPageWidth)) {
+  if (known_options_.contains(kPageWidth)) {
     double page_width = region.bottom_right_x() - region.top_left_x();
     if (!SetOption(error, kPageWidth, page_width)) {
       return false;  // brillo::Error::AddTo already called.
     }
   }
-  if (base::Contains(known_options_, kPageHeight)) {
+  if (known_options_.contains(kPageHeight)) {
     double page_height = region.bottom_right_y() - region.top_left_y();
     if (!SetOption(error, kPageHeight, page_height)) {
       return false;  // brillo::Error::AddTo already called.
@@ -856,7 +855,7 @@ std::optional<uint32_t> SaneDeviceImpl::GetJustificationXOffset(
 std::optional<uint32_t> SaneDeviceImpl::GetMaxWidth(brillo::ErrorPtr* error) {
   // This function assumes the caller verified the presence of the tl-x and br-x
   // options.
-  if (base::Contains(known_options_, kPageWidth)) {
+  if (known_options_.contains(kPageWidth)) {
     // We can just return max page-width directly
     const SaneOption& page_width = known_options_.at(kPageWidth);
     std::optional<OptionRange> page_width_range = page_width.GetValidRange();
@@ -901,7 +900,7 @@ std::optional<uint32_t> SaneDeviceImpl::GetMaxWidth(brillo::ErrorPtr* error) {
 std::optional<uint32_t> SaneDeviceImpl::GetMaxHeight(brillo::ErrorPtr* error) {
   // This function assumes the caller verified the presence of the tl-y and br-y
   // options.
-  if (base::Contains(known_options_, kPageHeight)) {
+  if (known_options_.contains(kPageHeight)) {
     // We can just return max page-height directly
     const SaneOption& page_height = known_options_.at(kPageHeight);
     std::optional<OptionRange> page_height_range = page_height.GetValidRange();

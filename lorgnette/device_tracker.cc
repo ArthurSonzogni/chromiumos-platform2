@@ -11,7 +11,6 @@
 #include <optional>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -252,7 +251,7 @@ std::optional<DeviceTracker::DiscoverySessionState*> DeviceTracker::GetSession(
     return std::nullopt;
   }
 
-  if (!base::Contains(discovery_sessions_, session_id)) {
+  if (!discovery_sessions_.contains(session_id)) {
     LOG(ERROR) << "No active session found for session_id=" << session_id;
     return std::nullopt;
   }
@@ -382,7 +381,7 @@ void DeviceTracker::EnumerateUSBDevices(std::string session_id) {
   std::set<std::string> dlcs_to_install;
   if (session->dlc_policy == BackendDownloadPolicy::DOWNLOAD_ALWAYS) {
     for (const auto& id : dlc_client_->GetSupportedDlcIds()) {
-      if (!base::Contains(dlcs_installed_successfully_, id)) {
+      if (!dlcs_installed_successfully_.contains(id)) {
         dlcs_to_install.insert(id);
       }
     }
@@ -391,7 +390,7 @@ void DeviceTracker::EnumerateUSBDevices(std::string session_id) {
   for (auto& device : libusb_->GetDevices()) {
     std::optional<std::string> dlc_id = device->GetNonBundledBackendId();
     if (dlc_id != std::nullopt &&
-        !base::Contains(dlcs_installed_successfully_, *dlc_id) &&
+        !dlcs_installed_successfully_.contains(*dlc_id) &&
         session->dlc_policy == BackendDownloadPolicy::DOWNLOAD_IF_NEEDED) {
       dlcs_to_install.insert(*dlc_id);
     }
@@ -411,7 +410,7 @@ void DeviceTracker::EnumerateUSBDevices(std::string session_id) {
   }
 
   // If DLC download still running
-  if (base::Contains(dlc_pending_sessions_, session_id)) {
+  if (dlc_pending_sessions_.contains(session_id)) {
     LOG(INFO) << __func__ << ": Waiting for DLC to finish";
   } else {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
@@ -820,7 +819,7 @@ CloseScannerResponse DeviceTracker::CloseScanner(
   }
   const std::string& handle = request.scanner().token();
 
-  if (!base::Contains(open_scanners_, handle)) {
+  if (!open_scanners_.contains(handle)) {
     LOG(WARNING) << __func__
                  << ": Attempting to close handle that does not exist: "
                  << handle;
@@ -854,7 +853,7 @@ SetOptionsResponse DeviceTracker::SetOptions(const SetOptionsRequest& request) {
   }
   const std::string& handle = request.scanner().token();
 
-  if (!base::Contains(open_scanners_, handle)) {
+  if (!open_scanners_.contains(handle)) {
     LOG(ERROR) << __func__ << ": No open handle: " << handle;
     for (const auto& option : request.options()) {
       (*response.mutable_results())[option.name()] = OPERATION_RESULT_MISSING;
@@ -919,7 +918,7 @@ GetCurrentConfigResponse DeviceTracker::GetCurrentConfig(
   }
   const std::string& handle = request.scanner().token();
 
-  if (!base::Contains(open_scanners_, handle)) {
+  if (!open_scanners_.contains(handle)) {
     LOG(ERROR) << __func__ << ": No open handle: " << handle;
     response.set_result(OPERATION_RESULT_MISSING);
     return response;
@@ -961,7 +960,7 @@ StartPreparedScanResponse DeviceTracker::StartPreparedScan(
   }
   const std::string& handle = request.scanner().token();
 
-  if (!base::Contains(open_scanners_, handle)) {
+  if (!open_scanners_.contains(handle)) {
     LOG(WARNING) << __func__ << ": No open handle: " << handle;
     response.set_result(OPERATION_RESULT_MISSING);
     return response;
@@ -970,8 +969,8 @@ StartPreparedScanResponse DeviceTracker::StartPreparedScan(
   state.last_activity = base::Time::Now();
 
   if (request.image_format().empty() ||
-      !base::Contains(state.device->GetSupportedFormats(),
-                      request.image_format())) {
+      !std::ranges::contains(state.device->GetSupportedFormats(),
+                             request.image_format())) {
     LOG(ERROR) << __func__ << ": Unsupported image format requested: "
                << request.image_format();
     response.set_result(OPERATION_RESULT_INVALID);
@@ -1132,7 +1131,7 @@ CancelScanResponse DeviceTracker::CancelScan(const CancelScanRequest& request) {
   }
   const std::string& job_handle = request.job_handle().token();
 
-  if (!base::Contains(active_jobs_, job_handle)) {
+  if (!active_jobs_.contains(job_handle)) {
     LOG(ERROR) << __func__ << ": No job found for handle " << job_handle;
     response.set_failure_reason("No scan job found for handle " + job_handle);
     response.set_result(OperationResult::OPERATION_RESULT_INVALID);
@@ -1142,7 +1141,7 @@ CancelScanResponse DeviceTracker::CancelScan(const CancelScanRequest& request) {
   job_state.cancel_requested = true;
   job_state.cancel_needed = true;
 
-  if (!base::Contains(open_scanners_, job_state.device_handle)) {
+  if (!open_scanners_.contains(job_state.device_handle)) {
     LOG(ERROR) << __func__
                << ": No open scanner handle: " << job_state.device_handle;
     response.set_failure_reason("No open scanner found for job handle " +
@@ -1311,14 +1310,14 @@ ReadScanDataResponse DeviceTracker::ReadScanData(
   }
   const std::string& job_handle = request.job_handle().token();
 
-  if (!base::Contains(active_jobs_, job_handle)) {
+  if (!active_jobs_.contains(job_handle)) {
     LOG(ERROR) << __func__ << ": No job found for handle " << job_handle;
     response.set_result(OperationResult::OPERATION_RESULT_INVALID);
     return response;
   }
   ActiveJobState& job_state = active_jobs_[job_handle];
 
-  if (!base::Contains(open_scanners_, job_state.device_handle)) {
+  if (!open_scanners_.contains(job_state.device_handle)) {
     LOG(ERROR) << __func__
                << ": No open scanner handle: " << job_state.device_handle;
     response.set_result(OPERATION_RESULT_MISSING);

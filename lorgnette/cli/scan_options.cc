@@ -10,7 +10,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
@@ -69,7 +68,7 @@ base::StringPairs GetScanOptions(const std::vector<std::string>& args) {
 
   bool parse_options = false;
   for (const std::string& arg : args) {
-    if (base::Contains(kCommandMap, arg) &&
+    if (kCommandMap.contains(arg) &&
         kCommandMap.at(arg) == Command::kSetOptions) {
       parse_options = true;
       continue;

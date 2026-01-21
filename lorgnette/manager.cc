@@ -15,7 +15,6 @@
 
 #include <base/bits.h>
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -369,7 +368,7 @@ bool Manager::GetScannerCapabilities(brillo::ErrorPtr* error,
   // TODO(b/179492658): Once the scan app is using the resolutions from
   // DocumentSource instead of ScannerCapabilities, remove this logic.
   for (const uint32_t resolution : options->resolutions) {
-    if (base::Contains(supported_resolutions, resolution)) {
+    if (std::ranges::contains(supported_resolutions, resolution)) {
       capabilities.add_resolutions(resolution);
     }
   }
@@ -478,7 +477,7 @@ void Manager::GetNextImage(
 
   std::string uuid = request.scan_uuid();
   LOG(INFO) << __func__ << ": Starting GetNextImage for " << uuid;
-  if (!base::Contains(active_scans_, uuid)) {
+  if (!active_scans_.contains(uuid)) {
     LOG(ERROR) << __func__ << ": No active scan found for " << uuid;
     response.set_failure_reason("No scan job with UUID " + uuid + " found");
     method_response->Return(response);
@@ -559,7 +558,7 @@ CancelScanResponse Manager::CancelScan(const CancelScanRequest& request) {
 
   std::string uuid = request.scan_uuid();
   LOG(INFO) << __func__ << ": cancel requested for " << uuid;
-  if (!base::Contains(active_scans_, uuid)) {
+  if (!active_scans_.contains(uuid)) {
     LOG(WARNING) << __func__ << ": No active scan found for " << uuid;
     response.set_success(false);
     response.set_failure_reason("No scan job with UUID " + uuid + " found");

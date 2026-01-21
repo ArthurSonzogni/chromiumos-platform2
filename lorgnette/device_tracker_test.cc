@@ -1519,7 +1519,7 @@ TEST_F(DeviceTrackerTest, DiscoverySessionCanonicalDeviceIds) {
               UnorderedElementsAre(ippusb_device1.ippusb_string, dup_by_vidpid,
                                    dup_by_busdev));
   for (const auto& [id, names] : device_ids3) {
-    EXPECT_FALSE(base::Contains(device_ids1, id));
+    EXPECT_FALSE(device_ids1.contains(id));
   }
 }
 

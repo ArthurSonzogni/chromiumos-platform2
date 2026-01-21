@@ -11,7 +11,6 @@
 #include <vector>
 
 #include <base/command_line.h>
-#include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback_helpers.h>
@@ -295,7 +294,7 @@ bool ScanRunner::RunScanner(const std::string& scanner,
   }
   PrintScannerCapabilities(capabilities.value());
 
-  if (!base::Contains(capabilities->resolutions(), resolution_)) {
+  if (!std::ranges::contains(capabilities->resolutions(), resolution_)) {
     // Many scanners will round the requested resolution to the nearest
     // supported resolution. We will attempt to scan with the given resolution
     // since it may still work.
@@ -356,7 +355,7 @@ bool ScanRunner::RunScanner(const std::string& scanner,
     }
   }
 
-  if (!base::Contains(capabilities->color_modes(), color_mode_)) {
+  if (!std::ranges::contains(capabilities->color_modes(), color_mode_)) {
     LOG(ERROR) << "Requested scan source does not support color mode "
                << ColorMode_Name(color_mode_);
     return false;
@@ -590,7 +589,7 @@ int main(int argc, char** argv) {
 
   const std::vector<std::string>& args =
       base::CommandLine::ForCurrentProcess()->GetArgs();
-  if (args.size() < 1 || !base::Contains(kCommandMap, args[0])) {
+  if (args.size() < 1 || !kCommandMap.contains(args[0])) {
     std::cerr << "Usage: lorgnette_cli "
               << base::JoinString(MapKeys<std::string_view>(kCommandMap), "|")
               << " [FLAGS...]" << std::endl;
