@@ -6,6 +6,7 @@
 
 #include <sys/types.h>
 
+#include <algorithm>
 #include <array>
 #include <map>
 #include <memory>
@@ -14,7 +15,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -330,7 +330,7 @@ void SessionStateManager::EmitFeatureAllowedMetric() {
 
 bool SessionStateManager::PrimaryUserInAllowlist() const {
   return IsUserInAllowedDomain(primary_user_) ||
-         base::Contains(kUserAllowlist, primary_user_);
+         std::ranges::contains(kUserAllowlist, primary_user_);
 }
 
 // Fetch the policy from login_manager and see if
