@@ -9,7 +9,6 @@
 
 #include <base/base64.h>
 #include <base/check.h>
-#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
@@ -233,7 +232,7 @@ ErrorType AccountManager::ClearAccounts(
   }
 
   for (auto it = accounts_.begin(); it != accounts_.end(); /* empty */) {
-    if (base::Contains(keep_list, it->data.principal_name())) {
+    if (keep_list.contains(it->data.principal_name())) {
       ++it;
       continue;
     }

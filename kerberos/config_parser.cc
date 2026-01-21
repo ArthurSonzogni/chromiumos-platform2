@@ -6,7 +6,6 @@
 
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
@@ -236,7 +235,7 @@ ConfigErrorInfo ConfigParser::ParseConfig(
 
       // Bail if the section is not supported, e.g. [appdefaults].
       if (current_section.empty() ||
-          !base::Contains(section_allowlist_, current_section)) {
+          !section_allowlist_.contains(current_section)) {
         return MakeErrorInfo(CONFIG_ERROR_SECTION_NOT_SUPPORTED, line_index);
       }
       continue;
@@ -295,7 +294,7 @@ ConfigErrorInfo ConfigParser::ParseConfig(
 
     // If |key| is a enctypes field in the [libdefaults] section.
     if (current_section == kSectionLibdefaults && group_level <= 1 &&
-        base::Contains(enctypes_fields_, key)) {
+        enctypes_fields_.contains(key)) {
       listed_enctypes_fields.insert(key);
 
       // Note: encryption types can be delimited by comma or whitespace.
@@ -303,8 +302,8 @@ ConfigErrorInfo ConfigParser::ParseConfig(
           value, ", ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
       for (const std::string& type : enctypes) {
-        has_weak_enctype |= base::Contains(weak_enctypes_, type);
-        has_strong_enctype |= base::Contains(strong_enctypes_, type);
+        has_weak_enctype |= weak_enctypes_.contains(type);
+        has_strong_enctype |= strong_enctypes_.contains(type);
       }
     }
   }
@@ -339,7 +338,7 @@ bool ConfigParser::IsKeySupported(const std::string& key,
   //     clockskew = 500
   //   }
   if (section == kSectionLibdefaults && group_level <= 1) {
-    return base::Contains(libdefaults_allowlist_, key);
+    return libdefaults_allowlist_.contains(key);
   }
 
   // Enforce only allowlisted realm keys on the root and realm levels:
@@ -350,7 +349,7 @@ bool ConfigParser::IsKeySupported(const std::string& key,
   //   }
   // Not sure if they can actually be at the root level, but just in case...
   if (section == kSectionRealms && group_level <= 1) {
-    return base::Contains(realms_allowlist_, key);
+    return realms_allowlist_.contains(key);
   }
 
   // Anything else is fine (all keys of other supported sections).
