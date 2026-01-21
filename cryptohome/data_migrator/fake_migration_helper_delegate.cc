@@ -6,7 +6,6 @@
 
 #include <string>
 
-#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <libstorage/platform/platform.h>
 
@@ -47,7 +46,7 @@ void FakeMigrationHelperDelegate::SetFreeDiskSpaceForMigrator(
 
 bool FakeMigrationHelperDelegate::ShouldMigrateFile(
     const base::FilePath& child) {
-  return !base::Contains(denylisted_paths_, child);
+  return !denylisted_paths_.contains(child);
 }
 
 bool FakeMigrationHelperDelegate::ShouldCopyQuotaProjectId() {
