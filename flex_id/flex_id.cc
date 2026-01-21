@@ -4,12 +4,12 @@
 
 #include "flex_id/flex_id.h"
 
+#include <algorithm>
 #include <iostream>
 #include <map>
 #include <optional>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
@@ -77,7 +77,7 @@ bool InterfaceIsInteresting(const std::string& name,
   }
 
   // compare the interface address with the list of bad addresses.
-  if (base::Contains(kBadMacs, address)) {
+  if (std::ranges::contains(kBadMacs, address)) {
     return false;
   }
 
