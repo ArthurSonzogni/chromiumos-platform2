@@ -8,6 +8,14 @@ set -eux -o pipefail
 
 echo "Installing reference VM..."
 
+report_status() {
+  if [[ -x /usr/local/bin/report_install_status ]]; then
+    /usr/local/bin/report_install_status "$@" || true
+  fi
+}
+
+report_status -status IN_PROGRESS -step install_fetch_image -percent 0
+
 DISK_CONFIG_TEMPLATE="/usr/local/share/refvm/disk_config.tpl"
 TMPDIR="/run/refvm"
 TARGET="${TMPDIR}/target"
@@ -25,8 +33,10 @@ end_install() {
 
   if [[ "${success}" == true ]]; then
     echo "Installation successful."
+    report_status -status SUCCEEDED -step install_done -percent 100
   else
     echo "Installation failed."
+    report_status -status FAILED -failure_reason "Installation script failed"
   fi
 
   journalctl --flush
@@ -100,6 +110,7 @@ mount -t sysfs sysfs "${TARGET}/sys"
 mount -t efivarfs efivarfs "${TARGET}/sys/firmware/efi/efivars"
 
 # Install the boot loader and regenerate initrd.
+report_status -status IN_PROGRESS -step install_configure -percent 80
 chroot "${TARGET}" grub-install --uefi-secure-boot
 chroot "${TARGET}" update-grub
 chroot "${TARGET}" update-initramfs -u
