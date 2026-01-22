@@ -7,7 +7,6 @@
 #include <string>
 
 #include <base/at_exit.h>
-#include <base/logging.h>
 
 #include "shill/shims/ppp.h"
 
@@ -31,11 +30,11 @@ int PPPGetSecret(char* username, char* password) {
   if (!PPP::GetInstance()->GetSecret(&user, &pass)) {
     return -1;
   }
-  if (username) {
-    strcpy(username, user.c_str());  // NOLINT(runtime/printf)
+  if (!PPP::CopyName(username, user)) {
+    return -1;
   }
-  if (password) {
-    strcpy(password, pass.c_str());  // NOLINT(runtime/printf)
+  if (!PPP::CopySecret(password, pass)) {
+    return -1;
   }
   return 1;
 }

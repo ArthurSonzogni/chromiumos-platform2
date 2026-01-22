@@ -45,6 +45,19 @@ namespace shill {
 
 namespace shims {
 
+namespace {
+bool PPPStrCpy(char* dst, const std::string& src, size_t maxlen) {
+  if (!dst) {
+    return true;
+  }
+  if (src.size() > maxlen - 1) {
+    return false;
+  }
+  strncpy(dst, src.c_str(), maxlen);
+  return true;
+}
+}  // namespace
+
 static base::LazyInstance<PPP>::DestructorAtExit g_ppp =
     LAZY_INSTANCE_INITIALIZER;
 
@@ -176,6 +189,16 @@ std::string PPP::ConvertIPToText(const void* addr) {
   char text[INET_ADDRSTRLEN];
   inet_ntop(AF_INET, addr, text, INET_ADDRSTRLEN);
   return text;
+}
+
+// static
+bool PPP::CopyName(char* dst, const std::string& src) {
+  return PPPStrCpy(dst, src, MAXNAMELEN);
+}
+
+// static
+bool PPP::CopySecret(char* dst, const std::string& src) {
+  return PPPStrCpy(dst, src, MAXSECRETLEN);
 }
 
 }  // namespace shims

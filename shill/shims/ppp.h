@@ -37,6 +37,12 @@ class PPP {
   void OnDisconnect();
   void OnExit(int exit_status);
 
+  // Copy a name or secret from |src| to |dst| ensuring that the input fits in
+  // the maximum allowed length, or return false. Does nothing if |dst| is
+  // null.
+  static bool CopyName(char* dst, const std::string& src);
+  static bool CopySecret(char* dst, const std::string& src);
+
  protected:
   PPP();
   PPP(const PPP&) = delete;
