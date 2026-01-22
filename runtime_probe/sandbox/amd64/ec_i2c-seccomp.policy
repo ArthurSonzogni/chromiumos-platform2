@@ -34,3 +34,4 @@ clock_getres: 1
 clock_gettime: 1
 futex: 1
 gettimeofday: 1
+clock_nanosleep: 1

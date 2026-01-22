@@ -42,7 +42,8 @@
   },
   "ec_i2c": {
     "binds": [
-      "/dev/cros_ec"
+      "/dev/cros_ec",
+      "/dev/cros_ish"
     ]
   },
   "edid": {

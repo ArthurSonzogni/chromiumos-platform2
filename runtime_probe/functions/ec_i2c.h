@@ -27,6 +27,7 @@ namespace runtime_probe {
 //   chip_addr: The I2C address
 //   data_addr: The register offset.
 //   size: Return bits, it can be either 8 or 16.
+//   ec_type: The EC type, it can be either "cros_ec" or "cros_ish".
 //
 // More details can be found under command "ectool i2cread help"
 class EcI2cFunction : public PrivilegedProbeFunction {
@@ -42,12 +43,13 @@ class EcI2cFunction : public PrivilegedProbeFunction {
 
   virtual std::unique_ptr<ec::I2cReadCommand> GetI2cReadCommand() const;
 
-  virtual base::ScopedFD GetEcDevice() const;
+  std::optional<base::ScopedFD> GetEcDevice() const;
 
   PROBE_FUNCTION_ARG_DEF(int, i2c_bus);
   PROBE_FUNCTION_ARG_DEF(int, chip_addr);
   PROBE_FUNCTION_ARG_DEF(int, data_addr);
   PROBE_FUNCTION_ARG_DEF(int, size, (8));
+  PROBE_FUNCTION_ARG_DEF(std::string, ec_type, (std::string{"cros_ec"}));
 };
 
 }  // namespace runtime_probe

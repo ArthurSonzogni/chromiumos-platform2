@@ -5,3 +5,4 @@
 # Make sure that runtime_probe has access to the probing related nodes in /dev.
 # TODO(hmchu): Add corresponding rules when more required nodes are known
 KERNEL=="cros_ec", GROUP="cros_ec-access", MODE="0660"
+KERNEL=="cros_ish", GROUP="cros_ec-access", MODE="0660"

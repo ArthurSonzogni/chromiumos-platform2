@@ -6,19 +6,26 @@
 
 #include <fcntl.h>
 
+#include <optional>
 #include <utility>
-#include <vector>
 
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
 #include <libec/i2c_read_command.h>
 
+#include "runtime_probe/system/context.h"
+
 namespace runtime_probe {
 
 namespace {
 constexpr int kEcCmdNumAttempts = 10;
+constexpr char kCrosEcName[] = "cros_ec";
+constexpr char kCrosIshName[] = "cros_ish";
+constexpr char kCrosEcPath[] = "dev/cros_ec";
+constexpr char kCrosIshPath[] = "dev/cros_ish";
 }  // namespace
 
 std::unique_ptr<ec::I2cReadCommand> EcI2cFunction::GetI2cReadCommand() const {
@@ -27,8 +34,24 @@ std::unique_ptr<ec::I2cReadCommand> EcI2cFunction::GetI2cReadCommand() const {
       static_cast<uint8_t>(data_addr_), static_cast<uint8_t>(size_ / 8));
 }
 
-base::ScopedFD EcI2cFunction::GetEcDevice() const {
-  return base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
+std::optional<base::ScopedFD> EcI2cFunction::GetEcDevice() const {
+  std::string device_path;
+  if (ec_type_ == kCrosEcName) {
+    device_path = kCrosEcPath;
+  } else if (ec_type_ == kCrosIshName) {
+    device_path = kCrosIshPath;
+  } else {
+    LOG(ERROR) << "Got invalid EC type: " << ec_type_;
+    return std::nullopt;
+  }
+
+  auto dev_path = Context::Get()->root_dir().Append(device_path);
+  if (!base::PathExists(dev_path)) {
+    LOG(ERROR) << dev_path << " doesn't exist.";
+    return std::nullopt;
+  }
+
+  return base::ScopedFD(open(dev_path.value().c_str(), O_RDWR));
 }
 
 bool EcI2cFunction::PostParseArguments() {
@@ -41,13 +64,18 @@ bool EcI2cFunction::PostParseArguments() {
 }
 
 EcI2cFunction::DataType EcI2cFunction::EvalImpl() const {
-  base::ScopedFD ec_dev = GetEcDevice();
+  auto ec_dev = GetEcDevice();
+  if (!ec_dev.has_value()) {
+    LOG(ERROR) << "Failed to get EC device";
+    return {};
+  }
+
   auto cmd = GetI2cReadCommand();
   if (!cmd) {
     LOG(ERROR) << "Failed to create ec::I2cReadCommand";
     return {};
   }
-  if (!cmd->RunWithMultipleAttempts(ec_dev.get(), kEcCmdNumAttempts)) {
+  if (!cmd->RunWithMultipleAttempts(ec_dev->get(), kEcCmdNumAttempts)) {
     LOG(ERROR) << "Failed to read I2C data from EC";
     return {};
   }
