@@ -66,7 +66,6 @@ UploadService::UploadService(SystemProfileSetter* setter,
                              const std::string& server)
     : system_profile_setter_(setter),
       metrics_lib_(metrics_lib),
-      histogram_snapshot_manager_(this),
       sender_(new HttpSender(server)),
       testing_(false) {}
 
@@ -296,9 +295,8 @@ void UploadService::AddCrash(const std::string& crash_name) {
 void UploadService::GatherHistograms() {
   auto histograms = base::StatisticsRecorder::GetHistograms();
 
-  histogram_snapshot_manager_.PrepareDeltas(
-      histograms, base::Histogram::kNoFlags,
-      base::Histogram::kUmaTargetedHistogramFlag);
+  PrepareDeltas(histograms, base::Histogram::kNoFlags,
+                base::Histogram::kUmaTargetedHistogramFlag);
 }
 
 void UploadService::RecordDelta(const base::HistogramBase& histogram,

@@ -9,9 +9,7 @@
 #include <string>
 
 #include "base/metrics/histogram_base.h"
-#include "base/metrics/histogram_flattener.h"
 #include "base/metrics/histogram_snapshot_manager.h"
-
 #include "metrics/metrics_library.h"
 #include "metrics/serialization/serialization_utils.h"
 #include "metrics/uploader/metrics_log.h"
@@ -56,7 +54,7 @@ class SystemProfileSetter;
 //    - if the upload fails, we keep the staged log in memory to retry
 //      uploading later.
 //
-class UploadService : public base::HistogramFlattener {
+class UploadService : public base::HistogramSnapshotManager {
  public:
   explicit UploadService(SystemProfileSetter* setter,
                          MetricsLibraryInterface* metrics_lib,
@@ -145,7 +143,6 @@ class UploadService : public base::HistogramFlattener {
 
   std::unique_ptr<SystemProfileSetter> system_profile_setter_;
   MetricsLibraryInterface* metrics_lib_;
-  base::HistogramSnapshotManager histogram_snapshot_manager_;
   std::unique_ptr<Sender> sender_;
   int failed_upload_count_;
   std::unique_ptr<MetricsLog> current_log_;
