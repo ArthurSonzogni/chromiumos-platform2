@@ -13757,7 +13757,6 @@ mno {
       name: "Sprint"
     }
     mccmnc: "310120"
-    mccmnc: "311490"
     mobile_apn {
       apn: "r.ispsn"
       type: DEFAULT
@@ -13820,6 +13819,7 @@ mno {
     mccmnc: "310640"
     mccmnc: "310660"
     mccmnc: "310800"
+    mccmnc: "311490"
     mccmnc: "311660"
     mccmnc: "311882"
     mccmnc: "312250"
