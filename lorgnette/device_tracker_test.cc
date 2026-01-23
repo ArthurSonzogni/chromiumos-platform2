@@ -217,24 +217,17 @@ class DlcDeviceTrackerTest : public testing::Test {
     auto tracker =
         std::make_unique<DeviceTracker>(sane_client_.get(), libusb_.get());
 
-    // Signal handler that tracks all the events of interest.
-    std::set<std::unique_ptr<ScannerInfo>> scanners;
     // Set signal handler
     auto signal_handler =
-        base::BindLambdaForTesting([run_loop, &tracker, &scanners](
+        base::BindLambdaForTesting([run_loop, tracker_ptr = tracker.get()](
                                        const ScannerListChangedSignal& signal) {
           if (signal.event_type() == ScannerListChangedSignal::ENUM_COMPLETE) {
             StopScannerDiscoveryRequest stop_request;
             stop_request.set_session_id(signal.session_id());
-            tracker->StopScannerDiscovery(stop_request);
+            tracker_ptr->StopScannerDiscovery(stop_request);
           }
           if (signal.event_type() == ScannerListChangedSignal::SESSION_ENDING) {
             run_loop->Quit();
-          }
-          if (signal.event_type() == ScannerListChangedSignal::SCANNER_ADDED) {
-            std::unique_ptr<ScannerInfo> info(signal.scanner().New());
-            info->CopyFrom(signal.scanner());
-            scanners.insert(std::move(info));
           }
         });
     tracker->SetScannerListChangedSignalSender(signal_handler);
