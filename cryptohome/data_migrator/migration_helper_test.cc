@@ -983,8 +983,9 @@ TEST_F(MigrationHelperTest, CancelMigrationOnAnotherThread) {
   base::Thread thread("Canceller thread");
   ASSERT_TRUE(thread.Start());
   thread.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&base::WaitableEvent::Wait,
-                                base::Unretained(&syncfile_is_called_event)));
+      FROM_HERE,
+      base::BindOnce(&base::WaitableEvent::Wait,
+                     base::Unretained(&syncfile_is_called_event), FROM_HERE));
   thread.task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(&MigrationHelper::Cancel, base::Unretained(&helper)));
