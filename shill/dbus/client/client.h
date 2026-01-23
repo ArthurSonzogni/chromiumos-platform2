@@ -24,8 +24,8 @@
 
 namespace shill {
 
-constexpr base::TimeDelta kDefaultDBusTimeout =
-    base::Milliseconds(dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+constexpr base::TimeDelta kDefaultDBusTimeout = base::Milliseconds(
+    static_cast<int>(dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
 
 // Shill D-Bus client for listening to common manager, service and device
 // properties. This class is the result of an effort to consolidate a lot of
