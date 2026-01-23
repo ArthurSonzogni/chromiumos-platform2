@@ -1043,6 +1043,20 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensWaitingOnTPM) {
   EXPECT_TRUE(session_->GetPkcs11Token()->IsReady());
 }
 
+TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensMissingToken) {
+  // Test that the operation does not fail if an active session has no token.
+
+  SetupMount("foo@gmail.com");
+
+  ON_CALL(*session_, IsActive()).WillByDefault(Return(true));
+  EXPECT_CALL(*session_, IsActive())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
+  EXPECT_THAT(session_->GetPkcs11Token(), IsNull());
+  userdataauth_->Pkcs11RestoreTpmTokens();
+  EXPECT_THAT(session_->GetPkcs11Token(), IsNull());
+}
+
 TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootValidity) {
   const Username kUsername1("foo@gmail.com");
   AccountIdentifier account_id;

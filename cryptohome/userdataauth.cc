@@ -1681,7 +1681,9 @@ void UserDataAuth::Pkcs11RestoreTpmTokens() {
 
   for (const auto& [unused, session] : *sessions_) {
     if (session.IsActive()) {
-      session.GetPkcs11Token()->TryRestoring();
+      if (Pkcs11Token* token = session.GetPkcs11Token()) {
+        token->TryRestoring();
+      }
     }
   }
 }
