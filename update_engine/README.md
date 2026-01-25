@@ -616,17 +616,17 @@ repo upload --cbr --no-verify .
 [DLC]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/dlcservice
 [`chromeos-setgoodkernel`]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/installer/chromeos-setgoodkernel
 [D-Bus interface]: /dbus_bindings/org.chromium.UpdateEngineInterface.dbus-xml
-[this repository]: /
-[UpdateManager]: /update_manager/update_manager.cc
-[update_manager]: /update_manager/
+[this repository]: ./
+[UpdateManager]: update_manager/update_manager.cc
+[update_manager]: update_manager/
 [P2P update related code]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/p2p/
 [`cros_generate_update_payloads`]: https://chromium.googlesource.com/chromiumos/chromite/+/HEAD/scripts/cros_generate_update_payload.py
 [`chromite/lib/paygen`]: https://chromium.googlesource.com/chromiumos/chromite/+/HEAD/lib/paygen/
-[DeltaArchiveManifest]: /update_metadata.proto#302
-[Signatures]: /update_metadata.proto#122
-[hard coded]: /update_engine.conf
-[Manifest protobuf]: /update_metadata.proto
-[update_payload]: /scripts/
+[DeltaArchiveManifest]: update_metadata.proto#302
+[Signatures]: update_metadata.proto#122
+[hard coded]: update_engine.conf
+[Manifest protobuf]: update_metadata.proto
+[update_payload]: scripts/
 [Postinstall]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/installer/chromeos-postinst
 [`update_engine` protobufs]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/system_api/dbus/update_engine/
 [Running unit tests similar to other platforms]: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/testing/running_unit_tests.md
@@ -635,7 +635,7 @@ repo upload --cbr --no-verify .
 [`cros flash`]: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/cros_flash.md
 [bsdiff]: https://android.googlesource.com/platform/external/bsdiff/+/HEAD
 [puffin]: https://android.googlesource.com/platform/external/puffin/+/HEAD
-[`update_engine_client`]: /update_engine_client.cc
-[`brillo_update_payload`]: /scripts/brillo_update_payload
-[`check_update_payload`]: /scripts/paycheck.py
+[`update_engine_client`]: update_engine_client.cc
+[`brillo_update_payload`]: scripts/brillo_update_payload
+[`check_update_payload`]: scripts/paycheck.py
 [Dev Server]: https://chromium.googlesource.com/chromiumos/chromite/+/HEAD/docs/devserver.md
