@@ -13655,17 +13655,6 @@ mno {
 
 mno {
   data {
-    uuid: "a05e9fc7-528e-4f76-8b18-eaa0eae93b36"
-    country: "us"
-    localized_name {
-      name: "Alltel"
-    }
-    mccmnc: "310590"
-  }
-}
-
-mno {
-  data {
     uuid: "d949dabc-bc45-4c8e-9fc6-7596f68a174d"
     country: "us"
     localized_name {
@@ -13828,7 +13817,6 @@ mno {
     mccmnc: "310490"
     mccmnc: "310530"
     mccmnc: "310580"
-    mccmnc: "310590"
     mccmnc: "310640"
     mccmnc: "310660"
     mccmnc: "310800"
@@ -14277,8 +14265,12 @@ mno {
       url: "https://quickaccess.verizonwireless.com/bbportal/chrome/start4g.do"
       post_data: "iccid=${iccid}&imei=${imei}&mdn=${mdn}"
     }
+    mccmnc: "310590"
+    mccmnc: "310599"
+    mccmnc: "310890"
     mccmnc: "310995"
     mccmnc: "311270"
+    mccmnc: "311280"
     mccmnc: "311480"
     tethering_disallowed: true
     # The fallback APN breaks the OTA provisioning in Verizon.
