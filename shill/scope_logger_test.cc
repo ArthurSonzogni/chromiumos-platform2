@@ -40,6 +40,7 @@ TEST_F(ScopeLoggerTest, GetAllScopeNames) {
   EXPECT_EQ(
       "cellular+"
       "connection+"
+      "connectivitydiagnostics+"
       "crypto+"
       "daemon+"
       "dbus+"

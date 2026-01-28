@@ -28,6 +28,7 @@ class ScopeLogger {
   enum Scope {
     kCellular,
     kConnection,
+    kConnectivityDiagnostics,
     kCrypto,
     kDaemon,
     kDBus,
