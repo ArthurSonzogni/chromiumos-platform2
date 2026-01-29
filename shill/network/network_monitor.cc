@@ -344,54 +344,32 @@ void NetworkMonitor::StartConnectivityTest() {
 
 void NetworkMonitor::StartIPv4ConnectionDiagnostics(
     const net_base::NetworkConfig& network_config) {
-  // Do not restart a new ConnectionDiagnostics instance if one is already
-  // running.
   if (ipv4_connection_diagnostics_ &&
       ipv4_connection_diagnostics_->IsRunning()) {
     LOG(INFO) << logging_tag_ << " " << __func__
               << ": IPv4 ConnectionDiagnostics already running";
     return;
   }
-  if (!network_config.ipv4_address) {
-    LOG(INFO) << logging_tag_ << " " << __func__
-              << ": Skipping because no IPv4 address is configured";
-    return;
-  }
-  std::optional<net_base::IPAddress> gateway = std::nullopt;
-  if (network_config.ipv4_gateway) {
-    gateway = net_base::IPAddress(*network_config.ipv4_gateway);
-  }
-  ipv4_connection_diagnostics_ = connection_diagnostics_factory_->Create(
-      interface_, interface_index_, net_base::IPFamily::kIPv4, gateway,
-      network_config.dns_servers,
+  ipv4_connection_diagnostics_ = connection_diagnostics_factory_->Start(
+      interface_, interface_index_, net_base::IPFamily::kIPv4, network_config,
+      probing_configuration_.portal_http_url,
       std::make_unique<net_base::DNSClientFactory>(),
       std::make_unique<IcmpSessionFactory>(), logging_tag_, dispatcher_);
-  ipv4_connection_diagnostics_->Start(probing_configuration_.portal_http_url);
 }
 
 void NetworkMonitor::StartIPv6ConnectionDiagnostics(
     const net_base::NetworkConfig& network_config) {
-  // Do not restart a new ConnectionDiagnostics instance if one is already
-  // running.
   if (ipv6_connection_diagnostics_ &&
       ipv6_connection_diagnostics_->IsRunning()) {
     LOG(INFO) << logging_tag_ << " " << __func__
               << ": IPv6 ConnectionDiagnostics already running";
     return;
   }
-  // For IPv6, do no check global addresses. It is possible to have no global
-  // IPv6 address but still be able to reach the gateway with the link local
-  // address.
-  std::optional<net_base::IPAddress> gateway = std::nullopt;
-  if (network_config.ipv6_gateway) {
-    gateway = net_base::IPAddress(*network_config.ipv6_gateway);
-  }
-  ipv6_connection_diagnostics_ = connection_diagnostics_factory_->Create(
-      interface_, interface_index_, net_base::IPFamily::kIPv6, gateway,
-      network_config.dns_servers,
+  ipv6_connection_diagnostics_ = connection_diagnostics_factory_->Start(
+      interface_, interface_index_, net_base::IPFamily::kIPv6, network_config,
+      probing_configuration_.portal_http_url,
       std::make_unique<net_base::DNSClientFactory>(),
       std::make_unique<IcmpSessionFactory>(), logging_tag_, dispatcher_);
-  ipv6_connection_diagnostics_->Start(probing_configuration_.portal_http_url);
 }
 
 void NetworkMonitor::StartIPv4PortalDetectorTest(

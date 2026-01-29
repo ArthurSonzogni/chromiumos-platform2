@@ -686,7 +686,7 @@ TEST_F(ConnectionDiagnosticsFactoryTest, IPv6ValidConfiguration2) {
       net_base::IPAddress(kIPv6DNSServer0),
       net_base::IPAddress(kIPv6DNSServer1),
   };
-  const auto filtered_dns = input_dns;
+  const auto filtered_dns = std::vector<net_base::IPAddress>{};
   auto conndiag = StartIPv6(
       {}, net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:7ebf:14c5"),
       input_dns, kHttpUrl);
@@ -710,7 +710,7 @@ TEST_F(ConnectionDiagnosticsFactoryTest, IPv6ValidConfiguration3) {
   EXPECT_THAT(conndiag->dns_list(), UnorderedElementsAreArray(filtered_dns));
 }
 
-TEST_F(ConnectionDiagnosticsFactoryTest, DISABLED_IPv6ValidConfiguration4) {
+TEST_F(ConnectionDiagnosticsFactoryTest, IPv6ValidConfiguration4) {
   const auto input_dns = std::vector<net_base::IPAddress>{
       net_base::IPAddress(kIPv6LinkLocalDNSServer0),
   };
@@ -728,7 +728,7 @@ TEST_F(ConnectionDiagnosticsFactoryTest, IPv6InvalidConfiguration1) {
   EXPECT_EQ(nullptr, conndiag);
 }
 
-TEST_F(ConnectionDiagnosticsFactoryTest, DISABLED_IPv6InvalidConfiguration2) {
+TEST_F(ConnectionDiagnosticsFactoryTest, IPv6InvalidConfiguration2) {
   auto conndiag = StartIPv6({}, std::nullopt, kIPv6DNSList, kHttpUrl);
   EXPECT_EQ(nullptr, conndiag);
 }

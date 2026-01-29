@@ -37,18 +37,6 @@ class MockConnectionDiagnosticsFactory : public ConnectionDiagnosticsFactory {
   ~MockConnectionDiagnosticsFactory() override;
 
   MOCK_METHOD(std::unique_ptr<ConnectionDiagnostics>,
-              Create,
-              (std::string_view iface_name,
-               int iface_index,
-               net_base::IPFamily ip_family,
-               std::optional<net_base::IPAddress> gateway,
-               const std::vector<net_base::IPAddress>& dns_list,
-               std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
-               std::unique_ptr<IcmpSessionFactory> icmp_session_factory,
-               std::string_view logging_tag,
-               EventDispatcher* dispatcher),
-              (override));
-  MOCK_METHOD(std::unique_ptr<ConnectionDiagnostics>,
               Start,
               (std::string_view iface_name,
                int iface_index,

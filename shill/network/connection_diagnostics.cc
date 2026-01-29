@@ -141,30 +141,10 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       iface_index_(iface_index),
       ip_family_(ip_family),
       gateway_(gateway),
+      dns_list_(dns_list),
       logging_tag_(logging_tag),
       next_diagnostic_id_(0),
-      weak_ptr_factory_(this) {
-  for (const auto& dns : dns_list) {
-    if (dns.GetFamily() == ip_family) {
-      dns_list_.push_back(dns);
-    }
-  }
-  // Always add Google DNS servers to the list of DNS servers if they are not
-  // already present.
-  switch (ip_family) {
-    case net_base::IPFamily::kIPv4:
-      PushBackIfAbsent(&dns_list_, kGoogleIPv4DNS0);
-      PushBackIfAbsent(&dns_list_, kGoogleIPv4DNS1);
-      break;
-    case net_base::IPFamily::kIPv6:
-      // TODO(b/471628274): Adding Google IPv6 DNS must check if there is a
-      // non-local address. Migrate users to the new factory method and enable
-      // IPv6ValidConfiguration4 and IPv6InvalidConfiguration2 test cases.
-      PushBackIfAbsent(&dns_list_, kGoogleIPv6DNS0);
-      PushBackIfAbsent(&dns_list_, kGoogleIPv6DNS1);
-      break;
-  }
-}
+      weak_ptr_factory_(this) {}
 
 ConnectionDiagnostics::~ConnectionDiagnostics() {
   if (IsRunning()) {
@@ -456,22 +436,6 @@ void ConnectionDiagnostics::OnPingResult(
                            ? Result::kSuccess
                            : Result::kFailure;
   LogEvent(diagnostic_id, event_type, result_type, message);
-}
-
-std::unique_ptr<ConnectionDiagnostics> ConnectionDiagnosticsFactory::Create(
-    std::string_view iface_name,
-    int iface_index,
-    net_base::IPFamily ip_family,
-    std::optional<net_base::IPAddress> gateway,
-    const std::vector<net_base::IPAddress>& dns_list,
-    std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
-    std::unique_ptr<IcmpSessionFactory> icmp_session_factory,
-    std::string_view logging_tag,
-    EventDispatcher* dispatcher) {
-  return std::make_unique<ConnectionDiagnostics>(
-      iface_name, iface_index, ip_family, gateway, dns_list,
-      std::move(dns_client_factory), std::move(icmp_session_factory),
-      logging_tag, dispatcher);
 }
 
 std::unique_ptr<ConnectionDiagnostics> ConnectionDiagnosticsFactory::Start(

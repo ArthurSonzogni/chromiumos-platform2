@@ -219,18 +219,9 @@ class ConnectionDiagnosticsFactory {
   ConnectionDiagnosticsFactory() = default;
   virtual ~ConnectionDiagnosticsFactory() = default;
 
-  // The default factory method, calling ConnectionDiagnostics's constructor.
-  mockable std::unique_ptr<ConnectionDiagnostics> Create(
-      std::string_view iface_name,
-      int iface_index,
-      net_base::IPFamily ip_family,
-      std::optional<net_base::IPAddress> gateway,
-      const std::vector<net_base::IPAddress>& dns_list,
-      std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
-      std::unique_ptr<IcmpSessionFactory> icmp_session_factory,
-      std::string_view logging_tag,
-      EventDispatcher* dispatcher);
-
+  // The default factory method, calling ConnectionDiagnostics's constructor and
+  // starting it. Returns nullptr if the configuration is invalid or there is no
+  // test to run for the given IP family.
   mockable std::unique_ptr<ConnectionDiagnostics> Start(
       std::string_view iface_name,
       int iface_index,

@@ -177,37 +177,27 @@ class NetworkMonitorTest : public ::testing::Test {
         .Times(1);
     if (expect_connection_diagnostics) {
       EXPECT_CALL(*mock_connection_diagnostics_factory_,
-                  Create(kInterface, kInterfaceIndex, net_base::IPFamily::kIPv4,
-                         config_.ipv4_gateway
-                             ? std::make_optional(
-                                   net_base::IPAddress(*config_.ipv4_gateway))
-                             : std::nullopt,
-                         config_.dns_servers,
-                         /*dns_client_factory=*/_, /*icmp_session_factory=*/_,
-                         kLoggingTag,
-                         /*dispatcher=*/_))
+                  Start(kInterface, kInterfaceIndex, net_base::IPFamily::kIPv4,
+                        config_, /*url=*/_,
+                        /*dns_client_factory=*/_, /*icmp_session_factory=*/_,
+                        kLoggingTag,
+                        /*dispatcher=*/_))
           .WillOnce([]() {
             auto mock_connection_diagnostics =
                 std::make_unique<MockConnectionDiagnostics>();
-            EXPECT_CALL(*mock_connection_diagnostics, Start);
             ON_CALL(*mock_connection_diagnostics, IsRunning)
                 .WillByDefault(Return(true));
             return mock_connection_diagnostics;
           });
       EXPECT_CALL(*mock_connection_diagnostics_factory_,
-                  Create(kInterface, kInterfaceIndex, net_base::IPFamily::kIPv6,
-                         config_.ipv6_gateway
-                             ? std::make_optional(
-                                   net_base::IPAddress(*config_.ipv6_gateway))
-                             : std::nullopt,
-                         config_.dns_servers,
-                         /*dns_client_factory=*/_, /*icmp_session_factory=*/_,
-                         kLoggingTag,
-                         /*dispatcher=*/_))
+                  Start(kInterface, kInterfaceIndex, net_base::IPFamily::kIPv6,
+                        config_, /*url=*/_,
+                        /*dns_client_factory=*/_, /*icmp_session_factory=*/_,
+                        kLoggingTag,
+                        /*dispatcher=*/_))
           .WillOnce([]() {
             auto mock_connection_diagnostics =
                 std::make_unique<MockConnectionDiagnostics>();
-            EXPECT_CALL(*mock_connection_diagnostics, Start);
             ON_CALL(*mock_connection_diagnostics, IsRunning)
                 .WillByDefault(Return(true));
             return mock_connection_diagnostics;
