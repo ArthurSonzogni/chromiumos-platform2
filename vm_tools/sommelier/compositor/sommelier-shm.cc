@@ -2,24 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "../sommelier.h"          // NOLINT(build/include_directory)
-#include "../sommelier-tracing.h"  // NOLINT(build/include_directory)
-#include "../sommelier-util.h"     // NOLINT(build/include_directory)
-#include "sommelier-formats.h"     // NOLINT(build/include_directory)
-
 #include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <wayland-client.h>
 
-#include "drm-server-protocol.h"  // NOLINT(build/include_directory)
+#include "../sommelier-tracing.h"  // NOLINT(build/include_directory)
+#include "../sommelier-util.h"     // NOLINT(build/include_directory)
+#include "../sommelier.h"          // NOLINT(build/include_directory)
+#include "drm-server-protocol.h"   // NOLINT(build/include_directory)
 #include "linux-dmabuf-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
+#include "sommelier-formats.h"  // NOLINT(build/include_directory)
 
 struct sl_host_shm_pool {
   struct sl_shm* shm;
   struct wl_resource* resource;
   struct wl_shm_pool* proxy;
   int fd;
+  int32_t size;
 };
 
 struct sl_host_shm {
@@ -50,15 +50,24 @@ static void sl_host_shm_pool_create_host_buffer(struct wl_client* client,
     return;
   }
 
+  size_t required_size = sl_shm_format_size(format, height, stride);
+  if (offset < 0 || required_size > static_cast<size_t>(INT32_MAX - offset) ||
+      static_cast<size_t>(offset) + required_size >
+          static_cast<size_t>(host->size)) {
+    wl_resource_post_error(resource, WL_SHM_ERROR_INVALID_STRIDE,
+                           "buffer exceeds pool size");
+    return;
+  }
+
   struct sl_host_buffer* host_buffer = sl_create_host_buffer(
       host->shm->ctx, client, id, nullptr, width, height, /*is_drm=*/false);
 
   host_buffer->shm_format = format;
   host_buffer->shm_mmap = sl_mmap_create(
-      host->fd, sl_shm_format_size(format, height, stride),
-      sl_shm_format_bpp(format), sl_shm_format_num_planes(format), offset,
-      stride, offset + sl_shm_format_plane_offset(format, 1, height, stride),
-      stride, sl_shm_format_plane_y_subsampling(format, 0),
+      host->fd, required_size, sl_shm_format_bpp(format),
+      sl_shm_format_num_planes(format), offset, stride,
+      offset + sl_shm_format_plane_offset(format, 1, height, stride), stride,
+      sl_shm_format_plane_y_subsampling(format, 0),
       sl_shm_format_plane_y_subsampling(format, 1));
   // In the case of mmaps created from the client buffer, we want to be able
   // to close the FD when the client releases the shm pool (i.e. when it's
@@ -81,6 +90,7 @@ static void sl_host_shm_pool_resize(struct wl_client* client,
   struct sl_host_shm_pool* host =
       static_cast<sl_host_shm_pool*>(wl_resource_get_user_data(resource));
 
+  host->size = size;
   if (host->proxy) {
     wl_shm_pool_resize(host->proxy, size);
   }
@@ -115,6 +125,7 @@ static void sl_shm_create_host_pool(struct wl_client* client,
 
   host_shm_pool->shm = host->shm;
   host_shm_pool->fd = -1;
+  host_shm_pool->size = size;
   host_shm_pool->proxy = nullptr;
   host_shm_pool->resource =
       wl_resource_create(client, &wl_shm_pool_interface, 1, id);

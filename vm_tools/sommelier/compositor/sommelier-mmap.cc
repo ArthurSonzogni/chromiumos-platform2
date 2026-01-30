@@ -5,6 +5,8 @@
 #include "sommelier-mmap.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "../sommelier.h"          // NOLINT(build/include_directory)
@@ -39,6 +41,22 @@ struct sl_mmap* sl_mmap_create(int fd,
   map->begin_write = nullptr;
   map->end_write = nullptr;
   map->buffer_resource = nullptr;
+  map->addr = nullptr;
+
+  struct stat st;
+  if (fstat(fd, &st)) {
+     errno_assert(false);
+     return map;
+  }
+
+  // Enforce that the backing file is large enough to contain the
+  // requested buffer to prevent out-of-bounds access.
+  const size_t shm_size = static_cast<off_t>(st.st_size);
+  if (shm_size < offset0 || size > shm_size - offset0) {
+    errno = EINVAL;
+    errno_assert(false);
+    return map;
+  }
   map->addr =
       mmap(nullptr, size + offset0, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   errno_assert(map->addr != MAP_FAILED);
