@@ -12,6 +12,8 @@
 #include "base/json/string_escape.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
+#include "base/task/single_thread_task_runner.h"
+#include "base/time/time.h"
 
 #include "croslog/constants.h"
 #include "croslog/cursor_util.h"
@@ -119,7 +121,25 @@ bool ViewerPlaintext::Run() {
 }
 
 void ViewerPlaintext::OnLogFileChanged() {
-  ReadRemainingLogs();
+  // When many log files change rapidly (e.g., during log rotation or heavy
+  // logging), this callback can be triggered repeatedly, causing excessive CPU
+  // usage. Add a 50ms debounce to the refresh logic to prevent tight loops.
+  if (read_task_pending_) {
+    return;
+  }
+
+  read_task_pending_ = true;
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](base::WeakPtr<ViewerPlaintext> self) {
+            if (self) {
+              self->read_task_pending_ = false;
+              self->ReadRemainingLogs();
+            }
+          },
+          weak_ptr_factory_.GetWeakPtr()),
+      base::Milliseconds(50));
 }
 
 bool ViewerPlaintext::ShouldFilterOutEntry(const LogEntry& e) {

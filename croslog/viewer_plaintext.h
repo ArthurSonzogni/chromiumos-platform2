@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "base/functional/bind.h"
+#include "base/memory/weak_ptr.h"
 #include "base/run_loop.h"
 #include "re2/re2.h"
 
@@ -75,6 +76,9 @@ class ViewerPlaintext : public Multiplexer::Observer {
   void WriteLogInExportFormat(const LogEntry& entry);
   void WriteLogInJsonFormat(const LogEntry& entry);
   void WriteOutput(std::string_view str);
+
+  bool read_task_pending_ = false;
+  base::WeakPtrFactory<ViewerPlaintext> weak_ptr_factory_{this};
 };
 
 }  // namespace croslog
