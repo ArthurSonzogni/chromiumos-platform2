@@ -202,6 +202,13 @@ std::tuple<std::string, LogLineReader::ReadResult> LogLineReader::Forward() {
       buffer.reset();
 
       ReloadRotatedFile();
+
+      // Ensure we don't recurse if the new file is also empty
+      // to avoid tight loops.
+      if (reader_->GetFileSize() == 0) {
+        return {std::string(), ReadResult::NO_MORE_LOGS};
+      }
+
       return Forward();
     }
 
