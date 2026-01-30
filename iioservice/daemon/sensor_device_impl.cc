@@ -207,6 +207,12 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
                                 cros::mojom::DeviceType::PROXIMITY)) {
         value_opt = libmems::GetIioSarSensorDevlink(path_opt.value().value());
       }
+    } else if (attr_name == cros::mojom::kSamplingFrequencyAvailable) {
+      double min_freq, max_freq;
+      if (client.device_data->iio_device->GetMinMaxFrequency(&min_freq,
+                                                             &max_freq)) {
+        value_opt = GetSamplingFrequencyAvailable(min_freq, max_freq);
+      }
     } else {
       value_opt =
           client.device_data->iio_device->ReadStringAttribute(attr_name);
