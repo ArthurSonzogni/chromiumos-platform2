@@ -13,21 +13,17 @@
 #include <base/logging.h>
 #include <base/sys_byteorder.h>
 #include <brillo/syslog_logging.h>
-#include <libhwsec/factory/factory_impl.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h>
+#include <libhwsec/factory/factory_impl.h>
 
 extern "C" {
 #include <tee_plugin_method.h>
 }
 
 // OPTEE has access to the plugin by the UUID
-#define HWSEC_PLUGIN_UUID                            \
-  {                                                  \
-    0x69b7c987, 0x4a1a, 0x4953, {                    \
-      0xb6, 0x47, 0x0c, 0xf7, 0x9e, 0xb3, 0x97, 0xb9 \
-    }                                                \
-  }
+#define HWSEC_PLUGIN_UUID \
+  {0x69b7c987, 0x4a1a, 0x4953, {0xb6, 0x47, 0x0c, 0xf7, 0x9e, 0xb3, 0x97, 0xb9}}
 
 #define SEND_RAW_COMMAND 0
 #define GET_ROT_CERT_COMMAND 1
@@ -74,7 +70,14 @@ static TEEC_Result SendRawCommand(unsigned int sub_cmd,
   uint32_t input_len;
   if (TEEC_Result result = GetInputLen(data, data_len, input_len);
       result != TEEC_SUCCESS) {
+    *out_len = 0;
     return result;
+  }
+
+  if (input_len > data_len) {
+    LOG(ERROR) << "The input command format is invalid!";
+    *out_len = 0;
+    return TEEC_ERROR_BAD_PARAMETERS;
   }
 
   brillo::Blob input(data, data + input_len);
@@ -85,6 +88,7 @@ static TEEC_Result SendRawCommand(unsigned int sub_cmd,
   if (output.size() > data_len) {
     LOG(ERROR) << "The input buffer is not enough for output!";
     *out_len = output.size();
+    memcpy(data, output.data(), data_len);
     return TEEC_ERROR_SHORT_BUFFER;
   }
 
