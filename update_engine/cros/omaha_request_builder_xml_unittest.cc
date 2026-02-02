@@ -73,7 +73,8 @@ TEST_F(OmahaRequestBuilderXmlTest, XmlEncodeTest) {
       {"ab", "ab"},
       {"a<b", "a&lt;b"},
       {"<&>\"\'\\", "&lt;&amp;&gt;&quot;&apos;\\"},
-      {"&lt;&amp;&gt;", "&amp;lt;&amp;amp;&amp;gt;"}};
+      {"&lt;&amp;&gt;", "&amp;lt;&amp;amp;&amp;gt;"},
+      {"a\tb\nc\rd", "a\tb\nc\rd"}};
   for (const auto& xml_encode_pair : xml_encode_pairs) {
     const auto& before_encoding = xml_encode_pair.first;
     const auto& after_encoding = xml_encode_pair.second;
@@ -84,6 +85,12 @@ TEST_F(OmahaRequestBuilderXmlTest, XmlEncodeTest) {
   EXPECT_FALSE(XmlEncode("\xc2", &output));
   // Fail with invalid ASCII-7 chars.
   EXPECT_FALSE(XmlEncode("This is an 'n' with a tilde: \xc3\xb1", &output));
+  // Fail with illegal control characters.
+  EXPECT_FALSE(XmlEncode("a\x00b", &output));
+  EXPECT_FALSE(XmlEncode("a\x01b", &output));
+  EXPECT_FALSE(XmlEncode("a\x08b", &output));
+  EXPECT_FALSE(XmlEncode("a\x1f" "b", &output));
+  EXPECT_FALSE(XmlEncode("a\x7F" "b", &output));
 }
 
 TEST_F(OmahaRequestBuilderXmlTest, XmlEncodeWithDefaultTest) {

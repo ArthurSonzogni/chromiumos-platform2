@@ -35,12 +35,23 @@ const int kPingActiveValue = 1;
 const int kPingInactiveValue = 0;
 
 bool XmlEncode(const string& input, string* output) {
-  if (std::find_if(input.begin(), input.end(),
-                   [](const char c) { return c & 0x80; }) != input.end()) {
-    LOG(WARNING) << "Invalid ASCII-7 string passed to the XML encoder:";
-    utils::HexDumpString(input);
-    return false;
+  for (unsigned char c : input) {
+    // Allow only ASCII-7 input.
+    if (c & 0x80) {
+      LOG(WARNING) << "Invalid ASCII-7 string passed to the XML encoder:";
+      utils::HexDumpString(input);
+      return false;
+    }
+
+    // Check for illegal XML 1.0 control characters.
+    // Allowed: 0x09 (Tab), 0x0A (LF), 0x0D (CR), and 0x20-0x7E.
+    if ((c < 0x20 && c != 0x09 && c != 0x0A && c != 0x0D) || c == 0x7F) {
+      LOG(WARNING) << "Illegal control character passed to the XML encoder:";
+      utils::HexDumpString(input);
+      return false;
+    }
   }
+
   output->clear();
   // We need at least input.size() space in the output, but the code below will
   // handle it if we need more.
