@@ -46,6 +46,10 @@ bool MachineQuirksStub::IsGenericAcpiBatteryDriver() {
   return is_generic_battery_driver_;
 }
 
+bool MachineQuirksStub::IsSuspendWithoutWakeupCount() {
+  return suspend_without_wakeup_count_;
+}
+
 void MachineQuirksStub::ResetQuirks() {
   force_idle_ = false;
   block_suspend_ = false;
@@ -63,4 +67,7 @@ void MachineQuirksStub::SetExternalDisplayOnlyQuirkDetected(bool value) {
   external_display_only_ = value;
 }
 
+void MachineQuirksStub::SetSuspendWithoutWakeupCount(bool value) {
+  suspend_without_wakeup_count_ = value;
+}
 }  // namespace power_manager::system

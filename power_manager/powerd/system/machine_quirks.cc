@@ -90,6 +90,11 @@ void MachineQuirks::ApplyQuirksToPrefs() {
     prefs_->SetInt64(kAllowZeroChargeReadOnACPref, 1);
     LOG(INFO) << "AllowZeroChargeReadOnAC Pref set to enabled";
   }
+
+  if (IsSuspendWithoutWakeupCount()) {
+    prefs_->SetInt64(kSuspendWithoutWakeupCountPref, 1);
+    LOG(INFO) << "SuspendWithoutWakeupCount Pref set to enabled";
+  }
 }
 
 bool MachineQuirks::IsSuspendBlocked() {
@@ -275,6 +280,23 @@ bool MachineQuirks::IsGenericAcpiBatteryDriver() {
               << battery_path->BaseName() << ".";
     return true;
   }
+  return false;
+}
+
+bool MachineQuirks::IsSuspendWithoutWakeupCount() {
+  CHECK(prefs_) << "MachineQuirks::Init() wasn't called";
+  std::string no_wakeup_count_ids_pref;
+  // Read suspend_without_wakeup_count ids pref.
+  if (!prefs_->GetString(kSuspendWithoutWakeupCountListPref,
+                         &no_wakeup_count_ids_pref)) {
+    return false;
+  }
+
+  if (ContainsDMIMatch(no_wakeup_count_ids_pref)) {
+    return true;
+  }
+
+  // Normal case, no quirk is required.
   return false;
 }
 

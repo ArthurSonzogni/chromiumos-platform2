@@ -1854,6 +1854,14 @@
                     "description": "For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/",
                     "type": "string"
                   },
+                  "suspend-without-wakeup-count": {
+                    "description": "For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/",
+                    "type": "string"
+                  },
+                  "suspend-without-wakeup-count-models": {
+                    "description": "For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/",
+                    "type": "string"
+                  },
                   "touchpad-wakeup": {
                     "description": "Enable (1) or disable (0) wake from touchpad. If not set, default to enable. When set to enable, on many devices, firmware is in charge of controlling whether to wake from touchpad. This flag is reserved for older devices without firmware support (Nami and Coral) and please do not set for new devices.",
                     "pattern": "^[01]$",

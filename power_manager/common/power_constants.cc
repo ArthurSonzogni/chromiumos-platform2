@@ -108,6 +108,9 @@ const char kSuspendPreventionListPref[] = "suspend_prevention_models";
 const char kExternalDisplayOnlyListPref[] = "external_display_only_models";
 const char kExcludeFromExternalDisplayOnlyListPref[] =
     "exclude_from_external_display_only_models";
+const char kSuspendWithoutWakeupCountPref[] = "suspend_without_wakeup_count";
+const char kSuspendWithoutWakeupCountListPref[] =
+    "suspend_without_wakeup_count_models";
 const char kSetTransmitPowerPreferFarForProximityPref[] =
     "set_transmit_power_prefer_far_for_proximity";
 const char kWifiTransmitPowerModeForStaticDevicePref[] =

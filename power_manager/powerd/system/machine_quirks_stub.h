@@ -25,6 +25,7 @@ class MachineQuirksStub : public MachineQuirksInterface {
   bool IsSuspendBlocked() override;
   bool IsExternalDisplayOnly() override;
   bool IsGenericAcpiBatteryDriver() override;
+  bool IsSuspendWithoutWakeupCount() override;
 
   void ResetQuirks();
   // Set the bool value to be returned for the idle check.
@@ -33,12 +34,16 @@ class MachineQuirksStub : public MachineQuirksInterface {
   void SetSuspendBlockedQuirkDetected(bool value);
   // Set the bool value to be returned for the external display only check.
   void SetExternalDisplayOnlyQuirkDetected(bool value);
+  // Set the bool value to be returned for the suspend without wakeup count
+  // check.
+  void SetSuspendWithoutWakeupCount(bool value);
 
  private:
   bool force_idle_ = false;
   bool block_suspend_ = false;
   bool external_display_only_ = false;
   bool is_generic_battery_driver_ = false;
+  bool suspend_without_wakeup_count_ = false;
   PrefsInterface* prefs_;
 };
 

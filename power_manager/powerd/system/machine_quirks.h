@@ -35,6 +35,10 @@ class MachineQuirksInterface {
   // Checks if the machine quirk indicates that
   // the device uses the generic ACPI battery.
   virtual bool IsGenericAcpiBatteryDriver() = 0;
+  // Checks if the machine quirk indicates that
+  // the device should suspend without writing
+  // to wakeup_count.
+  virtual bool IsSuspendWithoutWakeupCount() = 0;
 };
 
 // Check for machine specific quirks from the running machine.
@@ -78,6 +82,12 @@ class MachineQuirks : public MachineQuirksInterface {
   // current charge as 0. Such devices then cause various power related tools to
   // crash as they do not expect to receive a 0 value for current charge.
   bool IsGenericAcpiBatteryDriver() override;
+
+  // Determine if the machine should write to /sys/power/wakeup_count when
+  // suspending.
+  // This quirk is a workaround for machines impacted by the kernel regression
+  // caused by 16f70feaab in the kernel. See b/456516813 for details.
+  bool IsSuspendWithoutWakeupCount() override;
 
   // Reads the DMI value, given a DMI filename
   bool ReadDMIValFromFile(std::string_view dmi_file_name,

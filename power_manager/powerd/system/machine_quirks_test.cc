@@ -33,6 +33,9 @@ const char sti_models[] =
     "HP Compaq 8000 Elite\n"
     "ThinkCentre M93\n"
     "ProDesk 600 G1\n";
+const char no_wc_models[] =
+    "Latitude E5450\n"
+    "Latitude E7450\n";
 const char external_display_excluded_models[] = "*HP PRODESK 400*\n";
 constexpr std::string_view valid_battery_type = "Battery";
 constexpr std::string_view invalid_battery_type = "Wireless";
@@ -64,6 +67,7 @@ class MachineQuirksTest : public TestEnvironment {
     prefs_.SetString(kSuspendToIdleListPref, sti_models);
     prefs_.SetString(kExcludeFromExternalDisplayOnlyListPref,
                      external_display_excluded_models);
+    prefs_.SetString(kSuspendWithoutWakeupCountListPref, no_wc_models);
 
     // Set up mock prefs default values
     prefs_.SetInt64(kHasMachineQuirksPref, 1);
@@ -71,6 +75,7 @@ class MachineQuirksTest : public TestEnvironment {
     prefs_.SetInt64(kSuspendToIdlePref, 0);
     prefs_.SetInt64(kExternalDisplayOnlyPref, 0);
     prefs_.SetInt64(kAllowZeroChargeReadOnACPref, 0);
+    prefs_.SetInt64(kSuspendWithoutWakeupCountPref, 0);
 
     // Init machine_quirks_ with prefs
     machine_quirks_.Init(&prefs_);
@@ -206,6 +211,23 @@ TEST_F(MachineQuirksTest, IsNotGenericBatteryDriver) {
   EXPECT_FALSE(machine_quirks_.IsGenericAcpiBatteryDriver());
 }
 
+// Test that IsSuspendWithoutWakeupCount is true when the dmi value is a match
+TEST_F(MachineQuirksTest, IsSuspendWithoutWakeupCountTrue) {
+  CreateDmiFile("product_name", "Latitude E5450");
+  EXPECT_EQ(true, machine_quirks_.IsSuspendWithoutWakeupCount());
+  // Also test for the case when there is whitespace added
+  CreateDmiFile("product_name", " Latitude E5450 ");
+  // EXPECT_EQ(true, machine_quirks_.IsSuspendWithoutWakeupCount());
+}
+
+// Test that IsSuspendWithoutWakeupCount is false when there is no matching dmi
+// value
+TEST_F(MachineQuirksTest, IsSuspendWithoutWakeupCountFalse) {
+  EXPECT_EQ(false, machine_quirks_.IsSuspendWithoutWakeupCount());
+  CreateDmiFile("product_name", "foo");
+  EXPECT_EQ(false, machine_quirks_.IsSuspendWithoutWakeupCount());
+}
+
 // Testing that when kHasMachineQuirksPref = 0, then no quirks are applied
 TEST_F(MachineQuirksTest, MachineQuirksDisabled) {
   CreateDmiFile("product_name", "HP Compaq dc7900");
@@ -216,15 +238,18 @@ TEST_F(MachineQuirksTest, MachineQuirksDisabled) {
   int64_t suspend_to_idle_pref = 2;
   int64_t external_display_only_pref = 2;
   int64_t zero_charge_pref = 2;
+  int64_t no_wakeup_count_pref = 2;
   CHECK(prefs_.GetInt64(kDisableIdleSuspendPref, &disable_idle_suspend_pref));
   CHECK(prefs_.GetInt64(kSuspendToIdlePref, &suspend_to_idle_pref));
   CHECK(prefs_.GetInt64(kExternalDisplayOnlyPref, &external_display_only_pref));
   CHECK(prefs_.GetInt64(kAllowZeroChargeReadOnACPref, &zero_charge_pref));
+  CHECK(prefs_.GetInt64(kSuspendWithoutWakeupCountPref, &no_wakeup_count_pref));
 
   EXPECT_EQ(0, disable_idle_suspend_pref);
   EXPECT_EQ(0, suspend_to_idle_pref);
   EXPECT_EQ(0, external_display_only_pref);
   EXPECT_EQ(0, zero_charge_pref);
+  EXPECT_EQ(0, no_wakeup_count_pref);
 }
 
 // Testing that the correct pref is set when there aren't any quirk matches
@@ -235,15 +260,18 @@ TEST_F(MachineQuirksTest, ApplyQuirksToPrefsNone) {
   int64_t suspend_to_idle_pref = 2;
   int64_t external_display_only_pref = 2;
   int64_t zero_charge_pref = 2;
+  int64_t no_wakeup_count_pref = 2;
   CHECK(prefs_.GetInt64(kDisableIdleSuspendPref, &disable_idle_suspend_pref));
   CHECK(prefs_.GetInt64(kSuspendToIdlePref, &suspend_to_idle_pref));
   CHECK(prefs_.GetInt64(kExternalDisplayOnlyPref, &external_display_only_pref));
   CHECK(prefs_.GetInt64(kAllowZeroChargeReadOnACPref, &zero_charge_pref));
+  CHECK(prefs_.GetInt64(kSuspendWithoutWakeupCountPref, &no_wakeup_count_pref));
 
   EXPECT_EQ(0, disable_idle_suspend_pref);
   EXPECT_EQ(0, suspend_to_idle_pref);
   EXPECT_EQ(0, external_display_only_pref);
   EXPECT_EQ(0, zero_charge_pref);
+  EXPECT_EQ(0, no_wakeup_count_pref);
 }
 
 // Testing that the correct pref is set when there's a suspend blocked match

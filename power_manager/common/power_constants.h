@@ -283,6 +283,12 @@ extern const char kSuspendPreventionListPref[];
 // List of devices with the ExternalDisplayOnly machine quirk.
 extern const char kExternalDisplayOnlyListPref[];
 
+// If true, suspend without writing to /sys/power/wakeup_count.
+extern const char kSuspendWithoutWakeupCountPref[];
+
+// List of devices with the SuspendWithoutWakeupCount machine quirk.
+extern const char kSuspendWithoutWakeupCountListPref[];
+
 // If true, return Far when at least one of the sensors report far.
 extern const char kSetTransmitPowerPreferFarForProximityPref[];
 

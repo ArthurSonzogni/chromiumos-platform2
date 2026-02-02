@@ -960,8 +960,12 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     RunSetuidHelper("eventlog_add", "--eventlog_code=0xa7", true);
   }
 
+  bool suspend_without_wakeup_count_pref = false;
+  prefs_->GetBool(kSuspendWithoutWakeupCountPref,
+                  &suspend_without_wakeup_count_pref);
+
   std::vector<std::string> args;
-  if (wakeup_count_valid) {
+  if (wakeup_count_valid && !suspend_without_wakeup_count_pref) {
     args.push_back("--suspend_wakeup_count_valid");
     args.push_back(
         base::StringPrintf("--suspend_wakeup_count=%" PRIu64, wakeup_count));
