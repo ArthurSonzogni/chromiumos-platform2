@@ -125,6 +125,7 @@ AndroidStatus Provisioner::ProvisionForcedCertifyingKey(bool forced) {
   if (!proxy_->GetCertificate(request, &reply, &err,
                               kGetCertificateTimeout.InMilliseconds())) {
     // DBus call failed.
+    LOG(ERROR) << "DBus call failed: " << err->GetMessage();
     return AndroidStatus::from_keymint_code(
         AndroidStatus::KeymintSpecificErrorCode::
             SECURE_HW_COMMUNICATION_FAILED);
@@ -184,6 +185,7 @@ AndroidStatus Provisioner::ProvisionForcedArcAttestationDeviceKey(bool forced) {
   if (!proxy_->GetCertificate(request, &reply, &err,
                               kGetCertificateTimeout.InMilliseconds())) {
     // DBus call failed.
+    LOG(ERROR) << "DBus call failed: " << err->GetMessage();
     return AndroidStatus::from_keymint_code(
         AndroidStatus::KeymintSpecificErrorCode::
             SECURE_HW_COMMUNICATION_FAILED);
@@ -277,6 +279,7 @@ AndroidStatus Provisioner::SignWithP256Dk(const std::vector<uint8_t>& input,
   brillo::ErrorPtr err;
   if (!proxy_->Sign(request, &reply, &err, kSignTimeout.InMilliseconds())) {
     // DBus call failed.
+    LOG(ERROR) << "DBus call failed: " << err->GetMessage();
     return AndroidStatus::from_keymint_code(
         AndroidStatus::KeymintSpecificErrorCode::
             SECURE_HW_COMMUNICATION_FAILED);
@@ -340,6 +343,7 @@ AndroidStatus Provisioner::GetEndorsementPublicKey(
   if (!proxy_->GetEndorsementInfo(request, &reply, &err,
                                   kSignTimeout.InMilliseconds())) {
     // DBus call failed.
+    LOG(ERROR) << "DBus call failed: " << err->GetMessage();
     return AndroidStatus::from_keymint_code(
         AndroidStatus::KeymintSpecificErrorCode::
             SECURE_HW_COMMUNICATION_FAILED);
