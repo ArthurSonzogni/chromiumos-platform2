@@ -35,6 +35,7 @@ A list of current devices with detachable base mappings is as follows:
 |Ciri                  |Kelpie
 |Wugtrio               |Spikyrock
 |Wyrdeer               |Whitebeard
+|Padme                 |Eirtae
 
 ## On Host
 
