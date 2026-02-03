@@ -39,6 +39,10 @@ class Platform {
   // Returns whether |path| exists.
   virtual bool PathExists(const std::string& path) const;
 
+  // Returns whether |path| exists and is a regular file (not a directory, not a
+  // special file, not a symlink, not even a symlink to a regular file).
+  virtual bool FileExists(const std::string& path) const;
+
   // Returns whether |path| exists and is a directory.
   virtual bool DirectoryExists(const std::string& path) const;
 

@@ -15,7 +15,6 @@
 #include <cstdint>
 #include <iomanip>
 #include <memory>
-#include <type_traits>
 #include <utility>
 
 #include <base/check.h>
@@ -128,6 +127,12 @@ bool Platform::GetRealPath(const std::string& path,
 
 bool Platform::PathExists(const std::string& path) const {
   return base::PathExists(base::FilePath(path));
+}
+
+bool Platform::FileExists(const std::string& path) const {
+  base::stat_wrapper_t st;
+  return base::File::Lstat(base::FilePath(path), &st) == 0 &&
+         S_ISREG(st.st_mode);
 }
 
 bool Platform::DirectoryExists(const std::string& path) const {

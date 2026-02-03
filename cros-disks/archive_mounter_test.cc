@@ -34,7 +34,7 @@ const int kPasswordNeededCode = 42;
 // Mock Platform implementation for testing.
 class MockFUSEPlatform : public Platform {
  public:
-  MOCK_METHOD(bool, PathExists, (const std::string&), (const, override));
+  MOCK_METHOD(bool, FileExists, (const std::string&), (const, override));
 };
 
 class FakeSandboxedProcessFactory : public SandboxedProcessFactory {
@@ -51,7 +51,7 @@ class FakeSandboxedProcessFactory : public SandboxedProcessFactory {
 class ArchiveMounterTest : public ::testing::Test {
  public:
   ArchiveMounterTest() {
-    ON_CALL(platform_, PathExists).WillByDefault(Return(true));
+    ON_CALL(platform_, FileExists).WillByDefault(Return(true));
   }
 
  protected:
@@ -175,7 +175,7 @@ TEST_F(ArchiveMounterTest, SimulateProgressForTesting) {
 }
 
 TEST_F(ArchiveMounterTest, FileNotFound) {
-  EXPECT_CALL(platform_, PathExists(kSomeSource)).WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, FileExists(kSomeSource)).WillRepeatedly(Return(false));
   auto mounter = CreateMounter({});
   MountError error = MountError::kUnknownError;
   const std::unique_ptr<FakeSandboxedProcess> sandbox =

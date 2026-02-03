@@ -199,19 +199,19 @@ TEST_F(RarMounterTest, GetBindPathsWithOldNamingScheme) {
   const RarMounter& m = mounter_;
   EXPECT_THAT(m.GetBindPaths("poi"), ElementsAreArray<std::string>({"poi"}));
 
-  EXPECT_CALL(platform_, PathExists("poi.r00")).WillOnce(Return(false));
+  EXPECT_CALL(platform_, FileExists("poi.r00")).WillOnce(Return(false));
   EXPECT_THAT(m.GetBindPaths("poi.rar"),
               ElementsAreArray<std::string>({"poi.rar"}));
 
-  EXPECT_CALL(platform_, PathExists("poi.r00")).WillOnce(Return(true));
-  EXPECT_CALL(platform_, PathExists("poi.r01")).WillOnce(Return(true));
-  EXPECT_CALL(platform_, PathExists("poi.r02")).WillOnce(Return(false));
+  EXPECT_CALL(platform_, FileExists("poi.r00")).WillOnce(Return(true));
+  EXPECT_CALL(platform_, FileExists("poi.r01")).WillOnce(Return(true));
+  EXPECT_CALL(platform_, FileExists("poi.r02")).WillOnce(Return(false));
   EXPECT_THAT(m.GetBindPaths("poi.rar"),
               ElementsAreArray<std::string>({"poi.rar", "poi.r00", "poi.r01"}));
 
-  EXPECT_CALL(platform_, PathExists("POI.R00")).WillOnce(Return(true));
-  EXPECT_CALL(platform_, PathExists("POI.R01")).WillOnce(Return(true));
-  EXPECT_CALL(platform_, PathExists("POI.R02")).WillOnce(Return(false));
+  EXPECT_CALL(platform_, FileExists("POI.R00")).WillOnce(Return(true));
+  EXPECT_CALL(platform_, FileExists("POI.R01")).WillOnce(Return(true));
+  EXPECT_CALL(platform_, FileExists("POI.R02")).WillOnce(Return(false));
   EXPECT_THAT(m.GetBindPaths("POI.RAR"),
               ElementsAreArray<std::string>({"POI.RAR", "POI.R00", "POI.R01"}));
 }
@@ -219,24 +219,24 @@ TEST_F(RarMounterTest, GetBindPathsWithOldNamingScheme) {
 TEST_F(RarMounterTest, GetBindPathsWithNewNamingScheme) {
   const RarMounter& m = mounter_;
 
-  EXPECT_CALL(platform_, PathExists("poi1.rar")).WillOnce(Return(false));
+  EXPECT_CALL(platform_, FileExists("poi1.rar")).WillOnce(Return(false));
   EXPECT_THAT(m.GetBindPaths("poi2.rar"),
               ElementsAreArray<std::string>({"poi2.rar"}));
 
-  EXPECT_CALL(platform_, PathExists("poi1.rar")).WillOnce(Return(true));
-  EXPECT_CALL(platform_, PathExists("poi2.rar")).WillOnce(Return(true));
-  EXPECT_CALL(platform_, PathExists("poi3.rar")).WillOnce(Return(true));
-  EXPECT_CALL(platform_, PathExists("poi4.rar")).WillOnce(Return(true));
-  EXPECT_CALL(platform_, PathExists("poi5.rar")).WillOnce(Return(false));
+  EXPECT_CALL(platform_, FileExists("poi1.rar")).WillOnce(Return(true));
+  EXPECT_CALL(platform_, FileExists("poi2.rar")).WillOnce(Return(true));
+  EXPECT_CALL(platform_, FileExists("poi3.rar")).WillOnce(Return(true));
+  EXPECT_CALL(platform_, FileExists("poi4.rar")).WillOnce(Return(true));
+  EXPECT_CALL(platform_, FileExists("poi5.rar")).WillOnce(Return(false));
   EXPECT_THAT(m.GetBindPaths("poi2.rar"),
               ElementsAreArray<std::string>(
                   {"poi2.rar", "poi1.rar", "poi3.rar", "poi4.rar"}));
 
-  EXPECT_CALL(platform_, PathExists("POI1.RAR")).WillOnce(Return(true));
-  EXPECT_CALL(platform_, PathExists("POI2.RAR")).WillOnce(Return(true));
-  EXPECT_CALL(platform_, PathExists("POI3.RAR")).WillOnce(Return(true));
-  EXPECT_CALL(platform_, PathExists("POI4.RAR")).WillOnce(Return(true));
-  EXPECT_CALL(platform_, PathExists("POI5.RAR")).WillOnce(Return(false));
+  EXPECT_CALL(platform_, FileExists("POI1.RAR")).WillOnce(Return(true));
+  EXPECT_CALL(platform_, FileExists("POI2.RAR")).WillOnce(Return(true));
+  EXPECT_CALL(platform_, FileExists("POI3.RAR")).WillOnce(Return(true));
+  EXPECT_CALL(platform_, FileExists("POI4.RAR")).WillOnce(Return(true));
+  EXPECT_CALL(platform_, FileExists("POI5.RAR")).WillOnce(Return(false));
   EXPECT_THAT(m.GetBindPaths("POI2.RAR"),
               ElementsAreArray<std::string>(
                   {"POI2.RAR", "POI1.RAR", "POI3.RAR", "POI4.RAR"}));
@@ -245,7 +245,7 @@ TEST_F(RarMounterTest, GetBindPathsWithNewNamingScheme) {
 TEST_F(RarMounterTest, GetBindPathsStopsOnOverflow) {
   const RarMounter& m = mounter_;
 
-  EXPECT_CALL(platform_, PathExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(_)).WillRepeatedly(Return(true));
 
   EXPECT_THAT(m.GetBindPaths("poi.rar"), SizeIs(901));
   EXPECT_THAT(m.GetBindPaths("POI.RAR"), SizeIs(901));

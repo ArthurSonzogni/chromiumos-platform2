@@ -106,7 +106,7 @@ void RarMounter::AddPathsWithOldNamingScheme(
   std::fill(end - 2, end, '0');
 
   // Is there at least the first supplementary file of the multipart archive?
-  if (!platform()->PathExists(candidate_path)) {
+  if (!platform()->FileExists(candidate_path)) {
     return;
   }
 
@@ -116,7 +116,7 @@ void RarMounter::AddPathsWithOldNamingScheme(
   // '.r00' -> '.r01' -> ... -> '.r99' -> '.s00' -> ... -> '.z99'
   // or
   // '.R00' -> '.R01' -> ... -> '.R99' -> '.S00' -> ... -> '.Z99'
-  while (Increment(end - 3, end) && platform()->PathExists(candidate_path)) {
+  while (Increment(end - 3, end) && platform()->FileExists(candidate_path)) {
     bind_paths->push_back(candidate_path);
   }
 }
@@ -140,7 +140,7 @@ void RarMounter::AddPathsWithNewNamingScheme(
   std::fill(begin, end, '0');
 
   // Find all the files making the multipart archive.
-  while (Increment(begin, end) && platform()->PathExists(candidate_path)) {
+  while (Increment(begin, end) && platform()->FileExists(candidate_path)) {
     if (candidate_path != original_path) {
       bind_paths->push_back(candidate_path);
     }

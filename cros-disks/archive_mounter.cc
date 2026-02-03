@@ -81,7 +81,7 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
   auto sandbox = sandbox_factory_->CreateSandboxedProcess();
 
   std::unique_ptr<brillo::ScopedMountNamespace> mount_ns;
-  if (!platform()->PathExists(path.value())) {
+  if (!platform()->FileExists(path.value())) {
     // Try to locate the file in Chrome's mount namespace.
     mount_ns = brillo::ScopedMountNamespace::CreateFromPath(
         base::FilePath(kChromeNamespace));
@@ -91,7 +91,7 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
       return nullptr;
     }
 
-    if (!platform()->PathExists(path.value())) {
+    if (!platform()->FileExists(path.value())) {
       PLOG(ERROR) << "Cannot find archive " << redact(path);
       *error = MountError::kInvalidPath;
       return nullptr;

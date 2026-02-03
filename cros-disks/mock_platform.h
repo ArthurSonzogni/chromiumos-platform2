@@ -35,7 +35,6 @@ class MockPlatform : public Platform {
               GetGroupId,
               (const std::string&, gid_t*),
               (const, override));
-  MOCK_METHOD(bool, DirectoryExists, (const std::string&), (const, override));
   MOCK_METHOD(bool, CreateDirectory, (const std::string&), (const, override));
   MOCK_METHOD(bool,
               SetPermissions,
@@ -62,6 +61,8 @@ class MockPlatform : public Platform {
               (const std::string&, uid_t, gid_t),
               (const, override));
   MOCK_METHOD(bool, PathExists, (const std::string&), (const, override));
+  MOCK_METHOD(bool, FileExists, (const std::string&), (const, override));
+  MOCK_METHOD(bool, DirectoryExists, (const std::string&), (const, override));
   MOCK_METHOD(bool,
               GetRealPath,
               (const std::string&, std::string*),
