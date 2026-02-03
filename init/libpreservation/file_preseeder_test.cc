@@ -206,36 +206,77 @@ TEST_F(FilePreseederTest, RestoreRootFlagFiles) {
 }
 
 TEST_F(FilePreseederTest, NonUtf8InlineFiles) {
-  std::set<base::FilePath> file_allowlist = {kFoo, kBarBaz};
-  std::set<base::FilePath> directory_allowlist = {kBar};
+  std::set<base::FilePath> directory_allowlist = {kFoo, kBar};
   FilePreseeder preseeder(directory_allowlist, fs_root_, mount_root_,
                           metadata_path_);
+
+  // Manually create the metadata with non-UTF8 data and a non-UTF8 path.
+  PreseededFileArray preseeded_files;
+  PreseededFile* pfile;
+
+  // File 1: Valid path, non-UTF8 data. Should be restored.
+  pfile = preseeded_files.add_file_list();
+  pfile->set_path("foo");
+  const std::string non_utf8_data = "bar\xff";
+  pfile->set_size(non_utf8_data.size());
+  pfile->mutable_contents()->set_data(non_utf8_data);
+
+  // File 2: Non-UTF8 path. Should be skipped.
+  pfile = preseeded_files.add_file_list();
+  const std::string non_utf8_path = "bar/baz\xff";
+  pfile->set_path(non_utf8_path);
+  pfile->set_size(3);
+  pfile->mutable_contents()->set_data("baz");
+
+  std::string serialized = preseeded_files.SerializeAsString();
+  auto base64_encoded = base::Base64Encode(serialized);
+  ASSERT_TRUE(brillo::WriteToFileAtomic(metadata_path_, base64_encoded.c_str(),
+                                   base64_encoded.size(), 0644));
+
+  EXPECT_TRUE(preseeder.LoadMetadata());
+  EXPECT_TRUE(preseeder.RestoreInlineFiles());
+
+  // Verify file 1 was restored with correct content.
   base::FilePath file_foo = mount_root_.Append(kFoo);
-  base::FilePath file_baz = mount_root_.Append(kBarBaz);
-  ASSERT_TRUE(base::CreateDirectory(mount_root_.Append(kBar)));
-  // Create a non-utf8 file name.
-  char non_utf8_name[] = "foo\xff";
-  base::FilePath non_utf8_file = mount_root_.Append(non_utf8_name);
-  // Create a non-utf8 file data.
-  char non_utf8_data[] = "bar\xff";
-  ASSERT_TRUE(brillo::WriteStringToFile(file_foo, non_utf8_data));
-  ASSERT_TRUE(brillo::WriteStringToFile(file_baz, non_utf8_data));
-  ASSERT_TRUE(brillo::WriteStringToFile(non_utf8_file, "baz"));
-  file_allowlist.insert(base::FilePath(non_utf8_name));
-  EXPECT_TRUE(preseeder.SaveFileState(file_allowlist));
-  EXPECT_TRUE(base::PathExists(metadata_path_));
+  EXPECT_TRUE(base::PathExists(file_foo));
+  std::string content;
+  EXPECT_TRUE(base::ReadFileToString(file_foo, &content));
+  EXPECT_EQ(content, non_utf8_data);
 
-  ASSERT_TRUE(brillo::DeleteFile(file_foo));
-  ASSERT_TRUE(brillo::DeleteFile(file_baz));
-  ASSERT_TRUE(brillo::DeleteFile(non_utf8_file));
+  // Verify file 2 was not restored.
+  base::FilePath non_utf8_file_path = mount_root_.Append(non_utf8_path);
+  EXPECT_FALSE(base::PathExists(non_utf8_file_path));
+}
 
-  FilePreseeder preseeder2(directory_allowlist, fs_root_, mount_root_,
-                           metadata_path_);
-  EXPECT_TRUE(preseeder2.LoadMetadata());
-  EXPECT_TRUE(preseeder2.RestoreInlineFiles());
-  EXPECT_FALSE(base::PathExists(file_foo));
-  EXPECT_TRUE(base::PathExists(file_baz));
-  EXPECT_FALSE(base::PathExists(non_utf8_file));
+TEST_F(FilePreseederTest, RestoreInlineFilesInvalidPathComponent) {
+  std::set<base::FilePath> directory_allowlist = {kBar, kFoo};
+  FilePreseeder preseeder(directory_allowlist, fs_root_, mount_root_,
+                          metadata_path_);
+
+  // Manually create the metadata with an invalid path.
+  PreseededFileArray preseeded_files;
+  PreseededFile* pfile = preseeded_files.add_file_list();
+  pfile->set_path("foo");
+  pfile->set_size(3);
+  pfile->mutable_contents()->set_data("foo");
+
+  pfile = preseeded_files.add_file_list();
+  pfile->set_path("bar/../baz");
+  pfile->set_size(3);
+  pfile->mutable_contents()->set_data("baz");
+
+  std::string serialized = preseeded_files.SerializeAsString();
+  auto base64_encoded = base::Base64Encode(serialized);
+  ASSERT_TRUE(brillo::WriteToFileAtomic(metadata_path_, base64_encoded.c_str(),
+                                   base64_encoded.size(), 0644));
+
+  EXPECT_TRUE(preseeder.LoadMetadata());
+  EXPECT_TRUE(preseeder.RestoreInlineFiles());
+
+  base::FilePath file_foo = mount_root_.Append(kFoo);
+  base::FilePath file_baz = mount_root_.Append(kBaz);
+  EXPECT_TRUE(base::PathExists(file_foo));
+  EXPECT_FALSE(base::PathExists(file_baz));
 }
 
 }  // namespace libpreservation

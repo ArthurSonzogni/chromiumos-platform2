@@ -41,6 +41,30 @@ constexpr int kMaxExtents = 128;
 // Block size.
 constexpr int kBlockSize = 4096;
 
+bool ValidatePath(const base::FilePath& path) {
+  if (!base::IsStringUTF8(path.value())) {
+    return false;
+  }
+
+  auto path_components = path.GetComponents();
+
+  if (path_components.empty()) {
+    LOG(ERROR) << "Invalid path";
+    return false;
+  }
+
+  // Validate that the path components don't contain special paths.
+  for (auto& component : path_components) {
+    if (component == base::FilePath::kCurrentDirectory ||
+        component == base::FilePath::kParentDirectory) {
+      LOG(ERROR) << "Invalid path component " << component;
+      return false;
+    }
+  }
+
+  return true;
+}
+
 }  // namespace
 
 FilePreseeder::FilePreseeder(
@@ -58,6 +82,10 @@ FilePreseeder::~FilePreseeder() {}
 bool FilePreseeder::SaveFileState(const std::set<base::FilePath>& file_list) {
   bool ret = true;
   for (auto preseeded_file : file_list) {
+    if (!ValidatePath(preseeded_file)) {
+      ret = false;
+      continue;
+    }
     base::FilePath file = mount_root_.Append(preseeded_file);
     if (!base::PathExists(file)) {
       continue;
@@ -164,7 +192,8 @@ bool FilePreseeder::CheckAllowlist(const base::FilePath& path) {
 
 bool FilePreseeder::RestoreExtentFiles(FilesystemManager* fs_manager) {
   for (auto& file : preseeded_files_.file_list()) {
-    if (!CheckAllowlist(base::FilePath(file.path()))) {
+    base::FilePath file_path(file.path());
+    if (!CheckAllowlist(file_path)) {
       LOG(ERROR) << "Skipping file: " << file.path() << "; not in allowlist";
       continue;
     }
@@ -179,12 +208,12 @@ bool FilePreseeder::RestoreExtentFiles(FilesystemManager* fs_manager) {
       continue;
     }
 
-    base::FilePath pfile = fs_root_.Append(file.path());
+    base::FilePath pfile = fs_root_.Append(file_path);
     if (fs_manager->FileExists(pfile)) {
       continue;
     }
 
-    base::FilePath parent_dir = base::FilePath(file.path()).DirName();
+    base::FilePath parent_dir = file_path.DirName();
 
     if (!fs_manager->FileExists(fs_root_.Append(parent_dir)) &&
         !CreateDirectoryRecursively(fs_manager, parent_dir)) {
@@ -204,7 +233,11 @@ bool FilePreseeder::RestoreExtentFiles(FilesystemManager* fs_manager) {
 
 bool FilePreseeder::RestoreInlineFiles() {
   for (auto& file : preseeded_files_.file_list()) {
-    if (!CheckAllowlist(base::FilePath(file.path()))) {
+    base::FilePath file_path(file.path());
+    if (!ValidatePath(file_path)) {
+      continue;
+    }
+    if (!CheckAllowlist(file_path)) {
       LOG(ERROR) << "Skipping file: " << file.path() << "; not in allowlist";
       continue;
     }
@@ -219,7 +252,7 @@ bool FilePreseeder::RestoreInlineFiles() {
       continue;
     }
 
-    base::FilePath path = mount_root_.Append(file.path());
+    base::FilePath path = mount_root_.Append(file_path);
     base::FilePath parent_dir = path.DirName();
     if (!base::PathExists(parent_dir)) {
       if (!base::CreateDirectory(parent_dir)) {
@@ -242,6 +275,9 @@ bool FilePreseeder::RestoreRootFlagFiles(
   bool ret = true;
   for (auto& file : preseeded_files_.file_list()) {
     base::FilePath root_file = base::FilePath(file.path());
+    if (!ValidatePath(root_file)) {
+      continue;
+    }
     if (file_allowlist.find(root_file) == file_allowlist.end()) {
       continue;
     }
