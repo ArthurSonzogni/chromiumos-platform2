@@ -85,6 +85,8 @@ constexpr Metrics::WiFiAdapterInfo AVLWiFiAdapters[] = {
      Metrics::kWiFiStructuredMetricsErrorValue},  // Realtek8852BE-VT,
     {0x10ec, 0xc852,
      Metrics::kWiFiStructuredMetricsErrorValue},  // Realtek8852CPCIE,
+    {0x14c3, 0x7920,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // MediaTekMT7920PCIE,
     {0x14c3, 0x7961,
      Metrics::kWiFiStructuredMetricsErrorValue},  // MediaTekMT7921PCIE,
     {0x037a, 0x7901,
