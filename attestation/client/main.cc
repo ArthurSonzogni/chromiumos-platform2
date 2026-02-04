@@ -238,6 +238,9 @@ std::optional<CertificateProfile> ToCertificateProfile(
   if (profile == "device_setup") {
     return DEVICE_SETUP_CERTIFICATE;
   }
+  if (profile == "beam_device") {
+    return BEAM_DEVICE_CERTIFICATE;
+  }
   return std::nullopt;
 }
 

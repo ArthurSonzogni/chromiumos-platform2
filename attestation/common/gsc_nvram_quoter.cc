@@ -9,9 +9,9 @@
 
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libhwsec/frontend/attestation/frontend.h>
 #include <libhwsec/structures/space.h>
-#include <libhwsec-foundation/status/status_chain_macros.h>
 #include <trunks/tpm_utility.h>
 
 using brillo::BlobFromString;
@@ -65,6 +65,11 @@ std::vector<NVRAMQuoteType> GscNvramQuoter::GetListForVtpmEkCertificate()
 std::vector<NVRAMQuoteType> GscNvramQuoter::GetListForEnrollmentCertificate()
     const {
   return {BOARD_ID, SN_BITS, RSU_DEVICE_ID};
+}
+
+std::vector<NVRAMQuoteType> GscNvramQuoter::GetListForBeamDeviceCertificate()
+    const {
+  return {BOARD_ID, SN_BITS};
 }
 
 bool GscNvramQuoter::Certify(NVRAMQuoteType type,

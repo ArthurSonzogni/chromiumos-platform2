@@ -5,12 +5,12 @@
 #ifndef ATTESTATION_COMMON_MOCK_NVRAM_QUOTER_H_
 #define ATTESTATION_COMMON_MOCK_NVRAM_QUOTER_H_
 
-#include "attestation/common/nvram_quoter.h"
-
 #include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
+
+#include "attestation/common/nvram_quoter.h"
 
 namespace attestation {
 
@@ -29,6 +29,10 @@ class MockNvramQuoter : public NvramQuoter {
               (const, override));
   MOCK_METHOD(std::vector<NVRAMQuoteType>,
               GetListForVtpmEkCertificate,
+              (),
+              (const, override));
+  MOCK_METHOD(std::vector<NVRAMQuoteType>,
+              GetListForBeamDeviceCertificate,
               (),
               (const, override));
   MOCK_METHOD(bool,

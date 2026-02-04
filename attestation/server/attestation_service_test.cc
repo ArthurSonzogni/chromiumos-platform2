@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "attestation/server/attestation_service.h"
+
 #include <optional>
 #include <string>
 #include <vector>
@@ -22,18 +24,17 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <libhwsec/frontend/attestation/mock_frontend.h>
-#include <libhwsec/factory/mock_factory.h>
-#include <libhwsec/structures/key.h>
-#include <libhwsec-foundation/tpm/tpm_version.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
+#include <libhwsec/factory/mock_factory.h>
+#include <libhwsec/frontend/attestation/mock_frontend.h>
+#include <libhwsec/structures/key.h>
 #include <policy/mock_device_policy.h>
 #include <policy/mock_libpolicy.h>
 
 #include "attestation/common/mock_crypto_utility.h"
 #include "attestation/common/mock_nvram_quoter.h"
 #include "attestation/pca_agent/client/fake_pca_agent_proxy.h"
-#include "attestation/server/attestation_service.h"
 #include "attestation/server/google_keys.h"
 #include "attestation/server/mock_database.h"
 #include "attestation/server/mock_key_store.h"
@@ -2695,6 +2696,92 @@ TEST_P(AttestationServiceTest,
   CreateCertificateRequestRequest request;
   request.set_aca_type(aca_type_);
   request.set_certificate_profile(ENTERPRISE_VTPM_EK_CERTIFICATE);
+  request.set_username("user");
+  request.set_request_origin("origin");
+  service_->CreateCertificateRequest(
+      request,
+      base::BindOnce(callback, GetCertificateName(identity_, aca_type_),
+                     QuitClosure()));
+  Run();
+}
+
+TEST_P(AttestationServiceTest, CreateBeamDeviceCertificateRequestSuccess) {
+  SetUpIdentity(identity_);
+  SetUpIdentityCertificate(identity_, aca_type_);
+  EXPECT_CALL(mock_nvram_quoter_, GetListForBeamDeviceCertificate())
+      .WillOnce(Return(std::vector<NVRAMQuoteType>({BOARD_ID, SN_BITS})));
+  // Identity will have board id and sn bits quotes.
+  auto callback = [](const std::string& cert_name,
+                     base::OnceClosure quit_closure,
+                     const CreateCertificateRequestReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_pca_request());
+    AttestationCertificateRequest pca_request;
+    EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
+    EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
+    EXPECT_EQ(BEAM_DEVICE_CERTIFICATE, pca_request.profile());
+    EXPECT_EQ(2, pca_request.nvram_quotes().size());
+    EXPECT_EQ(kFakeBoardIdQuote,
+              pca_request.nvram_quotes().at(BOARD_ID).quote());
+    EXPECT_EQ(kFakeBoardIdQuotedData,
+              pca_request.nvram_quotes().at(BOARD_ID).quoted_data());
+    EXPECT_EQ(kFakeSnBitsQuote, pca_request.nvram_quotes().at(SN_BITS).quote());
+    EXPECT_EQ(kFakeSnBitsQuotedData,
+              pca_request.nvram_quotes().at(SN_BITS).quoted_data());
+    EXPECT_EQ(kFakeAttestedDeviceId, pca_request.attested_device_id());
+    EXPECT_EQ(cert_name, pca_request.identity_credential());
+    std::move(quit_closure).Run();
+  };
+  service_->set_attested_device_id(kFakeAttestedDeviceId);
+  CreateCertificateRequestRequest request;
+  request.set_aca_type(aca_type_);
+  request.set_certificate_profile(BEAM_DEVICE_CERTIFICATE);
+  request.set_username("user");
+  request.set_request_origin("origin");
+  service_->CreateCertificateRequest(
+      request,
+      base::BindOnce(callback, GetCertificateName(identity_, aca_type_),
+                     QuitClosure()));
+  Run();
+}
+
+TEST_P(AttestationServiceTest,
+       CreateBeamDeviceCertRequestFormsPcaRequestWithoutAdid) {
+  SetUpIdentity(identity_);
+  SetUpIdentityCertificate(identity_, aca_type_);
+  RemoveNvramQuotesFromIdentity(identity_);
+
+  EXPECT_CALL(mock_nvram_quoter_, GetListForBeamDeviceCertificate())
+      .WillOnce(Return(std::vector<NVRAMQuoteType>({BOARD_ID, SN_BITS})));
+  EXPECT_CALL(mock_nvram_quoter_, Certify(BOARD_ID, _, _)).Times(1);
+  EXPECT_CALL(mock_nvram_quoter_, Certify(SN_BITS, _, _)).Times(1);
+
+  auto callback = [](const std::string& cert_name,
+                     base::OnceClosure quit_closure,
+                     const CreateCertificateRequestReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_pca_request());
+    AttestationCertificateRequest pca_request;
+    ASSERT_TRUE(pca_request.ParseFromString(reply.pca_request()));
+    EXPECT_TRUE(pca_request.attested_device_id().empty());
+    EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
+    EXPECT_EQ(BEAM_DEVICE_CERTIFICATE, pca_request.profile());
+    EXPECT_EQ(cert_name, pca_request.identity_credential());
+    EXPECT_EQ(2, pca_request.nvram_quotes().size());
+    EXPECT_EQ(kFakeBoardIdQuote,
+              pca_request.nvram_quotes().at(BOARD_ID).quote());
+    EXPECT_EQ(kFakeBoardIdQuotedData,
+              pca_request.nvram_quotes().at(BOARD_ID).quoted_data());
+    EXPECT_EQ(kFakeSnBitsQuote, pca_request.nvram_quotes().at(SN_BITS).quote());
+    EXPECT_EQ(kFakeSnBitsQuotedData,
+              pca_request.nvram_quotes().at(SN_BITS).quoted_data());
+    std::move(quit_closure).Run();
+  };
+  // Set an empty ADID.
+  service_->set_attested_device_id("");
+  CreateCertificateRequestRequest request;
+  request.set_aca_type(aca_type_);
+  request.set_certificate_profile(BEAM_DEVICE_CERTIFICATE);
   request.set_username("user");
   request.set_request_origin("origin");
   service_->CreateCertificateRequest(
