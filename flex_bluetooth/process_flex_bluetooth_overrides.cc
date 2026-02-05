@@ -5,6 +5,8 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
+#include <set>
+
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <brillo/syslog_logging.h>
@@ -13,6 +15,12 @@
 #include <brillo/udev/udev_enumerate.h>
 
 #include "flex_bluetooth/flex_bluetooth_overrides.h"
+
+enum class ApplyResult {
+  kApplied,
+  kNotApplied,
+  kBlocked,
+};
 
 namespace {
 
@@ -48,6 +56,20 @@ const unsigned int seconds_between_retries = 5;
 
 const base::FilePath kSyspropOverridePath = base::FilePath(
     "/var/lib/bluetooth/sysprops.conf.d/floss_reven_overrides.conf");
+
+const std::set<flex_bluetooth::BluetoothAdapter> kAdapterBlocklist = {
+    // b/475945265: failed in SET_EVENT_MASK and WRITE_LE_HOST_SUPPORT
+    {0x13d3, 0x3331},
+    {0x1690, 0x0741},
+
+    // b/475945265: failed in WRITE_LE_HOST_SUPPORT
+    {0x0b05, 0x179c},
+    {0x0cf3, 0x3005},
+
+    // b/475945265: failed in READ_DEFAULT_ERRONEOUS_DATA_REPORTING
+    // even though claimed in READ_LOCAL_SUPPORTED_COMMANDS
+    {0x10d7, 0xb012},
+};
 
 const std::map<flex_bluetooth::BluetoothAdapter,
                std::unordered_set<flex_bluetooth::SyspropOverride>>
@@ -159,7 +181,7 @@ const std::map<flex_bluetooth::BluetoothAdapter,
 };
 }  // namespace
 
-bool apply_overrides(
+ApplyResult check_and_apply_overrides(
     const flex_bluetooth::FlexBluetoothOverrides& bt,
     const std::vector<std::unique_ptr<brillo::UdevDevice>>& devices) {
   for (const auto& device : devices) {
@@ -188,6 +210,11 @@ bool apply_overrides(
       continue;
     }
 
+    if (kAdapterBlocklist.count({id_vendor, id_product})) {
+      LOG(INFO) << "Bluetooth adapter is in the blocklist.";
+      return ApplyResult::kBlocked;
+    }
+
     bt.ProcessOverridesForVidPid(id_vendor, id_product);
     LOG(INFO) << "Override(s) was found and applied.";
 
@@ -198,10 +225,10 @@ bool apply_overrides(
     // (To clarify, if a device has no internal Bluetooth adapter, a user can
     // still currently use an external Bluetooth adapter since there is only
     // one Bluetooth adapter to choose from).
-    return true;
+    return ApplyResult::kApplied;
   }
 
-  return false;
+  return ApplyResult::kNotApplied;
 }
 
 bool get_devices(const std::unique_ptr<brillo::Udev>& udev,
@@ -274,7 +301,8 @@ std::optional<std::string> get_driver_name() {
   return name;
 }
 
-bool attempt_apply_override(const flex_bluetooth::FlexBluetoothOverrides& bt) {
+ApplyResult attempt_apply_override(
+    const flex_bluetooth::FlexBluetoothOverrides& bt) {
   const auto udev = brillo::Udev::Create();
   std::string module_name;
 
@@ -292,7 +320,7 @@ bool attempt_apply_override(const flex_bluetooth::FlexBluetoothOverrides& bt) {
       sleep(seconds_between_retries);
     } else {
       LOG(WARNING) << "Didn't find a Bluetooth adapter.";
-      return false;
+      return ApplyResult::kNotApplied;
     }
   }
 
@@ -300,7 +328,7 @@ bool attempt_apply_override(const flex_bluetooth::FlexBluetoothOverrides& bt) {
   // apply override if BT is on USB transport.
   if (module_name != "btusb") {
     LOG(INFO) << "Override(s) don't apply to module " << module_name << ".";
-    return false;
+    return ApplyResult::kNotApplied;
   }
 
   std::vector<std::unique_ptr<brillo::UdevDevice>> devices;
@@ -308,28 +336,31 @@ bool attempt_apply_override(const flex_bluetooth::FlexBluetoothOverrides& bt) {
   // Check if a BT device is found on udev
   if (!get_devices(udev, kAttributeDeviceClass, kAttributeDeviceSubClass,
                    &devices)) {
-    return false;
+    return ApplyResult::kNotApplied;
   }
-  if (apply_overrides(bt, devices)) {
-    return true;
+
+  ApplyResult result = check_and_apply_overrides(bt, devices);
+  if (result == ApplyResult::kBlocked || result == ApplyResult::kApplied) {
+    return result;
   }
 
   // No device is recognized as BT...
   // Now check if a device's interface is recognized as BT.
   if (!get_devices(udev, kAttributeInterfaceClass, kAttributeInterfaceSubClass,
                    &devices)) {
-    return false;
+    return ApplyResult::kNotApplied;
   }
   std::transform(devices.begin(), devices.end(), devices.begin(),
                  [](std::unique_ptr<brillo::UdevDevice>& device) {
                    return device->GetParent();
                  });
-  if (apply_overrides(bt, devices)) {
-    return true;
+  result = check_and_apply_overrides(bt, devices);
+  if (result == ApplyResult::kBlocked || result == ApplyResult::kApplied) {
+    return result;
   }
 
   LOG(INFO) << "btusb device but not found on USB tree.";
-  return false;
+  return ApplyResult::kNotApplied;
 }
 
 int main() {
@@ -338,7 +369,14 @@ int main() {
 
   const flex_bluetooth::FlexBluetoothOverrides bt(kSyspropOverridePath,
                                                   kAdapterSyspropOverrides);
-  if (!attempt_apply_override(bt)) {
+  ApplyResult result = attempt_apply_override(bt);
+
+  if (result == ApplyResult::kBlocked) {
+    LOG(INFO) << "Bluetooth adapter is blocked. Exiting with failure.";
+    return 1;
+  }
+
+  if (result == ApplyResult::kNotApplied) {
     LOG(INFO) << "Removing overrides.";
     bt.RemoveOverrides();
   }
