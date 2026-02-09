@@ -180,6 +180,58 @@ TEST_F(HostsConnectivityDiagnosticsTest, AllInvalidHostnamesCompleteRequest) {
   }
 }
 
+TEST_F(HostsConnectivityDiagnosticsTest, DirectProxyPassesThrough) {
+  base::test::TestFuture<const TestConnectivityResponse&> future;
+
+  HostsConnectivityDiagnostics::RequestInfo request_info;
+  request_info.raw_hostnames.emplace_back(std::string(kExampleDotCom));
+  request_info.proxy = {.mode =
+                            HostsConnectivityDiagnostics::ProxyMode::kDirect};
+  request_info.callback = future.GetCallback();
+  diagnostics_->TestHostsConnectivity(std::move(request_info));
+
+  // Direct proxy should pass through to RunConnectivityTests (skeleton).
+  const auto& response = future.Get();
+  ASSERT_EQ(response.connectivity_results_size(), 1);
+  EXPECT_EQ(response.connectivity_results(0).result_code(),
+            ResultCode::INTERNAL_ERROR);
+}
+
+TEST_F(HostsConnectivityDiagnosticsTest, CustomProxyPassesThrough) {
+  base::test::TestFuture<const TestConnectivityResponse&> future;
+
+  HostsConnectivityDiagnostics::RequestInfo request_info;
+  request_info.raw_hostnames.emplace_back(std::string(kExampleDotCom));
+  request_info.proxy = {
+      .mode = HostsConnectivityDiagnostics::ProxyMode::kCustom,
+      .custom_url = "http://proxy.example.com:8080"};
+  request_info.callback = future.GetCallback();
+  diagnostics_->TestHostsConnectivity(std::move(request_info));
+
+  // Custom proxy should pass through to RunConnectivityTests (skeleton).
+  const auto& response = future.Get();
+  ASSERT_EQ(response.connectivity_results_size(), 1);
+  EXPECT_EQ(response.connectivity_results(0).result_code(),
+            ResultCode::INTERNAL_ERROR);
+}
+
+TEST_F(HostsConnectivityDiagnosticsTest, SystemProxyPassesThrough) {
+  base::test::TestFuture<const TestConnectivityResponse&> future;
+
+  HostsConnectivityDiagnostics::RequestInfo request_info;
+  request_info.raw_hostnames.emplace_back(std::string(kExampleDotCom));
+  request_info.proxy = {.mode =
+                            HostsConnectivityDiagnostics::ProxyMode::kSystem};
+  request_info.callback = future.GetCallback();
+  diagnostics_->TestHostsConnectivity(std::move(request_info));
+
+  // System proxy currently falls through to RunConnectivityTests (skeleton).
+  const auto& response = future.Get();
+  ASSERT_EQ(response.connectivity_results_size(), 1);
+  EXPECT_EQ(response.connectivity_results(0).result_code(),
+            ResultCode::INTERNAL_ERROR);
+}
+
 TEST_F(HostsConnectivityDiagnosticsTest, MultipleRequestsAreQueued) {
   base::test::TestFuture<const TestConnectivityResponse&> future1;
   base::test::TestFuture<const TestConnectivityResponse&> future2;

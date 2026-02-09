@@ -10,6 +10,7 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
+#include <brillo/http/http_transport.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <chromeos/net-base/ip_address.h>
 #include <dbus/bus.h>
@@ -147,8 +148,34 @@ void HostsConnectivityDiagnostics::NormalizeHostnames(Request req) {
   if (req.specs.empty()) {
     CompleteRequest(std::move(req));
   } else {
-    RunConnectivityTests(std::move(req));
+    ValidateAndAssignProxy(std::move(req));
   }
+}
+
+void HostsConnectivityDiagnostics::ValidateAndAssignProxy(Request req) {
+  CHECK(!req.specs.empty());
+
+  if (req.info.proxy.mode == ProxyMode::kSystem) {
+    // TODO(crbug.com/463098734): Resolve system proxy asynchronously via
+    // GetChromeProxyServersAsync for each hostname. For now, fall through
+    // to direct.
+    RunConnectivityTests(std::move(req));
+    return;
+  }
+
+  if (req.info.proxy.mode == ProxyMode::kCustom) {
+    CHECK(req.info.proxy.custom_url.has_value());
+    // TODO(crbug.com/463098734): Validate custom proxy URL (scheme, host,
+    // port range, no path/query/fragment).
+  }
+
+  const std::string proxy_url = req.info.proxy.mode == ProxyMode::kDirect
+                                    ? std::string(brillo::http::kDirectProxy)
+                                    : req.info.proxy.custom_url.value();
+  for (auto& spec : req.specs) {
+    spec.proxies = {proxy_url};
+  }
+  RunConnectivityTests(std::move(req));
 }
 
 // static

@@ -107,6 +107,9 @@ class HostsConnectivityDiagnostics {
   struct HostnameTestSpec {
     // Validated and normalized URL to test connectivity against.
     net_base::HttpUrl url_hostname;
+    // List of proxy URLs to use for this hostname (e.g., "direct://",
+    // "http://proxy:8080"). Each proxy will be tested sequentially.
+    std::deque<std::string> proxies;
   };
 
   // Internal request with input data and accumulated results. Moved through
@@ -127,8 +130,14 @@ class HostsConnectivityDiagnostics {
 
   // Populates `req.specs` from raw hostnames. If the hostname list is empty,
   // records a NO_VALID_HOSTNAME error and completes the request.
-  // Otherwise calls RunConnectivityTests.
+  // Otherwise calls ValidateAndAssignProxy.
   void NormalizeHostnames(Request req);
+
+  // Validates the proxy option and assigns proxy URLs to each spec.
+  // For kDirect: assigns "direct://" to all specs.
+  // For kCustom: assigns the custom URL to all specs (validation TODO).
+  // For kSystem: TODO — currently falls through to direct.
+  void ValidateAndAssignProxy(Request req);
 
   // Runs connectivity tests for the request. Currently a skeleton that
   // returns INTERNAL_ERROR; will be replaced with actual implementation.
