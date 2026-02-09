@@ -28,6 +28,9 @@ constexpr base::TimeDelta kDefaultConnectivityTimeout = base::Seconds(10);
 // setting too high timeout.
 constexpr base::TimeDelta kMaxConnectivityTimeout = base::Seconds(60);
 
+// Default error limit. 0 means no limit.
+constexpr uint32_t kDefaultErrorLimit = 0;
+
 }  // namespace
 
 HostsConnectivityDiagnostics::HostsConnectivityDiagnostics(
@@ -52,6 +55,13 @@ base::TimeDelta HostsConnectivityDiagnostics::ParseTimeout(
   }
 
   return kDefaultConnectivityTimeout;
+}
+
+// static
+uint32_t HostsConnectivityDiagnostics::ParseMaxErrorCount(
+    const KeyValueStore& options) {
+  return options.GetOptionalValue<uint32_t>(kTestHostsConnectivityMaxErrorsKey)
+      .value_or(kDefaultErrorLimit);
 }
 
 void HostsConnectivityDiagnostics::TestHostsConnectivity(

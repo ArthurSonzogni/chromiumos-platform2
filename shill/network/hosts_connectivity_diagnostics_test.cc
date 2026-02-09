@@ -91,5 +91,28 @@ TEST_F(HostsConnectivityDiagnosticsTest, ParseTimeoutValues) {
   }
 }
 
+TEST_F(HostsConnectivityDiagnosticsTest, ParseMaxErrorCountDefault) {
+  KeyValueStore options;
+  EXPECT_EQ(HostsConnectivityDiagnostics::ParseMaxErrorCount(options), 0u);
+}
+
+TEST_F(HostsConnectivityDiagnosticsTest, ParseMaxErrorCountValues) {
+  // {input, expected}: any uint32_t value is accepted as-is; 0 means no limit.
+  constexpr std::array<std::pair<uint32_t, uint32_t>, 4> kTestCases = {{
+      {0, 0},      // Explicit zero (no limit).
+      {1, 1},      // Minimum meaningful limit.
+      {5, 5},      // Typical limit.
+      {100, 100},  // Large limit.
+  }};
+
+  for (const auto& [input, expected] : kTestCases) {
+    SCOPED_TRACE(input);
+    KeyValueStore options;
+    options.Set<uint32_t>(kTestHostsConnectivityMaxErrorsKey, input);
+    EXPECT_EQ(HostsConnectivityDiagnostics::ParseMaxErrorCount(options),
+              expected);
+  }
+}
+
 }  // namespace
 }  // namespace shill

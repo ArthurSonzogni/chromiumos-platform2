@@ -42,6 +42,8 @@ class HostsConnectivityDiagnostics {
     ConnectivityResultCallback callback;
     // Per-hostname HTTP HEAD timeout.
     base::TimeDelta timeout;
+    // Stop testing after this many errors. 0 means no limit.
+    uint32_t max_error_count = 0;
   };
 
   HostsConnectivityDiagnostics(scoped_refptr<dbus::Bus> bus,
@@ -57,6 +59,10 @@ class HostsConnectivityDiagnostics {
   // Parses the timeout option from user-provided options.
   // Valid range is 1-60 seconds; values outside this range fall back to 10s.
   static base::TimeDelta ParseTimeout(const KeyValueStore& options);
+
+  // Parses the max error count option from user-provided options.
+  // Returns 0 (no limit) if the option is not present.
+  static uint32_t ParseMaxErrorCount(const KeyValueStore& options);
 
  private:
   scoped_refptr<dbus::Bus> bus_;
