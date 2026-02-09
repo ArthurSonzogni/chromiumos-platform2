@@ -16,6 +16,7 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <brillo/http/http_proxy.h>
 #include <chromeos/net-base/http_url.h>
 #include <hosts_connectivity_diagnostics/proto_bindings/hosts_connectivity_diagnostics.pb.h>
 
@@ -37,6 +38,10 @@ inline constexpr std::string_view kInvalidHostname =
 inline constexpr std::string_view kInvalidProxy =
     "Provided proxy is invalid. It must be a valid URL with http://, https://, "
     "socks4://, or socks5:// scheme followed by a host (and optional port).";
+inline constexpr std::string_view kUnableToGetSystemProxy =
+    "Unable to determine system setup proxy.";
+inline constexpr std::string_view kUnableToGetSystemProxyResolution =
+    "Please check your proxy configuration.";
 
 // Tests network connectivity to a list of hostnames with configurable proxy
 // and timeout options. Results are returned as a protobuf message.
@@ -49,6 +54,11 @@ class HostsConnectivityDiagnostics {
   using ConnectivityResultCallback = base::OnceCallback<void(
       const hosts_connectivity_diagnostics::TestConnectivityResponse&
           response)>;
+
+  // Callback type for Chrome proxy resolution.
+  using GetProxyCallback = brillo::http::GetChromeProxyServersCallback;
+  using GetProxyFunction = base::RepeatingCallback<void(
+      const std::string& url, GetProxyCallback callback)>;
 
   // Proxy resolution mode for connectivity diagnostics.
   enum class ProxyMode {
@@ -105,6 +115,9 @@ class HostsConnectivityDiagnostics {
   // Returns 0 (no limit) if the option is not present.
   static uint32_t ParseMaxErrorCount(const KeyValueStore& options);
 
+  // Sets the proxy resolution function for testing purposes.
+  void SetGetProxyFunctionForTest(GetProxyFunction func);
+
  private:
   // Single hostname ready for connectivity testing.
   struct HostnameTestSpec {
@@ -136,12 +149,32 @@ class HostsConnectivityDiagnostics {
   // Otherwise calls ValidateAndAssignProxy.
   void NormalizeHostnames(Request req);
 
-  // Validates the proxy option and assigns proxy URLs to each spec.
-  // For kDirect: assigns "direct://" to all specs.
-  // For kCustom: validates the URL and assigns it to all specs.
-  //              Returns NO_VALID_PROXY error if URL is invalid.
-  // For kSystem: TODO — currently falls through to direct.
+  // Validates the proxy option. On invalid proxy, fires the
+  // `ConnectivityResultCallback` object of the given `Request` with
+  // NO_VALID_PROXY and and dispatches the next request if any. Otherwise
+  // resolves the proxy URL into `req.info.proxy.custom_url` and calls
+  // RunConnectivityTests (or StartSystemProxyResolution for system proxy mode).
   void ValidateAndAssignProxy(Request req);
+
+  // --- System proxy resolution (called from ValidateAndAssignProxy) ---
+
+  // Separate the `HostnameTestSpec` queue from the `Request` and starts
+  // resolution with `ResolveNextSystemProxy()`.
+  void StartSystemProxyResolution(Request req);
+
+  // Resolves system proxy for the next unresolved hostname. Pops one spec
+  // from |unresolved_specs|, resolves via async callback, and pushes into
+  // req.specs on success. Once |unresolved_specs| is empty, calls
+  // RunConnectivityTests.
+  void ResolveNextSystemProxy(Request req,
+                              std::deque<HostnameTestSpec> unresolved_specs);
+
+  // Callback for system proxy resolution of a single hostname.
+  void OnSystemProxyResolved(Request req,
+                             std::deque<HostnameTestSpec> unresolved_specs,
+                             HostnameTestSpec spec,
+                             bool success,
+                             const std::vector<std::string>& proxies);
 
   // Runs connectivity tests for the request. Currently a skeleton that
   // returns INTERNAL_ERROR; will be replaced with actual implementation.
@@ -169,6 +202,10 @@ class HostsConnectivityDiagnostics {
       std::optional<base::Time> utc_timestamp_start,
       std::optional<base::Time> utc_timestamp_end);
 
+  // Calls the proxy resolution function (either real or injected for testing).
+  void GetChromeProxyServersAsync(const std::string& url,
+                                  GetProxyCallback callback);
+
   scoped_refptr<dbus::Bus> bus_;
   const std::string logging_tag_;
 
@@ -176,6 +213,10 @@ class HostsConnectivityDiagnostics {
   std::queue<Request> pending_requests_;
   // True while a request is being processed (re-entrancy guard).
   bool is_running_ = false;
+
+  // Resolves proxy servers for a URL via Chrome's proxy resolution engine
+  // (D-Bus call to Chrome). Can be overridden for testing.
+  GetProxyFunction get_proxy_function_;
 
   base::WeakPtrFactory<HostsConnectivityDiagnostics> weak_ptr_factory_{this};
 };

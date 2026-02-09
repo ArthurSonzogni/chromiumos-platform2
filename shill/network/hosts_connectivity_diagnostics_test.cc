@@ -47,6 +47,17 @@ class HostsConnectivityDiagnosticsTest : public testing::Test {
         std::make_unique<HostsConnectivityDiagnostics>(mock_bus_, kLoggingTag);
   }
 
+  // Sets up system proxy resolution for testing.
+  void SetupSystemProxyResolution(bool success,
+                                  const std::vector<std::string>& proxies) {
+    diagnostics_->SetGetProxyFunctionForTest(base::BindRepeating(
+        [](bool success, std::vector<std::string> proxies, const std::string&,
+           HostsConnectivityDiagnostics::GetProxyCallback callback) {
+          std::move(callback).Run(success, proxies);
+        },
+        success, proxies));
+  }
+
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::MainThreadType::IO};
   scoped_refptr<dbus::MockBus> mock_bus_;
@@ -260,7 +271,10 @@ TEST_F(HostsConnectivityDiagnosticsTest,
   EXPECT_EQ(result.error_message(), kInvalidProxy);
 }
 
-TEST_F(HostsConnectivityDiagnosticsTest, SystemProxyPassesThrough) {
+TEST_F(HostsConnectivityDiagnosticsTest, SystemProxyResolutionSuccess) {
+  constexpr char kProxy[] = "http://system-proxy:8080";
+  SetupSystemProxyResolution(true, {kProxy});
+
   base::test::TestFuture<const TestConnectivityResponse&> future;
 
   HostsConnectivityDiagnostics::RequestInfo request_info;
@@ -270,11 +284,92 @@ TEST_F(HostsConnectivityDiagnosticsTest, SystemProxyPassesThrough) {
   request_info.callback = future.GetCallback();
   diagnostics_->TestHostsConnectivity(std::move(request_info));
 
-  // System proxy currently falls through to RunConnectivityTests (skeleton).
+  // System proxy resolves successfully and reaches RunConnectivityTests.
+  // The skeleton returns INTERNAL_ERROR; the real implementation will
+  // produce actual connectivity results.
   const auto& response = future.Get();
   ASSERT_EQ(response.connectivity_results_size(), 1);
   EXPECT_EQ(response.connectivity_results(0).result_code(),
             ResultCode::INTERNAL_ERROR);
+}
+
+TEST_F(HostsConnectivityDiagnosticsTest, SystemProxyResolutionFailure) {
+  SetupSystemProxyResolution(false, {});
+
+  base::test::TestFuture<const TestConnectivityResponse&> future;
+
+  HostsConnectivityDiagnostics::RequestInfo request_info;
+  request_info.raw_hostnames.emplace_back(std::string(kExampleDotCom));
+  request_info.proxy = {.mode =
+                            HostsConnectivityDiagnostics::ProxyMode::kSystem};
+  request_info.callback = future.GetCallback();
+  diagnostics_->TestHostsConnectivity(std::move(request_info));
+
+  // Failed proxy resolution produces a NO_VALID_PROXY entry with a
+  // user-facing resolution message. The skeleton RunConnectivityTests
+  // appends an additional INTERNAL_ERROR entry that will disappear once
+  // RunConnectivityTests is properly implemented.
+  const auto& response = future.Get();
+  ASSERT_GE(response.connectivity_results_size(), 1);
+  const auto& result = response.connectivity_results(0);
+  EXPECT_EQ(result.result_code(), ResultCode::NO_VALID_PROXY);
+  EXPECT_EQ(result.hostname(), kHttpsExampleDotCom);
+  EXPECT_EQ(result.error_message(), kUnableToGetSystemProxy);
+  EXPECT_EQ(result.resolution_message(), kUnableToGetSystemProxyResolution);
+}
+
+TEST_F(HostsConnectivityDiagnosticsTest, SystemProxyMultipleHostnames) {
+  SetupSystemProxyResolution(true, {"http://proxy:8080"});
+
+  base::test::TestFuture<const TestConnectivityResponse&> future;
+
+  HostsConnectivityDiagnostics::RequestInfo request_info;
+  request_info.raw_hostnames = {"example1.com", "example2.com"};
+  request_info.proxy = {.mode =
+                            HostsConnectivityDiagnostics::ProxyMode::kSystem};
+  request_info.callback = future.GetCallback();
+  diagnostics_->TestHostsConnectivity(std::move(request_info));
+
+  // Both hostnames resolve proxies successfully and reach
+  // RunConnectivityTests. The skeleton returns INTERNAL_ERROR; the real
+  // implementation will produce per-hostname results.
+  const auto& response = future.Get();
+  ASSERT_GE(response.connectivity_results_size(), 1);
+}
+
+TEST_F(HostsConnectivityDiagnosticsTest, SystemProxyPartialFailure) {
+  // Alternate success/failure per call.
+  int call_count = 0;
+  diagnostics_->SetGetProxyFunctionForTest(base::BindRepeating(
+      [](int* count, const std::string&,
+         HostsConnectivityDiagnostics::GetProxyCallback callback) {
+        (*count)++;
+        if (*count % 2 == 0) {
+          std::move(callback).Run(false, {});
+        } else {
+          std::move(callback).Run(true, {"http://proxy:8080"});
+        }
+      },
+      &call_count));
+
+  base::test::TestFuture<const TestConnectivityResponse&> future;
+
+  HostsConnectivityDiagnostics::RequestInfo request_info;
+  request_info.raw_hostnames = {"example1.com", "example2.com"};
+  request_info.proxy = {.mode =
+                            HostsConnectivityDiagnostics::ProxyMode::kSystem};
+  request_info.callback = future.GetCallback();
+  diagnostics_->TestHostsConnectivity(std::move(request_info));
+
+  // ResolveNextSystemProxy pops from back: example2.com resolves first
+  // (call 1, success), then example1.com (call 2, failure). The failed
+  // hostname produces a NO_VALID_PROXY entry; the successful one reaches
+  // the RunConnectivityTests skeleton.
+  const auto& response = future.Get();
+  ASSERT_GE(response.connectivity_results_size(), 1);
+  const auto& result = response.connectivity_results(0);
+  EXPECT_EQ(result.result_code(), ResultCode::NO_VALID_PROXY);
+  EXPECT_EQ(result.error_message(), kUnableToGetSystemProxy);
 }
 
 TEST_F(HostsConnectivityDiagnosticsTest, MultipleRequestsAreQueued) {

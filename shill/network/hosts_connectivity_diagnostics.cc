@@ -6,11 +6,13 @@
 
 #include <utility>
 
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <brillo/http/http_transport.h>
+#include <brillo/http/http_utils.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <chromeos/net-base/ip_address.h>
 #include <dbus/bus.h>
@@ -43,9 +45,23 @@ constexpr uint32_t kDefaultErrorLimit = 0;
 
 HostsConnectivityDiagnostics::HostsConnectivityDiagnostics(
     scoped_refptr<dbus::Bus> bus, std::string logging_tag)
-    : bus_(bus), logging_tag_(std::move(logging_tag)) {}
+    : bus_(bus),
+      logging_tag_(std::move(logging_tag)),
+      get_proxy_function_(base::BindRepeating(
+          [](scoped_refptr<dbus::Bus> bus,
+             const std::string& url,
+             GetProxyCallback callback) {
+            brillo::http::GetChromeProxyServersAsync(bus, url,
+                                                     std::move(callback));
+          },
+          bus_)) {}
 
 HostsConnectivityDiagnostics::~HostsConnectivityDiagnostics() = default;
+
+void HostsConnectivityDiagnostics::SetGetProxyFunctionForTest(
+    GetProxyFunction func) {
+  get_proxy_function_ = std::move(func);
+}
 
 // static
 base::TimeDelta HostsConnectivityDiagnostics::ParseTimeout(
@@ -157,10 +173,7 @@ void HostsConnectivityDiagnostics::ValidateAndAssignProxy(Request req) {
   CHECK(!req.specs.empty());
 
   if (req.info.proxy.mode == ProxyMode::kSystem) {
-    // TODO(crbug.com/463098734): Resolve system proxy asynchronously via
-    // GetChromeProxyServersAsync for each hostname. For now, fall through
-    // to direct.
-    RunConnectivityTests(std::move(req));
+    StartSystemProxyResolution(std::move(req));
     return;
   }
 
@@ -185,6 +198,55 @@ void HostsConnectivityDiagnostics::ValidateAndAssignProxy(Request req) {
     spec.proxies = {proxy_url};
   }
   RunConnectivityTests(std::move(req));
+}
+
+void HostsConnectivityDiagnostics::StartSystemProxyResolution(Request req) {
+  auto unresolved_specs = std::move(req.specs);
+  req.specs.clear();
+  ResolveNextSystemProxy(std::move(req), std::move(unresolved_specs));
+}
+
+void HostsConnectivityDiagnostics::ResolveNextSystemProxy(
+    Request req, std::deque<HostnameTestSpec> unresolved_specs) {
+  if (unresolved_specs.empty()) {
+    RunConnectivityTests(std::move(req));
+    return;
+  }
+
+  auto spec = std::move(unresolved_specs.back());
+  unresolved_specs.pop_back();
+
+  const std::string url = spec.url_hostname.ToString();
+  GetChromeProxyServersAsync(
+      url, base::BindOnce(&HostsConnectivityDiagnostics::OnSystemProxyResolved,
+                          weak_ptr_factory_.GetWeakPtr(), std::move(req),
+                          std::move(unresolved_specs), std::move(spec)));
+}
+
+void HostsConnectivityDiagnostics::OnSystemProxyResolved(
+    Request req,
+    std::deque<HostnameTestSpec> unresolved_specs,
+    HostnameTestSpec spec,
+    bool success,
+    const std::vector<std::string>& proxies) {
+  if (success) {
+    spec.proxies.assign(proxies.begin(), proxies.end());
+    req.specs.emplace_back(std::move(spec));
+  } else {
+    *req.response.add_connectivity_results() = CreateConnectivityResultEntry(
+        spec.url_hostname.ToString(), /*proxy=*/std::nullopt,
+        hosts_connectivity_diagnostics::NO_VALID_PROXY, kUnableToGetSystemProxy,
+        /*resolution_message=*/std::string(kUnableToGetSystemProxyResolution),
+        /*utc_timestamp_start=*/std::nullopt,
+        /*utc_timestamp_end=*/std::nullopt);
+  }
+
+  ResolveNextSystemProxy(std::move(req), std::move(unresolved_specs));
+}
+
+void HostsConnectivityDiagnostics::GetChromeProxyServersAsync(
+    const std::string& url, GetProxyCallback callback) {
+  get_proxy_function_.Run(url, std::move(callback));
 }
 
 // static
