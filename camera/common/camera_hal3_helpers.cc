@@ -6,8 +6,6 @@
 
 #include "common/camera_hal3_helpers.h"
 
-#include <camera/camera_metadata.h>
-
 #include <algorithm>
 #include <cstdint>
 #include <optional>
@@ -16,6 +14,7 @@
 #include <base/json/json_writer.h>
 #include <base/notreached.h>
 #include <base/values.h>
+#include <camera/camera_metadata.h>
 #include <hardware/camera3.h>
 #include <sync/sync.h>
 
@@ -689,7 +688,7 @@ void Camera3CaptureDescriptor::Unlock() {
       metadata_.unlock(raw_descriptor_->raw_result.result);
       break;
     case Type::kInvalidType:
-      NOTREACHED_IN_MIGRATION() << "Cannot unlock invalid descriptor";
+      NOTREACHED() << "Cannot unlock invalid descriptor";
   }
   for (auto& b : output_buffers_) {
     b.Unlock();

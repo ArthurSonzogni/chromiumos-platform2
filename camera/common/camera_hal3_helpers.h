@@ -14,10 +14,10 @@
 #include <string>
 #include <vector>
 
-#include <cutils/native_handle.h>
 #include <base/containers/span.h>
 #include <base/synchronization/lock.h>
 #include <camera/camera_metadata.h>
+#include <cutils/native_handle.h>
 #include <hardware/camera3.h>
 
 #include "cros-camera/camera_face_detection.h"
@@ -123,7 +123,7 @@ inline uint32_t GetFrameNumber(const camera3_notify_msg_t& msg) {
     case CAMERA3_MSG_SHUTTER:
       return msg.message.shutter.frame_number;
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
       return 0u;
   }
 }

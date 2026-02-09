@@ -4,12 +4,13 @@
  * found in the LICENSE file.
  */
 
-#include "cros-camera/common.h"
+#include "common/libcamera_connector/camera_module_callbacks.h"
 
-#include <base/notreached.h>
 #include <utility>
 
-#include "common/libcamera_connector/camera_module_callbacks.h"
+#include <base/notreached.h>
+
+#include "cros-camera/common.h"
 
 namespace cros {
 
@@ -38,8 +39,7 @@ void CameraModuleCallbacks::CameraDeviceStatusChange(
       device_status_callback_.Run(camera_id, false);
       break;
     default:
-      NOTREACHED_IN_MIGRATION()
-          << "Unexpected new device status: " << new_status;
+      NOTREACHED() << "Unexpected new device status: " << new_status;
   }
 }
 

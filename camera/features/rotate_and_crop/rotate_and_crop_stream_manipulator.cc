@@ -8,7 +8,6 @@
 
 #include <drm_fourcc.h>
 #include <libyuv.h>
-#include <sync/sync.h>
 
 #include <algorithm>
 #include <string>
@@ -21,6 +20,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/strings/string_util.h>
 #include <base/system/sys_info.h>
+#include <sync/sync.h>
 
 #include "common/camera_hal3_helpers.h"
 #include "common/resizable_cpu_buffer.h"
@@ -55,8 +55,7 @@ uint8_t DegreesToRotateAndCropMode(int crop_rotate_scale_degrees) {
     case CAMERA3_STREAM_ROTATION_270:
       return ANDROID_SCALER_ROTATE_AND_CROP_270;
     default:
-      NOTREACHED_IN_MIGRATION();
-      return ANDROID_SCALER_ROTATE_AND_CROP_NONE;
+      NOTREACHED();
   }
 }
 
@@ -71,8 +70,7 @@ libyuv::RotationMode RotateAndCropModeToLibyuvRotation(uint8_t rc_mode) {
     case ANDROID_SCALER_ROTATE_AND_CROP_270:
       return libyuv::kRotate270;
     default:
-      NOTREACHED_IN_MIGRATION();
-      return libyuv::kRotate0;
+      NOTREACHED();
   }
 }
 

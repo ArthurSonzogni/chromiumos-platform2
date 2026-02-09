@@ -7,12 +7,13 @@
 #include "gpu/shared_image.h"
 
 #include <drm_fourcc.h>
-#include <hardware/gralloc.h>
 #include <linux/videodev2.h>
-#include <system/graphics.h>
 
 #include <algorithm>
 #include <utility>
+
+#include <hardware/gralloc.h>
+#include <system/graphics.h>
 
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/common.h"
@@ -38,9 +39,7 @@ uint32_t GetDrmPixelFormatForSubplane(buffer_handle_t buffer, int plane) {
     case DRM_FORMAT_P010:
       return (plane == 0) ? DRM_FORMAT_R16 : DRM_FORMAT_GR1616;
   }
-  NOTREACHED_IN_MIGRATION()
-      << "Unsupported format: " << FormatToString(buffer_format);
-  return 0;
+  NOTREACHED() << "Unsupported format: " << FormatToString(buffer_format);
 }
 
 }  // namespace

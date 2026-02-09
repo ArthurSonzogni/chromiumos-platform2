@@ -808,7 +808,7 @@ void CameraHalAdapter::CameraDeviceStatusChange(
       break;
     default:
       // TODO(shik): What about CAMERA_DEVICE_STATUS_ENUMERATING?
-      NOTREACHED_IN_MIGRATION() << "Unexpected new status " << new_status;
+      NOTREACHED() << "Unexpected new status " << new_status;
       break;
   }
 

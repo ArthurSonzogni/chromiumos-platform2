@@ -35,8 +35,7 @@ std::string GetChannelPrefix(cros::mojom::DeviceType type) {
       return mojom::kGravityChannel;
 
     default:
-      NOTREACHED_IN_MIGRATION() << "Unsupported type: " << type;
-      return "";
+      NOTREACHED() << "Unsupported type: " << type;
   }
 }
 

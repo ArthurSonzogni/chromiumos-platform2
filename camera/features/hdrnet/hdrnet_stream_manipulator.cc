@@ -6,10 +6,6 @@
 
 #include "features/hdrnet/hdrnet_stream_manipulator.h"
 
-#include <hardware/camera3.h>
-#include <sync/sync.h>
-#include <system/camera_metadata.h>
-
 #include <memory>
 #include <optional>
 #include <string>
@@ -19,6 +15,9 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
+#include <hardware/camera3.h>
+#include <sync/sync.h>
+#include <system/camera_metadata.h>
 
 #include "common/camera_hal3_helpers.h"
 #include "common/stream_manipulator.h"
@@ -761,8 +760,7 @@ void HdrNetStreamManipulator::UploadMetrics() {
   } else {
     for (auto [e, c] : hdrnet_metrics_.errors) {
       if (e == HdrnetError::kNoError) {
-        NOTREACHED_IN_MIGRATION();
-        continue;
+        NOTREACHED();
       }
       if (c > 0) {
         // Since we want to normalize all our metrics by camera sessions, we

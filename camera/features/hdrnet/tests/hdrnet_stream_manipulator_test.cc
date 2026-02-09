@@ -6,8 +6,6 @@
 
 #include "features/hdrnet/hdrnet_stream_manipulator.h"
 
-#include <camera/camera_metadata.h>
-
 #include <utility>
 
 #include <base/at_exit.h>
@@ -19,6 +17,7 @@
 #include <base/test/task_environment.h>
 #include <base/test/test_timeouts.h>
 #include <base/time/time.h>
+#include <camera/camera_metadata.h>
 #pragma push_macro("None")
 #pragma push_macro("Bool")
 #undef None
@@ -325,7 +324,7 @@ class HdrNetStreamManipulatorTest : public Test {
           break;
 
         default:
-          NOTREACHED_IN_MIGRATION();
+          NOTREACHED();
       }
       expected_msg_.reset();
     }

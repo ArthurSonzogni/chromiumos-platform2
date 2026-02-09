@@ -5,11 +5,12 @@
 
 #include "hal/fake/frame_buffer/frame_buffer.h"
 
+#include <libyuv.h>
+
 #include <utility>
 #include <vector>
 
 #include <base/bits.h>
-#include <libyuv.h>
 
 #include "cros-camera/jpeg_compressor.h"
 #include "hal/fake/camera_hal.h"
@@ -199,9 +200,7 @@ bool FrameBuffer::ScaleInto(FrameBuffer& buffer,
       return true;
     }
     default:
-      NOTREACHED_IN_MIGRATION()
-          << "Unknown scale mode " << static_cast<int>(scale_mode);
-      return false;
+      NOTREACHED() << "Unknown scale mode " << static_cast<int>(scale_mode);
   }
 }
 
