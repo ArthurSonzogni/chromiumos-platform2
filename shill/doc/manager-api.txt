@@ -630,6 +630,32 @@ Methods		dict GetProperties()
 			enable the interface, potentially resulting in the destruction of
 			other lower priority interfaces.
 
+		bytes TestHostsConnectivity(array{string} hosts, dict options)
+
+			Tests connectivity to multiple hosts by performing
+			HTTP HEAD requests against each host.
+
+			The |hosts| parameter is an array of hostnames or URLs to
+			test connectivity to.
+
+			The |options| parameter is a dictionary with optional
+			settings:
+
+			uint32 timeout
+				Overall timeout in seconds (valid range: 1-60,
+				default: 10). Values outside this range use the
+				default.
+
+			string proxy
+				"system", "direct", or a proxy URL/IP
+				(default: "direct").
+
+			uint32 max_errors
+				Number of errors after which the tool stops and
+				returns the result (default: 0, meaning no limit).
+
+			Returns a connectivity result as a serialized protobuf.
+
 
 Signals		PropertyChanged(string name, variant value)
 

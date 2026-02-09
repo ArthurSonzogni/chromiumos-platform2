@@ -5,7 +5,9 @@
 #include "shill/dbus/dbus_control.h"
 
 #include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <brillo/dbus/async_event_sequencer.h>
@@ -38,6 +40,7 @@
 #include "shill/dbus/third_party_vpn_dbus_adaptor.h"
 #include "shill/dbus/upstart_proxy.h"
 #include "shill/manager.h"
+#include "shill/network/hosts_connectivity_diagnostics.h"
 #include "shill/network/legacy_dhcpcd/legacy_dhcpcd_proxy.h"
 
 namespace shill {
@@ -214,6 +217,12 @@ std::unique_ptr<UpstartProxyInterface> DBusControl::CreateUpstartProxy() {
 
 std::unique_ptr<DebugdProxyInterface> DBusControl::CreateDebugdProxy() {
   return std::make_unique<DebugdProxy>(proxy_bus_);
+}
+
+std::unique_ptr<HostsConnectivityDiagnostics>
+DBusControl::CreateHostsConnectivityDiagnostics(EventDispatcher* dispatcher) {
+  return std::make_unique<HostsConnectivityDiagnostics>(
+      dispatcher, proxy_bus_, "HostsConnectivityDiagnostics");
 }
 
 std::unique_ptr<DBusPropertiesProxy> DBusControl::CreateDBusPropertiesProxy(

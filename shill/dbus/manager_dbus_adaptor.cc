@@ -4,12 +4,14 @@
 
 #include "shill/dbus/manager_dbus_adaptor.h"
 
+#include <memory>
 #include <utility>
 
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
+#include <hosts_connectivity_diagnostics/proto_bindings/hosts_connectivity_diagnostics.pb.h>
 
 #include "shill/callbacks.h"
 #include "shill/device.h"
@@ -613,6 +615,30 @@ bool ManagerDBusAdaptor::SetWiFiInterfacePriority(brillo::ErrorPtr* error,
   Error e;
   manager_->SetWiFiInterfacePriority(name, priority, &e);
   return !e.ToChromeosError(error);
+}
+
+void ManagerDBusAdaptor::TestHostsConnectivity(
+    DBusMethodResponsePtr<std::vector<uint8_t>> response,
+    const std::vector<std::string>& hosts,
+    const brillo::VariantDictionary& options) {
+  SLOG(this, 2) << __func__;
+
+  manager_->TestHostsConnectivity(
+      hosts, KeyValueStore::ConvertFromVariantDictionary(options),
+      base::BindOnce(
+          [](DBusMethodResponsePtr<std::vector<uint8_t>> dbus_response_method,
+             const hosts_connectivity_diagnostics::TestConnectivityResponse&
+                 result) {
+            std::vector<uint8_t> serialized(result.ByteSizeLong());
+            if (!result.SerializeToArray(serialized.data(),
+                                         serialized.size())) {
+              LOG(ERROR) << "Failed to serialize TestConnectivityResponse";
+              std::move(dbus_response_method)->Return({});
+              return;
+            }
+            std::move(dbus_response_method)->Return(std::move(serialized));
+          },
+          std::move(response)));
 }
 
 }  // namespace shill

@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <brillo/dbus/exported_object_manager.h>
 
@@ -80,6 +81,9 @@ class DBusControl : public ControlInterface {
   std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() override;
 
   std::unique_ptr<DebugdProxyInterface> CreateDebugdProxy() override;
+
+  std::unique_ptr<HostsConnectivityDiagnostics>
+  CreateHostsConnectivityDiagnostics(EventDispatcher* dispatcher) override;
 
   std::unique_ptr<DHCPClientProxyFactory> CreateDHCPClientProxyFactory()
       override;

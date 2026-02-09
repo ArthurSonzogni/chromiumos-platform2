@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/functional/callback.h>
 
@@ -19,6 +20,8 @@ class DBusObjectManagerProxyInterface;
 class DBusPropertiesProxy;
 class DebugdProxyInterface;
 class Device;
+class EventDispatcher;
+class HostsConnectivityDiagnostics;
 class DeviceAdaptorInterface;
 class DHCPClientProxyFactory;
 class IPConfig;
@@ -122,6 +125,11 @@ class ControlInterface {
   virtual std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() = 0;
 
   virtual std::unique_ptr<DebugdProxyInterface> CreateDebugdProxy() = 0;
+
+  // Creates a long-lived HostsConnectivityDiagnostics instance.
+  // Network context is provided per-request via RequestInfo.
+  virtual std::unique_ptr<HostsConnectivityDiagnostics>
+  CreateHostsConnectivityDiagnostics(EventDispatcher* dispatcher) = 0;
 
   virtual std::unique_ptr<DHCPClientProxyFactory>
   CreateDHCPClientProxyFactory() = 0;

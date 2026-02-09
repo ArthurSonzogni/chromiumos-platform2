@@ -35,6 +35,7 @@
 #include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/network/dhcp_controller.h"
+#include "shill/network/hosts_connectivity_diagnostics.h"
 #include "shill/network/network_manager.h"
 #include "shill/network/portal_detector.h"
 #include "shill/power_manager.h"
@@ -250,6 +251,13 @@ class Manager {
 
   // Method to create connectivity report for connected services.
   void CreateConnectivityReport(Error* error);
+
+  // Runs connectivity diagnostics against `hosts` with `options`.
+  // Invokes `callback` with the proto result when complete.
+  virtual void TestHostsConnectivity(
+      const std::vector<std::string>& hosts,
+      const KeyValueStore& options,
+      HostsConnectivityDiagnostics::ConnectivityResultCallback callback);
 
   // Request portal detection checks on each registered device with a connected
   // Service.
@@ -838,6 +846,10 @@ class Manager {
 
   // Entity that calls kernel commands ('tc') to throttle network bandwidth.
   std::unique_ptr<Throttler> throttler_;
+
+  // Long-lived connectivity diagnostics instance. Created lazily on
+  // first use. Handles concurrent requests via internal queue.
+  std::unique_ptr<HostsConnectivityDiagnostics> hosts_connectivity_diagnostics_;
 
   // Hold pointer to singleton Resolver instance for testing purposes.
   Resolver* resolver_;

@@ -188,6 +188,12 @@
 			<arg type="s" direction="in"/>
 			<arg type="i" direction="in"/>
 		</method>
+		<method name="TestHostsConnectivity">
+			<arg type="as" direction="in"/>
+			<arg type="a{sv}" direction="in"/>
+			<arg type="ay" direction="out"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+		</method>
 	</interface>
 	<node name="device"/>
 	<node name="profile"/>

@@ -63,6 +63,7 @@
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/network/dhcp_controller.h"
+#include "shill/network/hosts_connectivity_diagnostics.h"
 #include "shill/network/network.h"
 #include "shill/network/network_manager.h"
 #include "shill/network/throttler.h"
@@ -2314,6 +2315,49 @@ void Manager::CreateConnectivityReport(Error* /*error*/) {
       network->StartConnectivityTest();
     }
   }
+}
+
+void Manager::TestHostsConnectivity(
+    const std::vector<std::string>& hosts,
+    const KeyValueStore& options,
+    HostsConnectivityDiagnostics::ConnectivityResultCallback callback) {
+  LOG(INFO) << __func__;
+
+  if (!hosts_connectivity_diagnostics_) {
+    hosts_connectivity_diagnostics_ =
+        control_interface()->CreateHostsConnectivityDiagnostics(dispatcher());
+  }
+
+  HostsConnectivityDiagnostics::RequestInfo request_info;
+  request_info.raw_hostnames = hosts;
+  request_info.proxy = HostsConnectivityDiagnostics::ParseProxyOption(options);
+  request_info.timeout = HostsConnectivityDiagnostics::ParseTimeout(options);
+  request_info.max_error_count =
+      HostsConnectivityDiagnostics::ParseMaxErrorCount(options);
+  request_info.callback = std::move(callback);
+
+  // Extract network context from the default service's attached network.
+  const ServiceRefPtr default_service = GetDefaultService();
+  if (default_service) {
+    const Network* network = default_service->attached_network();
+    if (network) {
+      request_info.interface_name = network->interface_name();
+      const auto& config = network->GetNetworkConfig();
+      if (config.ipv4_address) {
+        request_info.ip_family = net_base::IPFamily::kIPv4;
+      } else if (!config.ipv6_addresses.empty()) {
+        request_info.ip_family = net_base::IPFamily::kIPv6;
+      }
+      for (const auto& addr : config.dns_servers) {
+        if (addr.GetFamily() == request_info.ip_family) {
+          request_info.dns_list.push_back(addr);
+        }
+      }
+    }
+  }
+
+  hosts_connectivity_diagnostics_->TestHostsConnectivity(
+      std::move(request_info));
 }
 
 bool Manager::IsConnected() const {

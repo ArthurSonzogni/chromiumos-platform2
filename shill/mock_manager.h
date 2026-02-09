@@ -143,6 +143,12 @@ class MockManager : public Manager {
               GetCACertExperimentPhase,
               (),
               (override));
+  MOCK_METHOD(void,
+              TestHostsConnectivity,
+              (const std::vector<std::string>&,
+               const KeyValueStore&,
+               HostsConnectivityDiagnostics::ConnectivityResultCallback),
+              (override));
 
   int64_t GetSuspendDurationUsecs() const override { return 1000000; }
 

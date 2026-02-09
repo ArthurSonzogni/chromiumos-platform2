@@ -165,6 +165,10 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
   bool SetWiFiInterfacePriority(brillo::ErrorPtr* error,
                                 const std::string& name,
                                 const int32_t priority) override;
+  void TestHostsConnectivity(
+      DBusMethodResponsePtr<std::vector<uint8_t>> response,
+      const std::vector<std::string>& hosts,
+      const brillo::VariantDictionary& options) override;
 
  private:
   friend class ManagerDBusAdaptorTest;

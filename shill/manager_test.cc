@@ -18,13 +18,16 @@
 #include <base/functional/callback_helpers.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/test_future.h>
 #include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/net-base/mac_address.h>
 #include <chromeos/net-base/network_priority.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
+#include <dbus/mock_bus.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <hosts_connectivity_diagnostics/proto_bindings/hosts_connectivity_diagnostics.pb.h>
 #include <metrics/timer_mock.h>
 
 #include "shill/dbus/dbus_control.h"
@@ -43,6 +46,7 @@
 #include "shill/mock_resolver.h"
 #include "shill/mock_service.h"
 #include "shill/mock_virtual_device.h"
+#include "shill/network/hosts_connectivity_diagnostics.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/mock_throttler.h"
 #include "shill/network/portal_detector.h"
@@ -3717,6 +3721,109 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
   manager()->DeregisterDevice(wifi_device);
   manager()->DeregisterDevice(cell_device);
   manager()->DeregisterDevice(eth_device);
+}
+
+// Verifies that Manager::TestHostsConnectivity creates the diagnostics instance
+// lazily on the first call and reuses it on subsequent calls.
+TEST_F(ManagerTest, TestHostsConnectivityLazyCreation) {
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  auto mock_bus = base::MakeRefCounted<dbus::MockBus>(std::move(options));
+
+  // CreateHostsConnectivityDiagnostics should be called exactly once across
+  // multiple TestHostsConnectivity invocations.
+  EXPECT_CALL(*control_interface(), CreateHostsConnectivityDiagnostics(_))
+      .WillOnce([&mock_bus](EventDispatcher* dispatcher) {
+        return std::make_unique<HostsConnectivityDiagnostics>(dispatcher,
+                                                              mock_bus, "test");
+      });
+
+  base::test::TestFuture<
+      const hosts_connectivity_diagnostics::TestConnectivityResponse&>
+      future1;
+  manager()->TestHostsConnectivity(
+      /*hosts=*/{}, KeyValueStore{}, future1.GetCallback());
+  ASSERT_TRUE(future1.IsReady());
+
+  // Second call must reuse the existing diagnostics instance.
+  base::test::TestFuture<
+      const hosts_connectivity_diagnostics::TestConnectivityResponse&>
+      future2;
+  manager()->TestHostsConnectivity(
+      /*hosts=*/{}, KeyValueStore{}, future2.GetCallback());
+  ASSERT_TRUE(future2.IsReady());
+}
+
+class MockHostsConnectivityDiagnostics : public HostsConnectivityDiagnostics {
+ public:
+  MockHostsConnectivityDiagnostics(EventDispatcher* dispatcher,
+                                   scoped_refptr<dbus::Bus> bus,
+                                   std::string logging_tag)
+      : HostsConnectivityDiagnostics(
+            dispatcher, std::move(bus), std::move(logging_tag)) {}
+
+  MOCK_METHOD(void,
+              TestHostsConnectivity,
+              (RequestInfo request_info),
+              (override));
+};
+
+// Verifies that Manager::TestHostsConnectivity extracts the interface name,
+// IP family, and DNS servers from the default service's attached network and
+// populates RequestInfo correctly.
+TEST_F(ManagerTest, TestHostsConnectivityNetworkContext) {
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  auto mock_bus = base::MakeRefCounted<dbus::MockBus>(std::move(options));
+
+  auto diag = std::make_unique<MockHostsConnectivityDiagnostics>(
+      dispatcher(), mock_bus, "test");
+  MockHostsConnectivityDiagnostics* diag_ptr = diag.get();
+  EXPECT_CALL(*control_interface(), CreateHostsConnectivityDiagnostics(_))
+      .WillOnce([&diag](EventDispatcher*) { return std::move(diag); });
+
+  // Set up a connected default service with an attached network that has
+  // an IPv4 address and DNS servers.
+  constexpr char kIfaceName[] = "eth0";
+  NiceMock<MockNetwork> mock_network(
+      /*interface_index=*/1, kIfaceName, Technology::kEthernet);
+
+  net_base::NetworkConfig net_config;
+  net_config.ipv4_address =
+      *net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.100/24");
+  net_config.dns_servers = {
+      *net_base::IPAddress::CreateFromString("8.8.8.8"),
+      *net_base::IPAddress::CreateFromString("8.8.4.4"),
+  };
+  mock_network.set_dhcp_network_config_for_testing(net_config);
+
+  MockServiceRefPtr service = new NiceMock<MockService>(manager());
+  EXPECT_CALL(*service, IsConnected(nullptr)).WillRepeatedly(Return(true));
+  service->set_attached_network_for_testing(mock_network.AsWeakPtr());
+  manager()->RegisterService(service);
+
+  // Intercept TestHostsConnectivity to verify the RequestInfo that Manager
+  // built from the attached network's config.
+  EXPECT_CALL(*diag_ptr, TestHostsConnectivity(_))
+      .WillOnce([&](HostsConnectivityDiagnostics::RequestInfo request_info) {
+        EXPECT_EQ(request_info.interface_name, kIfaceName);
+        EXPECT_EQ(request_info.ip_family, net_base::IPFamily::kIPv4);
+        EXPECT_EQ(request_info.dns_list, net_config.dns_servers);
+
+        // Invoke the callback so the TestFuture resolves.
+        hosts_connectivity_diagnostics::TestConnectivityResponse response;
+        std::move(request_info.callback).Run(response);
+      });
+
+  base::test::TestFuture<
+      const hosts_connectivity_diagnostics::TestConnectivityResponse&>
+      future;
+  manager()->TestHostsConnectivity(
+      /*hosts=*/{"example.com"}, KeyValueStore{}, future.GetCallback());
+
+  ASSERT_TRUE(future.IsReady());
+
+  manager()->DeregisterService(service);
 }
 
 TEST_F(ManagerTest, GetPortalDetectorProbingConfiguration) {

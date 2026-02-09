@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/functional/callback.h>
 #include <gmock/gmock.h>
@@ -23,6 +24,7 @@
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/debugd_proxy_interface.h"
 #include "shill/network/dhcp_client_proxy.h"
+#include "shill/network/hosts_connectivity_diagnostics.h"
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
 #include "shill/supplicant/supplicant_bss_proxy_interface.h"
@@ -37,6 +39,7 @@
 #include "shill/upstart/upstart_proxy_interface.h"
 
 namespace shill {
+
 // An implementation of the Shill RPC-channel-interface-factory interface that
 // returns nice mocks.
 class MockControl : public ControlInterface {
@@ -118,6 +121,11 @@ class MockControl : public ControlInterface {
   std::unique_ptr<DebugdProxyInterface> CreateDebugdProxy() override {
     return nullptr;
   }
+
+  MOCK_METHOD(std::unique_ptr<HostsConnectivityDiagnostics>,
+              CreateHostsConnectivityDiagnostics,
+              (EventDispatcher*),
+              (override));
 
   MOCK_METHOD(std::unique_ptr<DBusPropertiesProxy>,
               CreateDBusPropertiesProxy,

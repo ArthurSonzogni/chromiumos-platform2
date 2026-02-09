@@ -21,6 +21,7 @@
 #include <chromeos/net-base/ip_address.h>
 #include <hosts_connectivity_diagnostics/proto_bindings/hosts_connectivity_diagnostics.pb.h>
 
+#include "shill/mockable.h"
 #include "shill/network/http_request.h"
 #include "shill/store/key_value_store.h"
 
@@ -142,12 +143,12 @@ class HostsConnectivityDiagnostics {
   HostsConnectivityDiagnostics(const HostsConnectivityDiagnostics&) = delete;
   HostsConnectivityDiagnostics& operator=(const HostsConnectivityDiagnostics&) =
       delete;
-  ~HostsConnectivityDiagnostics();
+  virtual ~HostsConnectivityDiagnostics();
 
   // Performs connectivity test on hostnames in `request_info`. Network context
   // (interface name, IP family, DNS servers) is supplied per-request via
   // `RequestInfo` so that each call can target a different network.
-  void TestHostsConnectivity(RequestInfo request_info);
+  mockable void TestHostsConnectivity(RequestInfo request_info);
 
   // Parses the proxy option from user-provided options.
   // Returns kDirect if the option is not present or is "direct".
