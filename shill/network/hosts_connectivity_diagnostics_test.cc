@@ -33,7 +33,8 @@ using ResultCode = hosts_connectivity_diagnostics::ConnectivityResultCode;
 using TestConnectivityResponse =
     hosts_connectivity_diagnostics::TestConnectivityResponse;
 
-constexpr char kExampleDotCom[] = "example.com";
+constexpr std::string_view kExampleDotCom = "example.com";
+constexpr std::string_view kHttpsExampleDotCom = "https://example.com";
 constexpr char kLoggingTag[] = "test_logging_tag";
 
 class HostsConnectivityDiagnosticsTest : public testing::Test {
@@ -66,11 +67,27 @@ TEST_F(HostsConnectivityDiagnosticsTest, EmptyHostsListReturnsNoValidHostname) {
   EXPECT_EQ(response.connectivity_results(0).error_message(), kNoHostsProvided);
 }
 
-TEST_F(HostsConnectivityDiagnosticsTest, SkeletonReturnsInternalError) {
+TEST_F(HostsConnectivityDiagnosticsTest, HostnameWithoutSchemeGetsHttpsPrefix) {
   base::test::TestFuture<const TestConnectivityResponse&> future;
 
   HostsConnectivityDiagnostics::RequestInfo request_info;
   request_info.raw_hostnames.emplace_back(kExampleDotCom);
+  request_info.callback = future.GetCallback();
+  diagnostics_->TestHostsConnectivity(std::move(request_info));
+
+  // Valid hostname passes through NormalizeHostnames to RunConnectivityTests
+  // which still returns INTERNAL_ERROR (skeleton).
+  const auto& response = future.Get();
+  ASSERT_EQ(response.connectivity_results_size(), 1);
+  EXPECT_EQ(response.connectivity_results(0).result_code(),
+            ResultCode::INTERNAL_ERROR);
+}
+
+TEST_F(HostsConnectivityDiagnosticsTest, HttpsHostnameIsAccepted) {
+  base::test::TestFuture<const TestConnectivityResponse&> future;
+
+  HostsConnectivityDiagnostics::RequestInfo request_info;
+  request_info.raw_hostnames.emplace_back(kHttpsExampleDotCom);
   request_info.callback = future.GetCallback();
   diagnostics_->TestHostsConnectivity(std::move(request_info));
 
@@ -80,16 +97,99 @@ TEST_F(HostsConnectivityDiagnosticsTest, SkeletonReturnsInternalError) {
             ResultCode::INTERNAL_ERROR);
 }
 
+TEST_F(HostsConnectivityDiagnosticsTest, InvalidHostnamesAreRejected) {
+  auto verify_no_valid_hostname = [this](std::string_view hostname) {
+    SCOPED_TRACE(hostname);
+    base::test::TestFuture<const TestConnectivityResponse&> future;
+
+    HostsConnectivityDiagnostics::RequestInfo request_info;
+    request_info.raw_hostnames.emplace_back(hostname);
+    request_info.callback = future.GetCallback();
+    diagnostics_->TestHostsConnectivity(std::move(request_info));
+
+    const auto& response = future.Get();
+    ASSERT_EQ(response.connectivity_results_size(), 1);
+    const auto& result = response.connectivity_results(0);
+    EXPECT_EQ(result.result_code(), ResultCode::NO_VALID_HOSTNAME);
+    EXPECT_EQ(result.hostname(), hostname);
+    EXPECT_EQ(result.error_message(), kInvalidHostname);
+  };
+
+  // IPv4 addresses should be rejected.
+  verify_no_valid_hostname("192.168.1.1");
+
+  // IPv6 addresses should be rejected.
+  verify_no_valid_hostname("https://[::1]");
+  verify_no_valid_hostname("[2001:db8::1]");
+
+  // localhost should be rejected.
+  verify_no_valid_hostname("localhost");
+
+  // URLs with paths should be rejected.
+  verify_no_valid_hostname("https://example.com/path");
+
+  // URLs with query parameters should be rejected.
+  verify_no_valid_hostname("https://example.com?query=value");
+
+  // URLs with userinfo should be rejected.
+  verify_no_valid_hostname("https://user@example.com");
+}
+
+TEST_F(HostsConnectivityDiagnosticsTest, MixedValidAndInvalidHostnames) {
+  base::test::TestFuture<const TestConnectivityResponse&> future;
+
+  HostsConnectivityDiagnostics::RequestInfo request_info;
+  request_info.raw_hostnames = {"https://valid.com", "192.168.1.1",
+                                "another-valid.com"};
+  request_info.callback = future.GetCallback();
+  diagnostics_->TestHostsConnectivity(std::move(request_info));
+
+  const auto& response = future.Get();
+  // 1 invalid (IP) + 1 skeleton INTERNAL_ERROR (for 2 valid hostnames).
+  int invalid_count = 0;
+  int internal_error_count = 0;
+  for (int i = 0; i < response.connectivity_results_size(); i++) {
+    if (response.connectivity_results(i).result_code() ==
+        ResultCode::NO_VALID_HOSTNAME) {
+      invalid_count++;
+    } else if (response.connectivity_results(i).result_code() ==
+               ResultCode::INTERNAL_ERROR) {
+      internal_error_count++;
+    }
+  }
+  EXPECT_EQ(invalid_count, 1);
+  EXPECT_GE(internal_error_count, 1);
+}
+
+TEST_F(HostsConnectivityDiagnosticsTest, AllInvalidHostnamesCompleteRequest) {
+  base::test::TestFuture<const TestConnectivityResponse&> future;
+
+  HostsConnectivityDiagnostics::RequestInfo request_info;
+  request_info.raw_hostnames = {"192.168.1.1", "localhost"};
+  request_info.callback = future.GetCallback();
+  diagnostics_->TestHostsConnectivity(std::move(request_info));
+
+  const auto& response = future.Get();
+  // Both hostnames are invalid, no skeleton INTERNAL_ERROR should appear.
+  ASSERT_EQ(response.connectivity_results_size(), 2);
+  for (int i = 0; i < response.connectivity_results_size(); i++) {
+    EXPECT_EQ(response.connectivity_results(i).result_code(),
+              ResultCode::NO_VALID_HOSTNAME);
+    EXPECT_EQ(response.connectivity_results(i).error_message(),
+              kInvalidHostname);
+  }
+}
+
 TEST_F(HostsConnectivityDiagnosticsTest, MultipleRequestsAreQueued) {
   base::test::TestFuture<const TestConnectivityResponse&> future1;
   base::test::TestFuture<const TestConnectivityResponse&> future2;
 
   HostsConnectivityDiagnostics::RequestInfo request_info1;
-  request_info1.raw_hostnames.emplace_back(kExampleDotCom);
+  request_info1.raw_hostnames.emplace_back(std::string(kExampleDotCom));
   request_info1.callback = future1.GetCallback();
 
   HostsConnectivityDiagnostics::RequestInfo request_info2;
-  request_info2.raw_hostnames.emplace_back(kExampleDotCom);
+  request_info2.raw_hostnames.emplace_back(std::string(kExampleDotCom));
   request_info2.callback = future2.GetCallback();
 
   diagnostics_->TestHostsConnectivity(std::move(request_info1));

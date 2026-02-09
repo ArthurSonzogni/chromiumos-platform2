@@ -7,8 +7,11 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <base/strings/strcat.h>
+#include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
+#include <chromeos/net-base/ip_address.h>
 #include <dbus/bus.h>
 
 #include "shill/logging.h"
@@ -20,6 +23,9 @@ static auto kModuleLogScope = ScopeLogger::kConnectivityDiagnostics;
 }  // namespace Logging
 
 namespace {
+
+constexpr std::string_view kPrefixHttp = "http://";
+constexpr std::string_view kPrefixHttps = "https://";
 
 // Default timeout. This should be enough to stop http request execution if the
 // network experiences some sort of connectivity problems.
@@ -118,15 +124,76 @@ void HostsConnectivityDiagnostics::NormalizeHostnames(Request req) {
     return;
   }
 
-  // TODO(crbug.com/463098734): Validate and normalize hostnames (e.g., add
-  // https:// prefix, reject IPs and localhost, reject paths/query params).
   for (const auto& raw_hostname : req.info.raw_hostnames) {
-    HostnameTestSpec spec;
-    spec.raw_hostname = raw_hostname;
-    req.specs.emplace_back(std::move(spec));
+    std::optional<net_base::HttpUrl> url_hostname =
+        ValidateAndNormalizeHostname(raw_hostname);
+    if (url_hostname.has_value()) {
+      HostnameTestSpec spec;
+      spec.url_hostname = std::move(*url_hostname);
+      req.specs.emplace_back(std::move(spec));
+    } else {
+      auto* entry = req.response.add_connectivity_results();
+      entry->set_result_code(hosts_connectivity_diagnostics::NO_VALID_HOSTNAME);
+      entry->set_hostname(raw_hostname);
+      entry->set_error_message(std::string(kInvalidHostname));
+    }
   }
 
-  RunConnectivityTests(std::move(req));
+  if (req.specs.empty()) {
+    CompleteRequest(std::move(req));
+  } else {
+    RunConnectivityTests(std::move(req));
+  }
+}
+
+// static
+std::optional<net_base::HttpUrl>
+HostsConnectivityDiagnostics::ValidateAndNormalizeHostname(
+    const std::string& raw_hostname) {
+  std::string hostname = raw_hostname;
+  if (!base::StartsWith(raw_hostname, kPrefixHttp) &&
+      !base::StartsWith(raw_hostname, kPrefixHttps)) {
+    hostname = base::StrCat({kPrefixHttps, raw_hostname});
+  }
+
+  std::optional<net_base::HttpUrl> parsed_url =
+      net_base::HttpUrl::CreateFromString(hostname);
+  if (!parsed_url.has_value()) {
+    LOG(WARNING) << __func__ << ": invalid hostname input: " << hostname;
+    return std::nullopt;
+  }
+
+  // Reject URLs with paths or query parameters.
+  // net_base::HttpUrl stores query params as part of path (e.g., "/?param").
+  if (parsed_url->path() != "/") {
+    LOG(WARNING) << __func__
+                 << ": rejecting hostname with path or query parameters: "
+                 << hostname;
+    return std::nullopt;
+  }
+
+  // Reject URLs with userinfo (e.g., https://user@example.com).
+  // Userinfo is a security risk as it can be used for phishing attacks
+  // (e.g., https://google.com@evil.com appears to be google.com).
+  // net_base::HttpUrl doesn't parse userinfo separately, so it ends up
+  // in the host field.
+  const std::string& host = parsed_url->host();
+  if (host.find('@') != std::string::npos) {
+    LOG(WARNING) << __func__
+                 << ": rejecting hostname with userinfo: " << hostname;
+    return std::nullopt;
+  }
+
+  // Reject IP addresses and localhost for security reasons.
+  // Prevents access to RFC 1918 private ranges, localhost, and link-local
+  // addresses.
+  if (net_base::IPAddress::CreateFromString(host).has_value() ||
+      base::EqualsCaseInsensitiveASCII(host, "localhost")) {
+    LOG(WARNING) << __func__ << ": rejecting IP address or localhost: " << host;
+    return std::nullopt;
+  }
+
+  return parsed_url;
 }
 
 void HostsConnectivityDiagnostics::RunConnectivityTests(Request req) {

@@ -16,6 +16,7 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/http_url.h>
 #include <hosts_connectivity_diagnostics/proto_bindings/hosts_connectivity_diagnostics.pb.h>
 
 #include "shill/store/key_value_store.h"
@@ -28,6 +29,11 @@ namespace shill {
 
 inline constexpr std::string_view kNoHostsProvided =
     "No hosts provided for connectivity diagnostics.";
+inline constexpr std::string_view kInvalidHostname =
+    "Provided hostname is invalid. It must be a domain name (e.g., "
+    "hostname.domain) with http:// or https:// prefix (other prefixes are not "
+    "allowed). IP addresses and localhost are not allowed for security "
+    "reasons.";
 
 // Tests network connectivity to a list of hostnames with configurable proxy
 // and timeout options. Results are returned as a protobuf message.
@@ -99,8 +105,8 @@ class HostsConnectivityDiagnostics {
  private:
   // Single hostname ready for connectivity testing.
   struct HostnameTestSpec {
-    // TODO(crbug.com/463098734): Validate and normalize to net_base::HttpUrl.
-    std::string raw_hostname;
+    // Validated and normalized URL to test connectivity against.
+    net_base::HttpUrl url_hostname;
   };
 
   // Internal request with input data and accumulated results. Moved through
@@ -131,6 +137,12 @@ class HostsConnectivityDiagnostics {
   // Fires the callback with accumulated results and dispatches the next
   // queued request.
   void CompleteRequest(Request req);
+
+  // Validates and normalizes a hostname. Adds https:// prefix if no scheme
+  // is present. Rejects paths, query parameters, userinfo, IP addresses,
+  // and localhost. Returns nullopt if the hostname is invalid.
+  static std::optional<net_base::HttpUrl> ValidateAndNormalizeHostname(
+      const std::string& raw_hostname);
 
   scoped_refptr<dbus::Bus> bus_;
   const std::string logging_tag_;
