@@ -117,9 +117,12 @@ void HostsConnectivityDiagnostics::DispatchNextRequest() {
 
 void HostsConnectivityDiagnostics::NormalizeHostnames(Request req) {
   if (req.info.raw_hostnames.empty()) {
-    auto* entry = req.response.add_connectivity_results();
-    entry->set_result_code(hosts_connectivity_diagnostics::NO_VALID_HOSTNAME);
-    entry->set_error_message(std::string(kNoHostsProvided));
+    *req.response.add_connectivity_results() = CreateConnectivityResultEntry(
+        /*hostname=*/std::nullopt, /*proxy=*/std::nullopt,
+        hosts_connectivity_diagnostics::NO_VALID_HOSTNAME, kNoHostsProvided,
+        /*resolution_message=*/std::nullopt,
+        /*utc_timestamp_start=*/std::nullopt,
+        /*utc_timestamp_end=*/std::nullopt);
     CompleteRequest(std::move(req));
     return;
   }
@@ -132,10 +135,12 @@ void HostsConnectivityDiagnostics::NormalizeHostnames(Request req) {
       spec.url_hostname = std::move(*url_hostname);
       req.specs.emplace_back(std::move(spec));
     } else {
-      auto* entry = req.response.add_connectivity_results();
-      entry->set_result_code(hosts_connectivity_diagnostics::NO_VALID_HOSTNAME);
-      entry->set_hostname(raw_hostname);
-      entry->set_error_message(std::string(kInvalidHostname));
+      *req.response.add_connectivity_results() = CreateConnectivityResultEntry(
+          raw_hostname, /*proxy=*/std::nullopt,
+          hosts_connectivity_diagnostics::NO_VALID_HOSTNAME, kInvalidHostname,
+          /*resolution_message=*/std::nullopt,
+          /*utc_timestamp_start=*/std::nullopt,
+          /*utc_timestamp_end=*/std::nullopt);
     }
   }
 
@@ -198,11 +203,48 @@ HostsConnectivityDiagnostics::ValidateAndNormalizeHostname(
 
 void HostsConnectivityDiagnostics::RunConnectivityTests(Request req) {
   // Skeleton implementation: immediately return INTERNAL_ERROR.
-  auto* entry = req.response.add_connectivity_results();
-  entry->set_result_code(hosts_connectivity_diagnostics::INTERNAL_ERROR);
-  entry->set_error_message("Not implemented");
+  *req.response.add_connectivity_results() = CreateConnectivityResultEntry(
+      /*hostname=*/std::nullopt, /*proxy=*/std::nullopt,
+      hosts_connectivity_diagnostics::INTERNAL_ERROR, "Not implemented",
+      /*resolution_message=*/std::nullopt,
+      /*utc_timestamp_start=*/std::nullopt,
+      /*utc_timestamp_end=*/std::nullopt);
 
   CompleteRequest(std::move(req));
+}
+
+// static
+hosts_connectivity_diagnostics::ConnectivityResultEntry
+HostsConnectivityDiagnostics::CreateConnectivityResultEntry(
+    std::optional<std::string> hostname,
+    std::optional<std::string> proxy,
+    hosts_connectivity_diagnostics::ConnectivityResultCode result_code,
+    std::optional<std::string_view> error_message,
+    std::optional<std::string> resolution_message,
+    std::optional<base::Time> utc_timestamp_start,
+    std::optional<base::Time> utc_timestamp_end) {
+  hosts_connectivity_diagnostics::ConnectivityResultEntry entry;
+  entry.set_result_code(result_code);
+  if (hostname.has_value()) {
+    entry.set_hostname(std::move(*hostname));
+  }
+  if (proxy.has_value()) {
+    entry.set_proxy(std::move(*proxy));
+  }
+  if (error_message.has_value()) {
+    entry.set_error_message(std::string(*error_message));
+  }
+  if (resolution_message.has_value()) {
+    entry.set_resolution_message(std::move(*resolution_message));
+  }
+  if (utc_timestamp_start.has_value()) {
+    entry.set_timestamp_start(
+        utc_timestamp_start->InMillisecondsSinceUnixEpoch());
+  }
+  if (utc_timestamp_end.has_value()) {
+    entry.set_timestamp_end(utc_timestamp_end->InMillisecondsSinceUnixEpoch());
+  }
+  return entry;
 }
 
 void HostsConnectivityDiagnostics::CompleteRequest(Request req) {

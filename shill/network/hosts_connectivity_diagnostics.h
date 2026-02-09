@@ -144,6 +144,18 @@ class HostsConnectivityDiagnostics {
   static std::optional<net_base::HttpUrl> ValidateAndNormalizeHostname(
       const std::string& raw_hostname);
 
+  // Creates a single ConnectivityResultEntry protobuf with the given fields.
+  // Optional parameters that are nullopt are left unset in the proto.
+  static hosts_connectivity_diagnostics::ConnectivityResultEntry
+  CreateConnectivityResultEntry(
+      std::optional<std::string> hostname,
+      std::optional<std::string> proxy,
+      hosts_connectivity_diagnostics::ConnectivityResultCode result_code,
+      std::optional<std::string_view> error_message,
+      std::optional<std::string> resolution_message,
+      std::optional<base::Time> utc_timestamp_start,
+      std::optional<base::Time> utc_timestamp_end);
+
   scoped_refptr<dbus::Bus> bus_;
   const std::string logging_tag_;
 
