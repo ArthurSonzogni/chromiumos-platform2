@@ -7,6 +7,8 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <base/time/time.h>
+#include <chromeos/dbus/shill/dbus-constants.h>
 #include <dbus/bus.h>
 
 #include "shill/logging.h"
@@ -17,11 +19,40 @@ namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kConnectivityDiagnostics;
 }  // namespace Logging
 
+namespace {
+
+// Default timeout. This should be enough to stop http request execution if the
+// network experiences some sort of connectivity problems.
+constexpr base::TimeDelta kDefaultConnectivityTimeout = base::Seconds(10);
+// Maximum allowed timeout to avoid stalled state. This prohibits users' from
+// setting too high timeout.
+constexpr base::TimeDelta kMaxConnectivityTimeout = base::Seconds(60);
+
+}  // namespace
+
 HostsConnectivityDiagnostics::HostsConnectivityDiagnostics(
     scoped_refptr<dbus::Bus> bus, std::string logging_tag)
     : bus_(bus), logging_tag_(std::move(logging_tag)) {}
 
 HostsConnectivityDiagnostics::~HostsConnectivityDiagnostics() = default;
+
+// static
+base::TimeDelta HostsConnectivityDiagnostics::ParseTimeout(
+    const KeyValueStore& options) {
+  auto timeout_opt =
+      options.GetOptionalValue<uint32_t>(kTestHostsConnectivityTimeoutKey);
+  if (!timeout_opt.has_value()) {
+    return kDefaultConnectivityTimeout;
+  }
+
+  uint32_t timeout_sec = timeout_opt.value();
+  // Valid range is 1-60 seconds. Values of 0 or >60 fall back to default.
+  if (timeout_sec >= 1 && timeout_sec <= kMaxConnectivityTimeout.InSeconds()) {
+    return base::Seconds(timeout_sec);
+  }
+
+  return kDefaultConnectivityTimeout;
+}
 
 void HostsConnectivityDiagnostics::TestHostsConnectivity(
     RequestInfo request_info) {

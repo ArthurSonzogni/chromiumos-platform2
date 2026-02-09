@@ -11,7 +11,10 @@
 
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <hosts_connectivity_diagnostics/proto_bindings/hosts_connectivity_diagnostics.pb.h>
+
+#include "shill/store/key_value_store.h"
 
 namespace dbus {
 class Bus;
@@ -37,6 +40,8 @@ class HostsConnectivityDiagnostics {
     std::vector<std::string> raw_hostnames;
     // Invoked with the TestConnectivityResponse when all tests complete.
     ConnectivityResultCallback callback;
+    // Per-hostname HTTP HEAD timeout.
+    base::TimeDelta timeout;
   };
 
   HostsConnectivityDiagnostics(scoped_refptr<dbus::Bus> bus,
@@ -48,6 +53,10 @@ class HostsConnectivityDiagnostics {
 
   // Performs connectivity test on hostnames in `request_info`.
   void TestHostsConnectivity(RequestInfo request_info);
+
+  // Parses the timeout option from user-provided options.
+  // Valid range is 1-60 seconds; values outside this range fall back to 10s.
+  static base::TimeDelta ParseTimeout(const KeyValueStore& options);
 
  private:
   scoped_refptr<dbus::Bus> bus_;

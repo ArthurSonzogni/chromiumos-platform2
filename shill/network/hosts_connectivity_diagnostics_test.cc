@@ -4,6 +4,7 @@
 
 #include "shill/network/hosts_connectivity_diagnostics.h"
 
+#include <array>
 #include <memory>
 #include <string>
 #include <utility>
@@ -13,11 +14,15 @@
 #include <base/functional/callback.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
+#include <base/time/time.h>
 #include <brillo/variant_dictionary.h>
+#include <chromeos/dbus/shill/dbus-constants.h>
 #include <dbus/bus.h>
 #include <dbus/mock_bus.h>
 #include <gtest/gtest.h>
 #include <hosts_connectivity_diagnostics/proto_bindings/hosts_connectivity_diagnostics.pb.h>
+
+#include "shill/store/key_value_store.h"
 
 namespace shill {
 namespace {
@@ -57,6 +62,33 @@ TEST_F(HostsConnectivityDiagnosticsTest, SkeletonReturnsInternalError) {
   ASSERT_EQ(response.connectivity_results_size(), 1);
   EXPECT_EQ(response.connectivity_results(0).result_code(),
             ResultCode::INTERNAL_ERROR);
+}
+
+TEST_F(HostsConnectivityDiagnosticsTest, ParseTimeoutDefault) {
+  KeyValueStore options;
+  EXPECT_EQ(HostsConnectivityDiagnostics::ParseTimeout(options),
+            base::Seconds(10));
+}
+
+TEST_F(HostsConnectivityDiagnosticsTest, ParseTimeoutValues) {
+  // {input_seconds, expected_seconds}: valid range is [1, 60], out-of-range
+  // values fall back to the default of 10 seconds.
+  constexpr std::array<std::pair<uint32_t, int>, 6> kTestCases = {{
+      {1, 1},      // Minimum boundary.
+      {30, 30},    // Mid-range valid value.
+      {60, 60},    // Maximum boundary.
+      {0, 10},     // Zero falls back to default.
+      {61, 10},    // Exceeds max falls back to default.
+      {1000, 10},  // Large value falls back to default.
+  }};
+
+  for (const auto& [input, expected] : kTestCases) {
+    SCOPED_TRACE(input);
+    KeyValueStore options;
+    options.Set<uint32_t>(kTestHostsConnectivityTimeoutKey, input);
+    EXPECT_EQ(HostsConnectivityDiagnostics::ParseTimeout(options),
+              base::Seconds(expected));
+  }
 }
 
 }  // namespace
