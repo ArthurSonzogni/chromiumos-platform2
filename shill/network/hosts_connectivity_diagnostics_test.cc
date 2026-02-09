@@ -86,12 +86,12 @@ TEST_F(HostsConnectivityDiagnosticsTest, HostnameWithoutSchemeGetsHttpsPrefix) {
   request_info.callback = future.GetCallback();
   diagnostics_->TestHostsConnectivity(std::move(request_info));
 
-  // Valid hostname passes through NormalizeHostnames to RunConnectivityTests
-  // which still returns INTERNAL_ERROR (skeleton).
   const auto& response = future.Get();
   ASSERT_EQ(response.connectivity_results_size(), 1);
+  // Should normalize to https://example.com.
+  EXPECT_EQ(response.connectivity_results(0).hostname(), kHttpsExampleDotCom);
   EXPECT_EQ(response.connectivity_results(0).result_code(),
-            ResultCode::INTERNAL_ERROR);
+            ResultCode::SUCCESS);
 }
 
 TEST_F(HostsConnectivityDiagnosticsTest, HttpsHostnameIsAccepted) {
@@ -104,8 +104,9 @@ TEST_F(HostsConnectivityDiagnosticsTest, HttpsHostnameIsAccepted) {
 
   const auto& response = future.Get();
   ASSERT_EQ(response.connectivity_results_size(), 1);
+  EXPECT_EQ(response.connectivity_results(0).hostname(), kHttpsExampleDotCom);
   EXPECT_EQ(response.connectivity_results(0).result_code(),
-            ResultCode::INTERNAL_ERROR);
+            ResultCode::SUCCESS);
 }
 
 TEST_F(HostsConnectivityDiagnosticsTest, InvalidHostnamesAreRejected) {
@@ -156,20 +157,22 @@ TEST_F(HostsConnectivityDiagnosticsTest, MixedValidAndInvalidHostnames) {
   diagnostics_->TestHostsConnectivity(std::move(request_info));
 
   const auto& response = future.Get();
-  // 1 invalid (IP) + 1 skeleton INTERNAL_ERROR (for 2 valid hostnames).
+  // Should have 3 results: 2 valid hostnames (SUCCESS) + 1 invalid (IP).
+  ASSERT_EQ(response.connectivity_results_size(), 3);
+
+  int valid_count = 0;
   int invalid_count = 0;
-  int internal_error_count = 0;
   for (int i = 0; i < response.connectivity_results_size(); i++) {
     if (response.connectivity_results(i).result_code() ==
         ResultCode::NO_VALID_HOSTNAME) {
       invalid_count++;
     } else if (response.connectivity_results(i).result_code() ==
-               ResultCode::INTERNAL_ERROR) {
-      internal_error_count++;
+               ResultCode::SUCCESS) {
+      valid_count++;
     }
   }
+  EXPECT_EQ(valid_count, 2);
   EXPECT_EQ(invalid_count, 1);
-  EXPECT_GE(internal_error_count, 1);
 }
 
 TEST_F(HostsConnectivityDiagnosticsTest, AllInvalidHostnamesCompleteRequest) {
@@ -201,11 +204,16 @@ TEST_F(HostsConnectivityDiagnosticsTest, DirectProxyPassesThrough) {
   request_info.callback = future.GetCallback();
   diagnostics_->TestHostsConnectivity(std::move(request_info));
 
-  // Direct proxy should pass through to RunConnectivityTests (skeleton).
   const auto& response = future.Get();
   ASSERT_EQ(response.connectivity_results_size(), 1);
-  EXPECT_EQ(response.connectivity_results(0).result_code(),
-            ResultCode::INTERNAL_ERROR);
+  const auto& result = response.connectivity_results(0);
+  EXPECT_EQ(result.result_code(), ResultCode::SUCCESS);
+  EXPECT_EQ(result.hostname(), kHttpsExampleDotCom);
+  // Direct proxy: proxy field should be empty.
+  EXPECT_TRUE(result.proxy().empty());
+  EXPECT_TRUE(result.error_message().empty());
+  EXPECT_TRUE(result.has_timestamp_start());
+  EXPECT_TRUE(result.has_timestamp_end());
 }
 
 // Detailed proxy URL validation is covered by IsValidProxyUrl unit tests in
@@ -222,11 +230,15 @@ TEST_F(HostsConnectivityDiagnosticsTest, ValidCustomProxyPassesThrough) {
   request_info.callback = future.GetCallback();
   diagnostics_->TestHostsConnectivity(std::move(request_info));
 
-  // Valid proxy should pass through to RunConnectivityTests (skeleton).
   const auto& response = future.Get();
   ASSERT_EQ(response.connectivity_results_size(), 1);
-  EXPECT_EQ(response.connectivity_results(0).result_code(),
-            ResultCode::INTERNAL_ERROR);
+  const auto& result = response.connectivity_results(0);
+  EXPECT_EQ(result.result_code(), ResultCode::SUCCESS);
+  EXPECT_EQ(result.hostname(), kHttpsExampleDotCom);
+  EXPECT_EQ(result.proxy(), "http://proxy.example.com:8080");
+  EXPECT_TRUE(result.error_message().empty());
+  EXPECT_TRUE(result.has_timestamp_start());
+  EXPECT_TRUE(result.has_timestamp_end());
 }
 
 TEST_F(HostsConnectivityDiagnosticsTest, InvalidProxyIsRejected) {
@@ -284,13 +296,15 @@ TEST_F(HostsConnectivityDiagnosticsTest, SystemProxyResolutionSuccess) {
   request_info.callback = future.GetCallback();
   diagnostics_->TestHostsConnectivity(std::move(request_info));
 
-  // System proxy resolves successfully and reaches RunConnectivityTests.
-  // The skeleton returns INTERNAL_ERROR; the real implementation will
-  // produce actual connectivity results.
   const auto& response = future.Get();
   ASSERT_EQ(response.connectivity_results_size(), 1);
-  EXPECT_EQ(response.connectivity_results(0).result_code(),
-            ResultCode::INTERNAL_ERROR);
+  const auto& result = response.connectivity_results(0);
+  EXPECT_EQ(result.result_code(), ResultCode::SUCCESS);
+  EXPECT_EQ(result.hostname(), kHttpsExampleDotCom);
+  EXPECT_EQ(result.proxy(), kProxy);
+  EXPECT_TRUE(result.error_message().empty());
+  EXPECT_TRUE(result.has_timestamp_start());
+  EXPECT_TRUE(result.has_timestamp_end());
 }
 
 TEST_F(HostsConnectivityDiagnosticsTest, SystemProxyResolutionFailure) {
@@ -305,12 +319,10 @@ TEST_F(HostsConnectivityDiagnosticsTest, SystemProxyResolutionFailure) {
   request_info.callback = future.GetCallback();
   diagnostics_->TestHostsConnectivity(std::move(request_info));
 
-  // Failed proxy resolution produces a NO_VALID_PROXY entry with a
-  // user-facing resolution message. The skeleton RunConnectivityTests
-  // appends an additional INTERNAL_ERROR entry that will disappear once
-  // RunConnectivityTests is properly implemented.
+  // Failed proxy resolution produces a NO_VALID_PROXY entry. No specs
+  // reach RunConnectivityTests, so only the proxy error is returned.
   const auto& response = future.Get();
-  ASSERT_GE(response.connectivity_results_size(), 1);
+  ASSERT_EQ(response.connectivity_results_size(), 1);
   const auto& result = response.connectivity_results(0);
   EXPECT_EQ(result.result_code(), ResultCode::NO_VALID_PROXY);
   EXPECT_EQ(result.hostname(), kHttpsExampleDotCom);
@@ -330,11 +342,14 @@ TEST_F(HostsConnectivityDiagnosticsTest, SystemProxyMultipleHostnames) {
   request_info.callback = future.GetCallback();
   diagnostics_->TestHostsConnectivity(std::move(request_info));
 
-  // Both hostnames resolve proxies successfully and reach
-  // RunConnectivityTests. The skeleton returns INTERNAL_ERROR; the real
-  // implementation will produce per-hostname results.
+  // Both hostnames resolve proxies successfully. Each gets 1 proxy,
+  // so 2 hostnames * 1 proxy = 2 results.
   const auto& response = future.Get();
-  ASSERT_GE(response.connectivity_results_size(), 1);
+  ASSERT_EQ(response.connectivity_results_size(), 2);
+  for (int i = 0; i < response.connectivity_results_size(); i++) {
+    EXPECT_EQ(response.connectivity_results(i).result_code(),
+              ResultCode::SUCCESS);
+  }
 }
 
 TEST_F(HostsConnectivityDiagnosticsTest, SystemProxyPartialFailure) {
@@ -363,13 +378,19 @@ TEST_F(HostsConnectivityDiagnosticsTest, SystemProxyPartialFailure) {
 
   // ResolveNextSystemProxy pops from back: example2.com resolves first
   // (call 1, success), then example1.com (call 2, failure). The failed
-  // hostname produces a NO_VALID_PROXY entry; the successful one reaches
-  // the RunConnectivityTests skeleton.
+  // hostname produces a NO_VALID_PROXY entry; the successful one gets a
+  // SUCCESS connectivity result.
   const auto& response = future.Get();
-  ASSERT_GE(response.connectivity_results_size(), 1);
-  const auto& result = response.connectivity_results(0);
-  EXPECT_EQ(result.result_code(), ResultCode::NO_VALID_PROXY);
-  EXPECT_EQ(result.error_message(), kUnableToGetSystemProxy);
+  ASSERT_EQ(response.connectivity_results_size(), 2);
+
+  // First result is the proxy resolution failure (added during resolution).
+  const auto& fail_result = response.connectivity_results(0);
+  EXPECT_EQ(fail_result.result_code(), ResultCode::NO_VALID_PROXY);
+  EXPECT_EQ(fail_result.error_message(), kUnableToGetSystemProxy);
+
+  // Second result is the successful connectivity test.
+  const auto& success_result = response.connectivity_results(1);
+  EXPECT_EQ(success_result.result_code(), ResultCode::SUCCESS);
 }
 
 TEST_F(HostsConnectivityDiagnosticsTest, MultipleRequestsAreQueued) {
@@ -387,16 +408,54 @@ TEST_F(HostsConnectivityDiagnosticsTest, MultipleRequestsAreQueued) {
   diagnostics_->TestHostsConnectivity(std::move(request_info1));
   diagnostics_->TestHostsConnectivity(std::move(request_info2));
 
-  // Both requests should complete with INTERNAL_ERROR (skeleton).
+  // Both requests should complete with SUCCESS.
   const auto& response1 = future1.Get();
   ASSERT_EQ(response1.connectivity_results_size(), 1);
   EXPECT_EQ(response1.connectivity_results(0).result_code(),
-            ResultCode::INTERNAL_ERROR);
+            ResultCode::SUCCESS);
 
   const auto& response2 = future2.Get();
   ASSERT_EQ(response2.connectivity_results_size(), 1);
   EXPECT_EQ(response2.connectivity_results(0).result_code(),
-            ResultCode::INTERNAL_ERROR);
+            ResultCode::SUCCESS);
+}
+
+TEST_F(HostsConnectivityDiagnosticsTest, ValidHostnameReturnsSuccess) {
+  base::test::TestFuture<const TestConnectivityResponse&> future;
+
+  HostsConnectivityDiagnostics::RequestInfo request_info;
+  request_info.raw_hostnames.emplace_back(std::string(kExampleDotCom));
+  request_info.callback = future.GetCallback();
+  diagnostics_->TestHostsConnectivity(std::move(request_info));
+
+  const auto& response = future.Get();
+  ASSERT_EQ(response.connectivity_results_size(), 1);
+  const auto& result = response.connectivity_results(0);
+  EXPECT_EQ(result.result_code(), ResultCode::SUCCESS);
+  EXPECT_EQ(result.hostname(), kHttpsExampleDotCom);
+  // Direct proxy (default): proxy field should be empty.
+  EXPECT_TRUE(result.proxy().empty());
+  EXPECT_TRUE(result.error_message().empty());
+  EXPECT_TRUE(result.has_timestamp_start());
+  EXPECT_TRUE(result.has_timestamp_end());
+}
+
+TEST_F(HostsConnectivityDiagnosticsTest, MultipleHostnamesWithSystemProxies) {
+  SetupSystemProxyResolution(true,
+                             {"http://proxy1:8080", "http://proxy2:8080"});
+
+  base::test::TestFuture<const TestConnectivityResponse&> future;
+
+  HostsConnectivityDiagnostics::RequestInfo request_info;
+  request_info.raw_hostnames = {"https://example1.com", "https://example2.com"};
+  request_info.proxy = {.mode =
+                            HostsConnectivityDiagnostics::ProxyMode::kSystem};
+  request_info.callback = future.GetCallback();
+  diagnostics_->TestHostsConnectivity(std::move(request_info));
+
+  // Each hostname gets 2 proxies, so 2 hostnames * 2 proxies = 4 results.
+  const auto& response = future.Get();
+  ASSERT_EQ(response.connectivity_results_size(), 4);
 }
 
 TEST_F(HostsConnectivityDiagnosticsTest, ParseTimeoutDefault) {

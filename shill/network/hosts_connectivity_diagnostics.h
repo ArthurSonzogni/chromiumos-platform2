@@ -45,6 +45,29 @@ inline constexpr std::string_view kUnableToGetSystemProxyResolution =
 
 // Tests network connectivity to a list of hostnames with configurable proxy
 // and timeout options. Results are returned as a protobuf message.
+//
+// Request Processing Flow:
+// ========================
+//
+// 1. QUEUING: TestHostsConnectivity() receives hostnames + options, wraps them
+//    in a Request, and queues it. Only one request executes at a time.
+//
+// 2. PIPELINE: DispatchNextRequest() dequeues a request and passes it through:
+//    NormalizeHostnames -> ValidateAndAssignProxy -> RunConnectivityTests ->
+//    CompleteRequest. For "system" proxy mode, ValidateAndAssignProxy starts
+//    async per-hostname proxy resolution via ResolveNextSystemProxy before
+//    RunConnectivityTests.
+//
+// 3. EXECUTION PHASE: Request::specs is a deque of HostnameTestSpec, each
+//    holding a deque of proxy URLs. RunNextConnectivityTest() pops the front
+//    proxy from the front spec and calls OnSingleTestComplete() (currently
+//    with a fake SUCCESS result; OnSingleTestComplete() re-enters
+//    RunNextConnectivityTest() with the mutated Request. Specs whose proxy
+//    deques are exhausted are popped from the front. TODO(crbug.com/463098734):
+//    replace with an async HTTP HEAD request).
+//
+// 4. COMPLETION: Results are returned via callback as protobuf.
+//    Then DispatchNextRequest() starts the next queued request if any.
 class HostsConnectivityDiagnostics {
  public:
   // Callback invoked with connectivity test results. The response contains
@@ -134,10 +157,15 @@ class HostsConnectivityDiagnostics {
     RequestInfo info;
 
     // Hostnames ready for connectivity testing. Populated by
-    // NormalizeHostnames, consumed by RunConnectivityTests.
+    // NormalizeHostnames, consumed (popped from front) by
+    // RunNextConnectivityTest.
     std::deque<HostnameTestSpec> specs;
     // Accumulated results (validation errors and test results).
     hosts_connectivity_diagnostics::TestConnectivityResponse response;
+
+    // Number of failed tests so far. Compared against
+    // info.max_error_count to decide whether to abort early.
+    uint32_t error_count = 0;
   };
 
   // Dequeues and processes the next pending request, or sets `is_running_` to
@@ -176,9 +204,24 @@ class HostsConnectivityDiagnostics {
                              bool success,
                              const std::vector<std::string>& proxies);
 
-  // Runs connectivity tests for the request. Currently a skeleton that
-  // returns INTERNAL_ERROR; will be replaced with actual implementation.
+  // --- Connectivity test execution ---
+
+  // Resets error_count and starts the test loop.
   void RunConnectivityTests(Request req);
+
+  // Pops the front proxy from the front spec and fires one HTTP HEAD test.
+  // Specs with no remaining proxies are skipped.
+  void RunNextConnectivityTest(Request req);
+
+  // Handles completion of a single connectivity test. Records the result
+  // and re-enters RunNextConnectivityTest, or aborts on max_error_count.
+  void OnSingleTestComplete(
+      Request req,
+      std::string hostname,
+      std::string proxy,
+      base::Time test_start_time,
+      hosts_connectivity_diagnostics::ConnectivityResultCode result_code,
+      const std::string& error_message);
 
   // Fires the callback with accumulated results and dispatches the next
   // queued request.

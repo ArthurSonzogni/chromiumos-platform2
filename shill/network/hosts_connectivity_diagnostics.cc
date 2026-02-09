@@ -300,15 +300,70 @@ HostsConnectivityDiagnostics::ValidateAndNormalizeHostname(
 }
 
 void HostsConnectivityDiagnostics::RunConnectivityTests(Request req) {
-  // Skeleton implementation: immediately return INTERNAL_ERROR.
-  *req.response.add_connectivity_results() = CreateConnectivityResultEntry(
-      /*hostname=*/std::nullopt, /*proxy=*/std::nullopt,
-      hosts_connectivity_diagnostics::INTERNAL_ERROR, "Not implemented",
-      /*resolution_message=*/std::nullopt,
-      /*utc_timestamp_start=*/std::nullopt,
-      /*utc_timestamp_end=*/std::nullopt);
+  SLOG(2) << logging_tag_ << " " << __func__ << ": starting for "
+          << req.specs.size() << " hostnames";
+  req.error_count = 0;
+  RunNextConnectivityTest(std::move(req));
+}
 
-  CompleteRequest(std::move(req));
+void HostsConnectivityDiagnostics::RunNextConnectivityTest(Request req) {
+  // Skip specs that have exhausted all proxies.
+  while (!req.specs.empty() && req.specs.front().proxies.empty()) {
+    req.specs.pop_front();
+  }
+
+  if (req.specs.empty()) {
+    CompleteRequest(std::move(req));
+    return;
+  }
+
+  auto& spec = req.specs.front();
+  std::string proxy = std::move(spec.proxies.front());
+  spec.proxies.pop_front();
+
+  const std::string hostname = spec.url_hostname.ToString();
+  const base::Time test_start_time = base::Time::Now();
+
+  // TODO(b:463098734): Replace with actual connectivity_tester_ call once
+  // ConnectivityTester is implemented. Currently calls OnSingleTestComplete
+  // directly with a fake SUCCESS result.
+  OnSingleTestComplete(std::move(req), std::move(hostname), std::move(proxy),
+                       test_start_time, hosts_connectivity_diagnostics::SUCCESS,
+                       /*error_message=*/"");
+}
+
+void HostsConnectivityDiagnostics::OnSingleTestComplete(
+    Request req,
+    std::string hostname,
+    std::string proxy,
+    base::Time test_start_time,
+    hosts_connectivity_diagnostics::ConnectivityResultCode result_code,
+    const std::string& error_message) {
+  const base::Time end_time = base::Time::Now();
+
+  *req.response.add_connectivity_results() = CreateConnectivityResultEntry(
+      std::move(hostname),
+      base::StartsWith(proxy, brillo::http::kDirectProxy)
+          ? std::nullopt
+          : std::make_optional(std::move(proxy)),
+      result_code,
+      result_code == hosts_connectivity_diagnostics::SUCCESS ? std::string()
+                                                             : error_message,
+      /*resolution_message=*/std::nullopt, test_start_time, end_time);
+
+  if (result_code != hosts_connectivity_diagnostics::SUCCESS) {
+    req.error_count++;
+    if (req.info.max_error_count > 0 &&
+        req.error_count >= req.info.max_error_count) {
+      SLOG(2) << logging_tag_ << " " << __func__
+              << ": reached max error count (" << req.error_count
+              << "), aborting";
+      CompleteRequest(std::move(req));
+      return;
+    }
+  }
+
+  RunNextConnectivityTest(std::move(req));
 }
 
 // static
@@ -346,6 +401,11 @@ HostsConnectivityDiagnostics::CreateConnectivityResultEntry(
 }
 
 void HostsConnectivityDiagnostics::CompleteRequest(Request req) {
+  if (req.error_count > 0) {
+    // TODO(crbug.com/463098734): diagnostics of the errors must happen here.
+    // For now, just complete the request.
+  }
+
   std::move(req.info.callback).Run(req.response);
   DispatchNextRequest();
 }
