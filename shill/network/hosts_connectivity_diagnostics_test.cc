@@ -48,8 +48,10 @@ class HostsConnectivityDiagnosticsTest : public testing::Test {
 TEST_F(HostsConnectivityDiagnosticsTest, SkeletonReturnsInternalError) {
   base::test::TestFuture<const TestConnectivityResponse&> future;
 
-  diagnostics_->TestHostsConnectivity({kExampleDotCom}, {},
-                                      future.GetCallback());
+  HostsConnectivityDiagnostics::RequestInfo request_info;
+  request_info.raw_hostnames.emplace_back(kExampleDotCom);
+  request_info.callback = future.GetCallback();
+  diagnostics_->TestHostsConnectivity(std::move(request_info));
 
   const auto& response = future.Get();
   ASSERT_EQ(response.connectivity_results_size(), 1);

@@ -24,11 +24,9 @@ HostsConnectivityDiagnostics::HostsConnectivityDiagnostics(
 HostsConnectivityDiagnostics::~HostsConnectivityDiagnostics() = default;
 
 void HostsConnectivityDiagnostics::TestHostsConnectivity(
-    const std::vector<std::string>& hostnames,
-    const brillo::VariantDictionary& options,
-    ConnectivityResultCallback result_callback) {
+    RequestInfo request_info) {
   SLOG(2) << logging_tag_ << " " << __func__ << ": starting for "
-          << hostnames.size() << " hostnames";
+          << request_info.raw_hostnames.size() << " hostnames";
 
   // Skeleton implementation: immediately return INTERNAL_ERROR.
   hosts_connectivity_diagnostics::TestConnectivityResponse response;
@@ -36,7 +34,7 @@ void HostsConnectivityDiagnostics::TestHostsConnectivity(
   entry->set_result_code(hosts_connectivity_diagnostics::INTERNAL_ERROR);
   entry->set_error_message("Not implemented");
 
-  std::move(result_callback).Run(response);
+  std::move(request_info.callback).Run(response);
 }
 
 }  // namespace shill
