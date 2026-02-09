@@ -236,10 +236,10 @@ class InterfaceProxyMock : public InterfaceProxyInterface {
                                                   const std::tuple<int32_t, base::ScopedFD>&)>& /*signal_callback*/,
                dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
 
-  MOCK_METHOD(const brillo::VariantDictionary&, capabilities, (), (const, override));
+  MOCK_METHOD((const brillo::VariantDictionary&), capabilities, (), (const, override));
   MOCK_METHOD(bool, is_capabilities_valid, (), (const, override));
 
-  MOCK_METHOD(uint32_t, bluetooth_class, (), (const, override));
+  MOCK_METHOD((uint32_t), bluetooth_class, (), (const, override));
   MOCK_METHOD(bool, is_bluetooth_class_valid, (), (const, override));
 
   MOCK_METHOD(const dbus::ObjectPath&, GetObjectPath, (), (const, override));
@@ -897,10 +897,10 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   EmptyInterfaceProxyMock(const EmptyInterfaceProxyMock&) = delete;
   EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
 
-  MOCK_METHOD(const brillo::VariantDictionary&, readonly_property, (), (const, override));
+  MOCK_METHOD((const brillo::VariantDictionary&), readonly_property, (), (const, override));
   MOCK_METHOD(bool, is_readonly_property_valid, (), (const, override));
 
-  MOCK_METHOD(const brillo::VariantDictionary&, writable_property, (), (const, override));
+  MOCK_METHOD((const brillo::VariantDictionary&), writable_property, (), (const, override));
   MOCK_METHOD(bool, is_writable_property_valid, (), (const, override));
   MOCK_METHOD(void,
               set_writable_property,
@@ -982,10 +982,10 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   EmptyInterfaceProxyMock(const EmptyInterfaceProxyMock&) = delete;
   EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
 
-  MOCK_METHOD(const brillo::VariantDictionary&, readonly_property, (), (const, override));
+  MOCK_METHOD((const brillo::VariantDictionary&), readonly_property, (), (const, override));
   MOCK_METHOD(bool, is_readonly_property_valid, (), (const, override));
 
-  MOCK_METHOD(const brillo::VariantDictionary&, writable_property, (), (const, override));
+  MOCK_METHOD((const brillo::VariantDictionary&), writable_property, (), (const, override));
   MOCK_METHOD(bool, is_writable_property_valid, (), (const, override));
   MOCK_METHOD(void,
               set_writable_property,

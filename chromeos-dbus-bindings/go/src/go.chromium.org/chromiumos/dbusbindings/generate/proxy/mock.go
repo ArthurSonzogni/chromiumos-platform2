@@ -148,7 +148,7 @@ class {{$mockName}} : public {{$itfName}} {
 {{- $name := makePropertyVariableName . | makeVariableName -}}
 {{- $type := makeProxyInArgTypeProxy . }}
 
-  MOCK_METHOD({{$type}}, {{$name}}, (), (const, override));
+  MOCK_METHOD(({{$type}}), {{$name}}, (), (const, override));
   MOCK_METHOD(bool, is_{{$name}}_valid, (), (const, override));
 {{- if eq .Access "readwrite"}}
   MOCK_METHOD(void,
