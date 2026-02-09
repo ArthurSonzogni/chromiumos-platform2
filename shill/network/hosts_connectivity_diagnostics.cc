@@ -106,6 +106,26 @@ void HostsConnectivityDiagnostics::DispatchNextRequest() {
   Request req = std::move(pending_requests_.front());
   pending_requests_.pop();
 
+  NormalizeHostnames(std::move(req));
+}
+
+void HostsConnectivityDiagnostics::NormalizeHostnames(Request req) {
+  if (req.info.raw_hostnames.empty()) {
+    auto* entry = req.response.add_connectivity_results();
+    entry->set_result_code(hosts_connectivity_diagnostics::NO_VALID_HOSTNAME);
+    entry->set_error_message(std::string(kNoHostsProvided));
+    CompleteRequest(std::move(req));
+    return;
+  }
+
+  // TODO(crbug.com/463098734): Validate and normalize hostnames (e.g., add
+  // https:// prefix, reject IPs and localhost, reject paths/query params).
+  for (const auto& raw_hostname : req.info.raw_hostnames) {
+    HostnameTestSpec spec;
+    spec.raw_hostname = raw_hostname;
+    req.specs.emplace_back(std::move(spec));
+  }
+
   RunConnectivityTests(std::move(req));
 }
 

@@ -52,6 +52,20 @@ class HostsConnectivityDiagnosticsTest : public testing::Test {
   std::unique_ptr<HostsConnectivityDiagnostics> diagnostics_;
 };
 
+TEST_F(HostsConnectivityDiagnosticsTest, EmptyHostsListReturnsNoValidHostname) {
+  base::test::TestFuture<const TestConnectivityResponse&> future;
+
+  HostsConnectivityDiagnostics::RequestInfo request_info;
+  request_info.callback = future.GetCallback();
+  diagnostics_->TestHostsConnectivity(std::move(request_info));
+
+  const auto& response = future.Get();
+  ASSERT_EQ(response.connectivity_results_size(), 1);
+  EXPECT_EQ(response.connectivity_results(0).result_code(),
+            ResultCode::NO_VALID_HOSTNAME);
+  EXPECT_EQ(response.connectivity_results(0).error_message(), kNoHostsProvided);
+}
+
 TEST_F(HostsConnectivityDiagnosticsTest, SkeletonReturnsInternalError) {
   base::test::TestFuture<const TestConnectivityResponse&> future;
 

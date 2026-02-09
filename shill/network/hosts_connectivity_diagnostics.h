@@ -5,10 +5,12 @@
 #ifndef SHILL_NETWORK_HOSTS_CONNECTIVITY_DIAGNOSTICS_H_
 #define SHILL_NETWORK_HOSTS_CONNECTIVITY_DIAGNOSTICS_H_
 
+#include <deque>
 #include <memory>
 #include <optional>
 #include <queue>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/functional/callback.h>
@@ -23,6 +25,9 @@ class Bus;
 }  // namespace dbus
 
 namespace shill {
+
+inline constexpr std::string_view kNoHostsProvided =
+    "No hosts provided for connectivity diagnostics.";
 
 // Tests network connectivity to a list of hostnames with configurable proxy
 // and timeout options. Results are returned as a protobuf message.
@@ -92,10 +97,20 @@ class HostsConnectivityDiagnostics {
   static uint32_t ParseMaxErrorCount(const KeyValueStore& options);
 
  private:
+  // Single hostname ready for connectivity testing.
+  struct HostnameTestSpec {
+    // TODO(crbug.com/463098734): Validate and normalize to net_base::HttpUrl.
+    std::string raw_hostname;
+  };
+
   // Internal request with input data and accumulated results. Moved through
   // the pipeline by value.
   struct Request {
     RequestInfo info;
+
+    // Hostnames ready for connectivity testing. Populated by
+    // NormalizeHostnames, consumed by RunConnectivityTests.
+    std::deque<HostnameTestSpec> specs;
     // Accumulated results (validation errors and test results).
     hosts_connectivity_diagnostics::TestConnectivityResponse response;
   };
@@ -103,6 +118,11 @@ class HostsConnectivityDiagnostics {
   // Dequeues and processes the next pending request, or sets `is_running_` to
   // false if the queue is empty.
   void DispatchNextRequest();
+
+  // Populates `req.specs` from raw hostnames. If the hostname list is empty,
+  // records a NO_VALID_HOSTNAME error and completes the request.
+  // Otherwise calls RunConnectivityTests.
+  void NormalizeHostnames(Request req);
 
   // Runs connectivity tests for the request. Currently a skeleton that
   // returns INTERNAL_ERROR; will be replaced with actual implementation.
