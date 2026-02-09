@@ -87,13 +87,40 @@ void HostsConnectivityDiagnostics::TestHostsConnectivity(
   SLOG(2) << logging_tag_ << " " << __func__ << ": starting for "
           << request_info.raw_hostnames.size() << " hostnames";
 
+  Request request;
+  request.info = std::move(request_info);
+  pending_requests_.emplace(std::move(request));
+
+  if (!is_running_) {
+    DispatchNextRequest();
+  }
+}
+
+void HostsConnectivityDiagnostics::DispatchNextRequest() {
+  if (pending_requests_.empty()) {
+    is_running_ = false;
+    return;
+  }
+
+  is_running_ = true;
+  Request req = std::move(pending_requests_.front());
+  pending_requests_.pop();
+
+  RunConnectivityTests(std::move(req));
+}
+
+void HostsConnectivityDiagnostics::RunConnectivityTests(Request req) {
   // Skeleton implementation: immediately return INTERNAL_ERROR.
-  hosts_connectivity_diagnostics::TestConnectivityResponse response;
-  auto* entry = response.add_connectivity_results();
+  auto* entry = req.response.add_connectivity_results();
   entry->set_result_code(hosts_connectivity_diagnostics::INTERNAL_ERROR);
   entry->set_error_message("Not implemented");
 
-  std::move(request_info.callback).Run(response);
+  CompleteRequest(std::move(req));
+}
+
+void HostsConnectivityDiagnostics::CompleteRequest(Request req) {
+  std::move(req.info.callback).Run(req.response);
+  DispatchNextRequest();
 }
 
 }  // namespace shill

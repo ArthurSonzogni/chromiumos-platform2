@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <optional>
+#include <queue>
 #include <string>
 #include <vector>
 
@@ -91,8 +92,33 @@ class HostsConnectivityDiagnostics {
   static uint32_t ParseMaxErrorCount(const KeyValueStore& options);
 
  private:
+  // Internal request with input data and accumulated results. Moved through
+  // the pipeline by value.
+  struct Request {
+    RequestInfo info;
+    // Accumulated results (validation errors and test results).
+    hosts_connectivity_diagnostics::TestConnectivityResponse response;
+  };
+
+  // Dequeues and processes the next pending request, or sets `is_running_` to
+  // false if the queue is empty.
+  void DispatchNextRequest();
+
+  // Runs connectivity tests for the request. Currently a skeleton that
+  // returns INTERNAL_ERROR; will be replaced with actual implementation.
+  void RunConnectivityTests(Request req);
+
+  // Fires the callback with accumulated results and dispatches the next
+  // queued request.
+  void CompleteRequest(Request req);
+
   scoped_refptr<dbus::Bus> bus_;
   const std::string logging_tag_;
+
+  // Queue of incoming requests waiting to be processed.
+  std::queue<Request> pending_requests_;
+  // True while a request is being processed (re-entrancy guard).
+  bool is_running_ = false;
 
   base::WeakPtrFactory<HostsConnectivityDiagnostics> weak_ptr_factory_{this};
 };

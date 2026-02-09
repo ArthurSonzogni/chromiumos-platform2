@@ -66,6 +66,33 @@ TEST_F(HostsConnectivityDiagnosticsTest, SkeletonReturnsInternalError) {
             ResultCode::INTERNAL_ERROR);
 }
 
+TEST_F(HostsConnectivityDiagnosticsTest, MultipleRequestsAreQueued) {
+  base::test::TestFuture<const TestConnectivityResponse&> future1;
+  base::test::TestFuture<const TestConnectivityResponse&> future2;
+
+  HostsConnectivityDiagnostics::RequestInfo request_info1;
+  request_info1.raw_hostnames.emplace_back(kExampleDotCom);
+  request_info1.callback = future1.GetCallback();
+
+  HostsConnectivityDiagnostics::RequestInfo request_info2;
+  request_info2.raw_hostnames.emplace_back(kExampleDotCom);
+  request_info2.callback = future2.GetCallback();
+
+  diagnostics_->TestHostsConnectivity(std::move(request_info1));
+  diagnostics_->TestHostsConnectivity(std::move(request_info2));
+
+  // Both requests should complete with INTERNAL_ERROR (skeleton).
+  const auto& response1 = future1.Get();
+  ASSERT_EQ(response1.connectivity_results_size(), 1);
+  EXPECT_EQ(response1.connectivity_results(0).result_code(),
+            ResultCode::INTERNAL_ERROR);
+
+  const auto& response2 = future2.Get();
+  ASSERT_EQ(response2.connectivity_results_size(), 1);
+  EXPECT_EQ(response2.connectivity_results(0).result_code(),
+            ResultCode::INTERNAL_ERROR);
+}
+
 TEST_F(HostsConnectivityDiagnosticsTest, ParseTimeoutDefault) {
   KeyValueStore options;
   EXPECT_EQ(HostsConnectivityDiagnostics::ParseTimeout(options),
