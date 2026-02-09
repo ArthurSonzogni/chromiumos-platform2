@@ -6,6 +6,7 @@
 #define SHILL_NETWORK_HOSTS_CONNECTIVITY_DIAGNOSTICS_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -34,6 +35,23 @@ class HostsConnectivityDiagnostics {
       const hosts_connectivity_diagnostics::TestConnectivityResponse&
           response)>;
 
+  // Proxy resolution mode for connectivity diagnostics.
+  enum class ProxyMode {
+    // No proxy, direct connection.
+    kDirect,
+    // Query Chrome for system proxy settings (async).
+    kSystem,
+    // User-provided proxy URL.
+    kCustom,
+  };
+
+  // Parsed proxy option with explicit type discrimination.
+  struct ProxyOption {
+    ProxyMode mode = ProxyMode::kDirect;
+    // Proxy URL. Has value when mode == kCustom.
+    std::optional<std::string> custom_url = std::nullopt;
+  };
+
   // Input parameters for a connectivity test request.
   struct RequestInfo {
     // List of hostnames/urls that needs to be validated and connection tested.
@@ -44,6 +62,8 @@ class HostsConnectivityDiagnostics {
     base::TimeDelta timeout;
     // Stop testing after this many errors. 0 means no limit.
     uint32_t max_error_count = 0;
+    // Proxy mode and optional custom URL.
+    ProxyOption proxy;
   };
 
   HostsConnectivityDiagnostics(scoped_refptr<dbus::Bus> bus,
@@ -55,6 +75,12 @@ class HostsConnectivityDiagnostics {
 
   // Performs connectivity test on hostnames in `request_info`.
   void TestHostsConnectivity(RequestInfo request_info);
+
+  // Parses the proxy option from user-provided options.
+  // Returns kDirect if the option is not present or is "direct".
+  // Returns kSystem if the value is "system".
+  // Returns kCustom with the URL for any other value.
+  static ProxyOption ParseProxyOption(const KeyValueStore& options);
 
   // Parses the timeout option from user-provided options.
   // Valid range is 1-60 seconds; values outside this range fall back to 10s.

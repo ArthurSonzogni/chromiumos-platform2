@@ -64,6 +64,24 @@ uint32_t HostsConnectivityDiagnostics::ParseMaxErrorCount(
       .value_or(kDefaultErrorLimit);
 }
 
+// static
+HostsConnectivityDiagnostics::ProxyOption
+HostsConnectivityDiagnostics::ParseProxyOption(const KeyValueStore& options) {
+  auto proxy_option =
+      options.GetOptionalValue<std::string>(kTestHostsConnectivityProxyKey);
+  if (!proxy_option.has_value()) {
+    return ProxyOption{.mode = ProxyMode::kDirect};
+  }
+  const std::string& proxy_str = proxy_option.value();
+  if (proxy_str == kTestHostsConnectivityProxyDirect) {
+    return ProxyOption{.mode = ProxyMode::kDirect};
+  }
+  if (proxy_str == kTestHostsConnectivityProxySystem) {
+    return ProxyOption{.mode = ProxyMode::kSystem};
+  }
+  return ProxyOption{.mode = ProxyMode::kCustom, .custom_url = proxy_str};
+}
+
 void HostsConnectivityDiagnostics::TestHostsConnectivity(
     RequestInfo request_info) {
   SLOG(2) << logging_tag_ << " " << __func__ << ": starting for "

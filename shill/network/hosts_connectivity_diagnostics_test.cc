@@ -6,7 +6,9 @@
 
 #include <array>
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -111,6 +113,44 @@ TEST_F(HostsConnectivityDiagnosticsTest, ParseMaxErrorCountValues) {
     options.Set<uint32_t>(kTestHostsConnectivityMaxErrorsKey, input);
     EXPECT_EQ(HostsConnectivityDiagnostics::ParseMaxErrorCount(options),
               expected);
+  }
+}
+
+TEST_F(HostsConnectivityDiagnosticsTest, ParseProxyOptionDefault) {
+  KeyValueStore options;
+  auto proxy = HostsConnectivityDiagnostics::ParseProxyOption(options);
+  EXPECT_EQ(proxy.mode, HostsConnectivityDiagnostics::ProxyMode::kDirect);
+  EXPECT_FALSE(proxy.custom_url.has_value());
+}
+
+TEST_F(HostsConnectivityDiagnosticsTest, ParseProxyOptionValues) {
+  using ProxyMode = HostsConnectivityDiagnostics::ProxyMode;
+  constexpr std::string_view kCustomProxy = "http://proxy.example.com:8080";
+  // {input, expected_mode, expected_custom_url}.
+  struct TestCase {
+    std::string_view input;
+    ProxyMode expected_mode;
+    std::optional<std::string_view> expected_custom_url;
+  };
+  constexpr auto kTestCases = std::to_array<TestCase>({
+      {kTestHostsConnectivityProxyDirect, ProxyMode::kDirect, std::nullopt},
+      {kTestHostsConnectivityProxySystem, ProxyMode::kSystem, std::nullopt},
+      {kCustomProxy, ProxyMode::kCustom, kCustomProxy},
+  });
+
+  for (const auto& [input, expected_mode, expected_custom_url] : kTestCases) {
+    SCOPED_TRACE(input);
+    KeyValueStore options;
+    options.Set<std::string>(kTestHostsConnectivityProxyKey,
+                             std::string(input));
+    auto proxy = HostsConnectivityDiagnostics::ParseProxyOption(options);
+    EXPECT_EQ(proxy.mode, expected_mode);
+    if (expected_custom_url.has_value()) {
+      ASSERT_TRUE(proxy.custom_url.has_value());
+      EXPECT_EQ(proxy.custom_url.value(), expected_custom_url.value());
+    } else {
+      EXPECT_FALSE(proxy.custom_url.has_value());
+    }
   }
 }
 
