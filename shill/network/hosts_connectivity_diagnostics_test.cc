@@ -845,5 +845,147 @@ TEST_F(HostsConnectivityDiagnosticsTest, ParseProxyOptionValues) {
   }
 }
 
+// Verifies field availability for every `ConnectivityResultCode` as specified
+// in the "Field availability by result_code" table in
+// hosts_connectivity_diagnostics.proto.
+//
+// Each test case carries boolean flags for every proto field:
+//   - hostname_set / proxy_set / error_message_set / resolution_message_set
+//     indicate whether the field must be non-empty.
+//
+// The static_assert at the bottom catches new enum values added to the proto
+// without a corresponding test case.
+TEST_F(HostsConnectivityDiagnosticsTest, FieldAvailabilityByResultCode) {
+  using TE = brillo::http::TransportError;
+  constexpr std::string_view kProxy = "http://proxy.example.com:8080";
+  constexpr std::string_view kInvalidProxyUrl = "invalid-proxy";
+
+  struct TestCase {
+    ResultCode expected_result_code;
+    // TransportError injected into MockHttpRequest. Ignored for result codes
+    // that do not reach the HTTP layer (SUCCESS, NO_VALID_HOSTNAME,
+    // NO_VALID_PROXY).
+    TE transport_error;
+    // Expected field presence per the proto table.
+    bool hostname_set;
+    bool proxy_set;
+    bool error_message_set;
+    bool resolution_message_set;
+    bool has_timestamps;
+  };
+
+  // Maps 1:1 to the "Field availability by result_code" table in the proto.
+  // Covers every `ConnectivityResultCode` except `UNSPECIFIED` (which must
+  // not be produced by the implementation). The static_assert below will break
+  // if a new enum value is added to the proto without updating this table.
+  constexpr auto kTestCases = std::to_array<TestCase>({
+      // result_code,                   transport_error,         hostname,
+      // proxy,  error, resolution, timestamps
+      {ResultCode::SUCCESS, TE::kUnknown, true, false, false, false, true},
+      {ResultCode::NO_VALID_HOSTNAME, TE::kUnknown, false, false, true, false,
+       false},
+      {ResultCode::NO_VALID_PROXY, TE::kUnknown, false, true, true, false,
+       false},
+      {ResultCode::PROXY_DNS_RESOLUTION_ERROR, TE::kProxyDnsFailure, true, true,
+       true, false, true},
+      {ResultCode::PROXY_CONNECTION_FAILURE, TE::kProxyConnectionFailure, true,
+       true, true, false, true},
+      // "All other errors" rows.
+      {ResultCode::INTERNAL_ERROR, TE::kInternalError, true, false, true, false,
+       true},
+      {ResultCode::UNKNOWN_ERROR, TE::kUnknown, true, false, true, false, true},
+      {ResultCode::CONNECTION_FAILURE, TE::kConnectionFailure, true, false,
+       true, false, true},
+      {ResultCode::CONNECTION_TIMEOUT, TE::kTimeout, true, false, true, false,
+       true},
+      {ResultCode::DNS_RESOLUTION_ERROR, TE::kDnsFailure, true, false, true,
+       false, true},
+      {ResultCode::SSL_CONNECTION_ERROR, TE::kTLSFailure, true, false, true,
+       false, true},
+      {ResultCode::PEER_CERTIFICATE_ERROR, TE::kCertificateError, true, false,
+       true, false, true},
+      {ResultCode::HTTP_ERROR, TE::kHttpError, true, false, true, false, true},
+      {ResultCode::NO_NETWORK_ERROR, TE::kNetworkError, true, false, true,
+       false, true},
+  });
+
+  // Every `ConnectivityResultCode` except `UNSPECIFIED` must have a test case.
+  static_assert(
+      kTestCases.size() ==
+      hosts_connectivity_diagnostics::ConnectivityResultCode_ARRAYSIZE - 1);
+
+  for (const auto& tc : kTestCases) {
+    SCOPED_TRACE(hosts_connectivity_diagnostics::ConnectivityResultCode_Name(
+        tc.expected_result_code));
+
+    // Configure test scenario based on result code.
+    HostsConnectivityDiagnostics::RequestInfo request_info;
+    switch (tc.expected_result_code) {
+      case ResultCode::SUCCESS:
+        diagnostics_->SetHttpRequestFactoryForTest(MakeAutoSuccessFactory());
+        request_info.raw_hostnames.emplace_back(std::string(kExampleDotCom));
+        break;
+      case ResultCode::NO_VALID_HOSTNAME:
+        // Empty hostname list triggers NO_VALID_HOSTNAME — no HTTP request.
+        break;
+      case ResultCode::NO_VALID_PROXY:
+        // Invalid proxy URL is rejected before any HTTP request.
+        request_info.raw_hostnames.emplace_back(std::string(kExampleDotCom));
+        request_info.proxy = {
+            .mode = HostsConnectivityDiagnostics::ProxyMode::kCustom,
+            .custom_url = std::string(kInvalidProxyUrl)};
+        break;
+      case ResultCode::PROXY_DNS_RESOLUTION_ERROR:
+      case ResultCode::PROXY_CONNECTION_FAILURE: {
+        auto error = tc.transport_error;
+        diagnostics_->SetHttpRequestFactoryForTest(base::BindRepeating(
+            [](TE err, std::shared_ptr<brillo::http::Transport>)
+                -> std::unique_ptr<HttpRequest> {
+              auto req = std::make_unique<MockHttpRequest>();
+              req->SetAutoError(err);
+              return req;
+            },
+            error));
+        request_info.raw_hostnames.emplace_back(std::string(kExampleDotCom));
+        request_info.proxy = {
+            .mode = HostsConnectivityDiagnostics::ProxyMode::kCustom,
+            .custom_url = std::string(kProxy)};
+        break;
+      }
+      default: {
+        // All other errors: inject transport error with direct proxy.
+        auto error = tc.transport_error;
+        diagnostics_->SetHttpRequestFactoryForTest(base::BindRepeating(
+            [](TE err, std::shared_ptr<brillo::http::Transport>)
+                -> std::unique_ptr<HttpRequest> {
+              auto req = std::make_unique<MockHttpRequest>();
+              req->SetAutoError(err);
+              return req;
+            },
+            error));
+        request_info.raw_hostnames.emplace_back(std::string(kExampleDotCom));
+        break;
+      }
+    }
+
+    base::test::TestFuture<const TestConnectivityResponse&> future;
+    request_info.callback = future.GetCallback();
+    SetNetworkContext(request_info);
+    diagnostics_->TestHostsConnectivity(std::move(request_info));
+
+    const auto& response = future.Get();
+    ASSERT_EQ(response.connectivity_results_size(), 1);
+    const auto& result = response.connectivity_results(0);
+
+    EXPECT_EQ(result.result_code(), tc.expected_result_code);
+    EXPECT_EQ(!result.hostname().empty(), tc.hostname_set);
+    EXPECT_EQ(!result.proxy().empty(), tc.proxy_set);
+    EXPECT_EQ(!result.error_message().empty(), tc.error_message_set);
+    EXPECT_EQ(!result.resolution_message().empty(), tc.resolution_message_set);
+    EXPECT_EQ(result.has_timestamp_start(), tc.has_timestamps);
+    EXPECT_EQ(result.has_timestamp_end(), tc.has_timestamps);
+  }
+}
+
 }  // namespace
 }  // namespace shill
