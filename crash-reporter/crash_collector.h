@@ -241,6 +241,9 @@ class CrashCollector {
   // Value must not contain "\n" characters.
   void AddCrashMetaData(const std::string& key, const std::string& value);
 
+  // Wrapper for usages in unit test.
+  std::string GetKernelVersionForTesting() const { return GetKernelVersion(); }
+
  protected:
   friend class CrashCollectorTest;
   FRIEND_TEST(ArcContextTest, GetAndroidVersion);
@@ -594,6 +597,11 @@ class CrashCollector {
 
   // Returns the uname string formatted as
   // 3.8.11 #1 SMP Wed Aug 22 02:18:30 PDT 2018
+  std::string GetKernelVersionFromUname() const;
+
+  // Gets the kernel version for a crash report. If `use_saved_lsb_` is true,
+  // prefer the kernel version saved in the `crash_reporter_state_path_`. Use
+  // `GetKernelVersionFromUname()` as a fallback or `use_saved_lsb_` is false.
   std::string GetKernelVersion() const;
 
   // Returns the enrollment status written to the metadata file.

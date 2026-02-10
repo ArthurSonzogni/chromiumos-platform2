@@ -21,6 +21,7 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector_names.h"
+#include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
 
 using base::FilePath;
@@ -186,6 +187,14 @@ bool UncleanShutdownCollector::SaveVersionData() {
     LOG(ERROR) << "Failed to copy " << os_release_path_.value() << " to "
                << saved_os_release.value();
     return false;
+  }
+
+  FilePath saved_kernel_version_path =
+      crash_directory.Append(paths::kKernelVersion);
+  std::string kernel_version = GetKernelVersionFromUname();
+  if (!base::WriteFile(saved_kernel_version_path, kernel_version)) {
+    LOG(ERROR) << "Failed to write current kernel version to "
+               << saved_kernel_version_path.value();
   }
 
   // TODO(bmgordon): When crash_sender reads from os-release.d, copy it also.

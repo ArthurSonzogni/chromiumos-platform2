@@ -138,6 +138,9 @@ inline constexpr char kDeviceCoredumpUploadAllowed[] =
 // Base name of file that contains ChromeOS version info.
 inline constexpr char kLsbRelease[] = "lsb-release";
 
+// Base name of file that contains the kernel version.
+inline constexpr char kKernelVersion[] = "kernel-version";
+
 // Basename of file in the state directory that has the client ID.
 inline constexpr char kClientId[] = "client_id";
 

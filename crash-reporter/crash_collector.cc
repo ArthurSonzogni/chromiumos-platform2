@@ -1784,7 +1784,7 @@ std::string CrashCollector::GetKernelName() const {
   return buf.sysname;
 }
 
-std::string CrashCollector::GetKernelVersion() const {
+std::string CrashCollector::GetKernelVersionFromUname() const {
   struct utsname buf;
   if (!test_kernel_version_.empty()) {
     return test_kernel_version_;
@@ -1796,6 +1796,38 @@ std::string CrashCollector::GetKernelVersion() const {
 
   // 3.8.11 #1 SMP Wed Aug 22 02:18:30 PDT 2018
   return StringPrintf("%s %s", buf.release, buf.version);
+}
+
+namespace {
+
+// Reads the saved kernel version from file at `path`. Returns an empty string
+// if the read failed or the file does not contain a valid kernel version.
+std::string ReadSavedKernelVersionFromFile(const base::FilePath& path) {
+  std::string version;
+  if (!base::ReadFileToString(path, &version)) {
+    LOG(WARNING) << "Failed to read saved kernel version at " << path;
+    return "";
+  }
+  if (version.find('\n') != std::string::npos) {
+    LOG(ERROR) << "Kernel version should not contain a newline char";
+    return "";
+  }
+  return version;
+}
+
+}  // namespace
+
+std::string CrashCollector::GetKernelVersion() const {
+  if (use_saved_lsb_) {
+    std::string version = ReadSavedKernelVersionFromFile(
+        crash_reporter_state_path_.Append(paths::kKernelVersion));
+    if (version != "") {
+      return version;
+    }
+    // Otherwise, fallback to uname.
+  }
+
+  return GetKernelVersionFromUname();
 }
 
 bool CrashCollector::LoadDevicePolicy() {

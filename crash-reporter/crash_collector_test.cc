@@ -1670,6 +1670,50 @@ TEST_F(CrashCollectorTest, ParseProcessTicksFromStat) {
   EXPECT_EQ(2092891, ticks);
 }
 
+TEST_F(CrashCollectorTest, GetKernelVersionNoSavedLsb) {
+  const char kKernelVersion[] = "5.10.123 #1 SMP Tue Jan 1 00:00:00 UTC 2026";
+  collector_.set_test_kernel_info("Linux", kKernelVersion);
+  collector_.SetUseSavedLsb(false);
+  EXPECT_EQ(collector_.GetKernelVersionForTesting(), kKernelVersion);
+}
+
+TEST_F(CrashCollectorTest, GetKernelVersionSavedLsbFileMissing) {
+  const char kKernelVersion[] = "5.10.123 #1 SMP Tue Jan 1 00:00:00 UTC 2026";
+  collector_.set_test_kernel_info("Linux", kKernelVersion);
+  collector_.SetUseSavedLsb(true);
+  collector_.set_reporter_state_directory_for_test(test_dir_);
+  // File not created, should fallback to uname (test info).
+  EXPECT_EQ(collector_.GetKernelVersionForTesting(), kKernelVersion);
+}
+
+TEST_F(CrashCollectorTest, GetKernelVersionSavedLsbFileExists) {
+  const char kUnameKernelVersion[] =
+      "5.10.123 #1 SMP Tue Jan 1 00:00:00 UTC 2026";
+  const char kSavedKernelVersion[] =
+      "5.10.100 #1 SMP Mon Jan 1 00:00:00 UTC 2026";
+  collector_.set_test_kernel_info("Linux", kUnameKernelVersion);
+  collector_.SetUseSavedLsb(true);
+  collector_.set_reporter_state_directory_for_test(test_dir_);
+  ASSERT_TRUE(test_util::CreateFile(test_dir_.Append(paths::kKernelVersion),
+                                    kSavedKernelVersion));
+  EXPECT_EQ(collector_.GetKernelVersionForTesting(), kSavedKernelVersion);
+}
+
+TEST_F(CrashCollectorTest, GetKernelVersionSavedLsbFileHasNewline) {
+  const char kUnameKernelVersion[] =
+      "5.10.123 #1 SMP Tue Jan 1 00:00:00 UTC 2026";
+  const char kSavedKernelVersionWithNewline[] =
+      "5.10.100 #1 SMP Mon Jan 1 00:00:00 UTC 2026\n";
+  collector_.set_test_kernel_info("Linux", kUnameKernelVersion);
+  collector_.SetUseSavedLsb(true);
+  collector_.set_reporter_state_directory_for_test(test_dir_);
+  ASSERT_TRUE(test_util::CreateFile(test_dir_.Append(paths::kKernelVersion),
+                                    kSavedKernelVersionWithNewline));
+  // File has a newline, should be rejected and fallback to uname (test info).
+  EXPECT_EQ(collector_.GetKernelVersionForTesting(), kUnameKernelVersion);
+  EXPECT_TRUE(FindLog("Kernel version should not contain a newline char"));
+}
+
 TEST_F(CrashCollectorTest, GetUptime) {
   // We want to use the real proc filesystem.
   paths::SetPrefixForTesting(base::FilePath());

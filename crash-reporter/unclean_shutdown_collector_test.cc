@@ -138,10 +138,14 @@ TEST_F(UncleanShutdownCollectorTest, SaveVersionData) {
       "VERSION_ID=59\n";
   ASSERT_TRUE(test_util::CreateFile(os_release, kOsContents));
 
+  const char kTestKernelName[] = "kernel name in test";
+  const char kTestKernelVersion[] = "kernel version in test";
+
   collector_.set_lsb_release_for_test(lsb_release);
   collector_.set_os_release_for_test(os_release);
   collector_.set_crash_directory_for_test(test_crash_spool_);
   collector_.set_reporter_state_directory_for_test(test_crash_lib_dir_);
+  collector_.set_test_kernel_info(kTestKernelName, kTestKernelVersion);
   ASSERT_TRUE(collector_.SaveVersionData());
 
   std::string contents;
@@ -150,6 +154,10 @@ TEST_F(UncleanShutdownCollectorTest, SaveVersionData) {
 
   base::ReadFileToString(test_crash_lib_dir_.Append("os-release"), &contents);
   ASSERT_EQ(contents, kOsContents);
+
+  ASSERT_TRUE(base::ReadFileToString(
+      test_crash_lib_dir_.Append("kernel-version"), &contents));
+  ASSERT_EQ(contents, kTestKernelVersion);
 
   ASSERT_FALSE(base::PathExists(test_crash_spool_.Append("lsb-release")));
   ASSERT_FALSE(base::PathExists(test_crash_spool_.Append("os-release")));
