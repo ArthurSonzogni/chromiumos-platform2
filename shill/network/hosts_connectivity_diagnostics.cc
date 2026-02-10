@@ -16,6 +16,7 @@
 #include <dbus/bus.h>
 
 #include "shill/logging.h"
+#include "shill/network/hosts_connectivity_diagnostics_util.h"
 
 namespace shill {
 
@@ -165,8 +166,16 @@ void HostsConnectivityDiagnostics::ValidateAndAssignProxy(Request req) {
 
   if (req.info.proxy.mode == ProxyMode::kCustom) {
     CHECK(req.info.proxy.custom_url.has_value());
-    // TODO(crbug.com/463098734): Validate custom proxy URL (scheme, host,
-    // port range, no path/query/fragment).
+    if (!IsValidProxyUrl(req.info.proxy.custom_url.value())) {
+      *req.response.add_connectivity_results() = CreateConnectivityResultEntry(
+          /*hostname=*/std::nullopt, req.info.proxy.custom_url,
+          hosts_connectivity_diagnostics::NO_VALID_PROXY, kInvalidProxy,
+          /*resolution_message=*/std::nullopt,
+          /*utc_timestamp_start=*/std::nullopt,
+          /*utc_timestamp_end=*/std::nullopt);
+      CompleteRequest(std::move(req));
+      return;
+    }
   }
 
   const std::string proxy_url = req.info.proxy.mode == ProxyMode::kDirect

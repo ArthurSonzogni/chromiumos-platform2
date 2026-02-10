@@ -34,6 +34,9 @@ inline constexpr std::string_view kInvalidHostname =
     "hostname.domain) with http:// or https:// prefix (other prefixes are not "
     "allowed). IP addresses and localhost are not allowed for security "
     "reasons.";
+inline constexpr std::string_view kInvalidProxy =
+    "Provided proxy is invalid. It must be a valid URL with http://, https://, "
+    "socks4://, or socks5:// scheme followed by a host (and optional port).";
 
 // Tests network connectivity to a list of hostnames with configurable proxy
 // and timeout options. Results are returned as a protobuf message.
@@ -135,7 +138,8 @@ class HostsConnectivityDiagnostics {
 
   // Validates the proxy option and assigns proxy URLs to each spec.
   // For kDirect: assigns "direct://" to all specs.
-  // For kCustom: assigns the custom URL to all specs (validation TODO).
+  // For kCustom: validates the URL and assigns it to all specs.
+  //              Returns NO_VALID_PROXY error if URL is invalid.
   // For kSystem: TODO — currently falls through to direct.
   void ValidateAndAssignProxy(Request req);
 
