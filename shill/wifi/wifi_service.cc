@@ -50,9 +50,6 @@ static auto kModuleLogScope = ScopeLogger::kService;
 }  // namespace Logging
 
 namespace {
-// Deprecated to migrate from ROT47 to plaintext.
-// TODO(crbug.com/1084279) Remove after migration is complete.
-const char kStorageDeprecatedPassphrase[] = "Passphrase";
 
 constexpr auto kMinDisconnectOffset = base::Hours(4);
 
@@ -680,24 +677,6 @@ bool WiFiService::Load(const StoreInterface* storage) {
   }
 
   return true;
-}
-
-void WiFiService::MigrateDeprecatedStorage(StoreInterface* storage) {
-  Service::MigrateDeprecatedStorage(storage);
-
-  const std::string id = GetStorageIdentifier();
-  CHECK(storage->ContainsGroup(id));
-
-  // Deprecated keys that have not been loaded from storage since at least M84.
-  // TODO(crbug.com/1120161): Remove code after M89.
-  storage->DeleteKey(id, "WiFi.Security");
-  storage->DeleteKey(id, "WiFi.FTEnabled");
-
-  // Save the plaintext passphrase in M86+. TODO: Remove code after M89.
-  storage->SetString(id, kStorageCredentialPassphrase, passphrase_);
-
-  // TODO(b/309756186): Remove this in the next stepping milestone after M121.
-  storage->DeleteKey(id, kStorageDeprecatedPassphrase);
 }
 
 bool WiFiService::Save(StoreInterface* storage) {

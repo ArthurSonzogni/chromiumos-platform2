@@ -57,10 +57,6 @@ static auto kModuleLogScope = ScopeLogger::kWiFi;
 
 namespace {
 
-// We used to store a few properties under this group entry, but they've been
-// deprecated. Remove after M-88.
-const char kWiFiProviderStorageId[] = "provider_of_wifi";
-
 // Note that WiFiProvider generates some manager-level errors, because it
 // implements the WiFi portion of the Manager.GetService flimflam API. The
 // API is implemented here, rather than in manager, to keep WiFi-specific
@@ -605,14 +601,7 @@ bool WiFiProvider::OnServiceUnloaded(
   return true;
 }
 
-void WiFiProvider::UpdateStorage(Profile* profile) {
-  CHECK(profile);
-  StoreInterface* storage = profile->GetStorage();
-  // We stored this only to the default profile, but no reason not to delete it
-  // from any profile it exists in.
-  // Remove after M-88.
-  storage->DeleteGroup(kWiFiProviderStorageId);
-}
+void WiFiProvider::UpdateStorage(Profile* profile) {}
 
 void WiFiProvider::SortServices() {
   std::sort(services_.begin(), services_.end(),

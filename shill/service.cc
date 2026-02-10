@@ -74,8 +74,6 @@ constexpr char kServiceSortSerialNumber[] = "SerialNumber";
 constexpr char kServiceSortTechnology[] = "Technology";
 constexpr char kServiceSortTechnologySpecific[] = "TechnologySpecific";
 
-constexpr char kStorageDeprecatedLinkMonitorDisabled[] = "LinkMonitorDisabled";
-
 // This is property is only supposed to be used in tast tests to order Ethernet
 // services. Can be removed once we support multiple Ethernet profiles properly
 // (b/159725895).
@@ -853,9 +851,6 @@ bool Service::Load(const StoreInterface* storage) {
 void Service::MigrateDeprecatedStorage(StoreInterface* storage) {
   const auto id = GetStorageIdentifier();
   CHECK(storage->ContainsGroup(id));
-
-  // TODO(b/357355410): Remove this in the next stepping milestone after M131.
-  storage->DeleteKey(id, kStorageDeprecatedLinkMonitorDisabled);
 
   // TODO(b/309607419): Remove code deleting traffic counter storage keys made
   // obsolete by crrev/c/5014643 and crrev/c/4535677.

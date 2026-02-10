@@ -149,7 +149,6 @@ class WiFiService : public Service {
   // Override Storage methods from parent Service class.  We will call
   // the parent method.
   bool Load(const StoreInterface* storage) override;
-  void MigrateDeprecatedStorage(StoreInterface* storage) override;
   bool Save(StoreInterface* storage) override;
   bool Unload() override;
 
