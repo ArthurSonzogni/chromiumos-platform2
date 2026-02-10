@@ -125,10 +125,14 @@ SafeFD::SafeFDResult OpenSafelyInternal(int parent_fd,
   return OpenPathComponentInternal(parent_fd, *itr, flags, mode);
 }
 
-SafeFD::Error CheckAttributes(int fd,
-                              mode_t permissions,
-                              uid_t uid,
-                              gid_t gid) {
+enum class CheckType {
+  // Failures are unexpected and should be logged as errors.
+  kFailureIsError,
+  // Failures are normal behavior and should not be logged.
+  kFailureIsInformational,
+};
+SafeFD::Error CheckAttributes(
+    int fd, mode_t permissions, uid_t uid, gid_t gid, CheckType check_type) {
   struct stat fd_attributes;
   if (fstat(fd, &fd_attributes) != 0) {
     PLOG(ERROR) << "fstat failed";
@@ -136,24 +140,24 @@ SafeFD::Error CheckAttributes(int fd,
   }
 
   if (fd_attributes.st_uid != uid) {
-    LOG(ERROR) << "Owner uid is " << fd_attributes.st_uid << " instead of "
-               << uid;
+    LOG_IF(ERROR, check_type == CheckType::kFailureIsError)
+        << "Owner uid is " << fd_attributes.st_uid << " instead of " << uid;
     return SafeFD::Error::kWrongUID;
   }
 
   if (fd_attributes.st_gid != gid) {
-    LOG(ERROR) << "Owner gid is " << fd_attributes.st_gid << " instead of "
-               << gid;
+    LOG_IF(ERROR, check_type == CheckType::kFailureIsError)
+        << "Owner gid is " << fd_attributes.st_gid << " instead of " << gid;
     return SafeFD::Error::kWrongGID;
   }
 
   if ((0777 & (fd_attributes.st_mode ^ permissions)) != 0) {
     mode_t mask = umask(0);
     umask(mask);
-    LOG(ERROR) << "Permissions are " << std::oct
-               << (0777 & fd_attributes.st_mode) << " instead of "
-               << (0777 & permissions) << ". Umask is " << std::oct << mask
-               << std::dec;
+    LOG_IF(ERROR, check_type == CheckType::kFailureIsError)
+        << "Permissions are " << std::oct << (0777 & fd_attributes.st_mode)
+        << " instead of " << (0777 & permissions) << ". Umask is " << std::oct
+        << mask << std::dec;
     return SafeFD::Error::kWrongPermissions;
   }
 
@@ -459,8 +463,8 @@ SafeFD::SafeFDResult SafeFD::MakeFile(const base::FilePath& path,
   SafeFDResult file = OpenPathComponentInternal(
       parent_dir_fd, path.BaseName().value(), flags, permissions /*mode*/);
   if (file.first.is_valid()) {
-    SafeFD::Error err =
-        CheckAttributes(file.first.get(), permissions, uid, gid);
+    SafeFD::Error err = CheckAttributes(file.first.get(), permissions, uid, gid,
+                                        CheckType::kFailureIsError);
     if (IsError(err)) {
       return MakeErrorResult(err);
     }
@@ -478,7 +482,8 @@ SafeFD::SafeFDResult SafeFD::MakeFile(const base::FilePath& path,
   }
 
   // We may not have permission to chown, so check the ownership first.
-  SafeFD::Error err = CheckAttributes(file.first.get(), permissions, uid, gid);
+  SafeFD::Error err = CheckAttributes(file.first.get(), permissions, uid, gid,
+                                      CheckType::kFailureIsInformational);
   if (!IsError(err)) {
     return file;
   }
@@ -539,7 +544,8 @@ SafeFD::SafeFDResult SafeFD::MakeDir(const base::FilePath& path,
 
   if (made_dir) {
     // We may not have permission to chown, so check the ownership first.
-    SafeFD::Error err = CheckAttributes(dir.get(), permissions, uid, gid);
+    SafeFD::Error err = CheckAttributes(dir.get(), permissions, uid, gid,
+                                        CheckType::kFailureIsInformational);
     if (!IsError(err)) {
       return MakeSuccessResult(std::move(dir));
     }
@@ -552,7 +558,8 @@ SafeFD::SafeFDResult SafeFD::MakeDir(const base::FilePath& path,
     }
   }
   // If the directory already existed, validate the permissions.
-  SafeFD::Error err = CheckAttributes(dir.get(), permissions, uid, gid);
+  SafeFD::Error err = CheckAttributes(dir.get(), permissions, uid, gid,
+                                      CheckType::kFailureIsError);
   if (IsError(err)) {
     return MakeErrorResult(err);
   }
