@@ -7467,6 +7467,7 @@ mno {
     localized_name {
       name: "SoftBank"
     }
+    mccmnc: "44000"
     mccmnc: "44020"
     mccmnc: "44021"
     mobile_apn {
@@ -7639,23 +7640,6 @@ mno {
         type: DEFAULT
         type: IA
       }
-    }
-  }
-}
-
-mno {
-  data {
-    uuid: "b32527a5-45e2-4c4d-8fb5-8b0a9162e9e4"
-    country: "jp"
-    localized_name {
-      name: "44000"
-    }
-    mccmnc: "44000"
-    mobile_apn {
-      apn: "emb.ne.jp"
-      username: "em"
-      password: "em"
-      type: DEFAULT
     }
   }
 }
