@@ -67,7 +67,7 @@ sudo mount -t tmpfs tmpfs target/run
 cp -r "${SCRIPT_DIR}/data" "target/tmp/"
 
 cp "${SCRIPT_DIR}/setup_in_guest.sh" target/tmp/
-sudo sed -i 's/CROS_PACKAGES_URL/https:\/\/storage.googleapis.com\/cros-packages-staging\/146\//g' target/tmp/setup_in_guest.sh
+sudo sed -i 's/CROS_PACKAGES_URL/https:\/\/storage.googleapis.com\/cros-packages-staging\/147\//g' target/tmp/setup_in_guest.sh
 sudo sed -i 's/CROS_RELEASE/trixie/g' target/tmp/setup_in_guest.sh
 
 sudo chroot target /tmp/setup_in_guest.sh "${create_chronos}"
