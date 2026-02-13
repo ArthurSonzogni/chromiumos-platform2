@@ -1203,6 +1203,13 @@ TEST(AnomalyDetectorTest, ServiceFailureCamera) {
   ParserTest("TEST_SERVICE_FAILURE", {service_failure}, &parser);
 }
 
+TEST(AnomalyDetectorTest, ServiceFailureCupsd) {
+  ParserRun service_failure = {
+      .find_this = "crash-crash", .replace_with = "cupsd", .expected_size = 1};
+  ServiceParser parser(true);
+  ParserTest("TEST_SERVICE_FAILURE", {service_failure}, &parser);
+}
+
 TEST(AnomalyDetectorTest, SELinuxViolation) {
   ParserRun selinux_violation = {
       .expected_substr =

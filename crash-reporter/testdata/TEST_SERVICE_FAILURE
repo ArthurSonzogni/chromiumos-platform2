@@ -9,3 +9,4 @@ crash-crash respawning too fast, stopped
 pre-shutdown goal changed from stop to start
 oobe_config_save main process (17113) started
 arc-boot-continue stopped
+cupsd post-start process (11235) terminated with status 62

@@ -103,6 +103,13 @@ MaybeCrashReport ServiceParser::ParseLogEntry(const std::string& line) {
     return std::nullopt;
   }
 
+  if (service_name == "cupsd" && exit_status == "62") {
+    // cups_launcher uses exit status 62 to indicate transient failures and
+    // to request that the service be re-started. This is 'nominal' and should
+    // not be reported.
+    return std::nullopt;
+  }
+
   // We only want to report a limited number of service failures due to noise.
   if (!testonly_send_all_ &&
       base::RandGenerator(util::GetServiceFailureWeight()) != 0) {
