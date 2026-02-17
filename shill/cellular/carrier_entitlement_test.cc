@@ -9,10 +9,10 @@
 #include <vector>
 
 #include <base/files/scoped_temp_dir.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/test/mock_callback.h>
 #include <base/test/task_environment.h>
 #include <brillo/http/http_request.h>
+#include <brillo/http/http_transport_error.h>
 #include <brillo/http/mock_connection.h>
 #include <brillo/http/mock_transport.h>
 #include <brillo/streams/mock_stream.h>
@@ -21,7 +21,6 @@
 #include <chromeos/net-base/ipv6_address.h>
 #include <chromeos/net-base/mac_address.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
-#include <curl/curl.h>
 #include <gmock/gmock-cardinalities.h>
 #include <gmock/gmock-more-matchers.h>
 #include <gmock/gmock.h>
@@ -189,8 +188,9 @@ class CarrierEntitlementTest : public testing::Test {
 
   void FinishRequestAsyncFail(brillo::http::ErrorCallback error_callback) {
     brillo::ErrorPtr error;
-    brillo::Error::AddTo(&error, FROM_HERE, "curl_easy_error",
-                         base::NumberToString(CURLE_COULDNT_CONNECT), "");
+    brillo::http::AddTransportError(
+        &error, FROM_HERE, brillo::http::TransportError::kConnectionFailure,
+        "");
     std::move(error_callback)
         .Run(carrier_entitlement_->request_id_, error.get());
   }
