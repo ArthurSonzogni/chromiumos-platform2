@@ -29,10 +29,10 @@ namespace shill {
 class Error;
 class EventDispatcher;
 
-// The HttpRequest class implements facilities for performing a simple "GET"
-// request and returning the contents via a callback. By default, this class
-// will only be allowed to communicate with Google servers when secure (HTTPS)
-// communication is used.
+// The HttpRequest class implements facilities for performing a simple HTTP
+// request (GET or HEAD) and returning the contents via a callback. By default,
+// this class will only be allowed to communicate with Google servers when
+// secure (HTTPS) communication is used.
 class HttpRequest {
  public:
   // Represents possible errors for an HTTP requests.
@@ -59,6 +59,12 @@ class HttpRequest {
   // The client callback returns the HTTP response on success, or an Error
   using Result = base::expected<std::unique_ptr<brillo::http::Response>, Error>;
 
+  // The HTTP method to use for the request.
+  enum class Method {
+    kGet,
+    kHead,
+  };
+
   // |allow_non_google_https| determines whether or not secure (HTTPS)
   // communication with a non-Google server is allowed. Note that this
   // will not change any behavior for HTTP communication.
@@ -76,10 +82,11 @@ class HttpRequest {
 
   virtual ~HttpRequest();
 
-  // Start an http GET request to the URL |url|. |callback| is called
-  // asynchronously with the response data or the error if the request has
-  // failed.
-  virtual void Start(std::string_view logging_tag,
+  // Starts an HTTP request with the given `method` to `url`. `callback` is
+  // called asynchronously with the response data or the error if the request
+  // has failed.
+  virtual void Start(Method method,
+                     std::string_view logging_tag,
                      const net_base::HttpUrl& url,
                      const brillo::http::HeaderList& headers,
                      base::OnceCallback<void(Result result)> callback);
@@ -120,6 +127,7 @@ class HttpRequest {
   net_base::DNSClient::Options dns_options_;
   brillo::http::RequestID request_id_;
   bool is_running_;
+  Method method_;
   // All DNS queries currently in-flight, keyed by the DNS server address.
   std::map<net_base::IPAddress, std::unique_ptr<net_base::DNSClient>>
       dns_queries_;
@@ -134,6 +142,8 @@ class HttpRequest {
 std::ostream& operator<<(std::ostream& stream, HttpRequest::Error error);
 std::ostream& operator<<(std::ostream& stream,
                          std::optional<HttpRequest::Error> error);
+// Outputs the string representation of `method` (e.g. "GET", "HEAD").
+std::ostream& operator<<(std::ostream& stream, HttpRequest::Method method);
 
 }  // namespace shill
 

@@ -4,7 +4,6 @@
 
 #include "shill/network/http_request.h"
 
-#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -61,7 +60,8 @@ HttpRequest::HttpRequest(
       transport_(transport),
       dns_client_factory_(std::move(dns_client_factory)),
       request_id_(-1),
-      is_running_(false) {
+      is_running_(false),
+      method_(Method::kGet) {
   dns_options_.interface = interface_name;
   // TODO(b/307880493): Tune these parameters based on the technology once
   // metrics are available.
@@ -82,11 +82,13 @@ HttpRequest::~HttpRequest() {
   Stop();
 }
 
-void HttpRequest::Start(std::string_view logging_tag,
+void HttpRequest::Start(Method method,
+                        std::string_view logging_tag,
                         const net_base::HttpUrl& url,
                         const brillo::http::HeaderList& headers,
                         base::OnceCallback<void(Result result)> callback) {
   DCHECK(!is_running_);
+  method_ = method;
   logging_tag_ = logging_tag;
   url_ = url;
   headers_ = headers;
@@ -125,10 +127,24 @@ void HttpRequest::StartRequest() {
   std::string url_string = url_.ToString();
   SLOG(this, 2) << logging_tag_ << " " << __func__ << ": Starting request to "
                 << url_string;
-  request_id_ = brillo::http::Get(
-      url_string, headers_, transport_,
-      base::BindOnce(&HttpRequest::OnSuccess, weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&HttpRequest::OnError, weak_ptr_factory_.GetWeakPtr()));
+  switch (method_) {
+    case Method::kGet:
+      request_id_ =
+          brillo::http::Get(url_string, headers_, transport_,
+                            base::BindOnce(&HttpRequest::OnSuccess,
+                                           weak_ptr_factory_.GetWeakPtr()),
+                            base::BindOnce(&HttpRequest::OnError,
+                                           weak_ptr_factory_.GetWeakPtr()));
+      break;
+    case Method::kHead:
+      request_id_ =
+          brillo::http::Head(url_string, transport_,
+                             base::BindOnce(&HttpRequest::OnSuccess,
+                                            weak_ptr_factory_.GetWeakPtr()),
+                             base::BindOnce(&HttpRequest::OnError,
+                                            weak_ptr_factory_.GetWeakPtr()));
+      break;
+  }
 }
 
 void HttpRequest::OnSuccess(brillo::http::RequestID request_id,
@@ -286,6 +302,15 @@ std::ostream& operator<<(std::ostream& stream, HttpRequest::Error error) {
 std::ostream& operator<<(std::ostream& stream,
                          std::optional<HttpRequest::Error> error) {
   return stream << (error ? ErrorName(*error) : "Success");
+}
+
+std::ostream& operator<<(std::ostream& stream, HttpRequest::Method method) {
+  switch (method) {
+    case HttpRequest::Method::kGet:
+      return stream << "GET";
+    case HttpRequest::Method::kHead:
+      return stream << "HEAD";
+  }
 }
 
 }  // namespace shill

@@ -77,11 +77,12 @@ class MockHttpRequest : public HttpRequest {
   MockHttpRequest& operator=(const MockHttpRequest&) = delete;
   ~MockHttpRequest() override = default;
 
-  void Start(std::string_view logging_tag,
+  void Start(Method method,
+             std::string_view logging_tag,
              const net_base::HttpUrl& url,
              const brillo::http::HeaderList& headers,
              base::OnceCallback<void(Result result)> callback) override {
-    // We only verify the URL in the test.
+    EXPECT_EQ(Method::kGet, method);
     StartWithUrl(url);
     StartWithHeaders(headers);
   }

@@ -168,7 +168,8 @@ void PortalDetector::StartHttpProbe(
       {brillo::http::request_header::kUserAgent, GetUserAgentString()}};
   LOG(INFO) << LoggingTag() << " " << __func__ << ": " << *result_;
   http_request_->Start(
-      LoggingTag() + " HTTP probe", *result_->http_probe_url, userAgentHeader,
+      HttpRequest::Method::kGet, LoggingTag() + " HTTP probe",
+      *result_->http_probe_url, userAgentHeader,
       base::BindOnce(&PortalDetector::ProcessHTTPProbeResult,
                      weak_ptr_factory_.GetWeakPtr(), start_time));
 }
@@ -189,7 +190,8 @@ void PortalDetector::StartHttpsProbe(
       {brillo::http::request_header::kUserAgent, GetUserAgentString()}};
   LOG(INFO) << LoggingTag() << " " << __func__ << ": " << *result_;
   https_request_->Start(
-      LoggingTag() + " HTTPS probe", *result_->https_probe_url, userAgentHeader,
+      HttpRequest::Method::kGet, LoggingTag() + " HTTPS probe",
+      *result_->https_probe_url, userAgentHeader,
       base::BindOnce(&PortalDetector::ProcessHTTPSProbeResult,
                      weak_ptr_factory_.GetWeakPtr(), start_time));
 }

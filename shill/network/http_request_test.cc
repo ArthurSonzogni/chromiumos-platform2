@@ -249,15 +249,13 @@ class HttpRequestTest : public Test {
                            const std::vector<net_base::IPAddress>& addresses) {
     request_->GetDNSResult(dns, base::Milliseconds(100), addresses);
   }
-  void StartRequest(std::string_view url_string) {
+  void StartRequest(HttpRequest::Method method, std::string_view url_string) {
     auto url = net_base::HttpUrl::CreateFromString(url_string);
     ASSERT_TRUE(url.has_value());
-    request_->Start(kLoggingTag, *url, {}, target_.callback());
+    request_->Start(method, kLoggingTag, *url, {}, target_.callback());
   }
-  void ExpectCreateConnection(std::string_view url) {
-    EXPECT_CALL(*transport_,
-                CreateConnection(Eq(url), brillo::http::request_type::kGet, _,
-                                 "", "", _))
+  void ExpectCreateConnection(std::string_view url, const char* method) {
+    EXPECT_CALL(*transport_, CreateConnection(Eq(url), method, _, "", "", _))
         .WillOnce(Return(brillo_connection_));
   }
   void FinishRequestAsyncSuccess(
@@ -341,10 +339,10 @@ TEST_F(HttpRequestTest, IPv4NumericRequestSuccess) {
   const std::string resp = "Sample response.";
   ExpectRequestSuccessCallback(resp);
   EXPECT_CALL(*transport(), ResolveHostToIp).Times(0);
-  ExpectCreateConnection(kIPv4AddressURL);
+  ExpectCreateConnection(kIPv4AddressURL, brillo::http::request_type::kGet);
   ExpectFinishRequestAsyncSuccess(resp);
 
-  StartRequest(kIPv4AddressURL);
+  StartRequest(HttpRequest::Method::kGet, kIPv4AddressURL);
   ExpectStopped();
 }
 
@@ -353,10 +351,10 @@ TEST_F(HttpRequestTest, IPv4NumericRequestFail) {
                 {kIPv4DNS0, kIPv4DNS1});
 
   ExpectRequestErrorCallback(HttpRequest::Error::kConnectionFailure);
-  ExpectCreateConnection(kIPv4AddressURL);
+  ExpectCreateConnection(kIPv4AddressURL, brillo::http::request_type::kGet);
   ExpectFinishRequestAsyncFail();
 
-  StartRequest(kIPv4AddressURL);
+  StartRequest(HttpRequest::Method::kGet, kIPv4AddressURL);
   ExpectStopped();
 }
 
@@ -369,10 +367,10 @@ TEST_F(HttpRequestTest, DISABLED_IPv6NumericRequestSuccess) {
   const std::string resp = "Sample response.";
   ExpectRequestSuccessCallback(resp);
   EXPECT_CALL(*transport(), ResolveHostToIp).Times(0);
-  ExpectCreateConnection(kIPv6AddressURL);
+  ExpectCreateConnection(kIPv6AddressURL, brillo::http::request_type::kGet);
   ExpectFinishRequestAsyncSuccess(resp);
 
-  StartRequest(kIPv6AddressURL);
+  StartRequest(HttpRequest::Method::kGet, kIPv6AddressURL);
   ExpectStopped();
 }
 
@@ -383,10 +381,10 @@ TEST_F(HttpRequestTest, DISABLED_IPv6NumericRequestFail) {
                 {kIPv6DNS0, kIPv6DNS1});
 
   ExpectRequestErrorCallback(HttpRequest::Error::kConnectionFailure);
-  ExpectCreateConnection(kIPv6AddressURL);
+  ExpectCreateConnection(kIPv6AddressURL, brillo::http::request_type::kGet);
   ExpectFinishRequestAsyncFail();
 
-  StartRequest(kIPv6AddressURL);
+  StartRequest(HttpRequest::Method::kGet, kIPv6AddressURL);
   ExpectStopped();
 }
 
@@ -394,7 +392,7 @@ TEST_F(HttpRequestTest, IPv4TextRequestSuccess) {
   CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
                 {kIPv4DNS0, kIPv4DNS1});
 
-  StartRequest(kTextURL);
+  StartRequest(HttpRequest::Method::kGet, kTextURL);
   VerifyDNSRequests(kTextSiteName, {kIPv4DNS0, kIPv4DNS1});
 
   const std::string resp = "Sample response.";
@@ -402,7 +400,7 @@ TEST_F(HttpRequestTest, IPv4TextRequestSuccess) {
   auto url = *net_base::HttpUrl::CreateFromString(kTextURL);
   EXPECT_CALL(*transport(), ResolveHostToIp(url.host(), url.port(),
                                             "10.1.1.1,10.1.1.2,10.1.1.3"));
-  ExpectCreateConnection(kTextURL);
+  ExpectCreateConnection(kTextURL, brillo::http::request_type::kGet);
   ExpectFinishRequestAsyncSuccess(resp);
 
   GetDNSResultSuccess(
@@ -419,7 +417,7 @@ TEST_F(HttpRequestTest, IPv6TextRequestSuccess) {
   CreateRequest(kInterfaceName, net_base::IPFamily::kIPv6,
                 {kIPv6DNS0, kIPv6DNS1});
 
-  StartRequest(kTextURL);
+  StartRequest(HttpRequest::Method::kGet, kTextURL);
   VerifyDNSRequests(kTextSiteName, {kIPv6DNS0, kIPv6DNS1});
 
   const std::string resp = "Sample response.";
@@ -427,7 +425,7 @@ TEST_F(HttpRequestTest, IPv6TextRequestSuccess) {
   auto url = *net_base::HttpUrl::CreateFromString(kTextURL);
   EXPECT_CALL(*transport(),
               ResolveHostToIp(url.host(), url.port(), "2001:db8::1"));
-  ExpectCreateConnection(kTextURL);
+  ExpectCreateConnection(kTextURL, brillo::http::request_type::kGet);
   ExpectFinishRequestAsyncSuccess(resp);
 
   const auto addr = *net_base::IPAddress::CreateFromString("2001:db8::1");
@@ -441,7 +439,7 @@ TEST_F(HttpRequestTest, IPv6TextRequestSuccess) {
 TEST_F(HttpRequestTest, IPv4FailDNSFailure) {
   CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
                 {kIPv4DNS0, kIPv4DNS1});
-  StartRequest(kTextURL);
+  StartRequest(HttpRequest::Method::kGet, kTextURL);
   VerifyDNSRequests(kTextSiteName, {kIPv4DNS0, kIPv4DNS1});
   ExpectRequestErrorCallback(HttpRequest::Error::kDNSFailure);
   GetDNSResultFailure(kIPv4DNS0, net_base::DNSClient::Error::kNoData);
@@ -452,7 +450,7 @@ TEST_F(HttpRequestTest, IPv4FailDNSFailure) {
 TEST_F(HttpRequestTest, IPv4FailDNSTimeout) {
   CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
                 {kIPv4DNS0, kIPv4DNS1});
-  StartRequest(kTextURL);
+  StartRequest(HttpRequest::Method::kGet, kTextURL);
   VerifyDNSRequests(kTextSiteName, {kIPv4DNS0, kIPv4DNS1});
   ExpectRequestErrorCallback(HttpRequest::Error::kDNSTimeout);
   GetDNSResultFailure(kIPv4DNS0, net_base::DNSClient::Error::kTimedOut);
@@ -463,7 +461,7 @@ TEST_F(HttpRequestTest, IPv4FailDNSTimeout) {
 TEST_F(HttpRequestTest, IPv6FailDNSFailure) {
   CreateRequest(kInterfaceName, net_base::IPFamily::kIPv6,
                 {kIPv6DNS0, kIPv6DNS1});
-  StartRequest(kTextURL);
+  StartRequest(HttpRequest::Method::kGet, kTextURL);
   VerifyDNSRequests(kTextSiteName, {kIPv6DNS0, kIPv6DNS1});
   ExpectRequestErrorCallback(HttpRequest::Error::kDNSFailure);
   GetDNSResultFailure(kIPv6DNS0, net_base::DNSClient::Error::kNoData);
@@ -474,7 +472,7 @@ TEST_F(HttpRequestTest, IPv6FailDNSFailure) {
 TEST_F(HttpRequestTest, IPv6FailDNSTimeout) {
   CreateRequest(kInterfaceName, net_base::IPFamily::kIPv6,
                 {kIPv6DNS0, kIPv6DNS1});
-  StartRequest(kTextURL);
+  StartRequest(HttpRequest::Method::kGet, kTextURL);
   VerifyDNSRequests(kTextSiteName, {kIPv6DNS0, kIPv6DNS1});
   ExpectRequestErrorCallback(HttpRequest::Error::kDNSTimeout);
   GetDNSResultFailure(kIPv6DNS0, net_base::DNSClient::Error::kTimedOut);
@@ -486,7 +484,7 @@ TEST_F(HttpRequestTest, IPv4TextRequestSuccessAfterSomeDNSError) {
   CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
                 {kIPv6DNS0, kIPv6DNS1});
 
-  StartRequest(kTextURL);
+  StartRequest(HttpRequest::Method::kGet, kTextURL);
   VerifyDNSRequests(kTextSiteName, {kIPv6DNS0, kIPv6DNS1});
 
   EXPECT_CALL(*transport(), ResolveHostToIp).Times(0);
@@ -499,11 +497,62 @@ TEST_F(HttpRequestTest, IPv4TextRequestSuccessAfterSomeDNSError) {
   auto url = *net_base::HttpUrl::CreateFromString(kTextURL);
   EXPECT_CALL(*transport(),
               ResolveHostToIp(url.host(), url.port(), "10.1.1.1"));
-  ExpectCreateConnection(kTextURL);
+  ExpectCreateConnection(kTextURL, brillo::http::request_type::kGet);
   ExpectFinishRequestAsyncSuccess(resp);
 
   GetDNSResultSuccess(
       kIPv4DNS1, {net_base::IPAddress(net_base::IPv4Address(10, 1, 1, 1))});
+
+  ExpectStopped();
+}
+
+TEST_F(HttpRequestTest, IPv4NumericHeadRequestSuccess) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+
+  const std::string resp = "Sample response.";
+  ExpectRequestSuccessCallback(resp);
+  EXPECT_CALL(*transport(), ResolveHostToIp).Times(0);
+  ExpectCreateConnection(kIPv4AddressURL, brillo::http::request_type::kHead);
+  ExpectFinishRequestAsyncSuccess(resp);
+
+  StartRequest(HttpRequest::Method::kHead, kIPv4AddressURL);
+  ExpectStopped();
+}
+
+TEST_F(HttpRequestTest, IPv4NumericHeadRequestFail) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+
+  ExpectRequestErrorCallback(HttpRequest::Error::kConnectionFailure);
+  ExpectCreateConnection(kIPv4AddressURL, brillo::http::request_type::kHead);
+  ExpectFinishRequestAsyncFail();
+
+  StartRequest(HttpRequest::Method::kHead, kIPv4AddressURL);
+  ExpectStopped();
+}
+
+TEST_F(HttpRequestTest, IPv4TextHeadRequestSuccess) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+
+  StartRequest(HttpRequest::Method::kHead, kTextURL);
+  VerifyDNSRequests(kTextSiteName, {kIPv4DNS0, kIPv4DNS1});
+
+  const std::string resp = "Sample response.";
+  ExpectRequestSuccessCallback(resp);
+  auto url = *net_base::HttpUrl::CreateFromString(kTextURL);
+  EXPECT_CALL(*transport(), ResolveHostToIp(url.host(), url.port(),
+                                            "10.1.1.1,10.1.1.2,10.1.1.3"));
+  ExpectCreateConnection(kTextURL, brillo::http::request_type::kHead);
+  ExpectFinishRequestAsyncSuccess(resp);
+
+  GetDNSResultSuccess(
+      kIPv4DNS0, {
+                     net_base::IPAddress(net_base::IPv4Address(10, 1, 1, 1)),
+                     net_base::IPAddress(net_base::IPv4Address(10, 1, 1, 2)),
+                     net_base::IPAddress(net_base::IPv4Address(10, 1, 1, 3)),
+                 });
 
   ExpectStopped();
 }
