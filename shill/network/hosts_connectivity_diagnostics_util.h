@@ -7,16 +7,15 @@
 
 #include <string>
 
-#include <curl/curl.h>
+#include <brillo/http/http_transport_error.h>
 #include <hosts_connectivity_diagnostics/proto_bindings/hosts_connectivity_diagnostics.pb.h>
 
 namespace shill {
 
-// Maps CURLcode to ConnectivityResultCode for connectivity diagnostics.
-// Returns `ResultCode::UNKNOWN_ERROR` if invalid or unknown CURLcode is
-// given.
+// Converts `error` to a ConnectivityResultCode for diagnostics
+// reporting. Returns UNKNOWN_ERROR for kIOError and kUnknown.
 hosts_connectivity_diagnostics::ConnectivityResultCode
-CurlErrorToConnectivityResultCode(CURLcode curl_result);
+TransportErrorToConnectivityResultCode(brillo::http::TransportError error);
 
 // Validates a user-provided proxy URL.
 // Valid formats: scheme://[[user[:pass]@]host[:port]
