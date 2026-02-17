@@ -21,7 +21,6 @@
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport_curl.h>
 #include <brillo/http/http_transport_error.h>
-#include <brillo/strings/string_utils.h>
 
 namespace brillo {
 namespace http {
@@ -507,29 +506,16 @@ void Transport::AddEasyCurlError(brillo::ErrorPtr* error,
                                  const base::Location& location,
                                  CURLcode code,
                                  CurlInterface* curl_interface) {
-  const std::string message = curl_interface->EasyStrError(code);
-  // Inner: implementation-agnostic TransportError.
   http::AddTransportError(error, location, MapCurlToTransportError(code),
-                          message);
-  // Outer: curl-specific, for backward compat during migration.
-  // TODO(msisov): Remove after all consumers migrate to
-  // ClassifyTransportError().
-  brillo::Error::AddTo(error, location, "curl_easy_error",
-                       brillo::string_utils::ToString(code), message);
+                          curl_interface->EasyStrError(code));
 }
 
 void Transport::AddMultiCurlError(brillo::ErrorPtr* error,
                                   const base::Location& location,
                                   CURLMcode code,
                                   CurlInterface* curl_interface) {
-  const std::string message = curl_interface->MultiStrError(code);
-  // Inner: implementation-agnostic TransportError.
   http::AddTransportError(error, location, MapCurlMultiToTransportError(code),
-                          message);
-  // Outer: curl-specific, for backward compat during migration.
-  // TODO(msisov): Remove after all consumers migrate.
-  brillo::Error::AddTo(error, location, "curl_multi_error",
-                       brillo::string_utils::ToString(code), message);
+                          curl_interface->MultiStrError(code));
 }
 
 bool Transport::SetupAsyncCurl(brillo::ErrorPtr* error) {

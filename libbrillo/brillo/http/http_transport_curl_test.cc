@@ -184,8 +184,9 @@ TEST_F(HttpCurlTransportTest, CurlFailure) {
       "http://foo.bar/get", request_type::kGet, {}, "", "", &error);
 
   EXPECT_EQ(nullptr, connection.get());
-  EXPECT_EQ("curl_easy_error", error->GetDomain());
-  EXPECT_EQ(std::to_string(CURLE_OUT_OF_MEMORY), error->GetCode());
+  EXPECT_EQ(brillo::http::kTransportErrorDomain, error->GetDomain());
+  EXPECT_EQ(brillo::http::ClassifyTransportError(error.get()),
+            std::make_optional(brillo::http::TransportError::kInternalError));
   EXPECT_EQ("Out of Memory", error->GetMessage());
 }
 
@@ -205,11 +206,9 @@ TEST_F(HttpCurlTransportTest, CurlFailureProducesTransportError) {
 
   ASSERT_NE(nullptr, error.get());
   EXPECT_EQ(nullptr, connection.get());
-  // Outer error is curl (backward compat).
-  EXPECT_EQ("curl_easy_error", error->GetDomain());
-  // ClassifyTransportError finds inner transport_error entry.
+  EXPECT_EQ(brillo::http::kTransportErrorDomain, error->GetDomain());
   EXPECT_EQ(brillo::http::ClassifyTransportError(error.get()),
-            brillo::http::TransportError::kTLSFailure);
+            std::make_optional(brillo::http::TransportError::kTLSFailure));
 }
 
 struct CurlMappingTestCase {
@@ -236,7 +235,8 @@ TEST_P(CurlToTransportErrorMappingTest, MapsCorrectly) {
                                &error);
 
   ASSERT_NE(nullptr, error.get());
-  EXPECT_EQ(brillo::http::ClassifyTransportError(error.get()), tc.expected);
+  EXPECT_EQ(brillo::http::ClassifyTransportError(error.get()),
+            std::make_optional(tc.expected));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -299,11 +299,9 @@ TEST_F(HttpCurlTransportStaticTest, MultiCurlErrorProducesTransportError) {
                                curl_api_.get());
 
   ASSERT_NE(nullptr, error.get());
-  // Outer error is curl_multi_error (backward compat).
-  EXPECT_EQ("curl_multi_error", error->GetDomain());
-  // ClassifyTransportError finds inner transport_error entry.
+  EXPECT_EQ(brillo::http::kTransportErrorDomain, error->GetDomain());
   EXPECT_EQ(brillo::http::ClassifyTransportError(error.get()),
-            brillo::http::TransportError::kInternalError);
+            std::make_optional(brillo::http::TransportError::kInternalError));
   EXPECT_EQ("Out of memory", error->GetMessage());
 }
 
@@ -326,7 +324,8 @@ TEST_P(CurlMultiToTransportErrorMappingTest, MapsCorrectly) {
                                curl_api_.get());
 
   ASSERT_NE(nullptr, error.get());
-  EXPECT_EQ(brillo::http::ClassifyTransportError(error.get()), tc.expected);
+  EXPECT_EQ(brillo::http::ClassifyTransportError(error.get()),
+            std::make_optional(tc.expected));
 }
 
 INSTANTIATE_TEST_SUITE_P(
