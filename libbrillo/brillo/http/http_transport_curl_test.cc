@@ -4,8 +4,6 @@
 
 #include <optional>
 
-#include <brillo/http/http_transport_curl.h>
-
 #include <base/at_exit.h>
 #include <base/functional/bind.h>
 #include <base/run_loop.h>
@@ -13,6 +11,8 @@
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/http/http_connection_curl.h>
 #include <brillo/http/http_request.h>
+#include <brillo/http/http_transport_curl.h>
+#include <brillo/http/http_transport_error.h>
 #include <brillo/http/mock_curl_api.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -188,6 +188,188 @@ TEST_F(HttpCurlTransportTest, CurlFailure) {
   EXPECT_EQ(std::to_string(CURLE_OUT_OF_MEMORY), error->GetCode());
   EXPECT_EQ("Out of Memory", error->GetMessage());
 }
+
+TEST_F(HttpCurlTransportTest, CurlFailureProducesTransportError) {
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
+      .WillOnce(Return(CURLE_SSL_CONNECT_ERROR));
+  EXPECT_CALL(*curl_api_, EasyStrError(CURLE_SSL_CONNECT_ERROR))
+      .WillOnce(Return("SSL Error"));
+  EXPECT_CALL(*curl_api_, EasyCleanup(handle_)).Times(1);
+
+  brillo::ErrorPtr error;
+  auto connection = transport_->CreateConnection(
+      "http://foo.bar/get", request_type::kGet, {}, "", "", &error);
+
+  ASSERT_NE(nullptr, error.get());
+  EXPECT_EQ(nullptr, connection.get());
+  // Outer error is curl (backward compat).
+  EXPECT_EQ("curl_easy_error", error->GetDomain());
+  // ClassifyTransportError finds inner transport_error entry.
+  EXPECT_EQ(brillo::http::ClassifyTransportError(error.get()),
+            brillo::http::TransportError::kTLSFailure);
+}
+
+struct CurlMappingTestCase {
+  CURLcode curl_code;
+  brillo::http::TransportError expected;
+  const char* name;
+};
+
+class CurlToTransportErrorMappingTest
+    : public HttpCurlTransportTest,
+      public testing::WithParamInterface<CurlMappingTestCase> {};
+
+TEST_P(CurlToTransportErrorMappingTest, MapsCorrectly) {
+  const auto& tc = GetParam();
+  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_URL, "http://test/"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
+      .WillOnce(Return(tc.curl_code));
+  EXPECT_CALL(*curl_api_, EasyStrError(tc.curl_code)).WillOnce(Return("error"));
+  EXPECT_CALL(*curl_api_, EasyCleanup(handle_)).Times(1);
+
+  brillo::ErrorPtr error;
+  transport_->CreateConnection("http://test/", request_type::kGet, {}, "", "",
+                               &error);
+
+  ASSERT_NE(nullptr, error.get());
+  EXPECT_EQ(brillo::http::ClassifyTransportError(error.get()), tc.expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    CurlMapping,
+    CurlToTransportErrorMappingTest,
+    testing::Values(
+        CurlMappingTestCase{CURLE_COULDNT_RESOLVE_HOST,
+                            brillo::http::TransportError::kDnsFailure,
+                            "DnsFailure"},
+        CurlMappingTestCase{CURLE_COULDNT_RESOLVE_PROXY,
+                            brillo::http::TransportError::kProxyDnsFailure,
+                            "ProxyDnsFailure"},
+        CurlMappingTestCase{
+            CURLE_PROXY, brillo::http::TransportError::kProxyConnectionFailure,
+            "ProxyConnectionFailure"},
+        CurlMappingTestCase{CURLE_COULDNT_CONNECT,
+                            brillo::http::TransportError::kConnectionFailure,
+                            "ConnectionFailure"},
+        CurlMappingTestCase{CURLE_GOT_NOTHING,
+                            brillo::http::TransportError::kConnectionFailure,
+                            "ConnectionFailure_GotNothing"},
+        CurlMappingTestCase{CURLE_OPERATION_TIMEDOUT,
+                            brillo::http::TransportError::kTimeout, "Timeout"},
+        CurlMappingTestCase{CURLE_SSL_CONNECT_ERROR,
+                            brillo::http::TransportError::kTLSFailure,
+                            "TLSFailure"},
+        CurlMappingTestCase{CURLE_PEER_FAILED_VERIFICATION,
+                            brillo::http::TransportError::kCertificateError,
+                            "CertificateError"},
+        CurlMappingTestCase{CURLE_HTTP_RETURNED_ERROR,
+                            brillo::http::TransportError::kHttpError,
+                            "HttpError"},
+        CurlMappingTestCase{CURLE_WRITE_ERROR,
+                            brillo::http::TransportError::kIOError, "IOError"},
+        CurlMappingTestCase{CURLE_INTERFACE_FAILED,
+                            brillo::http::TransportError::kNetworkError,
+                            "NetworkError"},
+        CurlMappingTestCase{CURLE_FAILED_INIT,
+                            brillo::http::TransportError::kInternalError,
+                            "InternalError"},
+        CurlMappingTestCase{CURLE_URL_MALFORMAT,
+                            brillo::http::TransportError::kUnknown, "Unknown"}),
+    [](const auto& info) { return info.param.name; });
+
+// Lightweight fixture for testing static helpers that only need a
+// MockCurlInterface and do not exercise the easy-handle setup path.
+class HttpCurlTransportStaticTest : public testing::Test {
+ public:
+  void SetUp() override { curl_api_ = std::make_shared<MockCurlInterface>(); }
+
+ protected:
+  std::shared_ptr<MockCurlInterface> curl_api_;
+};
+
+TEST_F(HttpCurlTransportStaticTest, MultiCurlErrorProducesTransportError) {
+  brillo::ErrorPtr error;
+  EXPECT_CALL(*curl_api_, MultiStrError(CURLM_OUT_OF_MEMORY))
+      .WillOnce(Return("Out of memory"));
+  Transport::AddMultiCurlError(&error, FROM_HERE, CURLM_OUT_OF_MEMORY,
+                               curl_api_.get());
+
+  ASSERT_NE(nullptr, error.get());
+  // Outer error is curl_multi_error (backward compat).
+  EXPECT_EQ("curl_multi_error", error->GetDomain());
+  // ClassifyTransportError finds inner transport_error entry.
+  EXPECT_EQ(brillo::http::ClassifyTransportError(error.get()),
+            brillo::http::TransportError::kInternalError);
+  EXPECT_EQ("Out of memory", error->GetMessage());
+}
+
+struct CurlMultiMappingTestCase {
+  CURLMcode curl_code;
+  brillo::http::TransportError expected;
+  const char* name;
+};
+
+class CurlMultiToTransportErrorMappingTest
+    : public HttpCurlTransportStaticTest,
+      public testing::WithParamInterface<CurlMultiMappingTestCase> {};
+
+TEST_P(CurlMultiToTransportErrorMappingTest, MapsCorrectly) {
+  const auto& tc = GetParam();
+  brillo::ErrorPtr error;
+  EXPECT_CALL(*curl_api_, MultiStrError(tc.curl_code))
+      .WillOnce(Return("error"));
+  Transport::AddMultiCurlError(&error, FROM_HERE, tc.curl_code,
+                               curl_api_.get());
+
+  ASSERT_NE(nullptr, error.get());
+  EXPECT_EQ(brillo::http::ClassifyTransportError(error.get()), tc.expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    CurlMultiMapping,
+    CurlMultiToTransportErrorMappingTest,
+    testing::Values(
+        CurlMultiMappingTestCase{CURLM_BAD_HANDLE,
+                                 brillo::http::TransportError::kInternalError,
+                                 "BadHandle"},
+        CurlMultiMappingTestCase{CURLM_BAD_EASY_HANDLE,
+                                 brillo::http::TransportError::kInternalError,
+                                 "BadEasyHandle"},
+        CurlMultiMappingTestCase{CURLM_OUT_OF_MEMORY,
+                                 brillo::http::TransportError::kInternalError,
+                                 "OutOfMemory"},
+        CurlMultiMappingTestCase{CURLM_INTERNAL_ERROR,
+                                 brillo::http::TransportError::kInternalError,
+                                 "InternalError"},
+        CurlMultiMappingTestCase{CURLM_BAD_SOCKET,
+                                 brillo::http::TransportError::kNetworkError,
+                                 "BadSocket"},
+        CurlMultiMappingTestCase{CURLM_UNKNOWN_OPTION,
+                                 brillo::http::TransportError::kInternalError,
+                                 "UnknownOption"},
+        CurlMultiMappingTestCase{CURLM_ADDED_ALREADY,
+                                 brillo::http::TransportError::kInternalError,
+                                 "AddedAlready"},
+        CurlMultiMappingTestCase{CURLM_RECURSIVE_API_CALL,
+                                 brillo::http::TransportError::kInternalError,
+                                 "RecursiveApiCall"},
+        CurlMultiMappingTestCase{CURLM_WAKEUP_FAILURE,
+                                 brillo::http::TransportError::kInternalError,
+                                 "WakeupFailure"},
+        CurlMultiMappingTestCase{CURLM_BAD_FUNCTION_ARGUMENT,
+                                 brillo::http::TransportError::kInternalError,
+                                 "BadFunctionArgument"},
+        CurlMultiMappingTestCase{CURLM_ABORTED_BY_CALLBACK,
+                                 brillo::http::TransportError::kInternalError,
+                                 "AbortedByCallback"},
+        CurlMultiMappingTestCase{CURLM_UNRECOVERABLE_POLL,
+                                 brillo::http::TransportError::kNetworkError,
+                                 "UnrecoverablePoll"}),
+    [](const auto& info) { return info.param.name; });
 
 class HttpCurlTransportAsyncTest : public testing::Test {
  public:

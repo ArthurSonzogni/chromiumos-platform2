@@ -91,13 +91,17 @@ class BRILLO_EXPORT Transport : public http::Transport {
 
   void SetSockOptCallback(base::RepeatingCallback<bool(int)> cb) override;
 
-  // Helper methods to convert CURL error codes (CURLcode and CURLMcode)
-  // into brillo::Error object.
+  // Converts `code` to a TransportError and appends a two-layer error
+  // chain onto `error`: inner kTransportErrorDomain (for new callers)
+  // + outer "curl_easy_error" (backward compat during migration).
   static void AddEasyCurlError(brillo::ErrorPtr* error,
                                const base::Location& location,
                                CURLcode code,
                                CurlInterface* curl_interface);
 
+  // Converts `code` to a TransportError and appends a two-layer error
+  // chain onto `error`: inner kTransportErrorDomain (for new callers)
+  // + outer "curl_multi_error" (backward compat during migration).
   static void AddMultiCurlError(brillo::ErrorPtr* error,
                                 const base::Location& location,
                                 CURLMcode code,

@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/check.h>
-#include <base/check_op.h>
-#include <brillo/http/http_transport_curl.h>
-
 #include <limits>
 #include <optional>
 #include <utility>
 
+#include <base/check.h>
+#include <base/check_op.h>
+#include <base/containers/fixed_flat_map.h>
+#include <base/containers/map_util.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -19,6 +19,8 @@
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/http/http_connection_curl.h>
 #include <brillo/http/http_request.h>
+#include <brillo/http/http_transport_curl.h>
+#include <brillo/http/http_transport_error.h>
 #include <brillo/strings/string_utils.h>
 
 namespace brillo {
@@ -45,6 +47,78 @@ base::RepeatingCallback<void(Args...)> AdaptOnceCallbackForRepeating(
       },
       base::OwnedRef(std::move(callback)));
 }
+
+// Maps `curl_code` to an implementation-agnostic TransportError.
+// Returns kUnknown for CURLcodes not in the lookup table.
+http::TransportError MapCurlToTransportError(CURLcode curl_code) {
+  static constexpr auto kMap = base::MakeFixedFlatMap<CURLcode,
+                                                      http::TransportError>({
+      {CURLE_COULDNT_RESOLVE_HOST, http::TransportError::kDnsFailure},
+      {CURLE_COULDNT_RESOLVE_PROXY, http::TransportError::kProxyDnsFailure},
+      {CURLE_PROXY, http::TransportError::kProxyConnectionFailure},
+      {CURLE_COULDNT_CONNECT, http::TransportError::kConnectionFailure},
+      {CURLE_GOT_NOTHING, http::TransportError::kConnectionFailure},
+      {CURLE_OPERATION_TIMEDOUT, http::TransportError::kTimeout},
+      {CURLE_SSL_CONNECT_ERROR, http::TransportError::kTLSFailure},
+      {CURLE_SSL_ENGINE_NOTFOUND, http::TransportError::kTLSFailure},
+      {CURLE_SSL_ENGINE_SETFAILED, http::TransportError::kTLSFailure},
+      {CURLE_SSL_ENGINE_INITFAILED, http::TransportError::kTLSFailure},
+      {CURLE_SSL_CIPHER, http::TransportError::kTLSFailure},
+      {CURLE_SSL_SHUTDOWN_FAILED, http::TransportError::kTLSFailure},
+      {CURLE_USE_SSL_FAILED, http::TransportError::kTLSFailure},
+      {CURLE_PEER_FAILED_VERIFICATION, http::TransportError::kCertificateError},
+      {CURLE_SSL_CERTPROBLEM, http::TransportError::kCertificateError},
+      {CURLE_SSL_CACERT_BADFILE, http::TransportError::kCertificateError},
+      {CURLE_SSL_CRL_BADFILE, http::TransportError::kCertificateError},
+      {CURLE_SSL_ISSUER_ERROR, http::TransportError::kCertificateError},
+      {CURLE_SSL_PINNEDPUBKEYNOTMATCH, http::TransportError::kCertificateError},
+      {CURLE_SSL_INVALIDCERTSTATUS, http::TransportError::kCertificateError},
+      {CURLE_SSL_CLIENTCERT, http::TransportError::kCertificateError},
+      {CURLE_HTTP_RETURNED_ERROR, http::TransportError::kHttpError},
+      {CURLE_HTTP2, http::TransportError::kHttpError},
+      {CURLE_HTTP2_STREAM, http::TransportError::kHttpError},
+      {CURLE_HTTP3, http::TransportError::kHttpError},
+      {CURLE_WEIRD_SERVER_REPLY, http::TransportError::kHttpError},
+      {CURLE_RANGE_ERROR, http::TransportError::kHttpError},
+      {CURLE_HTTP_POST_ERROR, http::TransportError::kHttpError},
+      {CURLE_TOO_MANY_REDIRECTS, http::TransportError::kHttpError},
+      {CURLE_BAD_CONTENT_ENCODING, http::TransportError::kHttpError},
+      {CURLE_WRITE_ERROR, http::TransportError::kIOError},
+      {CURLE_READ_ERROR, http::TransportError::kIOError},
+      {CURLE_INTERFACE_FAILED, http::TransportError::kNetworkError},
+      {CURLE_NO_CONNECTION_AVAILABLE, http::TransportError::kNetworkError},
+      {CURLE_FAILED_INIT, http::TransportError::kInternalError},
+      {CURLE_OUT_OF_MEMORY, http::TransportError::kInternalError},
+      {CURLE_BAD_FUNCTION_ARGUMENT, http::TransportError::kInternalError},
+      {CURLE_UNKNOWN_OPTION, http::TransportError::kInternalError},
+      {CURLE_NOT_BUILT_IN, http::TransportError::kInternalError},
+  });
+  const auto* value = base::FindOrNull(kMap, curl_code);
+  return value ? *value : http::TransportError::kUnknown;
+}
+
+// Maps `curl_code` to an implementation-agnostic TransportError.
+// Returns kUnknown for CURLMcodes not in the lookup table.
+http::TransportError MapCurlMultiToTransportError(CURLMcode curl_code) {
+  static constexpr auto kMap =
+      base::MakeFixedFlatMap<CURLMcode, http::TransportError>({
+          {CURLM_BAD_HANDLE, http::TransportError::kInternalError},
+          {CURLM_BAD_EASY_HANDLE, http::TransportError::kInternalError},
+          {CURLM_OUT_OF_MEMORY, http::TransportError::kInternalError},
+          {CURLM_INTERNAL_ERROR, http::TransportError::kInternalError},
+          {CURLM_UNKNOWN_OPTION, http::TransportError::kInternalError},
+          {CURLM_ADDED_ALREADY, http::TransportError::kInternalError},
+          {CURLM_RECURSIVE_API_CALL, http::TransportError::kInternalError},
+          {CURLM_WAKEUP_FAILURE, http::TransportError::kInternalError},
+          {CURLM_BAD_FUNCTION_ARGUMENT, http::TransportError::kInternalError},
+          {CURLM_ABORTED_BY_CALLBACK, http::TransportError::kInternalError},
+          {CURLM_BAD_SOCKET, http::TransportError::kNetworkError},
+          {CURLM_UNRECOVERABLE_POLL, http::TransportError::kNetworkError},
+      });
+  const auto* value = base::FindOrNull(kMap, curl_code);
+  return value ? *value : http::TransportError::kUnknown;
+}
+
 }  // namespace
 
 // This is a class that stores connection data on particular CURL socket
@@ -167,8 +241,9 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
   CURL* curl_handle = curl_interface_->EasyInit();
   if (!curl_handle) {
     LOG(ERROR) << "Failed to initialize CURL";
-    brillo::Error::AddTo(error, FROM_HERE, http::kErrorDomain,
-                         "curl_init_failed", "Failed to initialize CURL");
+    http::AddTransportError(error, FROM_HERE,
+                            http::TransportError::kBackendFailed,
+                            "Failed to initialize CURL");
     return connection;
   }
 
@@ -432,18 +507,29 @@ void Transport::AddEasyCurlError(brillo::ErrorPtr* error,
                                  const base::Location& location,
                                  CURLcode code,
                                  CurlInterface* curl_interface) {
+  const std::string message = curl_interface->EasyStrError(code);
+  // Inner: implementation-agnostic TransportError.
+  http::AddTransportError(error, location, MapCurlToTransportError(code),
+                          message);
+  // Outer: curl-specific, for backward compat during migration.
+  // TODO(msisov): Remove after all consumers migrate to
+  // ClassifyTransportError().
   brillo::Error::AddTo(error, location, "curl_easy_error",
-                       brillo::string_utils::ToString(code),
-                       curl_interface->EasyStrError(code));
+                       brillo::string_utils::ToString(code), message);
 }
 
 void Transport::AddMultiCurlError(brillo::ErrorPtr* error,
                                   const base::Location& location,
                                   CURLMcode code,
                                   CurlInterface* curl_interface) {
+  const std::string message = curl_interface->MultiStrError(code);
+  // Inner: implementation-agnostic TransportError.
+  http::AddTransportError(error, location, MapCurlMultiToTransportError(code),
+                          message);
+  // Outer: curl-specific, for backward compat during migration.
+  // TODO(msisov): Remove after all consumers migrate.
   brillo::Error::AddTo(error, location, "curl_multi_error",
-                       brillo::string_utils::ToString(code),
-                       curl_interface->MultiStrError(code));
+                       brillo::string_utils::ToString(code), message);
 }
 
 bool Transport::SetupAsyncCurl(brillo::ErrorPtr* error) {
@@ -454,8 +540,9 @@ bool Transport::SetupAsyncCurl(brillo::ErrorPtr* error) {
   curl_multi_handle_ = curl_interface_->MultiInit();
   if (!curl_multi_handle_) {
     LOG(ERROR) << "Failed to initialize CURL";
-    brillo::Error::AddTo(error, FROM_HERE, http::kErrorDomain,
-                         "curl_init_failed", "Failed to initialize CURL");
+    http::AddTransportError(error, FROM_HERE,
+                            http::TransportError::kBackendFailed,
+                            "Failed to initialize CURL");
     return false;
   }
 
