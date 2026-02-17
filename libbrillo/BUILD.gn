@@ -227,6 +227,7 @@ if (!use.cros_host) {
         "brillo/http/http_request.cc",
         "brillo/http/http_transport.cc",
         "brillo/http/http_transport_curl.cc",
+        "brillo/http/http_transport_error.cc",
         "brillo/http/http_utils.cc",
       ]
       if (use.dbus) {
@@ -588,6 +589,7 @@ if (use.test) {
         "brillo/http/http_form_data_test.cc",
         "brillo/http/http_request_test.cc",
         "brillo/http/http_transport_curl_test.cc",
+        "brillo/http/http_transport_error_test.cc",
         "brillo/http/http_utils_test.cc",
         "brillo/storage_balloon_test.cc",
       ]
