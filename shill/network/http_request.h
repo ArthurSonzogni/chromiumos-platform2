@@ -89,15 +89,18 @@ class HttpRequest {
   virtual ~HttpRequest();
 
   // Starts an HTTP request with the given `method` to `url`. Calls `callback`
-  // asynchronously with the response data or error. If `retry_policy` is
-  // provided, retries retryable errors up to `retry_policy.max_retries` times.
-  // For hostname URLs, each retry performs full DNS re-resolution.
-  // For numeric IP URLs, each retry re-issues the HTTP request directly.
+  // asynchronously with the response data or error. If `timeout` is not
+  // provided, zero, or negative, uses the default 10s timeout. If
+  // `retry_policy` is provided, retries retryable errors up to
+  // `retry_policy.max_retries` times. For hostname URLs, each retry performs
+  // full DNS re-resolution. For numeric IP URLs, each retry re-issues the
+  // HTTP request directly.
   virtual void Start(Method method,
                      std::string_view logging_tag,
                      const net_base::HttpUrl& url,
                      const brillo::http::HeaderList& headers,
                      base::OnceCallback<void(Result result)> callback,
+                     std::optional<base::TimeDelta> timeout = std::nullopt,
                      std::optional<RetryPolicy> retry_policy = std::nullopt);
 
   // Stop the current HttpRequest.  No callback is called as a side
@@ -174,6 +177,9 @@ class HttpRequest {
   brillo::http::HeaderList headers_;
   base::OnceCallback<void(Result result)> callback_;
 
+  // Custom timeout for the current request. std::nullopt means use
+  // the default `kRequestTimeout`.
+  std::optional<base::TimeDelta> timeout_;
   // Retry configuration for the current request. std::nullopt means
   // no retry (single attempt only).
   std::optional<RetryPolicy> retry_policy_;

@@ -248,17 +248,21 @@ class HttpRequestTest : public Test {
                            const std::vector<net_base::IPAddress>& addresses) {
     request_->GetDNSResult(dns, base::Milliseconds(100), addresses);
   }
-  void StartRequest(HttpRequest::Method method, std::string_view url_string) {
+  void StartRequest(HttpRequest::Method method,
+                    std::string_view url_string,
+                    std::optional<base::TimeDelta> timeout = std::nullopt) {
     auto url = net_base::HttpUrl::CreateFromString(url_string);
     ASSERT_TRUE(url.has_value());
-    request_->Start(method, kLoggingTag, *url, {}, target_.callback());
+    request_->Start(method, kLoggingTag, *url, {}, target_.callback(),
+                    /*timeout=*/timeout);
   }
   void StartRequestWithRetry(std::string_view url_string,
                              HttpRequest::RetryPolicy policy) {
     auto url = net_base::HttpUrl::CreateFromString(url_string);
     ASSERT_TRUE(url.has_value());
     request_->Start(HttpRequest::Method::kGet, kLoggingTag, *url, {},
-                    target_.callback(), std::move(policy));
+                    target_.callback(), /*timeout=*/std::nullopt,
+                    std::move(policy));
   }
   // Configures `FinishRequestAsync` to fail `fail_count` times with
   // `transport_error`, then succeed on the next call with `resp_data`.
@@ -601,6 +605,71 @@ TEST_F(HttpRequestTest, IPv4TextHeadRequestSuccess) {
   ExpectStopped();
 }
 
+TEST_F(HttpRequestTest, DefaultTimeoutIsUsedWhenNullopt) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+
+  EXPECT_CALL(*transport(), SetDefaultTimeout(base::Seconds(10)));
+
+  const std::string resp = "Sample response.";
+  ExpectRequestSuccessCallback(resp);
+  EXPECT_CALL(*transport(), ResolveHostToIp).Times(0);
+  ExpectCreateConnection(kIPv4AddressURL, brillo::http::request_type::kGet);
+  ExpectFinishRequestAsyncSuccess(resp);
+
+  StartRequest(HttpRequest::Method::kGet, kIPv4AddressURL);
+  ExpectStopped();
+}
+
+TEST_F(HttpRequestTest, ZeroTimeoutUsesDefault) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+
+  EXPECT_CALL(*transport(), SetDefaultTimeout(base::Seconds(10)));
+
+  const std::string resp = "Sample response.";
+  ExpectRequestSuccessCallback(resp);
+  EXPECT_CALL(*transport(), ResolveHostToIp).Times(0);
+  ExpectCreateConnection(kIPv4AddressURL, brillo::http::request_type::kGet);
+  ExpectFinishRequestAsyncSuccess(resp);
+
+  StartRequest(HttpRequest::Method::kGet, kIPv4AddressURL, base::TimeDelta());
+  ExpectStopped();
+}
+
+TEST_F(HttpRequestTest, NegativeTimeoutUsesDefault) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+
+  EXPECT_CALL(*transport(), SetDefaultTimeout(base::Seconds(10)));
+
+  const std::string resp = "Sample response.";
+  ExpectRequestSuccessCallback(resp);
+  EXPECT_CALL(*transport(), ResolveHostToIp).Times(0);
+  ExpectCreateConnection(kIPv4AddressURL, brillo::http::request_type::kGet);
+  ExpectFinishRequestAsyncSuccess(resp);
+
+  StartRequest(HttpRequest::Method::kGet, kIPv4AddressURL, base::Seconds(-1));
+  ExpectStopped();
+}
+
+TEST_F(HttpRequestTest, CustomTimeoutIsApplied) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+
+  constexpr auto custom_timeout = base::Seconds(30);
+  EXPECT_CALL(*transport(), SetDefaultTimeout(custom_timeout));
+
+  const std::string resp = "Sample response.";
+  ExpectRequestSuccessCallback(resp);
+  EXPECT_CALL(*transport(), ResolveHostToIp).Times(0);
+  ExpectCreateConnection(kIPv4AddressURL, brillo::http::request_type::kGet);
+  ExpectFinishRequestAsyncSuccess(resp);
+
+  StartRequest(HttpRequest::Method::kGet, kIPv4AddressURL, custom_timeout);
+  ExpectStopped();
+}
+
 TEST_F(HttpRequestTest, NoRetryOnNonRetryableError) {
   CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
                 {kIPv4DNS0, kIPv4DNS1});
@@ -651,7 +720,8 @@ TEST_F(HttpRequestTest, RetryOnDNSTimeout) {
 
   auto url = *net_base::HttpUrl::CreateFromString(kTextURL);
   request_->Start(HttpRequest::Method::kGet, kLoggingTag, url, {},
-                  target_.callback(), std::move(policy));
+                  target_.callback(), /*timeout=*/std::nullopt,
+                  std::move(policy));
 
   // First attempt: both DNS servers time out -> triggers retry.
   GetDNSResultFailure(kIPv4DNS0, net_base::DNSClient::Error::kTimedOut);

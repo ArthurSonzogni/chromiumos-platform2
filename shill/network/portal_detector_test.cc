@@ -83,8 +83,10 @@ class MockHttpRequest : public HttpRequest {
              const net_base::HttpUrl& url,
              const brillo::http::HeaderList& headers,
              base::OnceCallback<void(Result result)> callback,
+             std::optional<base::TimeDelta> timeout,
              std::optional<RetryPolicy> retry_policy = std::nullopt) override {
     EXPECT_EQ(Method::kGet, method);
+    EXPECT_FALSE(timeout.has_value());
     StartWithUrl(url);
     StartWithHeaders(headers);
   }

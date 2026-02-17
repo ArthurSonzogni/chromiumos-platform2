@@ -83,6 +83,7 @@ void HttpRequest::Start(Method method,
                         const net_base::HttpUrl& url,
                         const brillo::http::HeaderList& headers,
                         base::OnceCallback<void(Result result)> callback,
+                        std::optional<base::TimeDelta> timeout,
                         std::optional<RetryPolicy> retry_policy) {
   // Always reset retry state on external `Start()` calls. This prevents
   // stale `retry_policy_` or `retry_count_` from a previous request cycle
@@ -94,6 +95,7 @@ void HttpRequest::Start(Method method,
   // request cycle, as defense-in-depth for release builds where
   // `DCHECK(!is_running_)` in `StartInternal()` is compiled out.
   retry_generation_++;
+  timeout_ = timeout;
   method_ = method;
 
   StartInternal(logging_tag, url, headers, std::move(callback));
@@ -110,7 +112,11 @@ void HttpRequest::StartInternal(
   headers_ = headers;
   is_running_ = true;
   request_id_ = -1;
-  transport_->SetDefaultTimeout(kRequestTimeout);
+  const base::TimeDelta effective_timeout =
+      (timeout_.has_value() && timeout_.value() > base::TimeDelta())
+          ? timeout_.value()
+          : kRequestTimeout;
+  transport_->SetDefaultTimeout(effective_timeout);
   callback_ = std::move(callback);
 
   // Name resolution is not needed if the hostname is an IP address literal.
@@ -209,6 +215,7 @@ void HttpRequest::Stop() {
   }
   ResetConnection();
   callback_.Reset();
+  timeout_.reset();
   retry_policy_.reset();
   retry_count_ = 0;
   // Invalidate any pending delayed `Retry()` callbacks. The generation
