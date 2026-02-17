@@ -19,6 +19,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <brillo/http/http_request.h>
+#include <brillo/http/http_transport_error.h>
 #include <chromeos/net-base/http_url.h>
 #include <chromeos/net-base/ip_address.h>
 #include <chromeos/patchpanel/dbus/client.h>
@@ -142,9 +143,10 @@ class PortalDetector {
   // unknown.
   static std::string_view ProbeResultName(ProbeResult result);
 
-  // Static method mapping from HttpRequest errors to PortalDetection
+  // Static method mapping from brillo::http::TransportError to PortalDetection
   // ProbeResult.
-  static ProbeResult GetProbeResultFromRequestError(HttpRequest::Error error);
+  static ProbeResult GetProbeResultFromRequestError(
+      brillo::http::TransportError error);
 
   // Represents the possible outcomes of a portal detection attempt.
   enum class ValidationState {

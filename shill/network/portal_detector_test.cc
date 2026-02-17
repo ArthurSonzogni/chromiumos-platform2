@@ -18,6 +18,7 @@
 #include <base/test/scoped_chromeos_version_info.h>
 #include <base/time/time.h>
 #include <brillo/http/http_request.h>
+#include <brillo/http/http_transport_error.h>
 #include <brillo/http/mock_connection.h>
 #include <brillo/http/mock_transport.h>
 #include <chromeos/net-base/http_url.h>
@@ -243,12 +244,12 @@ class PortalDetectorTest : public Test {
                                               std::move(response));
   }
 
-  void HTTPRequestFailure(HttpRequest::Error error) {
+  void HTTPRequestFailure(brillo::http::TransportError error) {
     portal_detector_->ProcessHTTPProbeResult(base::TimeTicks(),
                                              base::unexpected(error));
   }
 
-  void HTTPSRequestFailure(HttpRequest::Error error) {
+  void HTTPSRequestFailure(brillo::http::TransportError error) {
     portal_detector_->ProcessHTTPSProbeResult(base::TimeTicks(),
                                               base::unexpected(error));
   }
@@ -623,7 +624,7 @@ TEST_F(PortalDetectorTest, RequestHTTPSuccessHTTPSFailure) {
       .WillOnce(Return("0"));
   ExpectHttpRequestSuccessWithStatus(204);
   EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
-  HTTPSRequestFailure(HttpRequest::Error::kTLSFailure);
+  HTTPSRequestFailure(brillo::http::TransportError::kTLSFailure);
   EXPECT_FALSE(portal_detector_->IsRunning());
 }
 
@@ -650,7 +651,7 @@ TEST_F(PortalDetectorTest, RequestFail) {
   EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
       .WillOnce(Return("10"));
   ExpectHttpRequestSuccessWithStatus(123);
-  HTTPSRequestFailure(HttpRequest::Error::kConnectionFailure);
+  HTTPSRequestFailure(brillo::http::TransportError::kConnectionFailure);
   EXPECT_FALSE(portal_detector_->IsRunning());
 }
 
@@ -658,7 +659,7 @@ TEST_F(PortalDetectorTest, RequestRedirect) {
   StartPortalRequest();
 
   EXPECT_CALL(callback_target_, ResultCallback).Times(0);
-  HTTPSRequestFailure(HttpRequest::Error::kConnectionFailure);
+  HTTPSRequestFailure(brillo::http::TransportError::kConnectionFailure);
   Mock::VerifyAndClearExpectations(&callback_target_);
 
   EXPECT_CALL(callback_target_,
@@ -675,7 +676,7 @@ TEST_F(PortalDetectorTest, RequestTempRedirect) {
   StartPortalRequest();
 
   EXPECT_CALL(callback_target_, ResultCallback).Times(0);
-  HTTPSRequestFailure(HttpRequest::Error::kConnectionFailure);
+  HTTPSRequestFailure(brillo::http::TransportError::kConnectionFailure);
   Mock::VerifyAndClearExpectations(&callback_target_);
 
   PortalDetector::Result result = GetPortalRedirectResult(kHttpUrl);
@@ -736,7 +737,7 @@ TEST_F(PortalDetectorTest, Request200AndInvalidContentLength) {
   EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
       .WillOnce(Return("invalid"));
   ExpectHttpRequestSuccessWithStatus(200);
-  HTTPSRequestFailure(HttpRequest::Error::kConnectionFailure);
+  HTTPSRequestFailure(brillo::http::TransportError::kConnectionFailure);
   EXPECT_FALSE(portal_detector_->IsRunning());
 }
 
@@ -816,7 +817,7 @@ TEST_F(PortalDetectorTest, RequestInvalidRedirect) {
   EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Location"))
       .WillOnce(Return("invalid_url"));
   ExpectHttpRequestSuccessWithStatus(302);
-  HTTPSRequestFailure(HttpRequest::Error::kTLSFailure);
+  HTTPSRequestFailure(brillo::http::TransportError::kTLSFailure);
   EXPECT_FALSE(portal_detector_->IsRunning());
 }
 
@@ -940,7 +941,7 @@ TEST_F(PortalDetectorTest, HTTPOnlyRequestFailure) {
             result.GetValidationState());
 
   EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
-  HTTPRequestFailure(HttpRequest::Error::kConnectionFailure);
+  HTTPRequestFailure(brillo::http::TransportError::kConnectionFailure);
   EXPECT_FALSE(portal_detector_->IsRunning());
 }
 

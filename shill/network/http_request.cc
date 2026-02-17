@@ -11,22 +11,18 @@
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <base/types/expected.h>
+#include <brillo/http/http_transport_error.h>
 #include <brillo/http/http_utils.h>
 #include <chromeos/net-base/dns_client.h>
 #include <chromeos/net-base/http_url.h>
-#include <curl/curl.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 
 namespace {
-
-// The curl error domain for http requests
-const char kCurlEasyError[] = "curl_easy_error";
 
 // Maximum number of name servers queried in parallel.
 constexpr int kDNSMaxParallelQueries = 4;
@@ -105,7 +101,7 @@ void HttpRequest::Start(Method method,
       LOG(ERROR) << logging_tag_ << " " << __func__ << ": Server hostname "
                  << url_.host() << " doesn't match the IP family "
                  << ip_family_;
-      SendErrorAsync(Error::kDNSFailure);
+      SendErrorAsync(brillo::http::TransportError::kDnsFailure);
     }
     return;
   }
@@ -152,7 +148,7 @@ void HttpRequest::OnSuccess(brillo::http::RequestID request_id,
   if (request_id != request_id_) {
     LOG(ERROR) << logging_tag_ << " " << __func__ << ": Expected request ID "
                << request_id_ << " but got " << request_id;
-    SendError(Error::kInternalError);
+    SendError(brillo::http::TransportError::kInternalError);
     return;
   }
 
@@ -166,48 +162,14 @@ void HttpRequest::OnSuccess(brillo::http::RequestID request_id,
 
 void HttpRequest::OnError(brillo::http::RequestID request_id,
                           const brillo::Error* error) {
-  int error_code;
-  if (error->GetDomain() != kCurlEasyError) {
-    LOG(ERROR) << logging_tag_ << " " << __func__ << ": Expected error domain "
-               << kCurlEasyError << " but got " << error->GetDomain();
-    SendError(Error::kInternalError);
-    return;
-  }
   if (request_id != request_id_) {
     LOG(ERROR) << logging_tag_ << " " << __func__ << ": Expected request ID "
                << request_id_ << " but got " << request_id;
-    SendError(Error::kInternalError);
+    SendError(brillo::http::TransportError::kInternalError);
     return;
   }
-  if (!base::StringToInt(error->GetCode(), &error_code)) {
-    LOG(ERROR) << logging_tag_ << " " << __func__
-               << ": Unable to convert error code " << error->GetCode()
-               << " to Int";
-    SendError(Error::kInternalError);
-    return;
-  }
-
-  // TODO(matthewmwang): This breaks abstraction. Modify brillo::http::Transport
-  // to provide an implementation agnostic error code.
-  switch (error_code) {
-    case CURLE_COULDNT_CONNECT:
-      SendError(Error::kConnectionFailure);
-      break;
-    case CURLE_PEER_FAILED_VERIFICATION:
-      SendError(Error::kTLSFailure);
-      break;
-    case CURLE_WRITE_ERROR:
-    case CURLE_READ_ERROR:
-      SendError(Error::kIOError);
-      break;
-    case CURLE_OPERATION_TIMEDOUT:
-      SendError(Error::kHTTPTimeout);
-      break;
-    default:
-      LOG(ERROR) << logging_tag_ << " " << __func__
-                 << ": Unknown curl error code " << error_code;
-      SendError(Error::kInternalError);
-  }
+  SendError(brillo::http::ClassifyTransportError(error).value_or(
+      brillo::http::TransportError::kUnknown));
 }
 
 void HttpRequest::Stop() {
@@ -227,9 +189,9 @@ void HttpRequest::GetDNSResult(net_base::IPAddress dns,
   if (!result.has_value()) {
     LOG(WARNING) << logging_tag_ << " " << __func__ << ": Could not resolve "
                  << url_.host() << " with " << dns << ": " << result.error();
-    auto error = Error::kDNSFailure;
+    auto error = brillo::http::TransportError::kDnsFailure;
     if (result.error() == net_base::DNSClient::Error::kTimedOut) {
-      error = Error::kDNSTimeout;
+      error = brillo::http::TransportError::kDnsTimeout;
     }
     dns_queries_.erase(dns);
     if (dns_queries_.empty()) {
@@ -258,7 +220,7 @@ void HttpRequest::GetDNSResult(net_base::IPAddress dns,
   StartRequest();
 }
 
-void HttpRequest::SendError(Error error) {
+void HttpRequest::SendError(brillo::http::TransportError error) {
   // Save copies on the stack, since Stop() will remove them.
   auto callback = std::move(callback_);
   Stop();
@@ -269,39 +231,10 @@ void HttpRequest::SendError(Error error) {
   }
 }
 
-void HttpRequest::SendErrorAsync(Error error) {
+void HttpRequest::SendErrorAsync(brillo::http::TransportError error) {
   dispatcher_->PostTask(FROM_HERE,
                         base::BindOnce(&HttpRequest::SendError,
                                        weak_ptr_factory_.GetWeakPtr(), error));
-}
-
-// static
-std::string_view ErrorName(HttpRequest::Error error) {
-  switch (error) {
-    case HttpRequest::Error::kInternalError:
-      return "Internal error";
-    case HttpRequest::Error::kDNSFailure:
-      return "DNS failure";
-    case HttpRequest::Error::kDNSTimeout:
-      return "DNS timeout";
-    case HttpRequest::Error::kConnectionFailure:
-      return "Connection failure";
-    case HttpRequest::Error::kTLSFailure:
-      return "TLS failure";
-    case HttpRequest::Error::kIOError:
-      return "IO error";
-    case HttpRequest::Error::kHTTPTimeout:
-      return "Request timeout";
-  }
-}
-
-std::ostream& operator<<(std::ostream& stream, HttpRequest::Error error) {
-  return stream << ErrorName(error);
-}
-
-std::ostream& operator<<(std::ostream& stream,
-                         std::optional<HttpRequest::Error> error) {
-  return stream << (error ? ErrorName(*error) : "Success");
 }
 
 std::ostream& operator<<(std::ostream& stream, HttpRequest::Method method) {

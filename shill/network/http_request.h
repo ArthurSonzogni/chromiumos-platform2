@@ -7,8 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
-#include <ostream>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -20,6 +18,7 @@
 #include <base/types/expected.h>
 #include <brillo/errors/error.h>
 #include <brillo/http/http_transport.h>
+#include <brillo/http/http_transport_error.h>
 #include <chromeos/net-base/dns_client.h>
 #include <chromeos/net-base/http_url.h>
 #include <chromeos/net-base/ip_address.h>
@@ -35,29 +34,10 @@ class EventDispatcher;
 // secure (HTTPS) communication is used.
 class HttpRequest {
  public:
-  // Represents possible errors for an HTTP requests.
-  enum class Error {
-    // Internal error: unknown error, incorrect request id, error code
-    // conversion error, ...
-    kInternalError,
-    // Name resolution failed.
-    kDNSFailure,
-    // Name resolution timed out.
-    kDNSTimeout,
-    // The HTTP connection failed.
-    kConnectionFailure,
-    // The TLS connection failed.
-    kTLSFailure,
-    // The HTTP network IO failed.
-    kIOError,
-    // The HTTP request timed out.
-    kHTTPTimeout,
-  };
-
-  static std::string_view ErrorName(Error error);
-
-  // The client callback returns the HTTP response on success, or an Error
-  using Result = base::expected<std::unique_ptr<brillo::http::Response>, Error>;
+  // The client callback returns the HTTP response on success, or a
+  // TransportError.
+  using Result = base::expected<std::unique_ptr<brillo::http::Response>,
+                                brillo::http::TransportError>;
 
   // The HTTP method to use for the request.
   enum class Method {
@@ -113,9 +93,9 @@ class HttpRequest {
   void OnError(brillo::http::RequestID request_id, const brillo::Error* error);
   // Calls synchronously |request_error_callback_| with |error| and terminates
   // this request.
-  void SendError(Error error);
+  void SendError(brillo::http::TransportError error);
   // Same as SendError, but asynchrously using |dispatcher_|.
-  void SendErrorAsync(Error error);
+  void SendErrorAsync(brillo::http::TransportError error);
 
   EventDispatcher* dispatcher_;
   net_base::IPFamily ip_family_;
@@ -139,9 +119,6 @@ class HttpRequest {
   base::WeakPtrFactory<HttpRequest> weak_ptr_factory_{this};
 };
 
-std::ostream& operator<<(std::ostream& stream, HttpRequest::Error error);
-std::ostream& operator<<(std::ostream& stream,
-                         std::optional<HttpRequest::Error> error);
 // Outputs the string representation of `method` (e.g. "GET", "HEAD").
 std::ostream& operator<<(std::ostream& stream, HttpRequest::Method method);
 

@@ -355,19 +355,26 @@ std::string_view PortalDetector::ValidationStateToString(
 
 // static
 PortalDetector::ProbeResult PortalDetector::GetProbeResultFromRequestError(
-    HttpRequest::Error error) {
+    brillo::http::TransportError error) {
   switch (error) {
-    case HttpRequest::Error::kDNSFailure:
+    case brillo::http::TransportError::kDnsFailure:
       return ProbeResult::kDNSFailure;
-    case HttpRequest::Error::kDNSTimeout:
+    case brillo::http::TransportError::kDnsTimeout:
       return ProbeResult::kDNSTimeout;
-    case HttpRequest::Error::kTLSFailure:
+    case brillo::http::TransportError::kTLSFailure:
+    case brillo::http::TransportError::kCertificateError:
       return ProbeResult::kTLSFailure;
-    case HttpRequest::Error::kHTTPTimeout:
+    case brillo::http::TransportError::kTimeout:
       return ProbeResult::kHTTPTimeout;
-    case HttpRequest::Error::kInternalError:
-    case HttpRequest::Error::kConnectionFailure:
-    case HttpRequest::Error::kIOError:
+    case brillo::http::TransportError::kUnknown:
+    case brillo::http::TransportError::kProxyDnsFailure:
+    case brillo::http::TransportError::kProxyConnectionFailure:
+    case brillo::http::TransportError::kConnectionFailure:
+    case brillo::http::TransportError::kHttpError:
+    case brillo::http::TransportError::kIOError:
+    case brillo::http::TransportError::kNetworkError:
+    case brillo::http::TransportError::kInternalError:
+    case brillo::http::TransportError::kBackendFailed:
       return ProbeResult::kConnectionFailure;
   }
 }
