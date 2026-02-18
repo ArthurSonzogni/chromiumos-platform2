@@ -7,6 +7,8 @@
 
 #include <map>
 #include <memory>
+#include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -45,6 +47,30 @@ class HttpRequest {
     kHead,
   };
 
+  // Configures automatic retry behavior. When provided to `Start()`,
+  // transient errors matching `retryable_errors` are retried up to
+  // `max_retries` times with `retry_delay` between attempts. The
+  // initial attempt is not counted as a retry. Setting `max_retries`
+  // to 0 disables retry even when a policy is provided.
+  struct RetryPolicy {
+    // Default number of automatic retries after the initial attempt.
+    static constexpr size_t kDefaultAutoRetry = 1;
+
+    // Maximum number of retries after the initial attempt.
+    // E.g., max_retries=1 means up to 2 total attempts.
+    size_t max_retries = kDefaultAutoRetry;
+
+    // Delay between retry attempts. Zero means retry immediately.
+    base::TimeDelta retry_delay = base::TimeDelta();
+
+    // Errors that trigger a retry. Only errors in this set are retried;
+    // all others are reported immediately to the caller.
+    std::set<brillo::http::TransportError> retryable_errors = {
+        brillo::http::TransportError::kIOError,
+        brillo::http::TransportError::kDnsTimeout,
+    };
+  };
+
   // |allow_non_google_https| determines whether or not secure (HTTPS)
   // communication with a non-Google server is allowed. Note that this
   // will not change any behavior for HTTP communication.
@@ -62,14 +88,17 @@ class HttpRequest {
 
   virtual ~HttpRequest();
 
-  // Starts an HTTP request with the given `method` to `url`. `callback` is
-  // called asynchronously with the response data or the error if the request
-  // has failed.
+  // Starts an HTTP request with the given `method` to `url`. Calls `callback`
+  // asynchronously with the response data or error. If `retry_policy` is
+  // provided, retries retryable errors up to `retry_policy.max_retries` times.
+  // For hostname URLs, each retry performs full DNS re-resolution.
+  // For numeric IP URLs, each retry re-issues the HTTP request directly.
   virtual void Start(Method method,
                      std::string_view logging_tag,
                      const net_base::HttpUrl& url,
                      const brillo::http::HeaderList& headers,
-                     base::OnceCallback<void(Result result)> callback);
+                     base::OnceCallback<void(Result result)> callback,
+                     std::optional<RetryPolicy> retry_policy = std::nullopt);
 
   // Stop the current HttpRequest.  No callback is called as a side
   // effect of this function.
@@ -97,6 +126,35 @@ class HttpRequest {
   // Same as SendError, but asynchrously using |dispatcher_|.
   void SendErrorAsync(brillo::http::TransportError error);
 
+  // Resets connection-level state (DNS queries, request ID, running flag)
+  // without clearing request parameters, callback, or retry state. Used
+  // by `Retry()` to clean up the current attempt before re-starting.
+  void ResetConnection();
+
+  // Performs the actual start logic shared by `Start()` (public) and
+  // `Retry()` (internal). Sets `is_running_`, stores request params,
+  // and initiates DNS resolution or direct HTTP request.
+  void StartInternal(std::string_view logging_tag,
+                     const net_base::HttpUrl& url,
+                     const brillo::http::HeaderList& headers,
+                     base::OnceCallback<void(Result result)> callback);
+
+  // Calls `ResetConnection()` then `StartInternal()` with the preserved
+  // request parameters and callback. Checks `retry_generation_` to abort
+  // if the request was externally stopped or restarted since this retry
+  // was scheduled.
+  void Retry(size_t generation);
+
+  // If `error` is retryable and retry budget remains, schedules a retry
+  // and returns. Otherwise calls `SendError(error)` to report the error
+  // to the caller and stop the request.
+  void MaybeRetryOrSendError(brillo::http::TransportError error);
+
+  // Checks whether `error` should trigger a retry based on
+  // `retry_policy_` and `retry_count_`. Returns true if a retry was
+  // initiated (caller should return without calling `SendError`).
+  bool MaybeRetry(brillo::http::TransportError error);
+
   EventDispatcher* dispatcher_;
   net_base::IPFamily ip_family_;
   // The list of name server addresses.
@@ -115,6 +173,17 @@ class HttpRequest {
   net_base::HttpUrl url_;
   brillo::http::HeaderList headers_;
   base::OnceCallback<void(Result result)> callback_;
+
+  // Retry configuration for the current request. std::nullopt means
+  // no retry (single attempt only).
+  std::optional<RetryPolicy> retry_policy_;
+  // Number of retries completed so far. Reset to 0 in `Start()`.
+  size_t retry_count_ = 0;
+  // Monotonically increasing counter incremented in `Stop()` and
+  // `Start()`. Used to invalidate stale delayed retry callbacks when
+  // the request is externally stopped or restarted before a delayed
+  // `Retry()` fires.
+  size_t retry_generation_ = 0;
 
   base::WeakPtrFactory<HttpRequest> weak_ptr_factory_{this};
 };

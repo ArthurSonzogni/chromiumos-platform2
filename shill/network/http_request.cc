@@ -82,13 +82,34 @@ void HttpRequest::Start(Method method,
                         std::string_view logging_tag,
                         const net_base::HttpUrl& url,
                         const brillo::http::HeaderList& headers,
-                        base::OnceCallback<void(Result result)> callback) {
-  DCHECK(!is_running_);
+                        base::OnceCallback<void(Result result)> callback,
+                        std::optional<RetryPolicy> retry_policy) {
+  // Always reset retry state on external `Start()` calls. This prevents
+  // stale `retry_policy_` or `retry_count_` from a previous request cycle
+  // leaking into a new one (e.g., `Start()` -> error -> `Stop()` ->
+  // `Start()` without retry).
+  retry_policy_ = std::move(retry_policy);
+  retry_count_ = 0;
+  // Invalidate any stale delayed `Retry()` callbacks from a previous
+  // request cycle, as defense-in-depth for release builds where
+  // `DCHECK(!is_running_)` in `StartInternal()` is compiled out.
+  retry_generation_++;
   method_ = method;
+
+  StartInternal(logging_tag, url, headers, std::move(callback));
+}
+
+void HttpRequest::StartInternal(
+    std::string_view logging_tag,
+    const net_base::HttpUrl& url,
+    const brillo::http::HeaderList& headers,
+    base::OnceCallback<void(Result result)> callback) {
+  DCHECK(!is_running_);
   logging_tag_ = logging_tag;
   url_ = url;
   headers_ = headers;
   is_running_ = true;
+  request_id_ = -1;
   transport_->SetDefaultTimeout(kRequestTimeout);
   callback_ = std::move(callback);
 
@@ -101,6 +122,8 @@ void HttpRequest::Start(Method method,
       LOG(ERROR) << logging_tag_ << " " << __func__ << ": Server hostname "
                  << url_.host() << " doesn't match the IP family "
                  << ip_family_;
+      // IP family mismatch is a configuration error that retrying cannot
+      // fix. `MaybeRetry` is intentionally not called.
       SendErrorAsync(brillo::http::TransportError::kDnsFailure);
     }
     return;
@@ -148,6 +171,8 @@ void HttpRequest::OnSuccess(brillo::http::RequestID request_id,
   if (request_id != request_id_) {
     LOG(ERROR) << logging_tag_ << " " << __func__ << ": Expected request ID "
                << request_id_ << " but got " << request_id;
+    // Request ID mismatch is a programming error, not a transient network
+    // failure. Retrying would not fix it, so `MaybeRetry` is not called.
     SendError(brillo::http::TransportError::kInternalError);
     return;
   }
@@ -168,18 +193,27 @@ void HttpRequest::OnError(brillo::http::RequestID request_id,
     SendError(brillo::http::TransportError::kInternalError);
     return;
   }
-  SendError(brillo::http::ClassifyTransportError(error).value_or(
+  MaybeRetryOrSendError(brillo::http::ClassifyTransportError(error).value_or(
       brillo::http::TransportError::kUnknown));
+}
+
+void HttpRequest::ResetConnection() {
+  dns_queries_.clear();
+  is_running_ = false;
+  request_id_ = -1;
 }
 
 void HttpRequest::Stop() {
   if (!is_running_) {
     return;
   }
-  dns_queries_.clear();
-  is_running_ = false;
-  request_id_ = -1;
+  ResetConnection();
   callback_.Reset();
+  retry_policy_.reset();
+  retry_count_ = 0;
+  // Invalidate any pending delayed `Retry()` callbacks. The generation
+  // check in `Retry()` will cause stale callbacks to return immediately.
+  retry_generation_++;
 }
 
 // DnsClient callback that fires when the DNS request completes.
@@ -195,7 +229,7 @@ void HttpRequest::GetDNSResult(net_base::IPAddress dns,
     }
     dns_queries_.erase(dns);
     if (dns_queries_.empty()) {
-      SendError(error);
+      MaybeRetryOrSendError(error);
     }
     return;
   }
@@ -235,6 +269,57 @@ void HttpRequest::SendErrorAsync(brillo::http::TransportError error) {
   dispatcher_->PostTask(FROM_HERE,
                         base::BindOnce(&HttpRequest::SendError,
                                        weak_ptr_factory_.GetWeakPtr(), error));
+}
+
+bool HttpRequest::MaybeRetry(brillo::http::TransportError error) {
+  if (!retry_policy_.has_value()) {
+    return false;
+  }
+  if (retry_count_ >= retry_policy_->max_retries) {
+    return false;
+  }
+  if (!retry_policy_->retryable_errors.contains(error)) {
+    return false;
+  }
+  retry_count_++;
+  SLOG(this, 2) << logging_tag_ << " " << __func__ << ": retry " << retry_count_
+                << "/" << retry_policy_->max_retries;
+  if (retry_policy_->retry_delay.is_positive()) {
+    // Post delayed retry with current generation. If `Stop()` is called
+    // before the delay expires, `retry_generation_` increments and the
+    // stale `Retry()` call is a no-op.
+    dispatcher_->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&HttpRequest::Retry, weak_ptr_factory_.GetWeakPtr(),
+                       retry_generation_),
+        retry_policy_->retry_delay);
+  } else {
+    // Always post asynchronously to avoid re-entering the transport
+    // from within an error callback.
+    dispatcher_->PostTask(
+        FROM_HERE,
+        base::BindOnce(&HttpRequest::Retry, weak_ptr_factory_.GetWeakPtr(),
+                       retry_generation_));
+  }
+  return true;
+}
+
+void HttpRequest::MaybeRetryOrSendError(brillo::http::TransportError error) {
+  if (!MaybeRetry(error)) {
+    SendError(error);
+  }
+}
+
+void HttpRequest::Retry(size_t generation) {
+  // Guard against stale delayed retry: if `Stop()` or a new `Start()` was
+  // called since this retry was scheduled, `retry_generation_` will have
+  // incremented and this callback is obsolete.
+  if (generation != retry_generation_) {
+    return;
+  }
+
+  ResetConnection();
+  StartInternal(logging_tag_, url_, headers_, std::move(callback_));
 }
 
 std::ostream& operator<<(std::ostream& stream, HttpRequest::Method method) {

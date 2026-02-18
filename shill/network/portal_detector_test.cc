@@ -82,7 +82,8 @@ class MockHttpRequest : public HttpRequest {
              std::string_view logging_tag,
              const net_base::HttpUrl& url,
              const brillo::http::HeaderList& headers,
-             base::OnceCallback<void(Result result)> callback) override {
+             base::OnceCallback<void(Result result)> callback,
+             std::optional<RetryPolicy> retry_policy = std::nullopt) override {
     EXPECT_EQ(Method::kGet, method);
     StartWithUrl(url);
     StartWithHeaders(headers);

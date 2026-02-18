@@ -4,8 +4,6 @@
 
 #include "shill/network/http_request.h"
 
-#include <netinet/in.h>
-
 #include <memory>
 #include <optional>
 #include <string>
@@ -58,6 +56,8 @@ constexpr std::string_view kIPv4AddressURL = "http://10.1.1.1";
 constexpr std::string_view kIPv6AddressURL = "http://[2001:db8::1]/example";
 constexpr std::string_view kInterfaceName = "int0";
 constexpr std::string_view kLoggingTag = "int0 IPv4 attempt=1";
+// Sentinel for `brillo::http::RequestID` when no real request has been issued.
+constexpr brillo::http::RequestID kNoRequestId = -1;
 constexpr net_base::IPAddress kIPv4DNS0(net_base::IPv4Address(8, 8, 8, 8));
 constexpr net_base::IPAddress kIPv4DNS1(net_base::IPv4Address(8, 8, 4, 4));
 // clang-format off
@@ -253,6 +253,51 @@ class HttpRequestTest : public Test {
     ASSERT_TRUE(url.has_value());
     request_->Start(method, kLoggingTag, *url, {}, target_.callback());
   }
+  void StartRequestWithRetry(std::string_view url_string,
+                             HttpRequest::RetryPolicy policy) {
+    auto url = net_base::HttpUrl::CreateFromString(url_string);
+    ASSERT_TRUE(url.has_value());
+    request_->Start(HttpRequest::Method::kGet, kLoggingTag, *url, {},
+                    target_.callback(), std::move(policy));
+  }
+  // Configures `FinishRequestAsync` to fail `fail_count` times with
+  // `transport_error`, then succeed on the next call with `resp_data`.
+  void SetupFinishRequestFailThenSuccess(
+      size_t fail_count,
+      brillo::http::TransportError transport_error,
+      const std::string& resp_data) {
+    resp_data_ = resp_data;
+    auto calls = std::make_shared<size_t>(0);
+    constexpr size_t kSuccessAttempt = 1;
+    EXPECT_CALL(*brillo_connection_, FinishRequestAsync(_, _))
+        .Times(fail_count + kSuccessAttempt)
+        .WillRepeatedly([this, calls, fail_count, transport_error](
+                            brillo::http::SuccessCallback success_callback,
+                            brillo::http::ErrorCallback error_callback) {
+          (*calls)++;
+          if (*calls <= fail_count) {
+            brillo::ErrorPtr error;
+            brillo::http::AddTransportError(&error, FROM_HERE, transport_error,
+                                            "");
+            std::move(error_callback).Run(kNoRequestId, error.get());
+          } else {
+            FinishRequestAsyncSuccess(std::move(success_callback));
+          }
+          return 0;
+        });
+  }
+  // Configures `FinishRequestAsync` to fail once with `transport_error`.
+  void ExpectFinishRequestAsyncTransportError(
+      brillo::http::TransportError transport_error) {
+    EXPECT_CALL(*brillo_connection_, FinishRequestAsync(_, _))
+        .WillOnce(WithArg<1>([transport_error](auto callback) {
+          brillo::ErrorPtr error;
+          brillo::http::AddTransportError(&error, FROM_HERE, transport_error,
+                                          "");
+          std::move(callback).Run(kNoRequestId, error.get());
+          return 0;
+        }));
+  }
   void ExpectCreateConnection(std::string_view url, const char* method) {
     EXPECT_CALL(*transport_, CreateConnection(Eq(url), method, _, "", "", _))
         .WillOnce(Return(brillo_connection_));
@@ -274,16 +319,15 @@ class HttpRequestTest : public Test {
     EXPECT_CALL(*brillo_connection_, MockExtractDataStream(_))
         .WillOnce(Return(mock_stream.release()));
     auto resp = std::make_unique<brillo::http::Response>(brillo_connection_);
-    // request_id_ has not yet been set. Pass -1 to match default value.
-    std::move(success_callback).Run(-1, std::move(resp));
+    std::move(success_callback).Run(kNoRequestId, std::move(resp));
   }
   void FinishRequestAsyncFail(brillo::http::ErrorCallback error_callback) {
     brillo::ErrorPtr error;
     brillo::http::AddTransportError(
         &error, FROM_HERE, brillo::http::TransportError::kConnectionFailure,
         "");
-    // request_id_ has not yet been set. Pass -1 to match default value.
-    std::move(error_callback).Run(-1, error.get());
+    // request_id_ has not yet been set. Pass kNoRequestId to match default.
+    std::move(error_callback).Run(kNoRequestId, error.get());
   }
   void ExpectFinishRequestAsyncSuccess(const std::string& resp_data) {
     resp_data_ = resp_data;
@@ -554,6 +598,263 @@ TEST_F(HttpRequestTest, IPv4TextHeadRequestSuccess) {
                      net_base::IPAddress(net_base::IPv4Address(10, 1, 1, 3)),
                  });
 
+  ExpectStopped();
+}
+
+TEST_F(HttpRequestTest, NoRetryOnNonRetryableError) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+
+  HttpRequest::RetryPolicy policy;
+  ExpectRequestErrorCallback(brillo::http::TransportError::kTLSFailure);
+  ExpectCreateConnection(kIPv4AddressURL, brillo::http::request_type::kGet);
+  ExpectFinishRequestAsyncTransportError(
+      brillo::http::TransportError::kTLSFailure);
+
+  StartRequestWithRetry(kIPv4AddressURL, policy);
+
+  // Pump event loop to ensure no async retry was posted.
+  dispatcher_.task_environment().RunUntilIdle();
+  ExpectStopped();
+}
+
+TEST_F(HttpRequestTest, RetryOnIOError) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+
+  const std::string resp = "Retry success.";
+  HttpRequest::RetryPolicy policy;
+  ExpectRequestSuccessCallback(resp);
+  EXPECT_CALL(*transport(),
+              CreateConnection(Eq(kIPv4AddressURL),
+                               brillo::http::request_type::kGet, _, "", "", _))
+      .WillOnce(Return(brillo_connection_))
+      .WillOnce(Return(brillo_connection_));
+  SetupFinishRequestFailThenSuccess(1, brillo::http::TransportError::kIOError,
+                                    resp);
+
+  StartRequestWithRetry(kIPv4AddressURL, policy);
+
+  // The retry is posted asynchronously. Pump the event loop to fire it.
+  dispatcher_.task_environment().RunUntilIdle();
+  ExpectStopped();
+}
+
+TEST_F(HttpRequestTest, RetryOnDNSTimeout) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+
+  HttpRequest::RetryPolicy policy;
+
+  // Expect Resolve() called 4 times: 2 DNS servers x 2 attempts.
+  EXPECT_CALL(*dns_client_factory_, Resolve).Times(4);
+
+  auto url = *net_base::HttpUrl::CreateFromString(kTextURL);
+  request_->Start(HttpRequest::Method::kGet, kLoggingTag, url, {},
+                  target_.callback(), std::move(policy));
+
+  // First attempt: both DNS servers time out -> triggers retry.
+  GetDNSResultFailure(kIPv4DNS0, net_base::DNSClient::Error::kTimedOut);
+  GetDNSResultFailure(kIPv4DNS1, net_base::DNSClient::Error::kTimedOut);
+
+  // Pump event loop to fire the async Retry().
+  dispatcher_.task_environment().RunUntilIdle();
+
+  // Retry attempt: DNS succeeds. Set up expectations before triggering
+  // the DNS result that starts the HTTP request.
+  const std::string resp = "Retry DNS success.";
+  ExpectRequestSuccessCallback(resp);
+  EXPECT_CALL(*transport(),
+              ResolveHostToIp(url.host(), url.port(), "10.1.1.1"));
+  ExpectCreateConnection(kTextURL, brillo::http::request_type::kGet);
+  ExpectFinishRequestAsyncSuccess(resp);
+
+  GetDNSResultSuccess(
+      kIPv4DNS0, {net_base::IPAddress(net_base::IPv4Address(10, 1, 1, 1))});
+
+  ExpectStopped();
+}
+
+TEST_F(HttpRequestTest, MaxRetriesExhausted) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+
+  HttpRequest::RetryPolicy policy;
+  policy.max_retries = 1;
+  ExpectRequestErrorCallback(brillo::http::TransportError::kIOError);
+  EXPECT_CALL(*transport(),
+              CreateConnection(Eq(kIPv4AddressURL),
+                               brillo::http::request_type::kGet, _, "", "", _))
+      .WillOnce(Return(brillo_connection_))
+      .WillOnce(Return(brillo_connection_));
+  EXPECT_CALL(*brillo_connection_, FinishRequestAsync(_, _))
+      .Times(2)
+      .WillRepeatedly(WithArg<1>([](auto callback) {
+        brillo::ErrorPtr error;
+        brillo::http::AddTransportError(
+            &error, FROM_HERE, brillo::http::TransportError::kIOError, "");
+        std::move(callback).Run(kNoRequestId, error.get());
+        return 0;
+      }));
+
+  StartRequestWithRetry(kIPv4AddressURL, policy);
+
+  // First failure posted retry async. Pump to fire retry.
+  dispatcher_.task_environment().RunUntilIdle();
+
+  // Second failure: max_retries exhausted, error callback fires.
+  ExpectStopped();
+}
+
+TEST_F(HttpRequestTest, RetryWithDelay) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+
+  constexpr base::TimeDelta kDelay = base::Milliseconds(500);
+  HttpRequest::RetryPolicy policy;
+  policy.retry_delay = kDelay;
+
+  const std::string resp = "Delayed retry success.";
+  ExpectRequestSuccessCallback(resp);
+  EXPECT_CALL(*transport(),
+              CreateConnection(Eq(kIPv4AddressURL),
+                               brillo::http::request_type::kGet, _, "", "", _))
+      .WillOnce(Return(brillo_connection_))
+      .WillOnce(Return(brillo_connection_));
+  SetupFinishRequestFailThenSuccess(1, brillo::http::TransportError::kIOError,
+                                    resp);
+
+  StartRequestWithRetry(kIPv4AddressURL, policy);
+
+  // Initial request has failed and a delayed retry is pending.
+  // is_running() is true because the retry cycle is not yet complete.
+  EXPECT_TRUE(request_->is_running());
+
+  // Fast-forward past the delay to fire the delayed Retry().
+  dispatcher_.task_environment().FastForwardBy(kDelay);
+
+  ExpectStopped();
+}
+
+TEST_F(HttpRequestTest, CustomRetryPolicy) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+
+  HttpRequest::RetryPolicy policy;
+  policy.max_retries = 2;
+  policy.retryable_errors = {brillo::http::TransportError::kConnectionFailure};
+
+  const std::string resp = "Custom policy success.";
+  ExpectRequestSuccessCallback(resp);
+  EXPECT_CALL(*transport(),
+              CreateConnection(Eq(kIPv4AddressURL),
+                               brillo::http::request_type::kGet, _, "", "", _))
+      .WillOnce(Return(brillo_connection_))
+      .WillOnce(Return(brillo_connection_))
+      .WillOnce(Return(brillo_connection_));
+  SetupFinishRequestFailThenSuccess(
+      2, brillo::http::TransportError::kConnectionFailure, resp);
+
+  StartRequestWithRetry(kIPv4AddressURL, policy);
+
+  // Two retries needed. Pump after each async retry post.
+  dispatcher_.task_environment().RunUntilIdle();
+
+  ExpectStopped();
+}
+
+TEST_F(HttpRequestTest, StopDuringDelayedRetry) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+
+  constexpr base::TimeDelta kDelay = base::Seconds(1);
+  HttpRequest::RetryPolicy policy;
+  policy.retry_delay = kDelay;
+
+  // Only one CreateConnection (the initial attempt). The retry must
+  // NOT fire after `Stop()`.
+  ExpectCreateConnection(kIPv4AddressURL, brillo::http::request_type::kGet);
+  ExpectFinishRequestAsyncTransportError(
+      brillo::http::TransportError::kIOError);
+
+  StartRequestWithRetry(kIPv4AddressURL, policy);
+
+  // Delayed retry is pending. Stop() cancels it via generation counter.
+  request_->Stop();
+  EXPECT_FALSE(request_->is_running());
+
+  // Fast-forward past the delay. The stale Retry() callback fires but
+  // checks retry_generation_ and returns immediately.
+  dispatcher_.task_environment().FastForwardBy(kDelay);
+  EXPECT_FALSE(request_->is_running());
+}
+
+TEST_F(HttpRequestTest, ReuseAfterRetryCompletes) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+
+  // First request: retry once on IO error, then succeed.
+  {
+    const std::string resp = "First request.";
+    HttpRequest::RetryPolicy policy;
+    ExpectRequestSuccessCallback(resp);
+    EXPECT_CALL(*transport(), CreateConnection(Eq(kIPv4AddressURL),
+                                               brillo::http::request_type::kGet,
+                                               _, "", "", _))
+        .WillOnce(Return(brillo_connection_))
+        .WillOnce(Return(brillo_connection_));
+    SetupFinishRequestFailThenSuccess(1, brillo::http::TransportError::kIOError,
+                                      resp);
+
+    StartRequestWithRetry(kIPv4AddressURL, policy);
+    dispatcher_.task_environment().RunUntilIdle();
+    ExpectStopped();
+    Mock::VerifyAndClearExpectations(transport().get());
+    Mock::VerifyAndClearExpectations(brillo_connection_.get());
+  }
+
+  // Second request: no retry policy. IO error should be reported
+  // immediately (no stale retry from the first call).
+  {
+    ExpectRequestErrorCallback(
+        brillo::http::TransportError::kConnectionFailure);
+    ExpectCreateConnection(kIPv4AddressURL, brillo::http::request_type::kGet);
+    ExpectFinishRequestAsyncFail();
+
+    StartRequest(HttpRequest::Method::kGet, kIPv4AddressURL);
+    ExpectStopped();
+  }
+}
+
+TEST_F(HttpRequestTest, StopThenStartDuringDelayedRetry) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+
+  constexpr base::TimeDelta kDelay = base::Seconds(1);
+  HttpRequest::RetryPolicy policy;
+  policy.retry_delay = kDelay;
+
+  // First request: fails, schedules delayed retry.
+  ExpectCreateConnection(kIPv4AddressURL, brillo::http::request_type::kGet);
+  ExpectFinishRequestAsyncTransportError(
+      brillo::http::TransportError::kIOError);
+  StartRequestWithRetry(kIPv4AddressURL, policy);
+  Mock::VerifyAndClearExpectations(transport().get());
+  Mock::VerifyAndClearExpectations(brillo_connection_.get());
+
+  // Stop the first request, then start a new one (no retry).
+  request_->Stop();
+
+  const std::string resp = "Second request.";
+  ExpectRequestSuccessCallback(resp);
+  ExpectCreateConnection(kIPv4AddressURL, brillo::http::request_type::kGet);
+  ExpectFinishRequestAsyncSuccess(resp);
+  StartRequest(HttpRequest::Method::kGet, kIPv4AddressURL);
+
+  // Fast-forward past the delay. The stale Retry() fires but the
+  // generation check causes it to return immediately. The second
+  // request must not be affected.
+  dispatcher_.task_environment().FastForwardBy(kDelay);
   ExpectStopped();
 }
 
