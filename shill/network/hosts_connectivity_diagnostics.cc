@@ -4,6 +4,7 @@
 
 #include "shill/network/hosts_connectivity_diagnostics.h"
 
+#include <memory>
 #include <utility>
 
 #include <base/functional/bind.h>
@@ -11,8 +12,8 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
+#include <brillo/http/http_request.h>
 #include <brillo/http/http_transport.h>
-#include <brillo/http/http_utils.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <chromeos/net-base/ip_address.h>
 #include <dbus/bus.h>
@@ -44,8 +45,10 @@ constexpr uint32_t kDefaultErrorLimit = 0;
 }  // namespace
 
 HostsConnectivityDiagnostics::HostsConnectivityDiagnostics(
-    scoped_refptr<dbus::Bus> bus, std::string logging_tag)
-    : bus_(bus),
+    EventDispatcher* dispatcher,
+    scoped_refptr<dbus::Bus> bus,
+    std::string logging_tag)
+    : dispatcher_(dispatcher),
       logging_tag_(std::move(logging_tag)),
       get_proxy_function_(base::BindRepeating(
           [](scoped_refptr<dbus::Bus> bus,
@@ -54,13 +57,18 @@ HostsConnectivityDiagnostics::HostsConnectivityDiagnostics(
             brillo::http::GetChromeProxyServersAsync(bus, url,
                                                      std::move(callback));
           },
-          bus_)) {}
+          std::move(bus))) {}
 
 HostsConnectivityDiagnostics::~HostsConnectivityDiagnostics() = default;
 
 void HostsConnectivityDiagnostics::SetGetProxyFunctionForTest(
     GetProxyFunction func) {
   get_proxy_function_ = std::move(func);
+}
+
+void HostsConnectivityDiagnostics::SetHttpRequestFactoryForTest(
+    HttpRequestFactory factory) {
+  http_request_factory_for_testing_ = std::move(factory);
 }
 
 // static
@@ -129,6 +137,20 @@ void HostsConnectivityDiagnostics::DispatchNextRequest() {
   is_running_ = true;
   Request req = std::move(pending_requests_.front());
   pending_requests_.pop();
+
+  // Rebuild the HttpRequest factory with this request's network context.
+  // Each request may target a different network interface/DNS config.
+  http_request_factory_ = base::BindRepeating(
+      [](EventDispatcher* dispatcher, const std::string& interface_name,
+         net_base::IPFamily ip_family,
+         const std::vector<net_base::IPAddress>& dns_list,
+         std::shared_ptr<brillo::http::Transport> transport) {
+        return std::make_unique<HttpRequest>(
+            dispatcher, interface_name, ip_family, dns_list,
+            /*allow_non_google_https=*/true, std::move(transport));
+      },
+      dispatcher_, req.info.interface_name, req.info.ip_family,
+      req.info.dns_list);
 
   NormalizeHostnames(std::move(req));
 }
@@ -322,14 +344,46 @@ void HostsConnectivityDiagnostics::RunNextConnectivityTest(Request req) {
   spec.proxies.pop_front();
 
   const std::string hostname = spec.url_hostname.ToString();
+  const net_base::HttpUrl url = spec.url_hostname;
   const base::Time test_start_time = base::Time::Now();
+  const base::TimeDelta timeout = req.info.timeout;
 
-  // TODO(b:463098734): Replace with actual connectivity_tester_ call once
-  // ConnectivityTester is implemented. Currently calls OnSingleTestComplete
-  // directly with a fake SUCCESS result.
+  auto transport = (proxy == brillo::http::kDirectProxy)
+                       ? brillo::http::Transport::CreateDefault()
+                       : brillo::http::Transport::CreateDefaultWithProxy(proxy);
+
+  active_http_request_ = CreateHttpRequest(std::move(transport));
+  active_http_request_->Start(
+      HttpRequest::Method::kHead, logging_tag_, url,
+      /*headers=*/{},
+      base::BindOnce(&HostsConnectivityDiagnostics::OnHttpRequestComplete,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(req),
+                     std::move(hostname), std::move(proxy), test_start_time),
+      timeout.is_zero() ? std::nullopt : std::make_optional(timeout));
+}
+
+void HostsConnectivityDiagnostics::OnHttpRequestComplete(
+    Request req,
+    std::string hostname,
+    std::string proxy,
+    base::Time test_start_time,
+    HttpRequest::Result result) {
+  active_http_request_.reset();
+
+  hosts_connectivity_diagnostics::ConnectivityResultCode result_code;
+  std::string error_message;
+
+  if (result.has_value()) {
+    result_code = hosts_connectivity_diagnostics::SUCCESS;
+  } else {
+    result_code = TransportErrorToConnectivityResultCode(result.error());
+    // TODO(crbug.com/463098734): set a meaningful error message once the
+    // diagnostics step is implemented.
+    error_message = brillo::http::TransportErrorToString(result.error());
+  }
+
   OnSingleTestComplete(std::move(req), std::move(hostname), std::move(proxy),
-                       test_start_time, hosts_connectivity_diagnostics::SUCCESS,
-                       /*error_message=*/"");
+                       test_start_time, result_code, error_message);
 }
 
 void HostsConnectivityDiagnostics::OnSingleTestComplete(
@@ -343,7 +397,7 @@ void HostsConnectivityDiagnostics::OnSingleTestComplete(
 
   *req.response.add_connectivity_results() = CreateConnectivityResultEntry(
       std::move(hostname),
-      base::StartsWith(proxy, brillo::http::kDirectProxy)
+      (proxy == brillo::http::kDirectProxy)
           ? std::nullopt
           : std::make_optional(std::move(proxy)),
       result_code,
@@ -408,6 +462,14 @@ void HostsConnectivityDiagnostics::CompleteRequest(Request req) {
 
   std::move(req.info.callback).Run(req.response);
   DispatchNextRequest();
+}
+
+std::unique_ptr<HttpRequest> HostsConnectivityDiagnostics::CreateHttpRequest(
+    std::shared_ptr<brillo::http::Transport> transport) {
+  if (!http_request_factory_for_testing_.is_null()) {
+    return http_request_factory_for_testing_.Run(std::move(transport));
+  }
+  return http_request_factory_.Run(std::move(transport));
 }
 
 }  // namespace shill

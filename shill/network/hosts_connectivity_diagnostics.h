@@ -18,8 +18,10 @@
 #include <base/time/time.h>
 #include <brillo/http/http_proxy.h>
 #include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ip_address.h>
 #include <hosts_connectivity_diagnostics/proto_bindings/hosts_connectivity_diagnostics.pb.h>
 
+#include "shill/network/http_request.h"
 #include "shill/store/key_value_store.h"
 
 namespace dbus {
@@ -27,6 +29,8 @@ class Bus;
 }  // namespace dbus
 
 namespace shill {
+
+class EventDispatcher;
 
 inline constexpr std::string_view kNoHostsProvided =
     "No hosts provided for connectivity diagnostics.";
@@ -60,11 +64,10 @@ inline constexpr std::string_view kUnableToGetSystemProxyResolution =
 //
 // 3. EXECUTION PHASE: Request::specs is a deque of HostnameTestSpec, each
 //    holding a deque of proxy URLs. RunNextConnectivityTest() pops the front
-//    proxy from the front spec and calls OnSingleTestComplete() (currently
-//    with a fake SUCCESS result; OnSingleTestComplete() re-enters
-//    RunNextConnectivityTest() with the mutated Request. Specs whose proxy
-//    deques are exhausted are popped from the front. TODO(crbug.com/463098734):
-//    replace with an async HTTP HEAD request).
+//    proxy from the front spec, creates an HttpRequest, and calls Start() with
+//    Method::kHead. OnHttpRequestComplete() records the result and re-enters
+//    RunNextConnectivityTest(). Specs whose proxy deques are exhausted are
+//    popped from the front.
 //
 // 4. COMPLETION: Results are returned via callback as protobuf.
 //    Then DispatchNextRequest() starts the next queued request if any.
@@ -82,6 +85,14 @@ class HostsConnectivityDiagnostics {
   using GetProxyCallback = brillo::http::GetChromeProxyServersCallback;
   using GetProxyFunction = base::RepeatingCallback<void(
       const std::string& url, GetProxyCallback callback)>;
+
+  // Factory callback that creates a new HttpRequest for each connectivity
+  // test. The factory receives `transport` to support per-request proxy
+  // configuration. Can be overridden in tests via
+  // `SetHttpRequestFactoryForTest()`.
+  using HttpRequestFactory =
+      base::RepeatingCallback<std::unique_ptr<HttpRequest>(
+          std::shared_ptr<brillo::http::Transport> transport)>;
 
   // Proxy resolution mode for connectivity diagnostics.
   enum class ProxyMode {
@@ -112,16 +123,30 @@ class HostsConnectivityDiagnostics {
     uint32_t max_error_count = 0;
     // Proxy mode and optional custom URL.
     ProxyOption proxy;
+    // Network interface to bind DNS/HTTP to (e.g., "eth0", "wlan0").
+    std::string interface_name;
+    // IPv4 vs IPv6 DNS resolution.
+    net_base::IPFamily ip_family = net_base::IPFamily::kIPv4;
+    // DNS servers to use for name resolution.
+    std::vector<net_base::IPAddress> dns_list;
   };
 
-  HostsConnectivityDiagnostics(scoped_refptr<dbus::Bus> bus,
+  // Constructs a long-lived HostsConnectivityDiagnostics instance.
+  //
+  // `dispatcher` is the event dispatcher for async operations.
+  // `bus` is the D-Bus connection for Chrome proxy resolution.
+  // `logging_tag` identifies this instance in log messages.
+  HostsConnectivityDiagnostics(EventDispatcher* dispatcher,
+                               scoped_refptr<dbus::Bus> bus,
                                std::string logging_tag);
   HostsConnectivityDiagnostics(const HostsConnectivityDiagnostics&) = delete;
   HostsConnectivityDiagnostics& operator=(const HostsConnectivityDiagnostics&) =
       delete;
   ~HostsConnectivityDiagnostics();
 
-  // Performs connectivity test on hostnames in `request_info`.
+  // Performs connectivity test on hostnames in `request_info`. Network context
+  // (interface name, IP family, DNS servers) is supplied per-request via
+  // `RequestInfo` so that each call can target a different network.
   void TestHostsConnectivity(RequestInfo request_info);
 
   // Parses the proxy option from user-provided options.
@@ -140,6 +165,10 @@ class HostsConnectivityDiagnostics {
 
   // Sets the proxy resolution function for testing purposes.
   void SetGetProxyFunctionForTest(GetProxyFunction func);
+
+  // Overrides the HttpRequest factory for testing. `factory` is called once
+  // per connectivity test with the transport to use.
+  void SetHttpRequestFactoryForTest(HttpRequestFactory factory);
 
  private:
   // Single hostname ready for connectivity testing.
@@ -213,6 +242,15 @@ class HostsConnectivityDiagnostics {
   // Specs with no remaining proxies are skipped.
   void RunNextConnectivityTest(Request req);
 
+  // Callback invoked when the HttpRequest for a single connectivity test
+  // completes. Converts `result` to a ConnectivityResultCode and calls
+  // OnSingleTestComplete.
+  void OnHttpRequestComplete(Request req,
+                             std::string hostname,
+                             std::string proxy,
+                             base::Time test_start_time,
+                             HttpRequest::Result result);
+
   // Handles completion of a single connectivity test. Records the result
   // and re-enters RunNextConnectivityTest, or aborts on max_error_count.
   void OnSingleTestComplete(
@@ -249,7 +287,12 @@ class HostsConnectivityDiagnostics {
   void GetChromeProxyServersAsync(const std::string& url,
                                   GetProxyCallback callback);
 
-  scoped_refptr<dbus::Bus> bus_;
+  // Creates a new HttpRequest. Uses `http_request_factory_for_testing_` if
+  // set, otherwise `http_request_factory_`.
+  std::unique_ptr<HttpRequest> CreateHttpRequest(
+      std::shared_ptr<brillo::http::Transport> transport);
+
+  EventDispatcher* const dispatcher_;
   const std::string logging_tag_;
 
   // Queue of incoming requests waiting to be processed.
@@ -257,9 +300,20 @@ class HostsConnectivityDiagnostics {
   // True while a request is being processed (re-entrancy guard).
   bool is_running_ = false;
 
+  // The HttpRequest currently in-flight. Null when no test is running.
+  std::unique_ptr<HttpRequest> active_http_request_;
+
   // Resolves proxy servers for a URL via Chrome's proxy resolution engine
   // (D-Bus call to Chrome). Can be overridden for testing.
   GetProxyFunction get_proxy_function_;
+
+  // Factory for creating HttpRequest instances. Rebuilt per request in
+  // DispatchNextRequest() with the request's network context.
+  HttpRequestFactory http_request_factory_;
+
+  // Test-only override. When set, CreateHttpRequest() uses this instead
+  // of `http_request_factory_`.
+  HttpRequestFactory http_request_factory_for_testing_;
 
   base::WeakPtrFactory<HostsConnectivityDiagnostics> weak_ptr_factory_{this};
 };
