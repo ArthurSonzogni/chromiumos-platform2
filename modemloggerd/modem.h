@@ -39,6 +39,7 @@ class Modem : public LoggerInterface {
  private:
   bool StartLoggingHelper();
   int RunEnableHelper(bool enable);
+  int RunExe(const Executable& exe);
   std::string GetLogPath(const std::string& filename);
 
   std::string output_dir_;

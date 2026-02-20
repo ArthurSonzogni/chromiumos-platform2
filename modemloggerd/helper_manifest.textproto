@@ -49,6 +49,9 @@ helper {
     output_dir_argument: "-logdir"
   }
   enable_exe {
+    filename: "/usr/local/libexec/modemloggerd/rw101_set_usbmode.sh"
+  }
+  enable_exe {
     filename: "/usr/bin/mmcli"
     extra_argument: "-m"
     extra_argument: "any"

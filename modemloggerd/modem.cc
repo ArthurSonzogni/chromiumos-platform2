@@ -36,7 +36,7 @@ Modem::Modem(dbus::Bus* bus,
 
 brillo::ErrorPtr Modem::SetEnabled(bool enable) {
   LOG(INFO) << __func__ << ": " << enable;
-  if ((enable && !logging_helper_.has_enable_exe()) ||
+  if ((enable && logging_helper_.enable_exe_size() == 0) ||
       (!enable && !logging_helper_.has_disable_exe())) {
     return nullptr;
   }
@@ -95,8 +95,21 @@ bool Modem::StartLoggingHelper() {
 }
 
 int Modem::RunEnableHelper(bool enable) {
-  auto exe =
-      enable ? logging_helper_.enable_exe() : logging_helper_.disable_exe();
+  if (enable) {
+    // Run the enable commands one by one, exiting early if one fails.
+    for (const auto& exe : logging_helper_.enable_exe()) {
+      const int exit_code = RunExe(exe);
+      if (exit_code != 0) {
+        return exit_code;
+      }
+    }
+  } else if (logging_helper_.has_disable_exe()) {
+    return RunExe(logging_helper_.disable_exe());
+  }
+  return 0;
+}
+
+int Modem::RunExe(const Executable& exe) {
   brillo::ProcessImpl process;
   process.AddArg(exe.filename());
   for (const std::string& extra_argument : exe.extra_argument()) {

@@ -19,7 +19,7 @@ message LoggingExecutable {
 
 message HelperEntry {
   string modem_name = 1;
-  optional Executable enable_exe = 2;  // Executable that enables
+  repeated Executable enable_exe = 2;  // Executable that enables
   // logging functionality on modems. Does not dump logs to disk.
   optional Executable disable_exe = 3;
   LoggingExecutable exe = 4;
