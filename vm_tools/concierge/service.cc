@@ -1294,8 +1294,9 @@ bool Service::Init(MmServiceFactory mm_service_factory) {
   VMT_TRACE_END(kCategory);
 
   // Setup & start the gRPC listener services.
-  startup_listener_.SetInstallStateCallback(base::BindRepeating(
-      &Service::VmInstallStateSignal, weak_ptr_factory_.GetWeakPtr()));
+  startup_listener_.SetInstallStateCallback(
+      base::BindPostTaskToCurrentDefault(base::BindRepeating(
+          &Service::VmInstallStateSignal, weak_ptr_factory_.GetWeakPtr())));
   if (!SetupListenerService(
           &startup_listener_,
           base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY,
