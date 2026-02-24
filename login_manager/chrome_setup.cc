@@ -1325,6 +1325,7 @@ void AddCoralFlags(chromeos::ui::ChromiumCommandBuilder* builder) {
 
 void AddCuttlefishFlags(chromeos::ui::ChromiumCommandBuilder* builder) {
   if (builder->UseFlagIsSet("cuttlefish")) {
+    builder->AddArg("--load-extension=/opt/starbase/token_extension");
     builder->AddFeatureEnableOverride("TiledDisplaySupport");
     builder->AddFeatureEnableOverride("FastDrmMasterDrop");
     builder->AddFeatureEnableOverride("AllowChromeAppsInKioskSessions");
@@ -1334,6 +1335,7 @@ void AddCuttlefishFlags(chromeos::ui::ChromiumCommandBuilder* builder) {
 
 void AddSquidFlags(chromeos::ui::ChromiumCommandBuilder* builder) {
   if (builder->UseFlagIsSet("squid")) {
+    builder->AddArg("--load-extension=/opt/starbase/token_extension");
     builder->AddFeatureEnableOverride("TiledDisplaySupport");
     builder->AddFeatureEnableOverride("FastDrmMasterDrop");
     // Helium Arcvm Kiosk specific customization

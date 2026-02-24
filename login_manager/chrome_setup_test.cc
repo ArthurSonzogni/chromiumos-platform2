@@ -528,6 +528,50 @@ TEST_F(ChromeSetupTest, TestCoralEnabled) {
   EXPECT_THAT(result, testing::Contains("CoralFeatureMultiLanguage"));
 }
 
+TEST_F(ChromeSetupTest, TestCuttlefishFlagsEnabled) {
+  base::ScopedTempDir temp_dir;
+  InitWithUseFlag("cuttlefish", &temp_dir, &builder_);
+  login_manager::AddCuttlefishFlags(&builder_);
+
+  auto argv = builder_.arguments();
+  std::vector<std::string> result =
+      base::SplitString(GetFlag(argv, kFeatureFlag), ",", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
+  EXPECT_THAT(result, testing::Contains("TiledDisplaySupport"));
+  EXPECT_THAT(result, testing::Contains("FastDrmMasterDrop"));
+  EXPECT_THAT(result, testing::Contains("AllowChromeAppsInKioskSessions"));
+
+  std::vector<std::string> disabled_result =
+      base::SplitString(GetFlag(argv, kDisabledFeatureFlag), ",",
+                        base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  EXPECT_THAT(disabled_result, testing::Contains("LocalNetworkAccessChecks"));
+
+  EXPECT_THAT(argv, testing::Contains(
+                        "--load-extension=/opt/starbase/token_extension"));
+}
+
+TEST_F(ChromeSetupTest, TestCuttlefishFlagsDisabled) {
+  login_manager::AddCuttlefishFlags(&builder_);
+
+  auto argv = builder_.arguments();
+  std::vector<std::string> result =
+      base::SplitString(GetFlag(argv, kFeatureFlag), ",", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
+  EXPECT_THAT(result, testing::Not(testing::Contains("TiledDisplaySupport")));
+  EXPECT_THAT(result, testing::Not(testing::Contains("FastDrmMasterDrop")));
+  EXPECT_THAT(result, testing::Not(
+                          testing::Contains("AllowChromeAppsInKioskSessions")));
+
+  std::vector<std::string> disabled_result =
+      base::SplitString(GetFlag(argv, kDisabledFeatureFlag), ",",
+                        base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  EXPECT_THAT(disabled_result,
+              testing::Not(testing::Contains("LocalNetworkAccessChecks")));
+
+  EXPECT_THAT(argv, testing::Not(testing::Contains(
+                        "--load-extension=/opt/starbase/token_extension")));
+}
+
 TEST_F(ChromeSetupTest, TestSquidFlagsEnabled) {
   base::ScopedTempDir temp_dir;
   InitWithUseFlag("squid", &temp_dir, &builder_);
@@ -540,6 +584,8 @@ TEST_F(ChromeSetupTest, TestSquidFlagsEnabled) {
   EXPECT_THAT(result, testing::Contains("HeliumArcvmKiosk"));
   EXPECT_THAT(result, testing::Contains("TiledDisplaySupport"));
   EXPECT_THAT(result, testing::Contains("FastDrmMasterDrop"));
+  EXPECT_THAT(argv, testing::Contains(
+                        "--load-extension=/opt/starbase/token_extension"));
 }
 
 TEST_F(ChromeSetupTest, TestSquidFlagsDisabled) {
@@ -552,6 +598,8 @@ TEST_F(ChromeSetupTest, TestSquidFlagsDisabled) {
   EXPECT_THAT(result, testing::Not(testing::Contains("HeliumArcvmKiosk")));
   EXPECT_THAT(result, testing::Not(testing::Contains("TiledDisplaySupport")));
   EXPECT_THAT(result, testing::Not(testing::Contains("FastDrmMasterDrop")));
+  EXPECT_THAT(argv, testing::Not(testing::Contains(
+                        "--load-extension=/opt/starbase/token_extension")));
 }
 
 }  // namespace login_manager
