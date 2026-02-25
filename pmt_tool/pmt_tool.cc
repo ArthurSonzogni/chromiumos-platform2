@@ -303,7 +303,7 @@ bool CsvFormatter::SetUp(const Options& opts, int fd, size_t snapshot_size) {
   for (auto guid : guids) {
     LOG_DBG << "0x" << std::hex << guid;
   }
-  int result = decoder_.SetUpDecoding(guids);
+  int result = decoder_.SetUpDecoding(guids, opts.decoding.filters);
   if (result) {
     LOG(ERROR) << "Failed to set up decoding";
   }

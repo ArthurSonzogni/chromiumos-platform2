@@ -64,6 +64,7 @@ TEST_F(pmtToolTest, ParseCmdlineDefaults) {
   EXPECT_EQ(opts.sampling.duration_seconds, 0);
   EXPECT_TRUE(opts.sampling.input_file.empty());
   EXPECT_EQ(opts.decoding.format, Format::RAW);
+  EXPECT_TRUE(opts.decoding.filters.empty());
 }
 
 TEST_F(pmtToolTest, ParseCmdlineInterval) {
@@ -310,6 +311,59 @@ TEST_F(pmtToolTest, ParseCmdlineFileInvalid) {
   auto result = ParseCommandLineAndInitLogging(std::size(argv), argv, opts);
 
   EXPECT_FALSE(result);
+}
+
+TEST_F(pmtToolTest, ParseCmdlineFilters) {
+  Options opts;
+  const char* argv[] = {
+      "pmt_tool",
+      "-x=filter1",
+  };
+  bool cl_initialized = base::CommandLine::Init(std::size(argv), argv);
+  ASSERT_TRUE(cl_initialized);
+  brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
+      base::CommandLine::ForCurrentProcess());
+  auto result = ParseCommandLineAndInitLogging(std::size(argv), argv, opts);
+
+  EXPECT_TRUE(result);
+  ASSERT_EQ(opts.decoding.filters.size(), 1);
+  EXPECT_EQ(opts.decoding.filters[0], "filter1");
+}
+
+TEST_F(pmtToolTest, ParseCmdlineFiltersMultiple) {
+  Options opts;
+  const char* argv[] = {
+      "pmt_tool",
+      "-x=filter1,filter2",
+  };
+  bool cl_initialized = base::CommandLine::Init(std::size(argv), argv);
+  ASSERT_TRUE(cl_initialized);
+  brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
+      base::CommandLine::ForCurrentProcess());
+  auto result = ParseCommandLineAndInitLogging(std::size(argv), argv, opts);
+
+  EXPECT_TRUE(result);
+  ASSERT_EQ(opts.decoding.filters.size(), 2);
+  EXPECT_EQ(opts.decoding.filters[0], "filter1");
+  EXPECT_EQ(opts.decoding.filters[1], "filter2");
+}
+
+TEST_F(pmtToolTest, ParseCmdlineFiltersWhitespace) {
+  Options opts;
+  const char* argv[] = {
+      "pmt_tool",
+      "-x= filter1 , filter2 ",
+  };
+  bool cl_initialized = base::CommandLine::Init(std::size(argv), argv);
+  ASSERT_TRUE(cl_initialized);
+  brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
+      base::CommandLine::ForCurrentProcess());
+  auto result = ParseCommandLineAndInitLogging(std::size(argv), argv, opts);
+
+  EXPECT_TRUE(result);
+  ASSERT_EQ(opts.decoding.filters.size(), 2);
+  EXPECT_EQ(opts.decoding.filters[0], "filter1");
+  EXPECT_EQ(opts.decoding.filters[1], "filter2");
 }
 
 TEST_F(pmtToolTest, ParseCmdlineVerbose) {

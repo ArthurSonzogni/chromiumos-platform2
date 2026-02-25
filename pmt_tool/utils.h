@@ -8,6 +8,7 @@
 // Data structures and helper functions used by pmt_tool.
 
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/time/time.h>
@@ -46,6 +47,8 @@ struct Options {
     Format format = Format::RAW;
     // Path to the PMT metadata directory.
     base::FilePath metadata_path;
+    // List of filters to apply.
+    std::vector<std::string> filters;
   } decoding;
 };
 

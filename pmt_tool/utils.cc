@@ -12,6 +12,7 @@
 #include <base/files/file.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
@@ -35,6 +36,9 @@ bool ParseCommandLineAndInitLogging(int argc,
   DEFINE_string(
       m, "",
       "Optional path to the PMT metadata directory where pmt.xml is located");
+  DEFINE_string(x, "",
+          "Optional list of filters to apply. Format: "
+          "[/guid[/group/]][sample]");
 
   auto help_usage = std::string(argv[0]);
   help_usage.append(
@@ -89,6 +93,8 @@ bool ParseCommandLineAndInitLogging(int argc,
 
   new_opts.decoding.format = *val;
   new_opts.decoding.metadata_path = metadata_path;
+  new_opts.decoding.filters = base::SplitString(
+      FLAGS_x, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   // Out of the rest of arguments treat the fist one as a path to the pmt.log.
   auto cl = base::CommandLine::ForCurrentProcess();
