@@ -1247,6 +1247,42 @@ bool AttestationService::CreateCertificateRequestInternal(
     }
   }
 
+  if (profile == BEAM_DEVICE_CERTIFICATE) {
+    // Beam device certificate requires `attested_device_id_` to be presented.
+    if (attested_device_id_.empty()) {
+      LOG(ERROR) << __func__
+                 << ": Beam Device Certificate request requires ADID.";
+      // Don't fail the request directly, because it's the server's
+      // responsibilities to reject this request.
+    } else {
+      request_pb.set_attested_device_id(attested_device_id_);
+    }
+
+    const int identity = identity_certificate.identity();
+    const AttestationDatabase::Identity& identity_data =
+        database_->GetProtobuf().identities().Get(identity);
+    for (NVRAMQuoteType quote_type :
+         nvram_quoter_->GetListForBeamDeviceCertificate()) {
+      const auto found = identity_data.nvram_quotes().find(quote_type);
+      if (found != identity_data.nvram_quotes().cend()) {
+        (*request_pb.mutable_nvram_quotes())[quote_type] = found->second;
+        continue;
+      }
+      Quote quote;
+      if (nvram_quoter_->Certify(
+              quote_type, identity_data.identity_key().identity_key_blob(),
+              quote)) {
+        (*request_pb.mutable_nvram_quotes())[quote_type] = quote;
+        continue;
+      }
+      // For Beam Device certificate, all the quotes are mandatory.
+      LOG(ERROR) << "Could not provide quote of type " << quote_type
+                 << " for Beam Device cert request.";
+      // Don't fail the request directly, because it's the server's
+      // responsibilities to reject this request.
+    }
+  }
+
   if (profile == ENTERPRISE_VTPM_EK_CERTIFICATE) {
     // VTPM EK certificate requires `attested_device_id_` to be presented.
     if (attested_device_id_.empty()) {

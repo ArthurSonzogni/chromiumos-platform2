@@ -19,6 +19,8 @@ class NvramQuoter {
   virtual std::vector<NVRAMQuoteType> GetListForVtpmEkCertificate() const = 0;
   virtual std::vector<NVRAMQuoteType> GetListForEnrollmentCertificate()
       const = 0;
+  virtual std::vector<NVRAMQuoteType> GetListForBeamDeviceCertificate()
+      const = 0;
   virtual bool Certify(NVRAMQuoteType type,
                        const std::string& signing_key_blob,
                        Quote& quote) = 0;

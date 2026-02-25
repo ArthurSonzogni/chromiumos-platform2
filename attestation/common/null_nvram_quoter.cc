@@ -25,6 +25,11 @@ std::vector<NVRAMQuoteType> NullNvramQuoter::GetListForEnrollmentCertificate()
   return {};
 }
 
+std::vector<NVRAMQuoteType> NullNvramQuoter::GetListForBeamDeviceCertificate()
+    const {
+  return {};
+}
+
 bool NullNvramQuoter::Certify(NVRAMQuoteType, const std::string&, Quote&) {
   LOG(FATAL) << __func__ << ": null implemenetion called.";
 }

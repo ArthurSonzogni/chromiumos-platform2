@@ -5,10 +5,10 @@
 #ifndef ATTESTATION_COMMON_NULL_NVRAM_QUOTER_H_
 #define ATTESTATION_COMMON_NULL_NVRAM_QUOTER_H_
 
-#include "attestation/common/nvram_quoter.h"
-
 #include <string>
 #include <vector>
+
+#include "attestation/common/nvram_quoter.h"
 
 namespace attestation {
 
@@ -21,6 +21,7 @@ class NullNvramQuoter : public NvramQuoter {
   std::vector<NVRAMQuoteType> GetListForIdentity() const override;
   std::vector<NVRAMQuoteType> GetListForVtpmEkCertificate() const override;
   std::vector<NVRAMQuoteType> GetListForEnrollmentCertificate() const override;
+  std::vector<NVRAMQuoteType> GetListForBeamDeviceCertificate() const override;
   bool Certify(NVRAMQuoteType type,
                const std::string& signing_key_blob,
                Quote& quote) override;
