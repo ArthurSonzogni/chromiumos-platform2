@@ -147,7 +147,7 @@ bool DecodeSnapshot(int fd,
   return true;
 }
 
-int ParseHeartdData() {
+int ParseHeartdData(const std::string& filters_str) {
   base::FilePath heartd_pmt_path(kHeartdPmtPath);
   base::FilePath pmt_log_path = heartd_pmt_path.Append("intel_pmt.log");
 
@@ -177,14 +177,17 @@ int ParseHeartdData() {
   }
   int freq = config_dict->FindInt("sample_frequency").value_or(10);
 
-  // Set up the PMT decoder.
+  // Set up the PMT decoder with sample filters.
   pmt::PmtDecoder decoder;
   auto guids = decoder.DetectMetadata();
   if (guids.empty()) {
     LOG(ERROR) << "PMT ERROR: No PMT metadata found for decoding.";
     return 1;
   }
-  if (decoder.SetUpDecoding(guids) != 0) {
+  // Parse sample filters for the decoder.
+  std::vector<std::string> filters = base::SplitString(
+  filters_str, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  if (decoder.SetUpDecoding(guids, filters) != 0) {
     LOG(ERROR) << "PMT ERROR: Failed to set up PMT decoder.";
     return 1;
   }
@@ -296,6 +299,8 @@ int main(int argc, char* argv[]) {
   // The first argument from netdata is 'update_every', which is ignored,
   // base::CommandLine handles this for us.
   SourceFormat source_type = GetSourceFormat(cl);
+  // Read optional sample filters.
+  std::string filters_str = cl->GetSwitchValueASCII("filters");
 
   if (source_type == SourceFormat::UNKNOWN) {
     LOG(ERROR) << "PMT ERROR: Unknown source type: "
@@ -303,7 +308,7 @@ int main(int argc, char* argv[]) {
     return 1;
   } else if (source_type == SourceFormat::HEARTD) {
     // If source is from heartd, decode it and process it periodically.
-    return ParseHeartdData();
+    return ParseHeartdData(filters_str);
   }
 
   // Else, source_type is a file at "path".
@@ -329,6 +334,9 @@ int main(int argc, char* argv[]) {
   pmt_cmd.AppendSwitchASCII("i", base::NumberToString(seconds));
   pmt_cmd.AppendSwitchASCII("n", base::NumberToString(records));
   pmt_cmd.AppendSwitchASCII("f", "csv");
+  if (!filters_str.empty()) {
+    pmt_cmd.AppendSwitchASCII("x", filters_str);
+  }
 
   while (true) {
     std::string csv_content;
