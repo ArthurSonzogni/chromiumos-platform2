@@ -41,11 +41,16 @@ PolicyNamespace MakeChromePolicyNamespace() {
   return std::make_pair(POLICY_DOMAIN_CHROME, std::string());
 }
 
+PolicyNamespace MakeExtensionInstallPolicyNamespace() {
+  return std::make_pair(POLICY_DOMAIN_EXTENSION_INSTALL, std::string());
+}
+
 // Returns true if the domain, when part of a PolicyNamespace, expects a
 // non-empty |component_id()|.
 bool IsComponentDomain(PolicyDomain domain) {
   switch (domain) {
     case POLICY_DOMAIN_CHROME:
+    case POLICY_DOMAIN_EXTENSION_INSTALL:
       return false;
     case POLICY_DOMAIN_EXTENSIONS:
     case POLICY_DOMAIN_SIGNIN_EXTENSIONS:
@@ -56,6 +61,8 @@ bool IsComponentDomain(PolicyDomain domain) {
 }
 
 constexpr char PolicyService::kChromePolicyFileName[] = "policy";
+constexpr char PolicyService::kExtensionInstallPolicyFileName[] =
+    "extension_install_policy";
 constexpr char PolicyService::kExtensionsPolicyFileNamePrefix[] =
     "policy_extension_id_";
 constexpr char PolicyService::kSignInExtensionsPolicyFileNamePrefix[] =
@@ -111,8 +118,9 @@ PolicyStore* PolicyService::GetOrCreateStore(const PolicyNamespace& ns) {
     return iter->second.get();
   }
 
-  bool resilient =
-      (ns == MakeChromePolicyNamespace() && resilient_chrome_policy_store_);
+  bool resilient = ((ns == MakeChromePolicyNamespace() ||
+                     ns == MakeExtensionInstallPolicyNamespace()) &&
+                    resilient_chrome_policy_store_);
   std::unique_ptr<PolicyStore> store;
   if (resilient) {
     store = std::make_unique<ResilientPolicyStore>(system_utils_,
@@ -265,6 +273,8 @@ base::FilePath PolicyService::GetPolicyPath(const PolicyNamespace& ns) {
   switch (domain) {
     case POLICY_DOMAIN_CHROME:
       return policy_dir_.AppendASCII(kChromePolicyFileName);
+    case POLICY_DOMAIN_EXTENSION_INSTALL:
+      return policy_dir_.AppendASCII(kExtensionInstallPolicyFileName);
     case POLICY_DOMAIN_EXTENSIONS:
       // Double-check extension ID (should have already been checked before).
       CHECK(ValidateExtensionId(component_id));
