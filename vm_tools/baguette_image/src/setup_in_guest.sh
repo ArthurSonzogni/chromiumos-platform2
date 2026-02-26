@@ -39,6 +39,7 @@ PACKAGES=(
   vim
   wireplumber
   wget
+  xz-utils
 )
 DATA_ROOT="/tmp/data"
 
