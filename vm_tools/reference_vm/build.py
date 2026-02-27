@@ -89,9 +89,10 @@ def main():
     if image_path.exists():
         raise Exception(f"Image file '{image_path}' already exists")
 
-    with tempfile.TemporaryDirectory() as temp_dir_name, open(
-        image_path, "wb"
-    ) as image:
+    with (
+        tempfile.TemporaryDirectory() as temp_dir_name,
+        open(image_path, "wb") as image,
+    ):
         temp_dir = pathlib.Path(temp_dir_name)
         image.seek(image_size)
         image.truncate()
@@ -138,7 +139,7 @@ def get_latest_cros_version(bucket: str) -> int:
     # The returned prefixes include a trailing /, remove it.
     prefixes = [p[:-1] for p in res.json()["prefixes"]]
     # And find the latest version among valid version numbers.
-    version = max([int(p) for p in prefixes if p.isnumeric()])
+    version = max(int(p) for p in prefixes if p.isnumeric())
     print(f"Detected latest CrOS version for {bucket} is {version}")
     return version
 
