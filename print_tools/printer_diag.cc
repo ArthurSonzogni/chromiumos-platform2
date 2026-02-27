@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
 
@@ -83,13 +84,13 @@ std::optional<std::vector<uint8_t>> SendIppFrameAndGetResponse(
 
   curl_result = curl_global_init(CURL_GLOBAL_DEFAULT);
   if (curl_result != CURLE_OK) {
-    std::cerr << "Error: failed to initialize curl\n";
+    std::cerr << "Error: failed to initialize curl" << std::endl;
     return std::nullopt;
   }
 
   curl = curl_easy_init();
   if (!curl) {
-    std::cerr << "Error: failed to initialize curl\n";
+    std::cerr << "Error: failed to initialize curl" << std::endl;
     curl_global_cleanup();
     return std::nullopt;
   }
@@ -121,12 +122,13 @@ std::optional<std::vector<uint8_t>> SendIppFrameAndGetResponse(
   // Actually do the request.
   size_t tries = 0;
   do {
-    std::cerr << "URL: " << url << "\n";
+    std::cerr << "URL: " << url << std::endl;
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_result = curl_easy_perform(curl);
     tries++;
     if (curl_result != CURLE_OK) {
-      std::cerr << "HTTP error: " << curl_easy_strerror(curl_result) << "\n";
+      std::cerr << "HTTP error: " << curl_easy_strerror(curl_result)
+                << std::endl;
       break;
     }
 
@@ -139,7 +141,8 @@ std::optional<std::vector<uint8_t>> SendIppFrameAndGetResponse(
 
     // Per RFC 8010 section 3.4.3, any HTTP status code other than 200 means
     // the response does not contain an IPP message body.
-    std::cerr << "HTTP error: HTTP response code " << response_code << "\n";
+    std::cerr << "HTTP error: HTTP response code " << response_code
+              << std::endl;
     if (response_code == 426 && url.starts_with("http://")) {
       url.replace(0, 4, "https");
     }
@@ -163,19 +166,20 @@ bool WriteBufferToLocation(const char* buffer,
     std::cout.write(buffer, size);
     std::cout << std::endl;
     if (std::cout.bad()) {
-      std::cerr << "Error when writing results to standard output.\n";
+      std::cerr << "Error when writing results to standard output."
+                << std::endl;
       return false;
     }
   } else {
     std::ofstream file(location, std::ios::binary | std::ios::trunc);
     if (!file.good()) {
-      std::cerr << "Error when opening the file " << location << ".\n";
+      std::cerr << "Error when opening the file " << location << std::endl;
       return false;
     }
     file.write(buffer, size);
     file.close();
     if (file.bad()) {
-      std::cerr << "Error when writing to the file " << location << ".\n";
+      std::cerr << "Error when writing to the file " << location << std::endl;
       return false;
     }
   }
@@ -230,7 +234,10 @@ int main(int argc, char** argv) {
   if (!ConvertIppToHttp(FLAGS_url)) {
     return EX_USAGE;
   }
-  std::cerr << "URL: " << FLAGS_url << std::endl;
+  if (getenv("IPPFIND_SERVICE_NAME")) {
+    std::cerr << "Printer: " << getenv("IPPFIND_SERVICE_NAME") << std::endl;
+  }
+  std::cerr << "URI: " << FLAGS_url << std::endl;
   // Parse the IPP version.
   ipp::Version version;
   if (!ipp::FromString(FLAGS_version, &version)) {
@@ -242,7 +249,7 @@ int main(int argc, char** argv) {
   // If no output files were specified, set the default settings.
   if (FLAGS_binary.empty() && FLAGS_jsonc.empty() && FLAGS_jsonf.empty() &&
       FLAGS_simplified.empty()) {
-    FLAGS_jsonf = "-";
+    FLAGS_simplified = "-";
   }
 
   // Send IPP request and get a response.

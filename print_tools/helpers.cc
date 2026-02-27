@@ -4,15 +4,15 @@
 
 #include "helpers.h"
 
-#include <iostream>
-#include <string>
-
 #include <arpa/inet.h>
 #include <error.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netdb.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+
+#include <iostream>
+#include <string>
 
 #include <base/strings/strcat.h>
 
@@ -56,14 +56,14 @@ bool ResolveZeroconfHostname(std::string& url, ResolveFunc resolver) {
 
   auto host_start = url.find("://");
   if (host_start == std::string::npos || host_start < 3) {
-    std::cerr << "URL missing protocol: " << url << ".\n";
+    std::cerr << "URL missing protocol: " << url << std::endl;
     return false;
   }
   host_start += 3;
 
   auto host_end = url.find_first_of(":/", host_start);
   if (host_end == std::string::npos) {
-    std::cerr << "URL missing end of hostname: " << url << ".\n";
+    std::cerr << "URL missing end of hostname: " << url << std::endl;
     return false;
   }
 
@@ -82,7 +82,7 @@ bool ResolveZeroconfHostname(std::string& url, ResolveFunc resolver) {
   int err = resolver(hostname.c_str(), NULL, &hints, &res);
   if (err != 0) {
     std::cerr << "Failed to look up hostname " << hostname << ": "
-              << gai_strerror(err);
+              << gai_strerror(err) << std::endl;
     return false;
   }
 
@@ -93,7 +93,8 @@ bool ResolveZeroconfHostname(std::string& url, ResolveFunc resolver) {
       char ip4_str[INET_ADDRSTRLEN];
       if (!inet_ntop(res->ai_family, &(ip4->sin_addr), ip4_str,
                      INET_ADDRSTRLEN)) {
-        std::cerr << "Failed to convert address to text: " << strerror(errno);
+        std::cerr << "Failed to convert address to text: " << strerror(errno)
+                  << std::endl;
         return false;
       }
       new_host = ip4_str;
@@ -105,7 +106,8 @@ bool ResolveZeroconfHostname(std::string& url, ResolveFunc resolver) {
       char ip6_str[INET6_ADDRSTRLEN];
       if (!inet_ntop(res->ai_family, &(ip6->sin6_addr), ip6_str,
                      INET6_ADDRSTRLEN)) {
-        std::cerr << "Failed to convert address to text: " << strerror(errno);
+        std::cerr << "Failed to convert address to text: " << strerror(errno)
+                  << std::endl;
         return false;
       }
       new_host = base::StrCat({"[", ip6_str, "]"});
@@ -113,7 +115,7 @@ bool ResolveZeroconfHostname(std::string& url, ResolveFunc resolver) {
       break;
     }
     default:
-      std::cerr << "Unknown address family " << res->ai_family;
+      std::cerr << "Unknown address family " << res->ai_family << std::endl;
       freeaddrinfo(res);
       return false;
   }
