@@ -5,9 +5,10 @@
 #ifndef PRINT_TOOLS_HELPERS_H_
 #define PRINT_TOOLS_HELPERS_H_
 
-#include <string>
-
 #include <netdb.h>
+
+#include <string>
+#include <string_view>
 
 // Validates the protocol of `url` and modifies it if necessary. The protocols
 // ipp and ipps are converted to http and https, respectively. If the
@@ -30,5 +31,10 @@ typedef int (*ResolveFunc)(const char*,
 // unchanged for any other hostname.  This function assumes that `url` has
 // already been normalized via `ConvertIppToHttp`.
 bool ResolveZeroconfHostname(std::string& url, ResolveFunc resolver = nullptr);
+
+// Extract the hostname:port substring from a complete URL.  Return an empty
+// string if the hostname cannot be found.  This function assumes that `url` has
+// already been normalized via `ConvertIppToHttp`.
+std::string ExtractHostAndPort(std::string_view url);
 
 #endif  //  PRINT_TOOLS_HELPERS_H_

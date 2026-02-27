@@ -120,3 +120,23 @@ TEST(ResolveZeroconfHostname, ResolveIPv6) {
   EXPECT_TRUE(ResolveZeroconfHostname(url, MockResolver));
   EXPECT_EQ(url, "https://[::1]:631/");
 }
+
+TEST(ExtractHostAndPort, FailsWithoutProtocol) {
+  std::string url = "printer.local";
+  EXPECT_EQ(ExtractHostAndPort(url), "");
+}
+
+TEST(ExtractHostAndPort, FailsWithoutPath) {
+  std::string url = "ipp://printer.local:631";
+  EXPECT_EQ(ExtractHostAndPort(url), "");
+}
+
+TEST(ExtractHostAndPort, SucceedsWithPath) {
+  std::string url = "ipp://printer.local/";
+  EXPECT_EQ(ExtractHostAndPort(url), "printer.local");
+}
+
+TEST(ExtractHostAndPort, SucceedsWithPortAndPath) {
+  std::string url = "ipp://printer.local:631/";
+  EXPECT_EQ(ExtractHostAndPort(url), "printer.local:631");
+}

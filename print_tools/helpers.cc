@@ -49,6 +49,23 @@ bool ConvertIppToHttp(std::string& url) {
   return true;
 }
 
+std::string ExtractHostAndPort(std::string_view url) {
+  auto host_start = url.find("://");
+  if (host_start == std::string::npos || host_start < 3) {
+    std::cerr << "URL missing protocol: " << url << std::endl;
+    return "";
+  }
+  host_start += 3;
+
+  auto host_end = url.find("/", host_start);
+  if (host_end == std::string::npos) {
+    std::cerr << "URL missing end of hostname: " << url << std::endl;
+    return "";
+  }
+
+  return std::string{url.substr(host_start, host_end - host_start)};
+}
+
 bool ResolveZeroconfHostname(std::string& url, ResolveFunc resolver) {
   if (!resolver) {
     resolver = &getaddrinfo;

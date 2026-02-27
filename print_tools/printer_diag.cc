@@ -75,7 +75,9 @@ size_t write_callback(char* buffer,
 // prints out error message to stderr and returns nullopt. Otherwise, it returns
 // the body from the response.
 std::optional<std::vector<uint8_t>> SendIppFrameAndGetResponse(
-    std::string url, const std::vector<uint8_t>& input_data) {
+    std::string url,
+    std::string_view original_host,
+    const std::vector<uint8_t>& input_data) {
   CURL* curl;
   CURLcode curl_result;
   std::vector<uint8_t> output_data;
@@ -98,9 +100,12 @@ std::optional<std::vector<uint8_t>> SendIppFrameAndGetResponse(
   curl_easy_setopt(curl, CURLOPT_POST, 1L);
   curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, input_data.size());
 
-  // Add Content-Type header to request.
+  // Add explicit headers to request.
   curl_slist* header_list =
       curl_slist_append(nullptr, "Content-Type: application/ipp");
+  std::string host_value = "Host: ";
+  host_value += original_host;
+  header_list = curl_slist_append(header_list, host_value.c_str());
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
 
   // Printers usually have self-signed certificates that won't be accepted by
@@ -233,13 +238,14 @@ int main(int argc, char** argv) {
     return EX_USAGE;
   }
   // Replace ipp/ipps protocol in the given URL to http/https (if needed).
+  std::string original_uri = FLAGS_url;
   if (!ConvertIppToHttp(FLAGS_url)) {
     return EX_USAGE;
   }
   if (getenv("IPPFIND_SERVICE_NAME")) {
     std::cerr << "Printer: " << getenv("IPPFIND_SERVICE_NAME") << std::endl;
   }
-  std::cerr << "URI: " << FLAGS_url << std::endl;
+  std::cerr << "URI: " << original_uri << std::endl;
   // Parse the IPP version.
   ipp::Version version;
   if (!ipp::FromString(FLAGS_version, &version)) {
@@ -257,7 +263,7 @@ int main(int argc, char** argv) {
   // Send IPP request and get a response.
   ipp::Frame request(ipp::Operation::Get_Printer_Attributes, version);
   ipp::Collection& grp = request.Groups(ipp::GroupTag::operation_attributes)[0];
-  grp.AddAttr("printer-uri", ipp::ValueTag::uri, FLAGS_url);
+  grp.AddAttr("printer-uri", ipp::ValueTag::uri, original_uri);
   grp.AddAttr(
       "requested-attributes", ipp::ValueTag::keyword,
       base::SplitString(FLAGS_requested_attributes, ",", base::TRIM_WHITESPACE,
@@ -269,10 +275,12 @@ int main(int argc, char** argv) {
   std::vector<uint8_t> data = ipp::BuildBinaryFrame(request);
   // Resolve the IP after setting printer-uri so the printer can see the
   // original name.
+  std::string original_host = ExtractHostAndPort(FLAGS_url);
   if (!ResolveZeroconfHostname(FLAGS_url)) {
     return EX_DATAERR;
   }
-  auto data_optional = SendIppFrameAndGetResponse(FLAGS_url, data);
+  auto data_optional =
+      SendIppFrameAndGetResponse(FLAGS_url, original_host, data);
   if (!data_optional) {
     return -2;
   }
