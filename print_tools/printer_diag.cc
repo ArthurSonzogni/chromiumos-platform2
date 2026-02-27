@@ -96,6 +96,7 @@ std::optional<std::vector<uint8_t>> SendIppFrameAndGetResponse(
   }
 
   curl_easy_setopt(curl, CURLOPT_POST, 1L);
+  curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, input_data.size());
 
   // Add Content-Type header to request.
   curl_slist* header_list =
@@ -122,6 +123,7 @@ std::optional<std::vector<uint8_t>> SendIppFrameAndGetResponse(
   // Actually do the request.
   size_t tries = 0;
   do {
+    read_userdata.read_position = 0;
     std::cerr << "URL: " << url << std::endl;
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_result = curl_easy_perform(curl);
