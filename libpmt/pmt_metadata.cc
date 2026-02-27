@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <cstdint>
+#include <limits>
 #include <unordered_map>
 
 #include <libpmt/bits/pmt_metadata.h>
@@ -144,9 +145,12 @@ float p0_div_p1_100(const SampleValue& param0,
   // pkgc_wake_cause:
   // <transform>$parameter_0 / PACKAGE_CSTATE_WAKE_REFCNT * 100 </transform>
   // <transform>$parameter_0 / $parameter_1 * 100 </transform>
-  return (param0.u64_ /
-          ctx->extra_args_[ctx->info_[idx].extra_arg_idx_].parameter_1_->f_) *
-         100.0;
+  float divisor =
+      ctx->extra_args_[ctx->info_[idx].extra_arg_idx_].parameter_1_->f_;
+  if (divisor == 0.0) {
+    return std::numeric_limits<float>::infinity();
+  }
+  return (param0.u64_ / divisor) * 100.0;
 }
 
 float ratio_100(const SampleValue& param0,
