@@ -52,14 +52,21 @@ TEST_P(FilesystemLabelCharacterTest, ValidateVolumeLabelCharacters) {
 
   // Test allowed characters in volume name
   EXPECT_EQ(LabelError::kSuccess, ValidateVolumeLabel("AZaz09", filesystem));
-  EXPECT_EQ(LabelError::kSuccess, ValidateVolumeLabel(" !#$%&()", filesystem));
-  EXPECT_EQ(LabelError::kSuccess, ValidateVolumeLabel("-@^_`{}~", filesystem));
+  EXPECT_EQ(LabelError::kSuccess, ValidateVolumeLabel("!#$ %&()", filesystem));
+  EXPECT_EQ(LabelError::kSuccess, ValidateVolumeLabel("@^_-`{}~", filesystem));
 
   for (char c : kForbiddenTestCharacters) {
     // Test forbidden characters in volume name
     EXPECT_EQ(LabelError::kInvalidCharacter,
               ValidateVolumeLabel(std::string("ABC") + c, filesystem));
   }
+
+  // Test volume name starting with '-'.
+  using LabelError::kInvalidCharacter;
+  EXPECT_EQ(kInvalidCharacter, ValidateVolumeLabel("-", filesystem));
+  EXPECT_EQ(kInvalidCharacter, ValidateVolumeLabel("--", filesystem));
+  EXPECT_EQ(kInvalidCharacter, ValidateVolumeLabel("-V", filesystem));
+  EXPECT_EQ(kInvalidCharacter, ValidateVolumeLabel("--help", filesystem));
 }
 
 }  // namespace cros_disks
