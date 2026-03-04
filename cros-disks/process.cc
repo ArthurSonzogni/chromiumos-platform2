@@ -269,7 +269,6 @@ bool Process::IsFinished() {
 }
 
 void Process::StoreOutputLine(const std::string_view line) {
-  DCHECK(!line.empty());
   LOG(INFO) << program_name_ << ": " << line;
   captured_output_.emplace_back(line);
   if (output_callback_) {

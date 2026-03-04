@@ -4,15 +4,15 @@
 
 #include "cros-disks/process.h"
 
+#include <fcntl.h>
+#include <sys/time.h>
+#include <unistd.h>
+
 #include <csignal>
 #include <memory>
 #include <ostream>
 #include <string_view>
 #include <utility>
-
-#include <fcntl.h>
-#include <sys/time.h>
-#include <unistd.h>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -24,7 +24,6 @@
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 #include <chromeos/libminijail.h>
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -414,6 +413,20 @@ TEST_P(ProcessRunTest, CapturesInterleavedOutputs) {
   EXPECT_THAT(process.GetCapturedOutput(),
               UnorderedElementsAre("Line 1", "Line 2", "Line 3", "Line 4",
                                    "Line 5", "Line 6"));
+}
+
+TEST_P(ProcessRunTest, CapturesEmptyLines) {
+  Process& process = *process_;
+  process.AddArgument("/bin/sh");
+  process.AddArgument("-c");
+  process.AddArgument(R"(
+      printf '\nLine 1\n\n\nLine 2\n\n'
+    )");
+
+  EXPECT_EQ(process.Run(), 0);
+  EXPECT_NE(process.pid(), Process::kInvalidProcessId);
+  EXPECT_THAT(process.GetCapturedOutput(),
+              ElementsAre("", "Line 1", "", "", "Line 2", ""));
 }
 
 // Tests Process when the child process closes its stdout and stderr shortly
