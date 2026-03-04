@@ -39,6 +39,7 @@ PACKAGES=(
   pipewire-pulse
   rsync
   shim-signed
+  socat
   sudo
   systemd-timesyncd
   tpm2-tools
@@ -80,6 +81,10 @@ EOF
     apt-get update
     apt-get -y install "${PACKAGES[@]}" --no-install-recommends
 
+    # Install ttyd from GitHub as it is not in the standard repositories
+    curl -L -o /usr/local/bin/ttyd \
+      https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64
+    chmod +x /usr/local/bin/ttyd
 
     rm -f /etc/locale.gen
     debconf-set-selections << EOF
