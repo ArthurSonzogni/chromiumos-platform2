@@ -19,6 +19,7 @@ PACKAGES=(
   # base packages
   bash-completion
   ca-certificates
+  cloud-init
   curl
   dkms
   dmidecode
@@ -69,6 +70,8 @@ main() {
   echo "MODULES=list" > /etc/initramfs-tools/conf.d/10-refvm.conf
   cat << EOF >> /etc/initramfs-tools/modules
 ext4
+vfat
+iso9660
 virtio_blk
 virtio-pci
 EOF
@@ -95,7 +98,8 @@ EOF
   update-grub
 
   install -m 0755 -t /usr/local/bin \
-    "${DATA_ROOT}/usr/local/bin/update-cros-list"
+    "${DATA_ROOT}/usr/local/bin/update-cros-list" \
+    "${DATA_ROOT}/usr/local/bin/refvm-mode-setup"
 
   install -D -m 0644 -t /usr/local/lib/systemd/journald.conf.d \
     "${DATA_ROOT}/usr/local/lib/systemd/journald.conf.d/50-console.conf"
@@ -103,11 +107,22 @@ EOF
     "${DATA_ROOT}/usr/local/lib/systemd/system/install-refvm.service" \
     "${DATA_ROOT}/usr/local/lib/systemd/system/maitred.service" \
     "${DATA_ROOT}/usr/local/lib/systemd/system/opt-google-cros\\x2dcontainers.mount" \
+    "${DATA_ROOT}/usr/local/lib/systemd/system/refvm-mode-setup.service" \
     "${DATA_ROOT}/usr/local/lib/systemd/system/tmp.mount" \
     "${DATA_ROOT}/usr/local/lib/systemd/system/update-cros-list.service" \
     "${DATA_ROOT}/usr/local/lib/systemd/system/vshd.service"
   systemctl enable maitred.service update-cros-list.service vshd.service \
+    refvm-mode-setup.service \
     'opt-google-cros\x2dcontainers.mount'
+  systemctl daemon-reload
+
+  for svc in cros-garcon sommelier@ sommelier-x@; do
+    install -D -m 0644 -t "/etc/systemd/user/${svc}.service.d" \
+      "${DATA_ROOT}/etc/systemd/user/${svc}.service.d/10-mode.conf"
+  done
+
+  install -D -m 0644 -t /etc/systemd/user/cros-garcon.service.d \
+    "${DATA_ROOT}/etc/systemd/user/cros-garcon.service.d/10-mode.conf"
 
   install -D -m 0644 -t /usr/src/virtio-tpm-1 \
     "${DATA_ROOT}/usr/src/virtio-tpm-1/dkms.conf" \
@@ -126,6 +141,9 @@ EOF
 
   install -D -m 0440 -t /etc/sudoers.d \
     "${DATA_ROOT}/etc/sudoers.d/10-no-password"
+
+  install -D -m 0644 -t /etc/cloud/cloud.cfg.d \
+    "${DATA_ROOT}/etc/cloud/cloud.cfg.d/99-reference-vm.cfg"
 
   install -D -m 0755 -t /usr/local/bin \
     "${DATA_ROOT}/usr/local/bin/install-refvm"
