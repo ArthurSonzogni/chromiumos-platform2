@@ -1,0 +1,44 @@
+#!/bin/bash
+# Copyright 2026 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+set -exu -o pipefail
+
+# Redirect stdout and stderr to journal
+exec 1> >(logger -s -t refvm-mode-setup) 2>&1
+
+echo "Starting RefVM mode detection..."
+
+mkdir -p /run/refvm
+# Mount a dedicated tmpfs for RefVM work area.
+mount -t tmpfs -o mode=755,suid,dev tmpfs /run/refvm
+
+# Use absolute paths for stability during early boot
+DMIDECODE="/usr/sbin/dmidecode"
+
+if [ ! -x "${DMIDECODE}" ]; then
+    echo "Error: ${DMIDECODE} not found!"
+    exit 1
+fi
+
+OEM_STRINGS=$("${DMIDECODE}" -t 11 -q 2>/dev/null || true)
+echo "${OEM_STRINGS}"
+
+MODE="cros"
+if [[ "${OEM_STRINGS}" == *"refvm:mode=cloud-init"* ]]; then
+    MODE="cloud-init"
+fi
+
+echo "Setting mode: ${MODE}"
+
+# Create flag file for subsequent services (systemd ConditionPathExists)
+touch "/run/refvm/mode-${MODE}"
+
+if [[ "${OEM_STRINGS}" == *"refvm:install=true"* ]]; then
+    echo "Installation intent detected."
+    touch "/run/refvm/mode-install"
+fi
+
+echo "Mode detection complete. Flags created in /run/refvm/"
+exit 0

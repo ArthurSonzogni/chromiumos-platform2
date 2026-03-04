@@ -1,7 +1,8 @@
 [Unit]
 Description=maitred
 Requires=opt-google-cros\x2dcontainers.mount
-After=opt-google-cros\x2dcontainers.mount
+After=opt-google-cros\x2dcontainers.mount refvm-mode-setup.service
+ConditionPathExists=/run/refvm/mode-cros
 
 [Service]
 Environment="PATH=/opt/google/cros-containers/bin:${PATH}"

@@ -21,6 +21,7 @@ PACKAGES=(
   ca-certificates
   curl
   dkms
+  dmidecode
   dosfstools
   efibootmgr
   fai-setup-storage

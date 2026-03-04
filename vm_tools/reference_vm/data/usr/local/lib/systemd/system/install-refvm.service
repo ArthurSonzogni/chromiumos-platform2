@@ -1,5 +1,6 @@
 [Unit]
 Description=Reference VM installer
+After=refvm-mode-setup.service
 
 [Service]
 Type=oneshot

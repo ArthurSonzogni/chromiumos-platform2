@@ -1,0 +1,17 @@
+# Copyright 2026 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+[Unit]
+Description=Reference VM Mode Setup
+DefaultDependencies=no
+After=systemd-remount-fs.service
+Before=sysinit.target cloud-init-local.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/refvm-mode-setup
+RemainAfterExit=yes
+
+[Install]
+WantedBy=sysinit.target
