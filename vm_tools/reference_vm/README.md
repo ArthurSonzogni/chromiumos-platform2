@@ -26,6 +26,36 @@ sudo ./build.py
 
 `sudo` is required for loopback device use.
 
+### Incremental Updates
+
+If you only need to update configuration files (e.g., systemd units, scripts in `data/`) without rebuilding the entire OS or re-installing packages, you can use the incremental mode:
+
+```
+sudo ./build.py --update-config-only
+```
+
+This will:
+
+- Reuse the existing `refvm.img`.
+- Skip `debootstrap` and package installation.
+- Skip kernel module compilation (DKMS).
+- Only apply changes from the `data/` directory and refresh systemd configuration.
+
+#### What is updated:
+
+- Files in the `data/` directory (copied to the image).
+- GRUB configuration (`update-grub`).
+- systemd configuration (scripts in `data/` that refresh units).
+
+#### What is NOT updated:
+
+- The base OS and installed packages (skips `apt-get install`).
+- Kernel and kernel modules (skips DKMS).
+- The status reporter binary (skips Go build).
+- User accounts and home directory files (except for `.profile` modifications if it's the first run).
+
+This is significantly faster for quick iterations on configuration changes.
+
 ## UEFI variables preparation
 
 ```

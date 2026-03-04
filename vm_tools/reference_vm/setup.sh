@@ -72,19 +72,23 @@ virtio_blk
 virtio-pci
 EOF
 
-  apt-get update
-  apt-get -y install "${PACKAGES[@]}" --no-install-recommends
+  if [[ "${UPDATE:-0}" == "0" ]]; then
+    apt-get update
+    apt-get -y install "${PACKAGES[@]}" --no-install-recommends
 
-  rm -f /etc/locale.gen
-  debconf-set-selections << EOF
+
+    rm -f /etc/locale.gen
+    debconf-set-selections << EOF
 locales locales/default_environment_locale select en_US.UTF-8
 locales locales/locales_to_be_generated multiselect en_US.UTF-8 UTF-8
 EOF
-  dpkg-reconfigure locales
+    dpkg-reconfigure locales
 
-  # install the bootloader
-  grub-install --uefi-secure-boot --target=x86_64-efi --no-nvram --removable
-  grub-install --uefi-secure-boot --target=x86_64-efi --no-nvram
+    # install the bootloader
+    grub-install --uefi-secure-boot --target=x86_64-efi --no-nvram --removable
+    grub-install --uefi-secure-boot --target=x86_64-efi --no-nvram
+  fi
+
   install -m 0644 -t /etc/default/grub.d \
     "${DATA_ROOT}/etc/default/grub.d/50-reference-vm.cfg"
   update-grub
@@ -127,36 +131,39 @@ EOF
   install -D -m 0644 -t /usr/local/share/refvm \
     "${DATA_ROOT}/usr/local/share/refvm/disk_config.tpl"
 
-  # Build the status reporter
-  export GOPATH=/tmp/go
-  export PATH=${PATH}:${GOPATH}/bin
-  go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
-  go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.0
+  if [[ "${UPDATE:-0}" == "0" ]]; then
+    # Build the status reporter
+    export GOPATH=/tmp/go
+    export PATH=${PATH}:${GOPATH}/bin
+    go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
+    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.0
 
-  mkdir -p /tmp/build/vm_rpc
-  cp "${DATA_ROOT}/usr/src/vm_install_reporter/"* /tmp/build/
-  cd /tmp/build
-  protoc --go_out=vm_rpc --go_opt=paths=source_relative \
-         --go-grpc_out=vm_rpc --go-grpc_opt=paths=source_relative \
-         vm_rpc.proto
+    mkdir -p /tmp/build/vm_rpc
+    cp "${DATA_ROOT}/usr/src/vm_install_reporter/"* /tmp/build/
+    cd /tmp/build
+    protoc --go_out=vm_rpc --go_opt=paths=source_relative \
+           --go-grpc_out=vm_rpc --go-grpc_opt=paths=source_relative \
+           vm_rpc.proto
 
-  go mod init vm_install_reporter
-  go mod tidy
-  go build -o report_install_status report_install_status.go
-  install -m 0755 report_install_status /usr/local/bin/
+    go mod init vm_install_reporter
+    go mod tidy
+    go build -o report_install_status report_install_status.go
+    install -m 0755 report_install_status /usr/local/bin/
 
-  # Find the installed, not running, kernel version.
-  kernel="$(dpkg-query -Wf '${Package}\n' 'linux-image-*-amd64' | tail -n 1 | \
-    sed -E -e 's/linux-image-//')"
-  dkms install virtio-tpm/1 -k "${kernel}"
-  dkms install virtio-wayland/1 -k "${kernel}"
+    # Find the installed, not running, kernel version.
+    kernel="$(dpkg-query -Wf '${Package}\n' 'linux-image-*-amd64' | \
+      tail -n 1 | sed -E -e 's/linux-image-//')"
+    dkms install virtio-tpm/1 -k "${kernel}"
+    dkms install virtio-wayland/1 -k "${kernel}"
 
-  # chromeos guest tools repo
-  curl https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor > \
-    /usr/share/keyrings/cros.gpg
-  # shellcheck disable=SC2154
-  echo "deb [signed-by=/usr/share/keyrings/cros.gpg] ${CROS_PACKAGES_URL} ${RELEASE} main" > \
-    /etc/apt/sources.list.d/cros.list
+    # chromeos guest tools repo
+    curl https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor > \
+      /usr/share/keyrings/cros.gpg
+    # shellcheck disable=SC2154
+    echo "deb [signed-by=/usr/share/keyrings/cros.gpg]" \
+      "${CROS_PACKAGES_URL} ${RELEASE} main" > \
+      /etc/apt/sources.list.d/cros.list
+  fi
 
   # dummy files for installation
   mkdir -p /opt/google/cros-containers/bin
@@ -166,21 +173,22 @@ EOF
   # Required for disk ballooning
   mkdir -p /mnt/stateful
 
-  apt-get update
-  apt-get -y install "${CROS_PACKAGES[@]}"
+  if [[ "${UPDATE:-0}" == "0" ]]; then
+    apt-get update
+    apt-get -y install "${CROS_PACKAGES[@]}"
 
-  # Provide "vim" binary using vim-tiny with low priority.
-  update-alternatives --install /usr/bin/vim vim /usr/bin/vim.tiny 10
+    # Provide "vim" binary using vim-tiny with low priority.
+    update-alternatives --install /usr/bin/vim vim /usr/bin/vim.tiny 10
 
-  # test user for debugging
-  useradd -m -s /bin/bash -G audio,sudo,tss chronos
-  chpasswd <<< chronos:test0000
-  mkdir -p /var/lib/systemd/linger
-  touch /var/lib/systemd/linger/chronos
+    # test user for debugging
+    useradd -m -s /bin/bash -G audio,sudo,tss chronos
+    chpasswd <<< chronos:test0000
+    mkdir -p /var/lib/systemd/linger
+    touch /var/lib/systemd/linger/chronos
 
-  # Run the refvm installer on startup, if the appropriate OEM string is set.
-  # We do this in .profile so that install messages are shown in the terminal.
-  cat << "EOF" >> /home/chronos/.profile
+    # Run the refvm installer on startup, if the appropriate OEM string is set.
+    # We do this in .profile so that install messages are shown in the terminal.
+    cat << "EOF" >> /home/chronos/.profile
 run_installer() {
   if sudo dmidecode -t 11 -q | grep -q refvm:install=true; then
     interactive=true
@@ -212,15 +220,16 @@ run_installer() {
 run_installer
 EOF
 
-  # Disable garcon auto-updates.
-  sed -i -E \
-    -e 's/(DisableAutomaticCrosPackageUpdates=)false/\1true/' \
-    -e 's/(DisableAutomaticSecurityUpdates=)false/\1true/' \
-    /home/chronos/.config/cros-garcon.conf
+    # Disable garcon auto-updates.
+    sed -i -E \
+      -e 's/(DisableAutomaticCrosPackageUpdates=)false/\1true/' \
+      -e 's/(DisableAutomaticSecurityUpdates=)false/\1true/' \
+      /home/chronos/.config/cros-garcon.conf
 
-  curl -L -o /tmp/codium.deb \
-    "https://storage.googleapis.com/chromiumos-test-assets-public/crostini_test_files/codium_${CODIUM_VERSION}_amd64.deb"
-  apt-get install -y /tmp/codium.deb
+    curl -L -o /tmp/codium.deb \
+      "https://storage.googleapis.com/chromiumos-test-assets-public/crostini_test_files/codium_${CODIUM_VERSION}_amd64.deb"
+    apt-get install -y /tmp/codium.deb
+  fi
 
   # TODO(b/271522474): leave networking to NM
   ln -sf /run/resolv.conf /etc/resolv.conf
