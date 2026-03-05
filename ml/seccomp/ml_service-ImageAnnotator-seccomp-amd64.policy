@@ -53,6 +53,7 @@ openat: 1
 poll: 1
 prctl: 1
 pread64: 1
+prlimit64: 1
 read: 1
 recvmsg: 1
 restart_syscall: 1

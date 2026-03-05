@@ -50,6 +50,7 @@ ppoll: 1
 # 0x33 == PR_SVE_GET_VL
 prctl: arg0 == PR_GET_NAME || arg0 == PR_SET_NAME || arg0 == 0x33
 pread64: 1
+prlimit64: 1
 process_vm_readv: 1
 read: 1
 recvmsg: 1
