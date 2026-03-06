@@ -8,6 +8,9 @@
 #include <syslog.h>
 #include <time.h>
 
+#include <string>
+#include <string_view>
+
 #include <base/strings/stringprintf.h>
 #include <base/strings/utf_string_conversion_utils.h>
 #include <base/third_party/icu/icu_utf.h>
@@ -83,11 +86,11 @@ string ParseProtoTimestamp(const vm_tools::Timestamp& timestamp) {
 
 string ScrubProtoContent(const string& content) {
   string result;
+  std::string_view content_view = content;
 
-  for (size_t idx = 0; idx < content.size(); ++idx) {
+  for (size_t idx = 0; idx < content_view.size(); ++idx) {
     base_icu::UChar32 code_point;
-    if (!base::ReadUnicodeCharacter(content.c_str(), content.size(), &idx,
-                                    &code_point)) {
+    if (!base::ReadUnicodeCharacter(content_view, &idx, &code_point)) {
       // Not a valid code point.  Replace it.
       code_point = kUnicodeReplacementChar;
     }
