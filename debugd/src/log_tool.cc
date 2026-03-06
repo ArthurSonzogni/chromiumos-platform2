@@ -19,6 +19,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -1640,8 +1641,9 @@ string LogTool::EncodeString(string value, LogTool::Encoding source_encoding) {
     return value;
   }
 
+  std::string_view value_view = value;
   if (source_encoding == LogTool::Encoding::kAutodetect) {
-    if (base::IsStringUTF8(value)) {
+    if (base::IsStringUTF8(value_view)) {
       return value;
     }
     source_encoding = LogTool::Encoding::kBase64;
@@ -1649,13 +1651,10 @@ string LogTool::EncodeString(string value, LogTool::Encoding source_encoding) {
 
   if (source_encoding == LogTool::Encoding::kUtf8) {
     string output;
-    const char* src = value.data();
-    size_t src_len = value.length();
-
-    output.reserve(value.size());
-    for (size_t char_index = 0; char_index < src_len; char_index++) {
+    for (size_t char_index = 0; char_index < value_view.length();
+         char_index++) {
       base_icu::UChar32 code_point;
-      if (!base::ReadUnicodeCharacter(src, src_len, &char_index, &code_point) ||
+      if (!base::ReadUnicodeCharacter(value_view, &char_index, &code_point) ||
           !base::IsValidCharacter(code_point)) {
         // Replace invalid characters with U+FFFD REPLACEMENT CHARACTER.
         code_point = 0xFFFD;
