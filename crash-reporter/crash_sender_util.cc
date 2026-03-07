@@ -416,7 +416,7 @@ bool IsUserDisruptiveChromeCrash(const CrashDetails& details) {
     return false;
   }
 
-  base::IgnoreResult(details.metadata.GetString(kProcessKey, &process));
+  details.metadata.GetString(kProcessKey, &process);
 
   bool is_chrome_crash = (product == constants::kProductNameChromeAsh);
   bool is_user_disruptive =
@@ -430,8 +430,7 @@ bool IsUserDisruptiveChromeCrash(const CrashDetails& details) {
 
 std::optional<std::string> GetFatalCrashType(const CrashDetails& details) {
   std::string collector;
-  base::IgnoreResult(
-      details.metadata.GetString(kMetadataKeyCollector, &collector));
+  details.metadata.GetString(kMetadataKeyCollector, &collector);
 
   if (collector == kCollectorNameKernel) {
     return "kernel";

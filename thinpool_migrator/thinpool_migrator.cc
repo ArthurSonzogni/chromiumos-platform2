@@ -285,7 +285,7 @@ bool ThinpoolMigrator::PersistThinpoolMetadata() {
   }
 
   sync();
-  base::IgnoreResult(device_mapper_->Remove(kMetadataDeviceMapperTarget, true));
+  device_mapper_->Remove(kMetadataDeviceMapperTarget, true);
   return ret;
 }
 

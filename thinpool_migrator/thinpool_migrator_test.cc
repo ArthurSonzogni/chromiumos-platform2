@@ -60,7 +60,7 @@ class ThinpoolMigratorTest : public ::testing::Test {
         std::make_unique<brillo::DeviceMapper>(
             base::BindRepeating(&brillo::fake::CreateDevmapperTask));
     // Make sure there are not existing - fake - dm device.
-    base::IgnoreResult(device_mapper->Remove("thinpool-metadata-dev"));
+    device_mapper->Remove("thinpool-metadata-dev");
 
     m = std::make_unique<MockThinpoolMigrator>(std::move(device_mapper));
   }
