@@ -4,7 +4,7 @@
 
 #include "brillo/tracing.h"
 
-#include <base/trace_event/trace_log.h>
+#include <base/trace_event/trace_event.h>
 #include <perfetto/perfetto.h>
 
 namespace brillo {
