@@ -51,7 +51,7 @@ class BRILLO_EXPORT Metadata : public MetadataInterface {
   std::optional<std::string> FilterKeyToString(
       const FilterKey& key_enum) override;
 
-  const base::Value::Dict& GetCache() const override { return cache_; }
+  const base::DictValue& GetCache() const override { return cache_; }
   const std::set<DlcId>& GetFileIds() const override { return file_ids_; }
 
  private:
@@ -73,7 +73,7 @@ class BRILLO_EXPORT Metadata : public MetadataInterface {
   // size to get performance and it should be in sync with the chromite.
   const size_t max_file_size_;
   // Cache currently loaded and parsed metadata file for read or modify.
-  base::Value::Dict cache_;
+  base::DictValue cache_;
   // The `file_id`s inside current metadata directory.
   std::set<DlcId> file_ids_;
   // The buffer for read and write compressed metadata.

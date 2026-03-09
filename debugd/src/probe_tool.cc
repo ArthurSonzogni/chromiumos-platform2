@@ -68,7 +68,7 @@ bool PathOrSymlinkExists(const base::FilePath& path) {
   return base::PathExists(abs_path);
 }
 
-std::optional<base::Value::Dict> ParseProbeStatement(
+std::optional<base::DictValue> ParseProbeStatement(
     brillo::ErrorPtr* error, const std::string& probe_statement_str) {
   JSONStringValueDeserializer deserializer(probe_statement_str);
   auto value = deserializer.Deserialize(nullptr, nullptr);
@@ -79,7 +79,7 @@ std::optional<base::Value::Dict> ParseProbeStatement(
         probe_statement_str.c_str());
     return std::nullopt;
   }
-  base::Value::Dict probe_statement = std::move(*value).TakeDict();
+  base::DictValue probe_statement = std::move(*value).TakeDict();
 
   if (probe_statement.size() != 1) {
     DEBUGD_ADD_ERROR_FMT(
@@ -136,7 +136,7 @@ bool ProbeTool::EvaluateProbeFunction(brillo::ErrorPtr* error,
   return true;
 }
 
-std::optional<base::Value::Dict> ProbeTool::LoadMinijailArguments(
+std::optional<base::DictValue> ProbeTool::LoadMinijailArguments(
     brillo::ErrorPtr* error) {
   std::string minijail_args_str;
   if (!base::ReadFileToString(base::FilePath(kSandboxArgs),

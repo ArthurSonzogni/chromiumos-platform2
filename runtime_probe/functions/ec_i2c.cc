@@ -86,7 +86,7 @@ EcI2cFunction::DataType EcI2cFunction::EvalImpl() const {
   }
 
   DataType result{};
-  base::Value::Dict dv{};
+  base::DictValue dv{};
   if (size_ == 8 || size_ == 16 || size_ == 32) {
     uint32_t data = cmd->Data();
     if (data > INT_MAX) {

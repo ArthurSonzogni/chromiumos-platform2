@@ -46,7 +46,7 @@ std::string ErrorPtrToStr(const brillo::ErrorPtr& err) {
                             err->GetMessage().c_str());
 }
 
-int PrintDict(const base::Value::Dict& dict) {
+int PrintDict(const base::DictValue& dict) {
   std::string json;
   if (!base::JSONWriter::WriteWithOptions(
           dict, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json)) {
@@ -57,25 +57,25 @@ int PrintDict(const base::Value::Dict& dict) {
   return EX_OK;
 }
 
-base::Value::Dict Dict() {
-  return base::Value::Dict();
+base::DictValue Dict() {
+  return base::DictValue();
 }
 
-base::Value::Dict ToDict(const lvmd::PhysicalVolume& pv) {
+base::DictValue ToDict(const lvmd::PhysicalVolume& pv) {
   auto pv_dict = Dict().Set(kDevicePath, pv.device_path());
 
   auto dict = Dict().Set(kPhysicalVolume, std::move(pv_dict));
   return dict;
 }
 
-base::Value::Dict ToDict(const lvmd::VolumeGroup& vg) {
+base::DictValue ToDict(const lvmd::VolumeGroup& vg) {
   auto vg_dict = Dict().Set(kName, vg.name());
 
   auto dict = Dict().Set(kVolumeGroup, std::move(vg_dict));
   return dict;
 }
 
-base::Value::Dict ToDict(const lvmd::Thinpool& thinpool) {
+base::DictValue ToDict(const lvmd::Thinpool& thinpool) {
   auto vg_dict = ToDict(thinpool.volume_group());
   auto thinpool_dict =
       Dict()
@@ -88,15 +88,15 @@ base::Value::Dict ToDict(const lvmd::Thinpool& thinpool) {
   return dict;
 }
 
-base::Value::Dict ToDict(const lvmd::LogicalVolume& lv) {
+base::DictValue ToDict(const lvmd::LogicalVolume& lv) {
   auto lv_dict = Dict().Set(kName, lv.name()).Set(kPath, lv.path());
 
   auto dict = Dict().Set(kLogicalVolume, std::move(lv_dict));
   return dict;
 }
 
-base::Value::Dict ToDict(const lvmd::LogicalVolumeList& lvs) {
-  auto lv_list = base::Value::List();
+base::DictValue ToDict(const lvmd::LogicalVolumeList& lvs) {
+  auto lv_list = base::ListValue();
   for (const auto& lv : lvs.logical_volume()) {
     lv_list.Append(ToDict(lv));
   }

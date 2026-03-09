@@ -32,9 +32,9 @@ class MockProbeFunction : public ProbeFunction {
 TEST(SequenceFunctionTest, TestEvalFailTooManyResults) {
   auto mock_probe_function_1 = std::make_unique<MockProbeFunction>();
 
-  base::Value::Dict a = base::Value::Dict().Set("a", true);
+  base::DictValue a = base::DictValue().Set("a", true);
 
-  base::Value::Dict b = base::Value::Dict().Set("b", true);
+  base::DictValue b = base::DictValue().Set("b", true);
 
   DataType val;
   val.Append(std::move(a));
@@ -66,7 +66,7 @@ TEST(SequenceFunctionTest, TestEvalFailTooManyResults) {
 TEST(SequenceFunctionTest, TestEvalSuccess) {
   auto mock_probe_function_1 = std::make_unique<MockProbeFunction>();
 
-  base::Value::Dict a = base::Value::Dict().Set("a", true).Set("c", false);
+  base::DictValue a = base::DictValue().Set("a", true).Set("c", false);
 
   DataType val_a;
   val_a.Append(std::move(a));
@@ -76,7 +76,7 @@ TEST(SequenceFunctionTest, TestEvalSuccess) {
 
   auto mock_probe_function_2 = std::make_unique<MockProbeFunction>();
 
-  base::Value::Dict b = base::Value::Dict().Set("b", true).Set("c", true);
+  base::DictValue b = base::DictValue().Set("b", true).Set("c", true);
 
   DataType val_b;
   val_b.Append(std::move(b));

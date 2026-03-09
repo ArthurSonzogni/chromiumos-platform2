@@ -21,7 +21,7 @@ BaseFunctionTest::BaseFunctionTest() {
 BaseFunctionTest::~BaseFunctionTest() = default;
 
 // static
-base::Value::List BaseFunctionTest::CreateProbeResultFromJson(
+base::ListValue BaseFunctionTest::CreateProbeResultFromJson(
     const std::string& str) {
   auto res = base::JSONReader::Read(str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   CHECK(res.has_value() && res->is_list());
@@ -29,8 +29,8 @@ base::Value::List BaseFunctionTest::CreateProbeResultFromJson(
 }
 
 // static
-void BaseFunctionTest::ExpectUnorderedListEqual(const base::Value::List& result,
-                                                const base::Value::List& ans) {
+void BaseFunctionTest::ExpectUnorderedListEqual(const base::ListValue& result,
+                                                const base::ListValue& ans) {
   // A workaround for UnorderedElementsAreArray() not accepting non-copyable
   // types.
   std::vector<::testing::Matcher<std::reference_wrapper<const base::Value>>>

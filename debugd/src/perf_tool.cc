@@ -120,7 +120,7 @@ void AddQuipperArguments(brillo::Process* process,
 //  },
 //
 // it will write "1" to /sys/devices/system/cpu/cpu3/cpuidle/state2/disable.
-bool WriteCpuIdleStates(const base::Value::Dict& all_cpu_states,
+bool WriteCpuIdleStates(const base::DictValue& all_cpu_states,
                         bool disable = false) {
   if (!disable && all_cpu_states.size() > kMaxCpuNumber) {
     LOG(ERROR) << "Malformed cpuidle states format";
@@ -190,9 +190,9 @@ bool DisableCpuIdleStates() {
     return false;
   }
 
-  base::Value::Dict all_cpu_states;
+  base::DictValue all_cpu_states;
   for (const auto& cpu : cpu_nums) {
-    base::Value::Dict all_states;
+    base::DictValue all_states;
     for (int state = 0;; ++state) {
       const auto disable_file = base::FilePath(
           base::StringPrintf(kCpuIdleStatePathPattern, cpu.c_str(), state));

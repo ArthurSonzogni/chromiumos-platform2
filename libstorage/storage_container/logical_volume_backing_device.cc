@@ -49,7 +49,7 @@ bool LogicalVolumeBackingDevice::Purge() {
 }
 
 bool LogicalVolumeBackingDevice::Create() {
-  base::Value::Dict lv_config;
+  base::DictValue lv_config;
   lv_config.Set("name", name_);
   lv_config.Set("size", base::NumberToString(size_));
 

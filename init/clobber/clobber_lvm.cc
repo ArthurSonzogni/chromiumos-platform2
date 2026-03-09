@@ -219,7 +219,7 @@ std::optional<base::FilePath> ClobberLvm::CreateUnencryptedStatefulLV(
     const brillo::VolumeGroup& vg,
     const brillo::Thinpool& thinpool,
     uint64_t lv_size) {
-  base::Value::Dict lv_config;
+  base::DictValue lv_config;
   lv_config.Set("name", kUnencrypted);
   lv_config.Set("size", base::NumberToString(lv_size));
 

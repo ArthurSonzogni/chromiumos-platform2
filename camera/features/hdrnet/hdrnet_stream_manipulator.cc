@@ -445,7 +445,7 @@ void HdrNetStreamManipulator::OnProcessTask(ScopedProcessTask task) {
     stream_context->processor->ProcessResultMetadata(
         task->frame_number(), task->result_metadata_ro());
   }
-  std::optional<base::Value::Dict> overridden_json_values =
+  std::optional<base::DictValue> overridden_json_values =
       HdrNetProcessorDeviceAdapter::MaybeOverrideOptions(
           json_values_, task->result_metadata_ro(), override_data_);
   if (overridden_json_values.has_value()) {
@@ -686,13 +686,13 @@ void HdrNetStreamManipulator::ResetStateOnGpuThread() {
 }
 
 void HdrNetStreamManipulator::OnOptionsUpdated(
-    const base::Value::Dict& json_values) {
+    const base::DictValue& json_values) {
   json_values_ = json_values.Clone();
   SetOptions(HdrNetProcessorDeviceAdapter::GetOverriddenOptions(
       json_values, override_data_));
 }
 
-void HdrNetStreamManipulator::SetOptions(const base::Value::Dict& json_values) {
+void HdrNetStreamManipulator::SetOptions(const base::DictValue& json_values) {
   ParseHdrnetJsonOptions(json_values, options_);
 
   bool denoiser_enable;

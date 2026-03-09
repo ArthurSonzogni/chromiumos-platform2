@@ -180,7 +180,7 @@ void SmartctlCheckRoutine::OnDebugdResultCallback(const std::string& result) {
     return;
   }
 
-  base::Value::Dict result_dict;
+  base::DictValue result_dict;
   result_dict.Set("availableSpare", available_spare);
   result_dict.Set("availableSpareThreshold", available_spare_threshold);
   result_dict.Set("percentageUsed", percentage_used);

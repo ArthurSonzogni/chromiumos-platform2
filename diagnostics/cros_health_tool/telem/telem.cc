@@ -63,7 +63,7 @@ constexpr std::pair<const char*, mojom::ProbeCategoryEnum> kCategorySwitches[] =
 };
 
 void DisplayError(const mojom::ProbeErrorPtr& error) {
-  base::Value::Dict output;
+  base::DictValue output;
   SET_DICT(type, error, &output);
   SET_DICT(msg, error, &output);
 
@@ -82,7 +82,7 @@ void DisplayProcessInfo(const mojom::ProcessResultPtr& result) {
 
   const auto& info = result->get_process_info();
 
-  base::Value::Dict output;
+  base::DictValue output;
   SET_DICT(bytes_read, info, &output);
   SET_DICT(bytes_written, info, &output);
   SET_DICT(cancelled_bytes_written, info, &output);
@@ -108,9 +108,9 @@ void DisplayProcessInfo(const mojom::ProcessResultPtr& result) {
   OutputJson(output);
 }
 
-base::Value::Dict PopulateInputDeviceFields(
+base::DictValue PopulateInputDeviceFields(
     const mojom::InputDevicePtr& input_device) {
-  base::Value::Dict out_input_device;
+  base::DictValue out_input_device;
 
   SET_DICT(name, input_device, &out_input_device);
   SET_DICT(connection_type, input_device, &out_input_device);
@@ -127,10 +127,10 @@ void DisplayMultipleProcessInfo(const mojom::MultipleProcessResultPtr& result) {
 
   const auto& info = result;
 
-  base::Value::Dict output;
-  base::Value::Dict process_infos;
+  base::DictValue output;
+  base::DictValue process_infos;
   for (const auto& [process_id, process_info] : info->process_infos) {
-    base::Value::Dict out_process_info;
+    base::DictValue out_process_info;
     SET_DICT(bytes_read, process_info, &out_process_info);
     SET_DICT(bytes_written, process_info, &out_process_info);
     SET_DICT(cancelled_bytes_written, process_info, &out_process_info);
@@ -157,9 +157,9 @@ void DisplayMultipleProcessInfo(const mojom::MultipleProcessResultPtr& result) {
   }
   output.Set("process_infos", std::move(process_infos));
 
-  base::Value::Dict errors;
+  base::DictValue errors;
   for (const auto& [process_id, error] : info->errors) {
-    base::Value::Dict out_error;
+    base::DictValue out_error;
     SET_DICT(type, error, &out_error);
     SET_DICT(msg, error, &out_error);
     errors.Set(base::NumberToString(process_id), std::move(out_error));
@@ -184,7 +184,7 @@ void DisplayBatteryInfo(const mojom::BatteryResultPtr& result) {
     return;
   }
 
-  base::Value::Dict output;
+  base::DictValue output;
   SET_DICT(charge_full, info, &output);
   SET_DICT(charge_full_design, info, &output);
   SET_DICT(charge_now, info, &output);
@@ -217,7 +217,7 @@ void DisplayAudioInfo(const mojom::AudioResultPtr& audio_result) {
     return;
   }
 
-  base::Value::Dict output;
+  base::DictValue output;
   SET_DICT(input_device_name, audio, &output);
   SET_DICT(output_device_name, audio, &output);
   SET_DICT(input_mute, audio, &output);
@@ -227,10 +227,10 @@ void DisplayAudioInfo(const mojom::AudioResultPtr& audio_result) {
   SET_DICT(severe_underruns, audio, &output);
   SET_DICT(underruns, audio, &output);
 
-  base::Value::List output_nodes;
+  base::ListValue output_nodes;
   if (audio->output_nodes.has_value()) {
     for (const auto& node : audio->output_nodes.value()) {
-      base::Value::Dict node_info;
+      base::DictValue node_info;
       SET_DICT(id, node, &node_info);
       SET_DICT(name, node, &node_info);
       SET_DICT(device_name, node, &node_info);
@@ -241,10 +241,10 @@ void DisplayAudioInfo(const mojom::AudioResultPtr& audio_result) {
   }
   output.Set("output_nodes", std::move(output_nodes));
 
-  base::Value::List input_nodes;
+  base::ListValue input_nodes;
   if (audio->input_nodes.has_value()) {
     for (const auto& node : audio->input_nodes.value()) {
-      base::Value::Dict node_info;
+      base::DictValue node_info;
       SET_DICT(id, node, &node_info);
       SET_DICT(name, node, &node_info);
       SET_DICT(device_name, node, &node_info);
@@ -272,8 +272,8 @@ void DisplayDisplayInfo(const mojom::DisplayResultPtr& display_result) {
   }
 
   const auto& embedded_display = display->embedded_display;
-  base::Value::Dict output;
-  base::Value::Dict embedded_display_dict;
+  base::DictValue output;
+  base::DictValue embedded_display_dict;
   SET_DICT(privacy_screen_supported, embedded_display, &embedded_display_dict);
   SET_DICT(privacy_screen_enabled, embedded_display, &embedded_display_dict);
   SET_DICT(display_width, embedded_display, &embedded_display_dict);
@@ -293,9 +293,9 @@ void DisplayDisplayInfo(const mojom::DisplayResultPtr& display_result) {
 
   if (display->external_displays) {
     const auto& external_displays = display->external_displays;
-    base::Value::List external_displays_list;
+    base::ListValue external_displays_list;
     for (const auto& external_display : *external_displays) {
-      base::Value::Dict data;
+      base::DictValue data;
       SET_DICT(display_width, external_display, &data);
       SET_DICT(display_height, external_display, &data);
       SET_DICT(resolution_horizontal, external_display, &data);
@@ -326,7 +326,7 @@ void DisplayBootPerformanceInfo(const mojom::BootPerformanceResultPtr& result) {
   const auto& info = result->get_boot_performance_info();
   CHECK(!info.is_null());
 
-  base::Value::Dict output;
+  base::DictValue output;
   SET_DICT(shutdown_reason, info, &output);
   SET_DICT(boot_up_seconds, info, &output);
   SET_DICT(boot_up_timestamp, info, &output);
@@ -351,10 +351,10 @@ void DisplayBlockDeviceInfo(
 
   const auto& infos = result->get_block_device_info();
 
-  base::Value::Dict output;
-  base::Value::List block_devices;
+  base::DictValue output;
+  base::ListValue block_devices;
   for (const auto& info : infos) {
-    base::Value::Dict data;
+    base::DictValue data;
     SET_DICT(bytes_read_since_last_boot, info, &data);
     SET_DICT(bytes_written_since_last_boot, info, &data);
     SET_DICT(io_time_seconds_since_last_boot, info, &data);
@@ -376,9 +376,9 @@ void DisplayBlockDeviceInfo(
     // DeviceInfo is only available on NVMe, eMMC and UFS.
     const auto& device_info = info->device_info;
     if (!device_info.is_null()) {
-      base::Value::Dict device_info_out;
+      base::DictValue device_info_out;
       if (device_info->is_nvme_device_info()) {
-        base::Value::Dict nvme_device_info_out;
+        base::DictValue nvme_device_info_out;
         SET_DICT(subsystem_vendor, device_info->get_nvme_device_info(),
                  &nvme_device_info_out);
         SET_DICT(subsystem_device, device_info->get_nvme_device_info(),
@@ -390,7 +390,7 @@ void DisplayBlockDeviceInfo(
         device_info_out.Set("nvme_device_info",
                             std::move(nvme_device_info_out));
       } else if (device_info->is_emmc_device_info()) {
-        base::Value::Dict emmc_device_info_out;
+        base::DictValue emmc_device_info_out;
         SET_DICT(manfid, device_info->get_emmc_device_info(),
                  &emmc_device_info_out);
         SET_DICT(pnm, device_info->get_emmc_device_info(),
@@ -402,7 +402,7 @@ void DisplayBlockDeviceInfo(
         device_info_out.Set("emmc_device_info",
                             std::move(emmc_device_info_out));
       } else if (device_info->is_ufs_device_info()) {
-        base::Value::Dict ufs_device_info_out;
+        base::DictValue ufs_device_info_out;
         SET_DICT(jedec_manfid, device_info->get_ufs_device_info(),
                  &ufs_device_info_out);
         SET_DICT(fwrev, device_info->get_ufs_device_info(),
@@ -427,19 +427,19 @@ void DisplayBluetoothInfo(const mojom::BluetoothResultPtr& result) {
 
   const auto& infos = result->get_bluetooth_adapter_info();
 
-  base::Value::Dict output;
-  base::Value::List adapters;
+  base::DictValue output;
+  base::ListValue adapters;
   for (const auto& info : infos) {
-    base::Value::Dict data;
+    base::DictValue data;
     SET_DICT(address, info, &data);
     SET_DICT(name, info, &data);
     SET_DICT(num_connected_devices, info, &data);
     SET_DICT(powered, info, &data);
 
-    base::Value::List connected_devices;
+    base::ListValue connected_devices;
     if (info->connected_devices.has_value()) {
       for (const auto& device : info->connected_devices.value()) {
-        base::Value::Dict device_data;
+        base::DictValue device_data;
         SET_DICT(address, device, &device_data);
         SET_DICT(name, device, &device_data);
         SET_DICT(type, device, &device_data);
@@ -474,13 +474,13 @@ void DisplayCpuInfo(const mojom::CpuResultPtr& result) {
 
   const auto& info = result->get_cpu_info();
 
-  base::Value::Dict output;
-  base::Value::List physical_cpus;
+  base::DictValue output;
+  base::ListValue physical_cpus;
   for (const auto& physical_cpu : info->physical_cpus) {
-    base::Value::Dict physical_cpu_data;
-    base::Value::List logical_cpus;
+    base::DictValue physical_cpu_data;
+    base::ListValue logical_cpus;
     for (const auto& logical_cpu : physical_cpu->logical_cpus) {
-      base::Value::Dict logical_cpu_data;
+      base::DictValue logical_cpu_data;
 
       SET_DICT(idle_time_user_hz, logical_cpu, &logical_cpu_data);
       SET_DICT(max_clock_speed_khz, logical_cpu, &logical_cpu_data);
@@ -490,9 +490,9 @@ void DisplayCpuInfo(const mojom::CpuResultPtr& result) {
       SET_DICT(user_time_user_hz, logical_cpu, &logical_cpu_data);
       SET_DICT(core_id, logical_cpu, &logical_cpu_data);
 
-      base::Value::List c_states;
+      base::ListValue c_states;
       for (const auto& c_state : logical_cpu->c_states) {
-        base::Value::Dict c_state_data;
+        base::DictValue c_state_data;
         SET_DICT(name, c_state, &c_state_data);
         SET_DICT(time_in_state_since_last_boot_us, c_state, &c_state_data);
         c_states.Append(std::move(c_state_data));
@@ -504,7 +504,7 @@ void DisplayCpuInfo(const mojom::CpuResultPtr& result) {
     physical_cpu_data.Set("logical_cpus", std::move(logical_cpus));
 
     if (physical_cpu->flags) {
-      base::Value::List cpu_flags;
+      base::ListValue cpu_flags;
       for (const auto& flag : *(physical_cpu->flags)) {
         cpu_flags.Append(std::move(flag));
       }
@@ -512,7 +512,7 @@ void DisplayCpuInfo(const mojom::CpuResultPtr& result) {
     }
 
     if (!physical_cpu->virtualization.is_null()) {
-      base::Value::Dict cpu_virtualization;
+      base::DictValue cpu_virtualization;
       SET_DICT(type, physical_cpu->virtualization, &cpu_virtualization);
       SET_DICT(is_enabled, physical_cpu->virtualization, &cpu_virtualization);
       SET_DICT(is_locked, physical_cpu->virtualization, &cpu_virtualization);
@@ -527,9 +527,9 @@ void DisplayCpuInfo(const mojom::CpuResultPtr& result) {
   }
   output.Set("physical_cpus", std::move(physical_cpus));
 
-  base::Value::List temperature_channels;
+  base::ListValue temperature_channels;
   for (const auto& channel : info->temperature_channels) {
-    base::Value::Dict data;
+    base::DictValue data;
 
     SET_DICT(temperature_celsius, channel, &data);
 
@@ -543,11 +543,11 @@ void DisplayCpuInfo(const mojom::CpuResultPtr& result) {
   SET_DICT(num_total_threads, info, &output);
   SET_DICT(architecture, info, &output);
 
-  base::Value::Dict vulnerabilities;
+  base::DictValue vulnerabilities;
   if (info->vulnerabilities) {
     for (const auto& [vulnerability_name, vulnerability] :
          *(info->vulnerabilities)) {
-      base::Value::Dict out_vulnerability;
+      base::DictValue out_vulnerability;
       SET_DICT(status, vulnerability, &out_vulnerability);
       SET_DICT(message, vulnerability, &out_vulnerability);
       vulnerabilities.Set(vulnerability_name, std::move(out_vulnerability));
@@ -555,7 +555,7 @@ void DisplayCpuInfo(const mojom::CpuResultPtr& result) {
   }
 
   if (info->virtualization) {
-    base::Value::Dict virtualization_info;
+    base::DictValue virtualization_info;
     SET_DICT(has_kvm_device, info->virtualization, &virtualization_info);
     SET_DICT(is_smt_active, info->virtualization, &virtualization_info);
     SET_DICT(smt_control, info->virtualization, &virtualization_info);
@@ -563,7 +563,7 @@ void DisplayCpuInfo(const mojom::CpuResultPtr& result) {
   }
 
   if (info->keylocker_info) {
-    base::Value::Dict out_keylocker;
+    base::DictValue out_keylocker;
     SET_DICT(keylocker_configured, info->keylocker_info, &out_keylocker);
     output.Set("keylocker_info", std::move(out_keylocker));
   }
@@ -580,10 +580,10 @@ void DisplayFanInfo(const mojom::FanResultPtr& result) {
 
   const auto& infos = result->get_fan_info();
 
-  base::Value::Dict output;
-  base::Value::List fans;
+  base::DictValue output;
+  base::ListValue fans;
   for (const auto& info : infos) {
-    base::Value::Dict data;
+    base::DictValue data;
     SET_DICT(speed_rpm, info, &data);
 
     fans.Append(std::move(data));
@@ -601,10 +601,10 @@ void DisplayNetworkInfo(const mojom::NetworkResultPtr& result) {
 
   const auto& infos = result->get_network_health()->networks;
 
-  base::Value::Dict output;
-  base::Value::List networks;
+  base::DictValue output;
+  base::ListValue networks;
   for (const auto& info : infos) {
-    base::Value::Dict data;
+    base::DictValue data;
     SET_DICT(portal_state, info, &data);
     SET_DICT(state, info, &data);
     SET_DICT(type, info, &data);
@@ -616,7 +616,7 @@ void DisplayNetworkInfo(const mojom::NetworkResultPtr& result) {
     SET_DICT(ipv4_address, info, &data);
     SET_DICT(signal_strength, info, &data);
     if (info->signal_strength_stats) {
-      base::Value::Dict stats;
+      base::DictValue stats;
       SET_DICT(average, info->signal_strength_stats, &stats);
       SET_DICT(deviation, info->signal_strength_stats, &stats);
       data.Set("signal_strength_stats", std::move(stats));
@@ -642,23 +642,23 @@ void DisplayNetworkInterfaceInfo(
 
   const auto& infos = result->get_network_interface_info();
 
-  base::Value::Dict output;
-  base::Value::List out_network_interfaces;
+  base::DictValue output;
+  base::ListValue out_network_interfaces;
 
   for (const auto& network_interface : infos) {
-    base::Value::Dict out_network_interface;
+    base::DictValue out_network_interface;
     switch (network_interface->which()) {
       case mojom::NetworkInterfaceInfo::Tag::kWirelessInterfaceInfo: {
         const auto& wireless_interface =
             network_interface->get_wireless_interface_info();
-        base::Value::Dict out_wireless_interface;
-        base::Value::Dict data;
+        base::DictValue out_wireless_interface;
+        base::DictValue data;
         SET_DICT(interface_name, wireless_interface, &out_wireless_interface);
         SET_DICT(power_management_on, wireless_interface,
                  &out_wireless_interface);
         const auto& link_info = wireless_interface->wireless_link_info;
         if (link_info) {
-          base::Value::Dict out_link;
+          base::DictValue out_link;
           SET_DICT(access_point_address_str, link_info, &out_link);
           SET_DICT(tx_bit_rate_mbps, link_info, &out_link);
           SET_DICT(rx_bit_rate_mbps, link_info, &out_link);
@@ -689,7 +689,7 @@ void DisplayTimezoneInfo(const mojom::TimezoneResultPtr& result) {
   const auto& info = result->get_timezone_info();
   CHECK(!info.is_null());
 
-  base::Value::Dict output;
+  base::DictValue output;
   SET_DICT(posix, info, &output);
   SET_DICT(region, info, &output);
 
@@ -705,7 +705,7 @@ void DisplayMemoryInfo(const mojom::MemoryResultPtr& result) {
   const auto& info = result->get_memory_info();
   CHECK(!info.is_null());
 
-  base::Value::Dict output;
+  base::DictValue output;
   SET_DICT(active_memory_kib, info, &output);
   SET_DICT(available_memory_kib, info, &output);
   SET_DICT(buffers_kib, info, &output);
@@ -724,7 +724,7 @@ void DisplayMemoryInfo(const mojom::MemoryResultPtr& result) {
 
   const auto& memory_encryption_info = info->memory_encryption_info;
   if (memory_encryption_info) {
-    base::Value::Dict out_mem_encryption;
+    base::DictValue out_mem_encryption;
     SET_DICT(encryption_state, memory_encryption_info, &out_mem_encryption);
     SET_DICT(max_key_number, memory_encryption_info, &out_mem_encryption);
     SET_DICT(key_length, memory_encryption_info, &out_mem_encryption);
@@ -743,11 +743,11 @@ void DisplayBacklightInfo(const mojom::BacklightResultPtr& result) {
 
   const auto& infos = result->get_backlight_info();
 
-  base::Value::Dict output;
-  base::Value::List backlights;
+  base::DictValue output;
+  base::ListValue backlights;
 
   for (const auto& info : infos) {
-    base::Value::Dict data;
+    base::DictValue data;
     SET_DICT(brightness, info, &data);
     SET_DICT(max_brightness, info, &data);
     SET_DICT(path, info, &data);
@@ -768,7 +768,7 @@ void DisplayStatefulPartitionInfo(
   const auto& info = result->get_partition_info();
   CHECK(!info.is_null());
 
-  base::Value::Dict output;
+  base::DictValue output;
   SET_DICT(available_space, info, &output);
   SET_DICT(filesystem, info, &output);
   SET_DICT(mount_source, info, &output);
@@ -783,17 +783,17 @@ void DisplaySystemInfo(const mojom::SystemResultPtr& system_result) {
     return;
   }
   const auto& system_info = system_result->get_system_info();
-  base::Value::Dict output;
+  base::DictValue output;
 
   const auto& os_info = system_info->os_info;
-  base::Value::Dict out_os_info;
+  base::DictValue out_os_info;
   SET_DICT(code_name, os_info, &out_os_info);
   SET_DICT(marketing_name, os_info, &out_os_info);
   SET_DICT(oem_name, os_info, &out_os_info);
   SET_DICT(boot_mode, os_info, &out_os_info);
   SET_DICT(efi_platform_size, os_info, &out_os_info);
   const auto& os_version = os_info->os_version;
-  base::Value::Dict out_os_version;
+  base::DictValue out_os_version;
   SET_DICT(release_milestone, os_version, &out_os_version);
   SET_DICT(build_number, os_version, &out_os_version);
   SET_DICT(branch_number, os_version, &out_os_version);
@@ -804,7 +804,7 @@ void DisplaySystemInfo(const mojom::SystemResultPtr& system_result) {
 
   const auto& vpd_info = system_info->vpd_info;
   if (vpd_info) {
-    base::Value::Dict out_vpd_info;
+    base::DictValue out_vpd_info;
     SET_DICT(serial_number, vpd_info, &out_vpd_info);
     SET_DICT(region, vpd_info, &out_vpd_info);
     SET_DICT(mfg_date, vpd_info, &out_vpd_info);
@@ -817,7 +817,7 @@ void DisplaySystemInfo(const mojom::SystemResultPtr& system_result) {
 
   const auto& dmi_info = system_info->dmi_info;
   if (dmi_info) {
-    base::Value::Dict out_dmi_info;
+    base::DictValue out_dmi_info;
     SET_DICT(bios_vendor, dmi_info, &out_dmi_info);
     SET_DICT(bios_version, dmi_info, &out_dmi_info);
     SET_DICT(board_name, dmi_info, &out_dmi_info);
@@ -834,7 +834,7 @@ void DisplaySystemInfo(const mojom::SystemResultPtr& system_result) {
 
   const auto& psr_info = system_info->psr_info;
   if (psr_info) {
-    base::Value::Dict out_psr_info;
+    base::DictValue out_psr_info;
     SET_DICT(is_supported, psr_info, &out_psr_info);
     if (psr_info->is_supported) {
       SET_DICT(log_state, psr_info, &out_psr_info);
@@ -852,9 +852,9 @@ void DisplaySystemInfo(const mojom::SystemResultPtr& system_result) {
       SET_DICT(s3_counter, psr_info, &out_psr_info);
       SET_DICT(warm_reset_counter, psr_info, &out_psr_info);
 
-      base::Value::List out_events;
+      base::ListValue out_events;
       for (const auto& event : psr_info->events) {
-        base::Value::Dict out_event;
+        base::DictValue out_event;
         SET_DICT(type, event, &out_event);
         SET_DICT(time, event, &out_event)
         SET_DICT(data, event, &out_event)
@@ -869,15 +869,15 @@ void DisplaySystemInfo(const mojom::SystemResultPtr& system_result) {
   OutputJson(output);
 }
 
-base::Value::Dict GetBusDeviceJson(const mojom::BusDevicePtr& device) {
-  base::Value::Dict out_device;
+base::DictValue GetBusDeviceJson(const mojom::BusDevicePtr& device) {
+  base::DictValue out_device;
   SET_DICT(vendor_name, device, &out_device);
   SET_DICT(product_name, device, &out_device);
   SET_DICT(device_class, device, &out_device);
-  base::Value::Dict out_bus_info;
+  base::DictValue out_bus_info;
   switch (device->bus_info->which()) {
     case mojom::BusInfo::Tag::kPciBusInfo: {
-      base::Value::Dict out_pci_info;
+      base::DictValue out_pci_info;
       const auto& pci_info = device->bus_info->get_pci_bus_info();
       SET_DICT(class_id, pci_info, &out_pci_info);
       SET_DICT(subclass_id, pci_info, &out_pci_info);
@@ -892,7 +892,7 @@ base::Value::Dict GetBusDeviceJson(const mojom::BusDevicePtr& device) {
     }
     case mojom::BusInfo::Tag::kUsbBusInfo: {
       const auto& usb_info = device->bus_info->get_usb_bus_info();
-      base::Value::Dict out_usb_info;
+      base::DictValue out_usb_info;
 
       SET_DICT(class_id, usb_info, &out_usb_info);
       SET_DICT(subclass_id, usb_info, &out_usb_info);
@@ -902,9 +902,9 @@ base::Value::Dict GetBusDeviceJson(const mojom::BusDevicePtr& device) {
       SET_DICT(version, usb_info, &out_usb_info);
       SET_DICT(spec_speed, usb_info, &out_usb_info);
 
-      base::Value::List out_usb_ifs;
+      base::ListValue out_usb_ifs;
       for (const auto& usb_if_info : usb_info->interfaces) {
-        base::Value::Dict out_usb_if;
+        base::DictValue out_usb_if;
         SET_DICT(interface_number, usb_if_info, &out_usb_if);
         SET_DICT(class_id, usb_if_info, &out_usb_if);
         SET_DICT(subclass_id, usb_if_info, &out_usb_if);
@@ -915,7 +915,7 @@ base::Value::Dict GetBusDeviceJson(const mojom::BusDevicePtr& device) {
       out_usb_info.Set("interfaces", std::move(out_usb_ifs));
 
       if (usb_info->fwupd_firmware_version_info) {
-        base::Value::Dict out_usb_firmware;
+        base::DictValue out_usb_firmware;
         SET_DICT(version, usb_info->fwupd_firmware_version_info,
                  &out_usb_firmware);
         SET_DICT(version_format, usb_info->fwupd_firmware_version_info,
@@ -929,13 +929,13 @@ base::Value::Dict GetBusDeviceJson(const mojom::BusDevicePtr& device) {
     case mojom::BusInfo::Tag::kThunderboltBusInfo: {
       const auto& thunderbolt_info =
           device->bus_info->get_thunderbolt_bus_info();
-      base::Value::Dict out_thunderbolt_info;
+      base::DictValue out_thunderbolt_info;
 
       SET_DICT(security_level, thunderbolt_info, &out_thunderbolt_info);
-      base::Value::List out_thunderbolt_interfaces;
+      base::ListValue out_thunderbolt_interfaces;
       for (const auto& thunderbolt_interface :
            thunderbolt_info->thunderbolt_interfaces) {
-        base::Value::Dict out_thunderbolt_interface;
+        base::DictValue out_thunderbolt_interface;
         SET_DICT(vendor_name, thunderbolt_interface,
                  &out_thunderbolt_interface);
         SET_DICT(device_name, thunderbolt_interface,
@@ -974,8 +974,8 @@ void DisplayBusDevices(const mojom::BusResultPtr& bus_result) {
 
   const auto& devices = bus_result->get_bus_devices();
 
-  base::Value::Dict output;
-  base::Value::List out_devices;
+  base::DictValue output;
+  base::ListValue out_devices;
   for (const auto& device : devices) {
     out_devices.Append(GetBusDeviceJson(device));
   }
@@ -991,10 +991,10 @@ void DisplayTpmInfo(const mojom::TpmResultPtr& result) {
   }
 
   const auto& info = result->get_tpm_info();
-  base::Value::Dict output;
+  base::DictValue output;
 
   const auto& version = info->version;
-  base::Value::Dict out_version;
+  base::DictValue out_version;
   SET_DICT(gsc_version, version, &out_version);
   SET_DICT(family, version, &out_version);
   SET_DICT(spec_level, version, &out_version);
@@ -1014,14 +1014,14 @@ void DisplayTpmInfo(const mojom::TpmResultPtr& result) {
   output.Set("version", std::move(out_version));
 
   const auto& status = info->status;
-  base::Value::Dict out_status;
+  base::DictValue out_status;
   SET_DICT(enabled, status, &out_status);
   SET_DICT(owned, status, &out_status);
   SET_DICT(owner_password_is_present, status, &out_status);
   output.Set("status", std::move(out_status));
 
   const auto& dictionary_attack = info->dictionary_attack;
-  base::Value::Dict out_dictionary_attack;
+  base::DictValue out_dictionary_attack;
   SET_DICT(counter, dictionary_attack, &out_dictionary_attack);
   SET_DICT(threshold, dictionary_attack, &out_dictionary_attack);
   SET_DICT(lockout_in_effect, dictionary_attack, &out_dictionary_attack);
@@ -1030,13 +1030,13 @@ void DisplayTpmInfo(const mojom::TpmResultPtr& result) {
   output.Set("dictionary_attack", std::move(out_dictionary_attack));
 
   const auto& attestation = info->attestation;
-  base::Value::Dict out_attestation;
+  base::DictValue out_attestation;
   SET_DICT(prepared_for_enrollment, attestation, &out_attestation);
   SET_DICT(enrolled, attestation, &out_attestation);
   output.Set("attestation", std::move(out_attestation));
 
   const auto& supported_features = info->supported_features;
-  base::Value::Dict out_supported_features;
+  base::DictValue out_supported_features;
   SET_DICT(support_u2f, supported_features, &out_supported_features);
   SET_DICT(support_pinweaver, supported_features, &out_supported_features);
   SET_DICT(support_runtime_selection, supported_features,
@@ -1058,9 +1058,9 @@ void DisplayGraphicsInfo(const mojom::GraphicsResultPtr& graphics_result) {
   const auto& info = graphics_result->get_graphics_info();
   CHECK(!info.is_null());
 
-  base::Value::Dict output;
+  base::DictValue output;
   const auto& gles_info = info->gles_info;
-  base::Value::Dict out_gles_info;
+  base::DictValue out_gles_info;
   SET_DICT(version, gles_info, &out_gles_info);
   SET_DICT(shading_version, gles_info, &out_gles_info);
   SET_DICT(vendor, gles_info, &out_gles_info);
@@ -1069,7 +1069,7 @@ void DisplayGraphicsInfo(const mojom::GraphicsResultPtr& graphics_result) {
   output.Set("gles_info", std::move(out_gles_info));
 
   const auto& egl_info = info->egl_info;
-  base::Value::Dict out_egl_info;
+  base::DictValue out_egl_info;
   SET_DICT(version, egl_info, &out_egl_info);
   SET_DICT(vendor, egl_info, &out_egl_info);
   SET_DICT(client_api, egl_info, &out_egl_info);
@@ -1088,14 +1088,14 @@ void DisplayInputInfo(const mojom::InputResultPtr& input_result) {
   const auto& info = input_result->get_input_info();
   CHECK(!info.is_null());
 
-  base::Value::Dict output;
+  base::DictValue output;
   SET_DICT(touchpad_library_name, info, &output);
 
   if (info->touchpad_devices.has_value()) {
-    base::Value::List out_touchpad_devices;
+    base::ListValue out_touchpad_devices;
 
     for (const auto& touchpad_device : *info->touchpad_devices) {
-      base::Value::Dict out_touchpad_device;
+      base::DictValue out_touchpad_device;
       SET_DICT(driver_name, touchpad_device, &out_touchpad_device);
       SET_DICT(vendor_id, touchpad_device, &out_touchpad_device);
       SET_DICT(product_id, touchpad_device, &out_touchpad_device);
@@ -1109,9 +1109,9 @@ void DisplayInputInfo(const mojom::InputResultPtr& input_result) {
     output.Set("touchpad_devices", std::move(out_touchpad_devices));
   }
 
-  base::Value::List out_touchscreen_devices;
+  base::ListValue out_touchscreen_devices;
   for (const auto& touchscreen_device : info->touchscreen_devices) {
-    base::Value::Dict out_touchscreen_device;
+    base::DictValue out_touchscreen_device;
     SET_DICT(touch_points, touchscreen_device, &out_touchscreen_device);
     SET_DICT(has_stylus, touchscreen_device, &out_touchscreen_device);
     SET_DICT(has_stylus_garage_switch, touchscreen_device,
@@ -1134,14 +1134,14 @@ void DisplayAudioHardwareInfo(const mojom::AudioHardwareResultPtr& result) {
     return;
   }
 
-  base::Value::Dict output;
+  base::DictValue output;
   const auto& info = result->get_audio_hardware_info();
   CHECK(!info.is_null());
 
   const auto& audio_cards = info->audio_cards;
-  base::Value::List out_audio_cards;
+  base::ListValue out_audio_cards;
   for (const auto& audio_card : audio_cards) {
-    base::Value::Dict out_audio_card;
+    base::DictValue out_audio_card;
     SET_DICT(alsa_id, audio_card, &out_audio_card);
 
     if (audio_card->bus_device) {
@@ -1150,9 +1150,9 @@ void DisplayAudioHardwareInfo(const mojom::AudioHardwareResultPtr& result) {
     }
 
     const auto& hd_audio_codecs = audio_card->hd_audio_codecs;
-    base::Value::List out_hd_audio_codecs;
+    base::ListValue out_hd_audio_codecs;
     for (const auto& hd_audio_codec : hd_audio_codecs) {
-      base::Value::Dict out_hd_audio_codec;
+      base::DictValue out_hd_audio_codec;
       SET_DICT(name, hd_audio_codec, &out_hd_audio_codec);
       SET_DICT(address, hd_audio_codec, &out_hd_audio_codec);
 
@@ -1173,14 +1173,14 @@ void DisplaySensorInfo(const mojom::SensorResultPtr& result) {
     return;
   }
 
-  base::Value::Dict output;
+  base::DictValue output;
   const auto& info = result->get_sensor_info();
   CHECK(!info.is_null());
 
   if (info->sensors.has_value()) {
-    base::Value::List out_sensors;
+    base::ListValue out_sensors;
     for (const auto& sensor : info->sensors.value()) {
-      base::Value::Dict out_sensor;
+      base::DictValue out_sensor;
       SET_DICT(name, sensor, &out_sensor);
       SET_DICT(device_id, sensor, &out_sensor);
       SET_DICT(type, sensor, &out_sensor);
@@ -1200,13 +1200,13 @@ void DisplayThermalInfo(const mojom::ThermalResultPtr& result) {
     DisplayError(result->get_error());
     return;
   }
-  base::Value::Dict output;
-  base::Value::List thermal_sensor_list;
+  base::DictValue output;
+  base::ListValue thermal_sensor_list;
   const auto& info = result->get_thermal_info();
   CHECK(!info.is_null());
 
   for (const auto& thermal_sensor : info->thermal_sensors) {
-    base::Value::Dict thermal_sensor_dict;
+    base::DictValue thermal_sensor_dict;
     SET_DICT(name, thermal_sensor, &thermal_sensor_dict);
     SET_DICT(temperature_celsius, thermal_sensor, &thermal_sensor_dict);
     SET_DICT(source, thermal_sensor, &thermal_sensor_dict);

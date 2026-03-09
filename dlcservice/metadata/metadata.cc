@@ -105,7 +105,7 @@ bool Metadata::Set(const DlcId& id, const Metadata::Entry& entry) {
     cache_.clear();
   }
 
-  cache_.Set(id, base::Value::Dict()
+  cache_.Set(id, base::DictValue()
                      .Set(kManifest, entry.manifest.Clone())
                      .Set(kTable, entry.table));
   // Update the `file_ids_` since new file may be created after modification.

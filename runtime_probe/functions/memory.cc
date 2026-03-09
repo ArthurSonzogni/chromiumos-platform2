@@ -149,7 +149,7 @@ MemoryFunction::DataType GetMemoryInfo() {
     // The field "slot" denotes to the entry number instead of the physical slot
     // number, which refers to mosys' output. To be compatible with current
     // HWID, we still preserve this field.
-    auto info = base::Value::Dict()
+    auto info = base::DictValue()
                     .Set("slot", entry)
                     .Set("path", dmi_path.value())
                     .Set("size", dmi_memory->size)

@@ -40,7 +40,7 @@ class FieldEqualMatcher : public Matcher {
   // Creates the matcher that matches if a field |field_name|'s value is
   // |expected|.
   static std::unique_ptr<FieldEqualMatcher<T>> Create(
-      const base::Value::List& operands) {
+      const base::ListValue& operands) {
     if (operands.size() != 2 || !operands[0].is_string() ||
         !operands[1].is_string()) {
       LOG(ERROR) << "FieldEqualMatcher takes 2 string operands, but got "
@@ -64,7 +64,7 @@ class FieldEqualMatcher : public Matcher {
   ~FieldEqualMatcher() override = default;
 
   // Matcher overrides.
-  bool Match(const base::Value::Dict& component) const override {
+  bool Match(const base::DictValue& component) const override {
     const std::string* field_raw_value = component.FindString(field_name_);
     if (!field_raw_value) {
       // Fields not exist never match.

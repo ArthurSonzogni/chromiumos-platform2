@@ -183,7 +183,7 @@ class OcrTestEnvironment : public ::testing::Environment {
     EXPECT_TRUE(json_serializer.Serialize(perf_values_));
   }
 
-  base::Value::Dict perf_values_;
+  base::DictValue perf_values_;
   base::FilePath output_path_;
   SkBitmap jpeg_image_;
   base::ScopedNativeLibrary library_;

@@ -188,11 +188,11 @@ class FramingStreamManipulator : public StreamManipulator {
                                         uint32_t frame_number);
   void UpdateFaceRectangleMetadataOnThread(Camera3CaptureDescriptor* result);
   void ResetOnThread();
-  void UpdateOptionsOnThread(const base::Value::Dict& json_values);
+  void UpdateOptionsOnThread(const base::DictValue& json_values);
   std::pair<State, State> StateTransitionOnThread(bool manual_zoom_enabled);
   void UploadMetricsOnThread();
 
-  void OnOptionsUpdated(const base::Value::Dict& json_values);
+  void OnOptionsUpdated(const base::DictValue& json_values);
 
   CaptureContext* CreateCaptureContext(uint32_t frame_number);
   CaptureContext* GetCaptureContext(uint32_t frame_number) const;

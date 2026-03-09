@@ -716,7 +716,7 @@ std::vector<Log> GetRequestedLogItems(
 // Fills |dictionary| with the contents of the logs in |logs|.
 template <std::size_t N>
 void GetLogsInDictionary(const std::array<Log, N>& logs,
-                         base::Value::Dict* dictionary) {
+                         base::DictValue* dictionary) {
   for (const Log& log : logs) {
     dictionary->Set(log.GetName(), log.GetLogData());
   }
@@ -724,7 +724,7 @@ void GetLogsInDictionary(const std::array<Log, N>& logs,
 
 // Serializes the |dictionary| into the file with the given |fd| in a JSON
 // format.
-void SerializeLogsAsJSON(const base::Value::Dict& dictionary,
+void SerializeLogsAsJSON(const base::DictValue& dictionary,
                          const base::ScopedFD& fd) {
   string logs_json;
   base::JSONWriter::WriteWithOptions(
@@ -1186,7 +1186,7 @@ bool LogTool::ParallelLogCollector::StartGetLogs(
   return true;
 }
 
-void LogTool::ParallelLogCollector::EndGetLogs(base::Value::Dict* dict) {
+void LogTool::ParallelLogCollector::EndGetLogs(base::DictValue* dict) {
   const base::TimeDelta sleep_interval = base::Seconds(1);
   // Wait for the controller to finish or until the deadline.
   int status;
@@ -1436,7 +1436,7 @@ void LogTool::GetFeedbackLogs(const base::ScopedFD& fd,
   }
 
   // All logs will eventually be added to |dictionary|.
-  base::Value::Dict dictionary;
+  base::DictValue dictionary;
 
   // Gather all log items which will be run in child processes.
   const std::vector<Log> log_list = GetRequestedLogItems(requested_logs);
@@ -1555,7 +1555,7 @@ std::string LogTool::GetArcBugReport(const std::string& username,
 }
 
 void LogTool::GetArcBugReportInDictionary(const std::string& username,
-                                          base::Value::Dict* dictionary) {
+                                          base::DictValue* dictionary) {
   bool is_backup;
   std::string arc_bug_report = GetArcBugReport(username, &is_backup);
   dictionary->Set(kArcBugReportBackupKey, (is_backup ? "true" : "false"));

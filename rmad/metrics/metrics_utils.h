@@ -95,8 +95,8 @@ class MetricsUtils {
       scoped_refptr<JsonStore> json_store);
 
  private:
-  static base::Value::Dict RefineStateMetricsReadability(
-      const base::Value::Dict& original_state_metrics);
+  static base::DictValue RefineStateMetricsReadability(
+      const base::DictValue& original_state_metrics);
 };
 
 }  // namespace rmad

@@ -52,7 +52,7 @@ void ProbeCpuTelemetryInfoCallback(
       }
       probed_model.insert(model);
       probe_result.Append(
-          base::Value::Dict()
+          base::DictValue()
               .Set("cores", std::to_string(cpu_info->num_total_threads))
               .Set("model", model));
     }

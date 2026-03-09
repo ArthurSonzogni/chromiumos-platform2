@@ -48,7 +48,7 @@ class IntelPMTCollector final : public Sheriff {
   // The pointer to the Intel PMT snapshot data.
   const pmt::Snapshot* snapshot_ = nullptr;
   // Collector config from `kIntelPMTConfigPath`.
-  base::Value::Dict config_;
+  base::DictValue config_;
   // `kIntelPMTLogPath` fd.
   int log_fd_ = -1;
   // `kIntelPMTCounterPath` fd.

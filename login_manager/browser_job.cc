@@ -480,7 +480,7 @@ std::vector<std::string> BrowserJob::ExportArgv() const {
                      extra_arguments_.end());
 
     // Encode feature flags.
-    base::Value::List feature_flag_list;
+    base::ListValue feature_flag_list;
     for (const auto& feature_flag : feature_flags_) {
       feature_flag_list.Append(feature_flag);
     }
@@ -493,7 +493,7 @@ std::vector<std::string> BrowserJob::ExportArgv() const {
     }
 
     // Encode origin list values.
-    base::Value::Dict origin_list_dict;
+    base::DictValue origin_list_dict;
     for (const auto& entry : origin_list_flags_) {
       origin_list_dict.Set(entry.first, entry.second);
     }

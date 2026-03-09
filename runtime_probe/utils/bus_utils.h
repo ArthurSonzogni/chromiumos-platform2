@@ -13,7 +13,7 @@
 namespace runtime_probe {
 
 // Check if the probed sysfs node is a removable device.
-bool IsRemovableBusDevice(const base::Value::Dict& result);
+bool IsRemovableBusDevice(const base::DictValue& result);
 
 // Probes the bus info from a sysfs device path. This is designed for the
 // sysfs subsystem /sys/class/*. For example: /sys/class/net/eth0. This function

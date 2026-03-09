@@ -37,9 +37,9 @@ class CameraTool {
 
     base::span<const cros::PlatformCameraInfo> cameras =
         device_config_->GetPlatformCameraInfo();
-    base::Value::List root;
+    base::ListValue root;
     for (const auto& camera : cameras) {
-      base::Value::Dict node;
+      base::DictValue node;
       if (camera.eeprom) {
         node.Set("sysfs_name", camera.sysfs_name);
         node.Set("module_id", camera.module_id());

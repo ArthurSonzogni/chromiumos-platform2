@@ -27,7 +27,7 @@ std::unique_ptr<CameraConfig> CameraConfig::Create(
 
   if (!base::PathExists(config_path)) {
     // If there is no config file it means that all are default values.
-    return base::WrapUnique(new CameraConfigImpl(base::Value::Dict()));
+    return base::WrapUnique(new CameraConfigImpl(base::DictValue()));
   }
 
   std::string content;
@@ -52,7 +52,7 @@ std::unique_ptr<CameraConfig> CameraConfig::Create(
   return base::WrapUnique(new CameraConfigImpl(std::move(result->GetDict())));
 }
 
-CameraConfigImpl::CameraConfigImpl(base::Value::Dict config) {
+CameraConfigImpl::CameraConfigImpl(base::DictValue config) {
   config_ = std::move(config);
 }
 
@@ -81,7 +81,7 @@ std::string CameraConfigImpl::GetString(
 std::vector<std::string> CameraConfigImpl::GetStrings(
     const std::string& path,
     const std::vector<std::string>& default_value) const {
-  const base::Value::List* values = config_.FindListByDottedPath(path);
+  const base::ListValue* values = config_.FindListByDottedPath(path);
   if (values == nullptr) {
     return default_value;
   }

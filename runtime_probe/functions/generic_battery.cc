@@ -41,7 +41,7 @@ constexpr auto kBatteryOptionalKeys = base::MakeFixedFlatSet<std::string_view>(
     {"capacity", "capacity_level", "charge_full", "charge_full_design",
      "present", "serial_number", "voltage_min_design"});
 
-std::optional<base::Value::Dict> ProbeBatteryFromSysfs(
+std::optional<base::DictValue> ProbeBatteryFromSysfs(
     const base::FilePath& battery_path) {
   auto value = MapFilesToDict(battery_path, kBatteryKeys, kBatteryOptionalKeys);
   if (!value) {
@@ -62,7 +62,7 @@ std::optional<base::Value::Dict> ProbeBatteryFromSysfs(
   return dict_value;
 }
 
-std::optional<base::Value::Dict> ProbeBatteryFromEc() {
+std::optional<base::DictValue> ProbeBatteryFromEc() {
   std::string output;
   brillo::ErrorPtr error;
   auto debugd = Context::Get()->debugd_proxy();
@@ -76,7 +76,7 @@ std::optional<base::Value::Dict> ProbeBatteryFromEc() {
   }
 
   // TODO(itspeter): Extra take care if there are multiple batteries.
-  base::Value::Dict bat;
+  base::DictValue bat;
   pcrecpp::RE re(R"(Battery (?:\d+ )?info:\n)"
                  R"(  (?:Manufacturer|OEM name) *: *(.*)\n)"
                  R"(  (?:Device name|Model number) *: *(.*)\n)"

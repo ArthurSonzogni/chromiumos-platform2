@@ -54,7 +54,7 @@ class GcamAeStreamManipulator : public StreamManipulator {
   bool Flush() override;
 
  private:
-  void OnOptionsUpdated(const base::Value::Dict& json_values);
+  void OnOptionsUpdated(const base::DictValue& json_values);
 
   ReloadableConfigFile config_;
   Options options_;

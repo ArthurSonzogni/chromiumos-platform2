@@ -30,17 +30,17 @@ HdrNetProcessorDeviceAdapter::CreateInstance(
 #if !(USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL || USE_IPU6EPADLN)
 
 // static
-std::optional<base::Value::Dict>
+std::optional<base::DictValue>
 HdrNetProcessorDeviceAdapter::MaybeOverrideOptions(
-    const base::Value::Dict& json_values,
+    const base::DictValue& json_values,
     const android::CameraMetadata& result_metadata,
     HdrNetProcessorDeviceAdapter::OptionsOverrideData& data) {
   return std::nullopt;
 }
 
 // static
-base::Value::Dict HdrNetProcessorDeviceAdapter::GetOverriddenOptions(
-    const base::Value::Dict& json_values,
+base::DictValue HdrNetProcessorDeviceAdapter::GetOverriddenOptions(
+    const base::DictValue& json_values,
     const HdrNetProcessorDeviceAdapter::OptionsOverrideData& data) {
   return json_values.Clone();
 }

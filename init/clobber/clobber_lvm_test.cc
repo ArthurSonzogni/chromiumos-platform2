@@ -703,8 +703,8 @@ TEST_F(DlcPreserveLogicalVolumesWipeArgsTest, SingleDlcPowerwashFile) {
   ASSERT_TRUE(CreateDirectoryAndWriteFile(ps_file_path, dlc));
 
   auto manifest = std::make_unique<imageloader::Manifest>();
-  const base::Value::Dict manifest_dict =
-      base::Value::Dict()
+  const base::DictValue manifest_dict =
+      base::DictValue()
           .Set("powerwash-safe", true)
           .Set("image-sha256-hash",
                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -756,8 +756,8 @@ TEST_F(DlcPreserveLogicalVolumesWipeArgsTest, MixedDlcPowerwashFile) {
 
   auto manifest_ps = std::make_unique<imageloader::Manifest>();
   {
-    const base::Value::Dict manifest_dict =
-        base::Value::Dict()
+    const base::DictValue manifest_dict =
+        base::DictValue()
             .Set("powerwash-safe", true)
             .Set("image-sha256-hash",
                  "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -771,8 +771,8 @@ TEST_F(DlcPreserveLogicalVolumesWipeArgsTest, MixedDlcPowerwashFile) {
   }
   auto manifest_not_ps = std::make_unique<imageloader::Manifest>();
   {
-    const base::Value::Dict manifest_dict =
-        base::Value::Dict()
+    const base::DictValue manifest_dict =
+        base::DictValue()
             .Set("powerwash-safe", false)
             .Set("image-sha256-hash",
                  "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"

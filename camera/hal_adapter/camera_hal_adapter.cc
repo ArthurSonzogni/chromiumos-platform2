@@ -683,7 +683,7 @@ void CameraHalAdapter::SetCameraSWPrivacySwitchStateOnCameraModuleThread(
 }
 
 void CameraHalAdapter::SWPrivacySwitchOverrideChange(
-    const base::Value::Dict& json_values) {
+    const base::DictValue& json_values) {
   constexpr char kStateKey[] = "state";
   const base::Value* value = json_values.Find(kStateKey);
   if (value == nullptr) {

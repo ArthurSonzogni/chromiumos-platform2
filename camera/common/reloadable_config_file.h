@@ -45,7 +45,7 @@ class CROS_CAMERA_EXPORT ReloadableConfigFile {
   };
 
   using OptionsUpdateCallback =
-      base::RepeatingCallback<void(const base::Value::Dict&)>;
+      base::RepeatingCallback<void(const base::DictValue&)>;
 
   explicit ReloadableConfigFile(const Options& options);
   ReloadableConfigFile(const ReloadableConfigFile& other) = delete;
@@ -62,7 +62,7 @@ class CROS_CAMERA_EXPORT ReloadableConfigFile {
   void StopOverrideFileWatcher();
 
   void UpdateOption(std::string key, base::Value value);
-  base::Value::Dict CloneJsonValues() const;
+  base::DictValue CloneJsonValues() const;
   bool IsValid() const;
 
  private:
@@ -83,27 +83,27 @@ class CROS_CAMERA_EXPORT ReloadableConfigFile {
 
   // Stores JSON values from |default_config_file_path_| if the path is not
   // empty. Otherwise, |default_json_values_| is an empty dict.
-  base::Value::Dict default_json_values_;
+  base::DictValue default_json_values_;
 
   base::Lock options_lock_;
-  std::optional<base::Value::Dict> json_values_ GUARDED_BY(options_lock_);
+  std::optional<base::DictValue> json_values_ GUARDED_BY(options_lock_);
 };
 
 // Helper functions to look up |key| in |json_values| and, if key exists, load
 // the corresponding value into |output|. Returns true if |output| is loaded
 // with the value found, false otherwise.
-CROS_CAMERA_EXPORT bool LoadIfExist(const base::Value::Dict& json_values,
+CROS_CAMERA_EXPORT bool LoadIfExist(const base::DictValue& json_values,
                                     const char* key,
                                     float* output);
-CROS_CAMERA_EXPORT bool LoadIfExist(const base::Value::Dict& json_values,
+CROS_CAMERA_EXPORT bool LoadIfExist(const base::DictValue& json_values,
                                     const char* key,
                                     int* output);
-CROS_CAMERA_EXPORT bool LoadIfExist(const base::Value::Dict& json_values,
+CROS_CAMERA_EXPORT bool LoadIfExist(const base::DictValue& json_values,
                                     const char* key,
                                     bool* output);
 
 template <typename T>
-bool LoadIfExist(const base::Value::Dict& json_values,
+bool LoadIfExist(const base::DictValue& json_values,
                  const char* key,
                  std::vector<T>* output) {
   static_assert(std::is_same<T, float>::value ||

@@ -29,7 +29,7 @@ namespace {
 
 // Gets an integer from the given dictionary.
 template <typename T>
-bool ParseIntFromDict(const base::Value::Dict& dict,
+bool ParseIntFromDict(const base::DictValue& dict,
                       const char* name,
                       T* val_out) {
   std::optional<double> double_val = dict.FindDouble(name);
@@ -42,7 +42,7 @@ bool ParseIntFromDict(const base::Value::Dict& dict,
 
 // Parse a list-type Value structure as vector of integers.
 template <typename T>
-bool ParseIntList(const base::Value::List& list_val, std::vector<T>* val_out) {
+bool ParseIntList(const base::ListValue& list_val, std::vector<T>* val_out) {
   for (const base::Value& entry : list_val) {
     if (!entry.is_double() && !entry.is_int()) {
       return false;
@@ -53,11 +53,10 @@ bool ParseIntList(const base::Value::List& list_val, std::vector<T>* val_out) {
 }
 
 // Parses basic platform configuration.
-bool ParsePlatformConfig(const base::Value::Dict& config_root_dict,
+bool ParsePlatformConfig(const base::DictValue& config_root_dict,
                          OciConfigPtr const& config_out) {
   // |platform_dict| stays owned by |config_root_dict|
-  const base::Value::Dict* platform_dict =
-      config_root_dict.FindDict("platform");
+  const base::DictValue* platform_dict = config_root_dict.FindDict("platform");
   if (!platform_dict) {
     LOG(ERROR) << "Fail to parse platform dictionary from config";
     return false;
@@ -79,10 +78,10 @@ bool ParsePlatformConfig(const base::Value::Dict& config_root_dict,
 }
 
 // Parses root fs info.
-bool ParseRootFileSystemConfig(const base::Value::Dict& config_root_dict,
+bool ParseRootFileSystemConfig(const base::DictValue& config_root_dict,
                                OciConfigPtr const& config_out) {
   // |rootfs_dict| stays owned by |config_root_dict|
-  const base::Value::Dict* rootfs_dict = config_root_dict.FindDict("root");
+  const base::DictValue* rootfs_dict = config_root_dict.FindDict("root");
   if (!rootfs_dict) {
     LOG(ERROR) << "Fail to parse rootfs dictionary from config";
     return false;
@@ -102,7 +101,7 @@ bool ParseRootFileSystemConfig(const base::Value::Dict& config_root_dict,
 
 // Fills |config_out| with information about the capability sets in the
 // container.
-bool ParseCapabilitiesConfig(const base::Value::Dict& capabilities_dict,
+bool ParseCapabilitiesConfig(const base::DictValue& capabilities_dict,
                              std::map<std::string, CapSet>* config_out) {
   constexpr const char* kCapabilitySetNames[] = {
       "effective", "bounding", "inheritable", "permitted", "ambient"};
@@ -111,7 +110,7 @@ bool ParseCapabilitiesConfig(const base::Value::Dict& capabilities_dict,
   CapSet caps_superset;
   for (const char* set_name : kCapabilitySetNames) {
     // |capset_list| stays owned by |capabilities_dict|.
-    const base::Value::List* capset_list = capabilities_dict.FindList(set_name);
+    const base::ListValue* capset_list = capabilities_dict.FindList(set_name);
     if (!capset_list) {
       continue;
     }
@@ -173,7 +172,7 @@ const std::map<std::string, int> kRlimitMap = {
 
 // Fills |config_out| with information about the capability sets in the
 // container.
-bool ParseRlimitsConfig(const base::Value::List& rlimits_list,
+bool ParseRlimitsConfig(const base::ListValue& rlimits_list,
                         std::vector<OciProcessRlimit>* rlimits_out) {
   size_t num_limits = rlimits_list.size();
   for (size_t i = 0; i < num_limits; ++i) {
@@ -181,7 +180,7 @@ bool ParseRlimitsConfig(const base::Value::List& rlimits_list,
       LOG(ERROR) << "Fail to get rlimit item " << i;
       return false;
     }
-    const base::Value::Dict& rlimits_dict = rlimits_list[i].GetDict();
+    const base::DictValue& rlimits_dict = rlimits_list[i].GetDict();
 
     const std::string* rlimit_name = rlimits_dict.FindString("type");
     if (!rlimit_name) {
@@ -212,10 +211,10 @@ bool ParseRlimitsConfig(const base::Value::List& rlimits_list,
 
 // Fills |config_out| with information about the main process to run in the
 // container and the user it should be run as.
-bool ParseProcessConfig(const base::Value::Dict& config_root_dict,
+bool ParseProcessConfig(const base::DictValue& config_root_dict,
                         OciConfigPtr const& config_out) {
   // |process_dict| stays owned by |config_root_dict|
-  const base::Value::Dict* process_dict = config_root_dict.FindDict("process");
+  const base::DictValue* process_dict = config_root_dict.FindDict("process");
   if (!process_dict) {
     LOG(ERROR) << "Fail to get main process from config";
     return false;
@@ -225,7 +224,7 @@ bool ParseProcessConfig(const base::Value::Dict& config_root_dict,
     config_out->process.terminal = *terminal;
   }
   // |user_dict| stays owned by |process_dict|
-  const base::Value::Dict* user_dict = process_dict->FindDict("user");
+  const base::DictValue* user_dict = process_dict->FindDict("user");
   if (!user_dict) {
     LOG(ERROR) << "Failed to get user info from config";
     return false;
@@ -238,7 +237,7 @@ bool ParseProcessConfig(const base::Value::Dict& config_root_dict,
   }
 
   // If additionalGids field is specified, parse it as a valid list of integers.
-  const base::Value::List* list_val = user_dict->FindList("additionalGids");
+  const base::ListValue* list_val = user_dict->FindList("additionalGids");
   if (list_val &&
       !ParseIntList(*list_val, &config_out->process.user.additionalGids)) {
     LOG(ERROR) << "Invalid process.user.additionalGids";
@@ -246,7 +245,7 @@ bool ParseProcessConfig(const base::Value::Dict& config_root_dict,
   }
 
   // |args_list| stays owned by |process_dict|
-  const base::Value::List* args_list = process_dict->FindList("args");
+  const base::ListValue* args_list = process_dict->FindList("args");
   if (!args_list) {
     LOG(ERROR) << "Fail to get main process args from config";
     return false;
@@ -259,7 +258,7 @@ bool ParseProcessConfig(const base::Value::Dict& config_root_dict,
     config_out->process.args.push_back(arg.GetString());
   }
   // |env_list| stays owned by |process_dict|
-  const base::Value::List* env_list = process_dict->FindList("env");
+  const base::ListValue* env_list = process_dict->FindList("env");
   if (env_list) {
     for (const auto& env_value : *env_list) {
       if (!env_value.is_string()) {
@@ -296,7 +295,7 @@ bool ParseProcessConfig(const base::Value::Dict& config_root_dict,
     config_out->process.selinuxLabel = *selinux_label;
   }
   // |capabilities_dict| stays owned by |process_dict|
-  const base::Value::Dict* capabilities_dict =
+  const base::DictValue* capabilities_dict =
       process_dict->FindDict("capabilities");
   if (capabilities_dict) {
     if (!ParseCapabilitiesConfig(*capabilities_dict,
@@ -306,7 +305,7 @@ bool ParseProcessConfig(const base::Value::Dict& config_root_dict,
   }
 
   // |rlimit_list| stays owned by |process_dict|
-  const base::Value::List* rlimits_list = process_dict->FindList("rlimits");
+  const base::ListValue* rlimits_list = process_dict->FindList("rlimits");
   if (rlimits_list) {
     if (!ParseRlimitsConfig(*rlimits_list, &config_out->process.rlimits)) {
       return false;
@@ -318,10 +317,10 @@ bool ParseProcessConfig(const base::Value::Dict& config_root_dict,
 
 // Parses the 'mounts' field.  The necessary mounts for running the container
 // are specified here.
-bool ParseMounts(const base::Value::Dict& config_root_dict,
+bool ParseMounts(const base::DictValue& config_root_dict,
                  OciConfigPtr const& config_out) {
   // |config_mounts_list| stays owned by |config_root_dict|
-  const base::Value::List* config_mounts_list =
+  const base::ListValue* config_mounts_list =
       config_root_dict.FindList("mounts");
   if (!config_mounts_list) {
     LOG(ERROR) << "Fail to get mounts from config dictionary";
@@ -333,7 +332,7 @@ bool ParseMounts(const base::Value::Dict& config_root_dict,
       LOG(ERROR) << "Fail to get mount item " << i;
       return false;
     }
-    const base::Value::Dict& mount_dict = (*config_mounts_list)[i].GetDict();
+    const base::DictValue& mount_dict = (*config_mounts_list)[i].GetDict();
     OciMount mount;
     const std::string* path = mount_dict.FindString("destination");
     if (!path) {
@@ -359,7 +358,7 @@ bool ParseMounts(const base::Value::Dict& config_root_dict,
         intermediate_namespace.value_or(false);
 
     // |options| are owned by |mount_dict|
-    const base::Value::List* options = mount_dict.FindList("options");
+    const base::ListValue* options = mount_dict.FindList("options");
     if (options) {
       for (size_t j = 0; j < options->size(); ++j) {
         const base::Value& this_opt = (*options)[j];
@@ -377,10 +376,10 @@ bool ParseMounts(const base::Value::Dict& config_root_dict,
 }
 
 // Parses the linux resource list
-bool ParseResources(const base::Value::Dict& resources_dict,
+bool ParseResources(const base::DictValue& resources_dict,
                     OciLinuxResources* resources_out) {
   // |device_list| is owned by |resources_dict|
-  const base::Value::List* device_list = resources_dict.FindList("devices");
+  const base::ListValue* device_list = resources_dict.FindList("devices");
   if (!device_list) {
     // The device list is optional.
     return true;
@@ -393,7 +392,7 @@ bool ParseResources(const base::Value::Dict& resources_dict,
       LOG(ERROR) << "Fail to get device " << i;
       return false;
     }
-    const base::Value::Dict& dev = (*device_list)[i].GetDict();
+    const base::DictValue& dev = (*device_list)[i].GetDict();
 
     std::optional<bool> allow = dev.FindBool("allow");
     if (!allow.has_value()) {
@@ -421,7 +420,7 @@ bool ParseResources(const base::Value::Dict& resources_dict,
 }
 
 // Parses the list of namespaces and fills |namespaces_out| with them.
-bool ParseNamespaces(const base::Value::List* namespaces_list,
+bool ParseNamespaces(const base::ListValue* namespaces_list,
                      std::vector<OciNamespace>* namespaces_out) {
   for (size_t i = 0; i < namespaces_list->size(); ++i) {
     OciNamespace new_namespace;
@@ -429,7 +428,7 @@ bool ParseNamespaces(const base::Value::List* namespaces_list,
       LOG(ERROR) << "Failed to get namespace " << i;
       return false;
     }
-    const base::Value::Dict& ns = (*namespaces_list)[i].GetDict();
+    const base::DictValue& ns = (*namespaces_list)[i].GetDict();
     const std::string* type = ns.FindString("type");
     if (!type) {
       LOG(ERROR) << "Namespace " << i << " missing type";
@@ -446,10 +445,10 @@ bool ParseNamespaces(const base::Value::List* namespaces_list,
 }
 
 // Parse the list of device nodes that the container needs to run.
-bool ParseDeviceList(const base::Value::Dict& linux_dict,
+bool ParseDeviceList(const base::DictValue& linux_dict,
                      OciConfigPtr const& config_out) {
   // |device_list| is owned by |linux_dict|
-  const base::Value::List* device_list = linux_dict.FindList("devices");
+  const base::ListValue* device_list = linux_dict.FindList("devices");
   if (!device_list) {
     // The device list is optional.
     return true;
@@ -462,7 +461,7 @@ bool ParseDeviceList(const base::Value::Dict& linux_dict,
       LOG(ERROR) << "Fail to get device " << i;
       return false;
     }
-    const base::Value::Dict& dev = (*device_list)[i].GetDict();
+    const base::DictValue& dev = (*device_list)[i].GetDict();
     const std::string* path = dev.FindString("path");
     if (!path) {
       LOG(ERROR) << "Fail to get path for dev";
@@ -523,14 +522,14 @@ bool ParseDeviceList(const base::Value::Dict& linux_dict,
 }
 
 // Parses the list of ID mappings and fills |mappings_out| with them.
-bool ParseLinuxIdMappings(const base::Value::List* id_map_list,
+bool ParseLinuxIdMappings(const base::ListValue* id_map_list,
                           std::vector<OciLinuxNamespaceMapping>* mappings_out) {
   for (size_t i = 0; i < id_map_list->size(); ++i) {
     if (!(*id_map_list)[i].is_dict()) {
       LOG(ERROR) << "Fail to get id map " << i;
       return false;
     }
-    const base::Value::Dict& map = (*id_map_list)[i].GetDict();
+    const base::DictValue& map = (*id_map_list)[i].GetDict();
     OciLinuxNamespaceMapping new_map;
     if (!ParseIntFromDict(map, "hostID", &new_map.hostID)) {
       return false;
@@ -547,9 +546,9 @@ bool ParseLinuxIdMappings(const base::Value::List* id_map_list,
 }
 
 // Parses seccomp syscall args.
-bool ParseSeccompArgs(const base::Value::Dict& syscall_dict,
+bool ParseSeccompArgs(const base::DictValue& syscall_dict,
                       OciSeccompSyscall* syscall_out) {
-  const base::Value::List* args = syscall_dict.FindList("args");
+  const base::ListValue* args = syscall_dict.FindList("args");
   if (args) {
     for (const auto& arg : *args) {
       if (!arg.is_dict()) {
@@ -581,7 +580,7 @@ bool ParseSeccompArgs(const base::Value::Dict& syscall_dict,
 }
 
 // Parses the seccomp node if it is present.
-bool ParseSeccompInfo(const base::Value::Dict& seccomp_dict,
+bool ParseSeccompInfo(const base::DictValue& seccomp_dict,
                       OciSeccomp* seccomp_out) {
   const std::string* default_action = seccomp_dict.FindString("defaultAction");
   if (!default_action) {
@@ -589,8 +588,7 @@ bool ParseSeccompInfo(const base::Value::Dict& seccomp_dict,
   }
   seccomp_out->defaultAction = *default_action;
   // Gets the list of architectures.
-  const base::Value::List* architectures =
-      seccomp_dict.FindList("architectures");
+  const base::ListValue* architectures = seccomp_dict.FindList("architectures");
   if (!architectures) {
     LOG(ERROR) << "Fail to read seccomp architectures";
     return false;
@@ -604,7 +602,7 @@ bool ParseSeccompInfo(const base::Value::Dict& seccomp_dict,
   }
 
   // Gets the list of syscalls.
-  const base::Value::List* syscalls = seccomp_dict.FindList("syscalls");
+  const base::ListValue* syscalls = seccomp_dict.FindList("syscalls");
   if (!syscalls) {
     LOG(ERROR) << "Fail to read seccomp syscalls";
     return false;
@@ -614,7 +612,7 @@ bool ParseSeccompInfo(const base::Value::Dict& seccomp_dict,
       LOG(ERROR) << "Fail to parse seccomp syscalls list";
       return false;
     }
-    const base::Value::Dict& syscall_dict = (*syscalls)[i].GetDict();
+    const base::DictValue& syscall_dict = (*syscalls)[i].GetDict();
     OciSeccompSyscall this_syscall;
     const std::string* name = syscall_dict.FindString("name");
     if (!name) {
@@ -684,7 +682,7 @@ bool ParseSecurebit(const std::string& securebit_name, uint64_t* mask_out) {
   return false;
 }
 
-bool ParseSkipSecurebitsMask(const base::Value::List& skip_securebits_list,
+bool ParseSkipSecurebitsMask(const base::ListValue& skip_securebits_list,
                              uint64_t* securebits_mask_out) {
   size_t num_securebits = skip_securebits_list.size();
   for (size_t i = 0; i < num_securebits; ++i) {
@@ -703,7 +701,7 @@ bool ParseSkipSecurebitsMask(const base::Value::List& skip_securebits_list,
 }
 
 // Parses the cpu node if it is present.
-bool ParseCpuInfo(const base::Value::Dict& cpu_dict, OciCpu* cpu_out) {
+bool ParseCpuInfo(const base::DictValue& cpu_dict, OciCpu* cpu_out) {
   ParseIntFromDict(cpu_dict, "shares", &cpu_out->shares);
   ParseIntFromDict(cpu_dict, "quota", &cpu_out->quota);
   ParseIntFromDict(cpu_dict, "period", &cpu_out->period);
@@ -714,23 +712,23 @@ bool ParseCpuInfo(const base::Value::Dict& cpu_dict, OciCpu* cpu_out) {
 
 // Parses the linux node which has information about setting up a user
 // namespace, and the list of devices for the container.
-bool ParseLinuxConfigDict(const base::Value::Dict& runtime_root_dict,
+bool ParseLinuxConfigDict(const base::DictValue& runtime_root_dict,
                           OciConfigPtr const& config_out) {
   // |linux_dict| is owned by |runtime_root_dict|
-  const base::Value::Dict* linux_dict = runtime_root_dict.FindDict("linux");
+  const base::DictValue* linux_dict = runtime_root_dict.FindDict("linux");
   if (!linux_dict) {
     LOG(ERROR) << "Fail to get linux dictionary from the runtime dictionary";
     return false;
   }
 
   // |uid_map_list| is owned by |linux_dict|
-  const base::Value::List* uid_map_list = linux_dict->FindList("uidMappings");
+  const base::ListValue* uid_map_list = linux_dict->FindList("uidMappings");
   if (uid_map_list) {
     ParseLinuxIdMappings(uid_map_list, &config_out->linux_config.uidMappings);
   }
 
   // |gid_map_list| is owned by |linux_dict|
-  const base::Value::List* gid_map_list = linux_dict->FindList("gidMappings");
+  const base::ListValue* gid_map_list = linux_dict->FindList("gidMappings");
   if (gid_map_list) {
     ParseLinuxIdMappings(gid_map_list, &config_out->linux_config.gidMappings);
   }
@@ -739,14 +737,14 @@ bool ParseLinuxConfigDict(const base::Value::Dict& runtime_root_dict,
     return false;
   }
 
-  const base::Value::Dict* resources_dict = linux_dict->FindDict("resources");
+  const base::DictValue* resources_dict = linux_dict->FindDict("resources");
   if (resources_dict) {
     if (!ParseResources(*resources_dict, &config_out->linux_config.resources)) {
       return false;
     }
   }
 
-  const base::Value::List* namespaces_list = linux_dict->FindList("namespaces");
+  const base::ListValue* namespaces_list = linux_dict->FindList("namespaces");
   if (namespaces_list) {
     if (!ParseNamespaces(namespaces_list,
                          &config_out->linux_config.namespaces)) {
@@ -754,7 +752,7 @@ bool ParseLinuxConfigDict(const base::Value::Dict& runtime_root_dict,
     }
   }
 
-  const base::Value::Dict* seccomp_dict = linux_dict->FindDict("seccomp");
+  const base::DictValue* seccomp_dict = linux_dict->FindDict("seccomp");
   if (seccomp_dict) {
     if (!ParseSeccompInfo(*seccomp_dict, &config_out->linux_config.seccomp)) {
       return false;
@@ -783,7 +781,7 @@ bool ParseLinuxConfigDict(const base::Value::Dict& runtime_root_dict,
   std::optional<bool> core_sched = linux_dict->FindBool("coreSched");
   config_out->linux_config.coreSched = core_sched.value_or(false);  // Optional
 
-  const base::Value::List* skip_securebits_list =
+  const base::ListValue* skip_securebits_list =
       linux_dict->FindList("skipSecurebits");
   if (skip_securebits_list) {
     if (!ParseSkipSecurebitsMask(*skip_securebits_list,
@@ -794,7 +792,7 @@ bool ParseLinuxConfigDict(const base::Value::Dict& runtime_root_dict,
     config_out->linux_config.skipSecurebits = 0;  // Optional
   }
 
-  const base::Value::Dict* cpu_dict = linux_dict->FindDict("cpu");
+  const base::DictValue* cpu_dict = linux_dict->FindDict("cpu");
   if (cpu_dict) {
     if (!ParseCpuInfo(*cpu_dict, &config_out->linux_config.cpu)) {
       return false;
@@ -822,7 +820,7 @@ bool HostnameValid(const std::string& hostname) {
   return true;
 }
 
-bool ParseHooksList(const base::Value::List& hooks_list,
+bool ParseHooksList(const base::ListValue& hooks_list,
                     std::vector<OciHook>* hooks_out,
                     const std::string& hook_type) {
   size_t num_hooks = hooks_list.size();
@@ -832,7 +830,7 @@ bool ParseHooksList(const base::Value::List& hooks_list,
       LOG(ERROR) << "Fail to get " << hook_type << " hook item " << i;
       return false;
     }
-    const base::Value::Dict& hook_dict = hooks_list[i].GetDict();
+    const base::DictValue& hook_dict = hooks_list[i].GetDict();
 
     const std::string* path = hook_dict.FindString("path");
     if (!path) {
@@ -841,7 +839,7 @@ bool ParseHooksList(const base::Value::List& hooks_list,
     }
     hook.path = base::FilePath(*path);
 
-    const base::Value::List* hook_args = hook_dict.FindList("args");
+    const base::ListValue* hook_args = hook_dict.FindList("args");
     // args are optional.
     if (hook_args) {
       size_t num_args = hook_args->size();
@@ -856,7 +854,7 @@ bool ParseHooksList(const base::Value::List& hooks_list,
       }
     }
 
-    const base::Value::List* hook_envs = hook_dict.FindList("env");
+    const base::ListValue* hook_envs = hook_dict.FindList("env");
     // envs are optional.
     if (hook_envs) {
       size_t num_env = hook_envs->size();
@@ -888,17 +886,15 @@ bool ParseHooksList(const base::Value::List& hooks_list,
   return true;
 }
 
-bool ParseHooks(const base::Value::Dict& config_root_dict,
+bool ParseHooks(const base::DictValue& config_root_dict,
                 OciConfigPtr const& config_out) {
-  const base::Value::Dict* hooks_config_dict =
-      config_root_dict.FindDict("hooks");
+  const base::DictValue* hooks_config_dict = config_root_dict.FindDict("hooks");
   if (!hooks_config_dict) {
     // Hooks are optional.
     return true;
   }
 
-  const base::Value::List* hooks_list =
-      hooks_config_dict->FindList("precreate");
+  const base::ListValue* hooks_list = hooks_config_dict->FindList("precreate");
   if (hooks_list) {
     if (!ParseHooksList(*hooks_list, &config_out->pre_create_hooks,
                         "precreate")) {
@@ -939,7 +935,7 @@ bool ParseHooks(const base::Value::Dict& config_root_dict,
 // Parses the configuration file for the container.  The config file specifies
 // basic filesystem info and details about the process to be run.  namespace,
 // cgroup, and syscall configurations are also specified
-bool ParseConfigDict(const base::Value::Dict& config_root_dict,
+bool ParseConfigDict(const base::DictValue& config_root_dict,
                      OciConfigPtr const& config_out) {
   const std::string* oci_version = config_root_dict.FindString("ociVersion");
   if (!oci_version) {

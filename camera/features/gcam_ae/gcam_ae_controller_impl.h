@@ -42,7 +42,7 @@ class GcamAeControllerImpl : public GcamAeController {
                        base::ScopedFD acquire_fence) override;
   void RecordAeMetadata(Camera3CaptureDescriptor* result) override;
   void OnOptionsUpdated(
-      const base::Value::Dict& json_values,
+      const base::DictValue& json_values,
       std::optional<MetadataLogger*> metadata_logger) override;
   std::optional<float> GetCalculatedHdrRatio(int frame_number) override;
   void SetRequestAeParameters(Camera3CaptureDescriptor* request) override;
@@ -59,7 +59,7 @@ class GcamAeControllerImpl : public GcamAeController {
 
   void SetManualSensorControls(Camera3CaptureDescriptor* request);
 
-  void SetOptions(const base::Value::Dict& json_values,
+  void SetOptions(const base::DictValue& json_values,
                   std::optional<MetadataLogger*> metadata_logger);
 
   // Internal helper methods.
@@ -99,7 +99,7 @@ class GcamAeControllerImpl : public GcamAeController {
 
   // Stores the full content of the Gcam AE config file including override
   // values if specified.
-  base::Value::Dict json_values_;
+  base::DictValue json_values_;
 };
 
 }  // namespace cros

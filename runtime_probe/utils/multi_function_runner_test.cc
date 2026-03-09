@@ -51,7 +51,7 @@ TEST_F(MultiFunctionRunnerTest, Success) {
     }]
   )JSON",
                                     base::JSON_PARSE_CHROMIUM_EXTENSIONS);
-  base::test::TestFuture<base::Value::List> future;
+  base::test::TestFuture<base::ListValue> future;
   runner.Run(future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
 }
@@ -71,7 +71,7 @@ TEST_F(MultiFunctionRunnerTest, ProbeEmptyResults) {
     []
   )JSON",
                                     base::JSON_PARSE_CHROMIUM_EXTENSIONS);
-  base::test::TestFuture<base::Value::List> future;
+  base::test::TestFuture<base::ListValue> future;
   runner.Run(future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
 }

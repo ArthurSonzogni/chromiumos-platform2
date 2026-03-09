@@ -21,7 +21,7 @@ DfuLogNotification::DfuLogNotification(const std::string& device_name)
     : device_name_(device_name) {}
 
 void DfuLogNotification::NotifyStartUpdate(unsigned int timeout_seconds) {
-  base::Value::Dict start_parameters;
+  base::DictValue start_parameters;
   start_parameters.Set(kNameParameter, device_name_);
   start_parameters.Set(kTimeoutSecondsParameter,
                        static_cast<int>(timeout_seconds));
@@ -38,7 +38,7 @@ void DfuLogNotification::NotifyStartUpdate(unsigned int timeout_seconds) {
 }
 
 void DfuLogNotification::NotifyEndUpdate(bool success) {
-  base::Value::Dict end_parameters;
+  base::DictValue end_parameters;
   end_parameters.Set(kNameParameter, device_name_);
   end_parameters.Set(kSuccessParameter, success);
 
@@ -52,7 +52,7 @@ void DfuLogNotification::NotifyEndUpdate(bool success) {
 }
 
 void DfuLogNotification::NotifyUpdateProgress(float percent_done) {
-  base::Value::Dict progress_parameters;
+  base::DictValue progress_parameters;
   progress_parameters.Set(kNameParameter, device_name_);
   progress_parameters.Set(kPercentDoneParameter, percent_done);
 

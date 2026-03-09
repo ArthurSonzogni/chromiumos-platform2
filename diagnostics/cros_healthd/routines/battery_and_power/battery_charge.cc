@@ -140,7 +140,7 @@ void BatteryChargeRoutine::RunBatteryChargeRoutine() {
   double beginning_charge_percent = power_supply_proto.battery_percent();
 
   if (beginning_charge_percent + minimum_charge_percent_required_ > 100) {
-    base::Value::Dict error_dict;
+    base::DictValue error_dict;
     error_dict.Set("startingBatteryChargePercent", beginning_charge_percent);
     error_dict.Set("chargePercentRequested",
                    static_cast<int>(minimum_charge_percent_required_));
@@ -183,7 +183,7 @@ void BatteryChargeRoutine::DetermineRoutineResult(
   }
 
   double charge_percent = ending_charge_percent - beginning_charge_percent;
-  base::Value::Dict result_dict;
+  base::DictValue result_dict;
   result_dict.Set("chargePercent", charge_percent);
   output_.Set("resultDetails", std::move(result_dict));
   if (charge_percent < minimum_charge_percent_required_) {

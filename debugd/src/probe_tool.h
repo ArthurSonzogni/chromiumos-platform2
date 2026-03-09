@@ -44,13 +44,13 @@ class ProbeTool {
                                  std::string* group_out,
                                  std::vector<std::string>* args_out);
 
-  virtual std::optional<base::Value::Dict> LoadMinijailArguments(
+  virtual std::optional<base::DictValue> LoadMinijailArguments(
       brillo::ErrorPtr* error);
 
  private:
   std::vector<base::FilePath> FilesUnderPath(const std::string& root) const;
 
-  std::optional<base::Value::Dict> minijail_args_dict_;
+  std::optional<base::DictValue> minijail_args_dict_;
 };
 
 }  // namespace debugd

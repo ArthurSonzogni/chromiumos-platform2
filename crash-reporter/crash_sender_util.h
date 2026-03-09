@@ -249,9 +249,9 @@ class Sender : public SenderBase {
   void RecordCrashRemoveReason(SenderBase::CrashRemoveReason reason) override;
 
   // Creates a JSON entity with the required fields for uploads.log file.
-  base::Value::Dict CreateJsonEntity(const std::string& report_id,
-                                     const std::string& product_name,
-                                     const CrashDetails& details);
+  base::DictValue CreateJsonEntity(const std::string& report_id,
+                                   const std::string& product_name,
+                                   const CrashDetails& details);
 
   // Creates an upload log entry and returns it. On failure, returns the reason.
   absl::variant<std::string, SenderBase::CrashRemoveReason>

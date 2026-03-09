@@ -44,7 +44,7 @@ class SimpleRoutine final : public DiagnosticRoutineWithStatus {
   struct RoutineResult {
     ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status;
     std::string status_message;
-    base::Value::Dict output_dict;
+    base::DictValue output_dict;
   };
   using RoutineResultCallback = base::OnceCallback<void(RoutineResult)>;
   using Task = base::OnceCallback<void(RoutineResultCallback)>;
@@ -68,7 +68,7 @@ class SimpleRoutine final : public DiagnosticRoutineWithStatus {
   // Task encapsulating the logic of the routine to run.
   Task task_;
 
-  base::Value::Dict output_dict_;
+  base::DictValue output_dict_;
 
   // Must be the last class member.
   base::WeakPtrFactory<SimpleRoutine> weak_ptr_factory_{this};

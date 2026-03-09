@@ -166,7 +166,7 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
   return ParseManifest(manifest_value->GetDict());
 }
 
-bool Manifest::ParseManifest(const base::Value::Dict& manifest_dict) {
+bool Manifest::ParseManifest(const base::DictValue& manifest_dict) {
   // This will have to be changed if the manifest version is bumped.
   std::optional<int> manifest_version =
       manifest_dict.FindInt(kManifestVersionField);

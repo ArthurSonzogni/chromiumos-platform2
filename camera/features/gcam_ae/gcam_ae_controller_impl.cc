@@ -184,7 +184,7 @@ void GcamAeControllerImpl::RecordYuvBuffer(int frame_number,
 }
 
 void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
-  std::optional<base::Value::Dict> overridden_json_values =
+  std::optional<base::DictValue> overridden_json_values =
       ae_device_adapter_->MaybeOverrideOptions(json_values_, *result);
   if (overridden_json_values.has_value()) {
     SetOptions(*overridden_json_values, metadata_logger_);
@@ -387,7 +387,7 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
 }
 
 void GcamAeControllerImpl::OnOptionsUpdated(
-    const base::Value::Dict& json_values,
+    const base::DictValue& json_values,
     std::optional<MetadataLogger*> metadata_logger) {
   json_values_ = json_values.Clone();
   SetOptions(ae_device_adapter_->GetOverriddenOptions(json_values_),
@@ -758,7 +758,7 @@ void GcamAeControllerImpl::SetManualSensorControls(
 }
 
 void GcamAeControllerImpl::SetOptions(
-    const base::Value::Dict& json_values,
+    const base::DictValue& json_values,
     std::optional<MetadataLogger*> metadata_logger) {
   bool enabled;
   if (LoadIfExist(json_values, kGcamAeEnableKey, &enabled)) {

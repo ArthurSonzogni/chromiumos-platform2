@@ -272,7 +272,7 @@ void ServerResponse::ReplyJson(int status_code, const base::ValueView json) {
 
 void ServerResponse::ReplyJson(int status_code,
                                const http::FormFieldList& fields) {
-  base::Value::Dict json;
+  base::DictValue json;
   for (const auto& pair : fields) {
     json.SetByDottedPath(pair.first, pair.second);
   }

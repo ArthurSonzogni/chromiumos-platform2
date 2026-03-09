@@ -35,8 +35,8 @@ class ComponentCategory {
 
   virtual ~ComponentCategory() = default;
 
-  // Evaluates this category and return a base::Value::List.
-  virtual void Eval(base::OnceCallback<void(base::Value::List)> callback) const;
+  // Evaluates this category and return a base::ListValue.
+  virtual void Eval(base::OnceCallback<void(base::ListValue)> callback) const;
 
   // Gets all component names of this category.
   std::vector<std::string> GetComponentNames() const;

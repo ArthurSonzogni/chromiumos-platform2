@@ -27,7 +27,7 @@ constexpr size_t kCodecFileMaxSize = 65536;
 constexpr char kHdaCodecPathPattern[] = "proc/asound/card*/codec*";
 constexpr std::string_view kCodecKey = "Codec:";
 
-void FixGenericI2cCodec(base::Value::Dict* result) {
+void FixGenericI2cCodec(base::DictValue* result) {
   auto* codec = result->FindString("name");
   auto compatible_file_path = GetRootedPath(base::StringPrintf(
       "/sys/firmware/devicetree/base/%s/compatible", codec->c_str()));
@@ -60,7 +60,7 @@ AudioCodecFunction::DataType ProbeI2cCodecFromFile(
   for (std::string_view codec :
        base::SplitStringPiece(asoc_content, "\n", base::TRIM_WHITESPACE,
                               base::SPLIT_WANT_NONEMPTY)) {
-    base::Value::Dict value;
+    base::DictValue value;
     value.Set("name", codec);
     FixGenericI2cCodec(&value);
     result.Append(std::move(value));
@@ -94,7 +94,7 @@ AudioCodecFunction::DataType ProbeHdaCodecFromFile(
     auto codec =
         base::TrimWhitespaceASCII(raw_codec, base::TrimPositions::TRIM_ALL);
 
-    base::Value::Dict value;
+    base::DictValue value;
     value.Set("name", codec);
     result.Append(std::move(value));
   }

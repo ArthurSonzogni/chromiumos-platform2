@@ -20,13 +20,13 @@ namespace runtime_probe {
 class Matcher {
  public:
   // Creates from a dict value. Returns nullptr if the syntax is not correct.
-  static std::unique_ptr<Matcher> FromValue(const base::Value::Dict& value);
+  static std::unique_ptr<Matcher> FromValue(const base::DictValue& value);
 
   virtual ~Matcher() = default;
 
   // Matches a component in probe result returned by a probe function. Returns
   // true if the matcher matches.
-  virtual bool Match(const base::Value::Dict& component) const = 0;
+  virtual bool Match(const base::DictValue& component) const = 0;
 
  protected:
   Matcher() = default;

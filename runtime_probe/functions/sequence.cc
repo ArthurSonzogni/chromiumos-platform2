@@ -15,7 +15,7 @@ namespace runtime_probe {
 
 void SequenceFunction::RunNext(base::OnceCallback<void(DataType)> callback,
                                int idx,
-                               base::Value::Dict result_dict,
+                               base::DictValue result_dict,
                                SequenceFunction::DataType probe_result) const {
   if (probe_result.size() == 0) {
     std::move(callback).Run({});
@@ -45,7 +45,7 @@ void SequenceFunction::EvalAsyncImpl(
     std::move(callback).Run({});
   }
   callback = base::BindOnce(&SequenceFunction::RunNext, base::Unretained(this),
-                            std::move(callback), 1, base::Value::Dict{});
+                            std::move(callback), 1, base::DictValue{});
   functions_[0]->Eval(std::move(callback));
 }
 

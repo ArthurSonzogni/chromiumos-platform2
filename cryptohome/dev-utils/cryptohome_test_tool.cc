@@ -562,7 +562,7 @@ bool DoRecoveryCryptoGetLedgerInfoAction(
     const FilePath& ledger_info_out_file_path) {
   LedgerInfo ledger_info = FakeRecoveryMediatorCrypto::GetFakeLedgerInfo();
   auto dict =
-      base::Value::Dict()
+      base::DictValue()
           .Set(kLedgerInfoNameKey, ledger_info.name)
           // Convert the key hash to string, for easier parsing by the test,
           // since it doesn't need to read/change the content.

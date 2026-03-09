@@ -15,8 +15,7 @@
 namespace runtime_probe {
 
 // static
-std::unique_ptr<ReMatcher> ReMatcher::Create(
-    const base::Value::List& operands) {
+std::unique_ptr<ReMatcher> ReMatcher::Create(const base::ListValue& operands) {
   if (operands.size() != 2 || !operands[0].is_string() ||
       !operands[1].is_string()) {
     LOG(ERROR) << "ReMatcher takes 2 string operands, but got " << operands;
@@ -41,7 +40,7 @@ ReMatcher::ReMatcher(const std::string& field_name,
 
 ReMatcher::~ReMatcher() = default;
 
-bool ReMatcher::Match(const base::Value::Dict& component) const {
+bool ReMatcher::Match(const base::DictValue& component) const {
   const std::string* field_value = component.FindString(field_name_);
   // Fields not exist never match.
   return field_value && regex_.FullMatch(*field_value);

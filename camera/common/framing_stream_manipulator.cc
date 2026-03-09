@@ -1747,7 +1747,7 @@ void FramingStreamManipulator::UploadMetricsOnThread() {
 }
 
 void FramingStreamManipulator::UpdateOptionsOnThread(
-    const base::Value::Dict& json_values) {
+    const base::DictValue& json_values) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
   int filter_mode, max_video_width, max_video_height;
@@ -1788,7 +1788,7 @@ void FramingStreamManipulator::UpdateOptionsOnThread(
 }
 
 void FramingStreamManipulator::OnOptionsUpdated(
-    const base::Value::Dict& json_values) {
+    const base::DictValue& json_values) {
   gpu_resources_->PostGpuTask(
       FROM_HERE,
       base::BindOnce(&FramingStreamManipulator::UpdateOptionsOnThread,

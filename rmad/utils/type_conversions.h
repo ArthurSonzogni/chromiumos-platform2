@@ -35,7 +35,7 @@ base::Value ConvertToValue(const T& value) {
 // by base::Value (bool, int, double, string) or vector/map of these types.
 template <typename T>
 base::Value ConvertToValue(const std::vector<T>& values) {
-  base::Value::List list;
+  base::ListValue list;
   for (const auto& value : values) {
     list.Append(ConvertToValue(value));
   }
@@ -47,7 +47,7 @@ base::Value ConvertToValue(const std::vector<T>& values) {
 // TODO(chenghan): Support more types, e.g. unordered_map.
 template <typename T>
 base::Value ConvertToValue(const std::map<std::string, T>& values) {
-  base::Value::Dict dict;
+  base::DictValue dict;
   for (const auto& [key, value] : values) {
     dict.Set(key, ConvertToValue(value));
   }
@@ -59,7 +59,7 @@ base::Value ConvertToValue(const std::map<std::string, T>& values) {
 // TODO(chenghan): Support more types, e.g. unordered_map.
 template <typename T>
 base::Value ConvertToValue(const std::map<int, T>& values) {
-  base::Value::Dict dict;
+  base::DictValue dict;
   for (const auto& [key, value] : values) {
     dict.Set(base::NumberToString(key), ConvertToValue(value));
   }

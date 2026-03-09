@@ -49,7 +49,7 @@ class BRILLO_EXPORT Manifest {
   // Parse the manifest raw string. Return true if successful.
   bool ParseManifest(const std::string& manifest_raw);
   // Parse the manifest raw dictionary value. Return true if successful.
-  bool ParseManifest(const base::Value::Dict& manifest_dict);
+  bool ParseManifest(const base::DictValue& manifest_dict);
 
   // Getters for required manifest fields:
   int manifest_version() const { return manifest_version_; }

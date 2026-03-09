@@ -41,7 +41,7 @@ class SequenceFunction : public ProbeFunction {
 
   void RunNext(base::OnceCallback<void(DataType)> callback,
                int idx,
-               base::Value::Dict result_dict,
+               base::DictValue result_dict,
                SequenceFunction::DataType probe_result) const;
 
   PROBE_FUNCTION_ARG_DEF(std::vector<std::unique_ptr<ProbeFunction>>,

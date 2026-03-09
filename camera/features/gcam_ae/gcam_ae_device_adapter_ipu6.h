@@ -43,11 +43,11 @@ class GcamAeDeviceAdapterIpu6 : public GcamAeDeviceAdapter {
                                    const AeFrameInfo& frame_info,
                                    const Range<float>& device_tet_range,
                                    float max_hdr_ratio) override;
-  std::optional<base::Value::Dict> MaybeOverrideOptions(
-      const base::Value::Dict& json_values,
+  std::optional<base::DictValue> MaybeOverrideOptions(
+      const base::DictValue& json_values,
       const Camera3CaptureDescriptor& result) override;
-  base::Value::Dict GetOverriddenOptions(
-      const base::Value::Dict& json_values) override;
+  base::DictValue GetOverriddenOptions(
+      const base::DictValue& json_values) override;
 
  private:
   static constexpr int32_t kInvalidSensorMode = -1;

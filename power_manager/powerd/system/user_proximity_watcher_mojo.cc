@@ -180,15 +180,14 @@ void UserProximityWatcherMojo::GetAttributesCallback(
       return;
     }
 
-    const base::Value::Dict& config_dict = config_dict_opt.value();
+    const base::DictValue& config_dict = config_dict_opt.value();
 
-    const base::Value::List* channel_list =
-        config_dict.FindList("channelConfig");
+    const base::ListValue* channel_list = config_dict.FindList("channelConfig");
     if (channel_list) {
       // Semtech supports multiple channels, a given observer may received
       // FAR/NEAR message from multiple channels.
       for (const base::Value& channel : *channel_list) {
-        const base::Value::Dict& channel_dict = channel.GetDict();
+        const base::DictValue& channel_dict = channel.GetDict();
         const std::string* channel_name = channel_dict.FindString("channel");
         if (!channel_name) {
           LOG(ERROR) << "channel identifier required";

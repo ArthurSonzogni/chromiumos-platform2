@@ -99,9 +99,9 @@ TEST_F(DeviceDestinationStateHandlerTest,
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
   EXPECT_EQ(
       ReturningOwner_Name(ReturningOwner::RMAD_RETURNING_OWNER_SAME_OWNER),
@@ -145,9 +145,9 @@ TEST_F(
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
   EXPECT_EQ(
       ReturningOwner_Name(ReturningOwner::RMAD_RETURNING_OWNER_SAME_OWNER),

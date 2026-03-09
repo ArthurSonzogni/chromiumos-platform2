@@ -25,10 +25,10 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-base::Value::Dict ConvertToValue(const mojom::MemoryRoutineDetailPtr& detail) {
-  base::Value::Dict output;
-  base::Value::List passed_items;
-  base::Value::List failed_items;
+base::DictValue ConvertToValue(const mojom::MemoryRoutineDetailPtr& detail) {
+  base::DictValue output;
+  base::ListValue passed_items;
+  base::ListValue failed_items;
 
   for (auto passed_item : detail->result->passed_items) {
     passed_items.Append(EnumToString(passed_item));
@@ -43,9 +43,9 @@ base::Value::Dict ConvertToValue(const mojom::MemoryRoutineDetailPtr& detail) {
   return output;
 }
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const mojom::NetworkBandwidthRoutineRunningInfoPtr& running) {
-  base::Value::Dict output;
+  base::DictValue output;
   output.Set("type", EnumToString(running->type));
   output.Set("speed_kbps", std::move(running->speed_kbps));
   return output;
@@ -99,14 +99,14 @@ void RoutineV2Client::OnRoutineDisconnection(uint32_t error,
   std::cout << '\n';
 
   std::cout << "Status: Error" << std::endl;
-  base::Value::Dict output;
+  base::DictValue output;
   SetJsonDictValue("error", error, &output);
   SetJsonDictValue("message", message, &output);
   PrintOutput(output);
   run_loop_.Quit();
 }
 
-void RoutineV2Client::PrintOutput(const base::Value::Dict& output) {
+void RoutineV2Client::PrintOutput(const base::DictValue& output) {
   if (single_line_json_) {
     std::cout << "Output: " << GetSingleLineJson(output) << std::endl;
     return;
@@ -117,7 +117,7 @@ void RoutineV2Client::PrintOutput(const base::Value::Dict& output) {
 
 void RoutineV2Client::OnUnexpectedError(const std::string& message) {
   std::cout << "Status: Error" << std::endl;
-  base::Value::Dict output;
+  base::DictValue output;
   SetJsonDictValue("message", message, &output);
   PrintOutput(output);
   run_loop_.Quit();
@@ -134,7 +134,7 @@ void RoutineV2Client::OnRunningState(
     return;
   }
 
-  base::Value::Dict running_value;
+  base::DictValue running_value;
   switch (running->info->which()) {
     case mojom::RoutineRunningInfo::Tag::kUnrecognizedArgument: {
       NOTREACHED() << "Got unrecognized RoutineRunningInfo";

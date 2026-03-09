@@ -304,8 +304,8 @@ TEST(ManifestTest, ParseManifestBadSize) {
 }
 
 TEST(ManifestTest, ParseManifestValueDict) {
-  const base::Value::Dict manifest_dict =
-      base::Value::Dict()
+  const base::DictValue manifest_dict =
+      base::DictValue()
           .Set("fs-type", "ext2")
           .Set("is-removable", true)
           .Set("image-sha256-hash",
@@ -331,7 +331,7 @@ TEST(ManifestTest, ParseManifestValueDict) {
           .Set("scaled", true)
           .Set("powerwash-safe", true)
           .Set("artifacts-meta",
-               base::Value::Dict().Set("uri", "gs://some/path"));
+               base::DictValue().Set("uri", "gs://some/path"));
   Manifest manifest;
   // Parse the manifest dict.
   ASSERT_TRUE(manifest.ParseManifest(manifest_dict));
@@ -384,8 +384,8 @@ TEST(ManifestTest, ManifestComparesEqual) {
   // Parse the manifest raw string.
   ASSERT_TRUE(manifest_from_str.ParseManifest(manifest_raw));
 
-  const base::Value::Dict manifest_dict =
-      base::Value::Dict()
+  const base::DictValue manifest_dict =
+      base::DictValue()
           .Set("is-removable", true)
           .Set("image-sha256-hash",
                "4CF41BD11362CCB4707FB93939DBB5AC"
@@ -428,9 +428,9 @@ TEST(ManifestTest, ManifestComparesNotEqual) {
   // Parse the manifest raw string.
   ASSERT_TRUE(manifest_from_str.ParseManifest(manifest_raw));
 
-  // Create a `base::Value::Dict` and set a different `is-removable` value.
-  const base::Value::Dict manifest_dict =
-      base::Value::Dict()
+  // Create a `base::DictValue` and set a different `is-removable` value.
+  const base::DictValue manifest_dict =
+      base::DictValue()
           .Set("is-removable", false)
           .Set("image-sha256-hash",
                "4CF41BD11362CCB4707FB93939DBB5AC"
@@ -449,8 +449,8 @@ TEST(ManifestTest, ManifestComparesNotEqual) {
 }
 
 TEST(ManifestTest, ManifestSanitized) {
-  const base::Value::Dict manifest_dict =
-      base::Value::Dict()
+  const base::DictValue manifest_dict =
+      base::DictValue()
           .Set("id", "foo")
           .Set("pre-allocated-size", "600613")
           .Set("size", "42")

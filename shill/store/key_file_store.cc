@@ -785,9 +785,9 @@ bool KeyFileStore::SetStringmaps(
     std::string_view group,
     std::string_view key,
     const std::vector<std::map<std::string, std::string>>& value) {
-  base::Value::List json_val;
+  base::ListValue json_val;
   for (auto map_value : value) {
-    base::Value::Dict dict;
+    base::DictValue dict;
     for (auto pair : map_value) {
       dict.Set(pair.first, pair.second);
     }

@@ -85,7 +85,7 @@ void ProbeFunction::RegisterArgumentParser(const std::string field_name,
   argument_parsers_[field_name] = parser;
 }
 
-bool ProbeFunction::ParseArguments(const base::Value::Dict& arguments) {
+bool ProbeFunction::ParseArguments(const base::DictValue& arguments) {
   arguments_ = arguments.Clone();
   auto arguments_clone = arguments.Clone();
   bool success = true;
@@ -120,7 +120,7 @@ void ProbeFunction::EvalAsyncImpl(
 }
 
 bool PrivilegedProbeFunction::InvokeHelper(std::string* result) const {
-  base::Value::Dict probe_statement;
+  base::DictValue probe_statement;
   probe_statement.Set(GetFunctionName(), arguments().Clone());
   std::string probe_statement_str;
   base::JSONWriter::Write(probe_statement, &probe_statement_str);

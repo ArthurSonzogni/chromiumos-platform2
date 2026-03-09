@@ -68,8 +68,8 @@ bool WebAuthnStorage::WriteRecord(const WebAuthnRecord& record) {
     return false;
   }
 
-  base::Value::Dict record_value =
-      base::Value::Dict()
+  base::DictValue record_value =
+      base::DictValue()
           .Set(kCredentialIdKey, credential_id_hex)
           .Set(kSecretKey, base::Base64Encode(brillo::Blob(
                                record.secret.begin(), record.secret.end())))
@@ -170,7 +170,7 @@ bool WebAuthnStorage::LoadRecords() {
       read_all_records_successfully = false;
       continue;
     }
-    base::Value::Dict record_dictionary = std::move(*record_value).TakeDict();
+    base::DictValue record_dictionary = std::move(*record_value).TakeDict();
 
     const std::string* credential_id_hex =
         record_dictionary.FindString(kCredentialIdKey);

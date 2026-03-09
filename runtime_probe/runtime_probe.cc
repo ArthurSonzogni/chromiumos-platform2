@@ -126,7 +126,7 @@ int RunningInCli(const std::string& config_file_path,
   base::RunLoop run_loop;
   probe_config->Eval(base::BindOnce(
       [](base::OnceClosure quit_closure, bool to_stdout,
-         base::Value::Dict probe_result) {
+         base::DictValue probe_result) {
         if (to_stdout) {
           LOG(INFO) << "Dumping probe results to stdout";
           std::cout << probe_result;

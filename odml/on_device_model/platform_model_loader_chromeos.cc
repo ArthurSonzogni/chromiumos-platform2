@@ -353,14 +353,14 @@ void ChromeosPlatformModelLoader::GetModelStateFromDlcState(
     return;
   }
 
-  std::optional<base::Value::Dict> model_dict = base::JSONReader::ReadDict(
+  std::optional<base::DictValue> model_dict = base::JSONReader::ReadDict(
       model_json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!model_dict) {
     std::move(callback).Run(mojom::PlatformModelState::kInvalidModelDescriptor);
     return;
   }
 
-  const base::Value::Dict* base_model = model_dict->FindDict(kBaseModelKey);
+  const base::DictValue* base_model = model_dict->FindDict(kBaseModelKey);
 
   if (base_model) {
     // This is an adaptation layer model. We need to load the base model first.
@@ -411,7 +411,7 @@ void ChromeosPlatformModelLoader::LoadModelFromDlcPath(
     return;
   }
 
-  std::optional<base::Value::Dict> model_dict = base::JSONReader::ReadDict(
+  std::optional<base::DictValue> model_dict = base::JSONReader::ReadDict(
       model_json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   if (!model_dict) {
@@ -464,7 +464,7 @@ void ChromeosPlatformModelLoader::LoadModelFromDlcPath(
 
   std::optional<int> max_tokens = model_dict->FindInt(kMaxTokensKey);
 
-  const base::Value::Dict* base_model = model_dict->FindDict(kBaseModelKey);
+  const base::DictValue* base_model = model_dict->FindDict(kBaseModelKey);
 
   if (base_model) {
     // This is an adaptation layer model. We need to load the base model first.
@@ -503,7 +503,7 @@ void ChromeosPlatformModelLoader::LoadModelFromDlcPath(
     return;
   }
 
-  const base::Value::Dict* ts_model = model_dict->FindDict(kTsModelKey);
+  const base::DictValue* ts_model = model_dict->FindDict(kTsModelKey);
   if (ts_model) {
     // We need to load the TS model.
     const std::string* ts_uuid = ts_model->FindString(kUuidKey);
@@ -665,7 +665,7 @@ void ChromeosPlatformModelLoader::LoadAdaptationPlatformModel(
 }
 
 void ChromeosPlatformModelLoader::LoadBasePlatformModel(
-    const std::optional<base::Value::Dict>& model_dict,
+    const std::optional<base::DictValue>& model_dict,
     const base::Uuid& uuid,
     const base::FilePath& dlc_root,
     const std::string& version,
@@ -698,7 +698,7 @@ void ChromeosPlatformModelLoader::LoadBasePlatformModel(
     backend_type = *parsed_backend_type;
   }
 
-  const base::Value::List* ada_list = model_dict->FindList(kAdaptationRanksKey);
+  const base::ListValue* ada_list = model_dict->FindList(kAdaptationRanksKey);
   std::vector<uint32_t> adaptation_ranks;
   if (ada_list) {
     for (auto& ada : *ada_list) {

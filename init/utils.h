@@ -42,7 +42,7 @@ int BRILLO_EXPORT GetPartitionNumber(const base::FilePath& drive_name,
 // Get the partition number for the given key,
 // e.g. "PARTITION_NUM_STATE". Fails with a `CHECK()` if any error occurs.
 int BRILLO_EXPORT GetPartitionNumFromImageVars(
-    const base::Value::Dict& image_dict, std::string_view key);
+    const base::DictValue& image_dict, std::string_view key);
 
 // Splits a device path, for example /dev/mmcblk0p1, /dev/sda3,
 // into the base device and partition numbers,

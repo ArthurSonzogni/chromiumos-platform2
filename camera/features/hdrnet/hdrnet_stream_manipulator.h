@@ -90,8 +90,8 @@ class HdrNetStreamManipulator : public StreamManipulator {
 
   void ResetStateOnGpuThread();
 
-  void OnOptionsUpdated(const base::Value::Dict& json_values);
-  void SetOptions(const base::Value::Dict& json_values);
+  void OnOptionsUpdated(const base::DictValue& json_values);
+  void SetOptions(const base::DictValue& json_values);
   void UploadMetrics();
   void OnProcessTask(ScopedProcessTask task);
 
@@ -118,7 +118,7 @@ class HdrNetStreamManipulator : public StreamManipulator {
 
   // Stores the full content of the HDRnet config file including override values
   // if specified.
-  base::Value::Dict json_values_;
+  base::DictValue json_values_;
 
   // Stores data to determine which override key to use.
   HdrNetProcessorDeviceAdapter::OptionsOverrideData override_data_;

@@ -26,11 +26,11 @@ namespace cros {
 
 namespace {
 
-base::Value::Dict ToValueDict(const camera3_stream_t* stream) {
+base::DictValue ToValueDict(const camera3_stream_t* stream) {
   if (!stream) {
-    return base::Value::Dict();
+    return base::DictValue();
   }
-  base::Value::Dict s;
+  base::DictValue s;
   s.Set("stream_type", stream->stream_type);
   s.Set("width", base::checked_cast<int>(stream->width));
   s.Set("height", base::checked_cast<int>(stream->height));
@@ -45,8 +45,8 @@ base::Value::Dict ToValueDict(const camera3_stream_t* stream) {
   return s;
 }
 
-base::Value::Dict ToValueDict(const Camera3StreamBuffer& buffer) {
-  base::Value::Dict b;
+base::DictValue ToValueDict(const Camera3StreamBuffer& buffer) {
+  base::DictValue b;
   b.Set("stream", ToValueDict(buffer.stream()));
   b.Set("status", buffer.status());
   b.Set("acquire_fence", buffer.acquire_fence());
@@ -326,7 +326,7 @@ camera3_stream_configuration_t* Camera3StreamConfiguration::Lock() {
 }
 
 std::string Camera3StreamConfiguration::ToJsonString() const {
-  base::Value::List val;
+  base::ListValue val;
   for (const auto* stream : GetStreams()) {
     val.Append(ToValueDict(stream));
   }
@@ -701,7 +701,7 @@ std::string Camera3CaptureDescriptor::ToJsonString() const {
     return std::string();
   }
 
-  base::Value::Dict val;
+  base::DictValue val;
   val.Set("capture_type",
           type_ == Type::kCaptureRequest ? "Request" : "Result");
   val.Set("frame_number", base::checked_cast<int>(frame_number_));
@@ -709,7 +709,7 @@ std::string Camera3CaptureDescriptor::ToJsonString() const {
     val.Set("input_buffer", ToValueDict(input_buffer_.value()));
   }
 
-  base::Value::List out_bufs;
+  base::ListValue out_bufs;
   for (const auto& b : GetOutputBuffers()) {
     out_bufs.Append(ToValueDict(b));
   }
@@ -749,7 +749,7 @@ void Camera3CaptureDescriptor::PopulateEventAnnotation(
     }
   }
 
-  base::Value::List out_bufs;
+  base::ListValue out_bufs;
   for (const auto& b : GetOutputBuffers()) {
     if (b.is_valid()) {
       perfetto::Flow::ProcessScoped(b.flow_id())(ctx);

@@ -18,8 +18,8 @@
 namespace debugd {
 namespace {
 
-base::Value::Dict CollectNetworkStatus() {
-  base::Value::Dict result;
+base::DictValue CollectNetworkStatus() {
+  base::DictValue result;
 
   auto proxy = ShillProxy::Create();
   if (!proxy) {
@@ -44,7 +44,7 @@ base::Value::Dict CollectNetworkStatus() {
   // If a list of IP config object paths is found in the properties of a
   // device, expands the IP config object paths into IP config properties.
   for (const auto& device_path : device_paths) {
-    base::Value::Dict* device_properties =
+    base::DictValue* device_properties =
         devices.FindDictByDottedPath(device_path.value());
     CHECK(device_properties != nullptr);
     auto ipconfig_paths =
@@ -70,7 +70,7 @@ base::Value::Dict CollectNetworkStatus() {
 }  // namespace debugd
 
 int main() {
-  base::Value::Dict result = debugd::CollectNetworkStatus();
+  base::DictValue result = debugd::CollectNetworkStatus();
   std::string json;
   base::JSONWriter::WriteWithOptions(
       result, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);

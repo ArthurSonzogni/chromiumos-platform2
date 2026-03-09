@@ -44,7 +44,7 @@ bool PayloadProperties::GetPropertiesAsJson(string* json_str) {
   TEST_AND_RETURN_FALSE(LoadFromPayload());
 
   auto properties =
-      base::Value::Dict()
+      base::DictValue()
           .Set(kPayloadPropertyJsonVersion, version_)
           .Set(kPayloadPropertyJsonMetadataSize, std::to_string(metadata_size_))
           .Set(kPayloadPropertyJsonMetadataSignature, metadata_signatures_)

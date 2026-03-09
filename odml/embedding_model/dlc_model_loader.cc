@@ -40,7 +40,7 @@ constexpr char kDelegateConfigPathKey[] = "delegate_config_path";
 constexpr char kEmbeddingTflite[] = "embedding_tflite";
 
 std::optional<EmbeddingTfliteModelInfo> ParseTfliteModelInfo(
-    const base::Value::Dict& tflite_info_dict,
+    const base::DictValue& tflite_info_dict,
     const base::FilePath& dlc_root,
     const raw_ref<MetricsLibraryInterface> metrics) {
   EmbeddingTfliteModelInfo tflite_info;
@@ -102,7 +102,7 @@ std::optional<EmbeddingTfliteModelInfo> ParseTfliteModelInfo(
 }
 
 std::optional<ModelInfo> ParseModelInfo(
-    const base::Value::Dict& model_dict,
+    const base::DictValue& model_dict,
     const base::FilePath& dlc_root,
     const raw_ref<MetricsLibraryInterface> metrics) {
   const std::string* model_type = model_dict.FindString(kModelTypeKey);
@@ -124,7 +124,7 @@ std::optional<ModelInfo> ParseModelInfo(
   }
 
   if (*model_type == kEmbeddingTflite) {
-    const base::Value::Dict* tflite_info_dict =
+    const base::DictValue* tflite_info_dict =
         model_dict.FindDict(kTfliteInfoKey);
     if (!tflite_info_dict) {
       metrics->SendEnumToUMA(kLoadDlcStatusHistogramName,
@@ -168,7 +168,7 @@ std::optional<ModelInfo> BuildModelInfo(
     return std::nullopt;
   }
 
-  std::optional<base::Value::Dict> model_dict = base::JSONReader::ReadDict(
+  std::optional<base::DictValue> model_dict = base::JSONReader::ReadDict(
       model_json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 
   if (!model_dict) {

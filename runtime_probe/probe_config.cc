@@ -31,18 +31,17 @@ std::string HashProbeConfigSHA1(const std::string& content) {
 
 // Callback to handle a single result from |ComponentCategory::EvalAsync|.
 void OnComponentCategoryEvalCompleted(
-    base::OnceCallback<void(std::pair<std::string, base::Value::List>)>
-        callback,
+    base::OnceCallback<void(std::pair<std::string, base::ListValue>)> callback,
     const std::string& category_name,
-    base::Value::List probe_result) {
+    base::ListValue probe_result) {
   std::move(callback).Run(
       std::make_pair(category_name, std::move(probe_result)));
 }
 
 void CollectComponentCategoryResults(
-    base::OnceCallback<void(base::Value::Dict)> callback,
-    std::vector<std::pair<std::string, base::Value::List>> probe_results) {
-  base::Value::Dict results;
+    base::OnceCallback<void(base::DictValue)> callback,
+    std::vector<std::pair<std::string, base::ListValue>> probe_results) {
+  base::DictValue results;
   for (auto& [category_name, probe_result] : probe_results) {
     results.Set(category_name, std::move(probe_result));
   }
@@ -101,13 +100,13 @@ std::unique_ptr<ProbeConfig> ProbeConfig::FromValue(const base::Value& dv) {
 }
 
 void ProbeConfig::Eval(
-    base::OnceCallback<void(base::Value::Dict)> callback) const {
+    base::OnceCallback<void(base::DictValue)> callback) const {
   Eval(brillo::GetMapKeysAsVector(category_), std::move(callback));
 }
 
 void ProbeConfig::Eval(
     const std::vector<std::string>& category,
-    base::OnceCallback<void(base::Value::Dict)> callback) const {
+    base::OnceCallback<void(base::DictValue)> callback) const {
   std::vector<std::string> valid_category;
   for (const auto& c : category) {
     auto it = category_.find(c);
@@ -119,7 +118,7 @@ void ProbeConfig::Eval(
   }
 
   const auto barrier_callback =
-      base::BarrierCallback<std::pair<std::string, base::Value::List>>(
+      base::BarrierCallback<std::pair<std::string, base::ListValue>>(
           valid_category.size(),
           base::BindOnce(&CollectComponentCategoryResults,
                          std::move(callback)));

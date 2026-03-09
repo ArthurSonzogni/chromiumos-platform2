@@ -56,7 +56,7 @@ TEST_F(TypeConversionsTest, ConvertToValue_vector) {
 TEST_F(TypeConversionsTest, ConvertToValue_map) {
   base::Value value = ConvertToValue(kMapIntVariable);
   ASSERT_TRUE(value.is_dict());
-  base::Value::Dict& dict = value.GetDict();
+  base::DictValue& dict = value.GetDict();
   for (const auto& [key, v] : kMapIntVariable) {
     EXPECT_EQ(*(dict.Find(key)), ConvertToValue(v));
   }

@@ -214,9 +214,9 @@ TEST_F(LogsUtilsTest, RecordStateTransition) {
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
-  const base::Value::Dict& event1 = (*events)[0].GetDict();
+  const base::DictValue& event1 = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(state1),
             event1.FindDict(kDetails)->FindInt(kFromStateId));
   EXPECT_EQ(static_cast<int>(state2),
@@ -227,7 +227,7 @@ TEST_F(LogsUtilsTest, RecordStateTransition) {
 
   events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(2, events->size());
-  const base::Value::Dict& event2 = (*events)[1].GetDict();
+  const base::DictValue& event2 = (*events)[1].GetDict();
   EXPECT_EQ(static_cast<int>(state2),
             event2.FindDict(kDetails)->FindInt(kFromStateId));
   EXPECT_EQ(static_cast<int>(state3),
@@ -242,9 +242,9 @@ TEST_F(LogsUtilsTest, RecordRepairStart) {
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kWelcome), event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
 
@@ -264,9 +264,9 @@ TEST_F(LogsUtilsTest, RecordUnqualifiedComponents) {
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kWelcome), event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
 
@@ -291,14 +291,14 @@ TEST_F(LogsUtilsTest, RecordSelectedComponents) {
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kComponentsRepair),
             event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
 
-  const base::Value::List* components =
+  const base::ListValue* components =
       event.FindDict(kDetails)->FindList(kLogReplacedComponents);
   EXPECT_EQ(2, components->size());
   EXPECT_EQ(audio_codec, (*components)[0].GetString());
@@ -317,9 +317,9 @@ TEST_F(LogsUtilsTest, RecordDeviceDestination) {
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kDeviceDestination),
             event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
@@ -337,9 +337,9 @@ TEST_F(LogsUtilsTest, RecordWipeDevice) {
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kWipeSelection),
             event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
@@ -357,9 +357,9 @@ TEST_F(LogsUtilsTest, RecordWpDisableMethod) {
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kWpDisableMethod),
             event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
@@ -378,9 +378,9 @@ TEST_F(LogsUtilsTest, RecordRsuChallengeCode) {
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kWpDisableRsu),
             event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
@@ -397,9 +397,9 @@ TEST_F(LogsUtilsTest, RecordRestockOption) {
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kRestock), event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
   EXPECT_FALSE(event.FindDict(kDetails)->FindBool(kLogRestockOption).value());
@@ -416,9 +416,9 @@ TEST_F(LogsUtilsTest, RecordError) {
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(current_state), event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kError), event.FindInt(kType));
   EXPECT_EQ(static_cast<int>(error),
@@ -448,14 +448,14 @@ TEST_F(LogsUtilsTest, RecordComponentCalibrationStatus) {
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kCheckCalibration),
             event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
 
-  const base::Value::List* components =
+  const base::ListValue* components =
       event.FindDict(kDetails)->FindList(kLogCalibrationComponents);
   EXPECT_EQ(3, components->size());
   EXPECT_EQ(component1, *(*components)[0].GetDict().FindString(kLogComponent));
@@ -482,9 +482,9 @@ TEST_F(LogsUtilsTest, RecordComponentCalibrationSetupInstruction) {
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kSetupCalibration),
             event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
@@ -507,12 +507,12 @@ TEST_F(LogsUtilsTest, RecordFirmwareUpdateStatus) {
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(2, events->size());
-  const base::Value::Dict& event1 = (*events)[0].GetDict();
+  const base::DictValue& event1 = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(status1),
             event1.FindDict(kDetails)->FindInt(kFirmwareStatus));
-  const base::Value::Dict& event2 = (*events)[1].GetDict();
+  const base::DictValue& event2 = (*events)[1].GetDict();
   EXPECT_EQ(static_cast<int>(status2),
             event2.FindDict(kDetails)->FindInt(kFirmwareStatus));
 }

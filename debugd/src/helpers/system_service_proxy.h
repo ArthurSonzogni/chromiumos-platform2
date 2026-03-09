@@ -61,12 +61,12 @@ class SystemServiceProxy {
   // org.freedesktop.DBus.Properties.GetAll to retrieve properties, but a
   // derived class can override this method to use an alternative means to
   // retrieve properties.
-  virtual std::optional<base::Value::Dict> GetProperties(
+  virtual std::optional<base::DictValue> GetProperties(
       const std::string& interface_name, const dbus::ObjectPath& object_path);
 
   // Returns a map from object path to object properties with the interface
   // named |interface_name| for each object listed in |object_paths|.
-  base::Value::Dict BuildObjectPropertiesMap(
+  base::DictValue BuildObjectPropertiesMap(
       const std::string& interface_name,
       const std::vector<dbus::ObjectPath>& object_paths);
 
@@ -75,7 +75,7 @@ class SystemServiceProxy {
   // of object paths. Any non-string entry in the list is ignored. If the
   // property isn't found or isn't a list, returns an empty list.
   static std::vector<dbus::ObjectPath> GetObjectPaths(
-      const base::Value::Dict& properties, const std::string& property_name);
+      const base::DictValue& properties, const std::string& property_name);
 
  protected:
   SystemServiceProxy(scoped_refptr<dbus::Bus> bus,

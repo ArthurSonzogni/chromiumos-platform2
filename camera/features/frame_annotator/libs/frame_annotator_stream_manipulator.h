@@ -46,7 +46,7 @@ class FrameAnnotatorStreamManipulator : public StreamManipulator {
   bool PlotOnGpuThread(Camera3StreamBuffer& buffer);
   void FlushSkSurfaceToBuffer(SkSurface* surface, buffer_handle_t yuv_buf);
 
-  void OnOptionsUpdated(const base::Value::Dict& json_values);
+  void OnOptionsUpdated(const base::DictValue& json_values);
 
   ReloadableConfigFile config_;
   FrameAnnotator::Options options_;

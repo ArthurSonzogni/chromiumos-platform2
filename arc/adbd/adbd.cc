@@ -183,7 +183,7 @@ bool GetConfiguration(AdbdConfiguration* config) {
   }
 
   // kernelModules are optional.
-  const base::Value::List* kernel_module_list =
+  const base::ListValue* kernel_module_list =
       config_root_dict.FindList("kernelModules");
   if (kernel_module_list) {
     for (const auto& kernel_module_value : *kernel_module_list) {
@@ -201,7 +201,7 @@ bool GetConfiguration(AdbdConfiguration* config) {
         return false;
       }
       module.name = *module_name;
-      const base::Value::List* module_parameters =
+      const base::ListValue* module_parameters =
           kernel_module_value_dict.FindList("parameters");
       if (module_parameters) {
         // Parameters are optional.

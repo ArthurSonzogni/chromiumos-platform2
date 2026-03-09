@@ -21,7 +21,7 @@ namespace runtime_probe {
 
 namespace {
 
-base::Value::Dict ProbeEdidPath(const base::FilePath& edid_path) {
+base::DictValue ProbeEdidPath(const base::FilePath& edid_path) {
   VLOG(2) << "Processing the node \"" << edid_path.value() << "\"";
 
   std::string raw_bytes;
@@ -37,7 +37,7 @@ base::Value::Dict ProbeEdidPath(const base::FilePath& edid_path) {
   if (!edid) {
     return {};
   }
-  base::Value::Dict res;
+  base::DictValue res;
   res.Set("vendor", edid->vendor);
   res.Set("product_id", base::StringPrintf("%04x", edid->product_id));
   res.Set("width", std::to_string(edid->width));

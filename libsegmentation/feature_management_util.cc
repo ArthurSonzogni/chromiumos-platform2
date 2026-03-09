@@ -145,7 +145,7 @@ std::optional<base::Value> GetPartitionVars(const base::FilePath& root,
     return std::nullopt;
   }
 
-  base::Value::Dict* image_vars = part_vars->GetDict().FindDict(entry);
+  base::DictValue* image_vars = part_vars->GetDict().FindDict(entry);
   if (image_vars == nullptr) {
     PLOG(ERROR) << "Failed to parse dictionary from partition_vars.json";
     return std::nullopt;

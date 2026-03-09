@@ -82,7 +82,7 @@ void ReloadableConfigFile::UpdateOption(std::string key, base::Value value) {
   WriteConfigFileLocked(override_config_file_path_);
 }
 
-base::Value::Dict ReloadableConfigFile::CloneJsonValues() const {
+base::DictValue ReloadableConfigFile::CloneJsonValues() const {
   CHECK(json_values_);
   return json_values_->Clone();
 }
@@ -148,7 +148,7 @@ void ReloadableConfigFile::OnConfigFileUpdated(const base::FilePath& file_path,
   }
 }
 
-bool LoadIfExist(const base::Value::Dict& json_values,
+bool LoadIfExist(const base::DictValue& json_values,
                  const char* key,
                  float* output) {
   if (!output) {
@@ -163,7 +163,7 @@ bool LoadIfExist(const base::Value::Dict& json_values,
   return true;
 }
 
-bool LoadIfExist(const base::Value::Dict& json_values,
+bool LoadIfExist(const base::DictValue& json_values,
                  const char* key,
                  int* output) {
   if (!output) {
@@ -178,7 +178,7 @@ bool LoadIfExist(const base::Value::Dict& json_values,
   return true;
 }
 
-bool LoadIfExist(const base::Value::Dict& json_values,
+bool LoadIfExist(const base::DictValue& json_values,
                  const char* key,
                  bool* output) {
   if (!output) {

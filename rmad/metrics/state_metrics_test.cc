@@ -41,7 +41,7 @@ class StateMetricsDataTest : public testing::Test {
   }
 
   base::Value CreateValue() {
-    base::Value::Dict dict;
+    base::DictValue dict;
     dict.Set(kStateCase, 0);
     dict.Set(kStateIsAborted, false);
     dict.Set(kStateSetupTimestamp, 0.0);
@@ -252,7 +252,7 @@ class StateMetricsMapTest : public testing::Test {
   }
 
   base::Value CreateValue() {
-    base::Value::Dict state_dict;
+    base::DictValue state_dict;
     state_dict.Set(kStateCase, 0);
     state_dict.Set(kStateIsAborted, false);
     state_dict.Set(kStateSetupTimestamp, 0.0);
@@ -261,7 +261,7 @@ class StateMetricsMapTest : public testing::Test {
     state_dict.Set(kStateGetLogCount, 3);
     state_dict.Set(kStateSaveLogCount, 4);
 
-    base::Value::Dict dict;
+    base::DictValue dict;
     dict.Set(base::NumberToString(static_cast<int>(kInitialStateCase)),
              state_dict.Clone());
     dict.Set(base::NumberToString(static_cast<int>(kDefaultStateCase)),

@@ -36,7 +36,7 @@ class MockComponentCategory : public ComponentCategory {
  public:
   MOCK_METHOD(void,
               Eval,
-              (base::OnceCallback<void(base::Value::List)>),
+              (base::OnceCallback<void(base::ListValue)>),
               (const, override));
 };
 
@@ -51,13 +51,12 @@ class ProbeConfigTest : public BaseFileTest {
         category_eval_result, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     auto category = std::make_unique<NiceMock<MockComponentCategory>>();
     ON_CALL(*category, Eval)
-        .WillByDefault(
-            [&category_eval_result](
-                base::OnceCallback<void(base::Value::List)> callback) {
-              auto eval_result = base::JSONReader::Read(
-                  category_eval_result, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
-              std::move(callback).Run(std::move(eval_result->GetList()));
-            });
+        .WillByDefault([&category_eval_result](
+                           base::OnceCallback<void(base::ListValue)> callback) {
+          auto eval_result = base::JSONReader::Read(
+              category_eval_result, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+          std::move(callback).Run(std::move(eval_result->GetList()));
+        });
     probe_config.SetCategoryForTesting(category_name, std::move(category));
   }
 
@@ -200,7 +199,7 @@ TEST_F(ProbeConfigTest, Eval) {
   })",
                          eval_content_1.c_str(), eval_content_2.c_str()),
       base::JSON_PARSE_CHROMIUM_EXTENSIONS);
-  base::test::TestFuture<base::Value::Dict> future;
+  base::test::TestFuture<base::DictValue> future;
   probe_config->Eval(future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
 }
@@ -237,7 +236,7 @@ TEST_F(ProbeConfigTest, EvalWithDefinedCategory) {
   })",
                                                        eval_content_1.c_str()),
                                     base::JSON_PARSE_CHROMIUM_EXTENSIONS);
-  base::test::TestFuture<base::Value::Dict> future;
+  base::test::TestFuture<base::DictValue> future;
   probe_config->Eval(categories, future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
 }
@@ -265,7 +264,7 @@ TEST_F(ProbeConfigTest, EvalWithUndefinedCategory) {
   })",
                                                        eval_content_1.c_str()),
                                     base::JSON_PARSE_CHROMIUM_EXTENSIONS);
-  base::test::TestFuture<base::Value::Dict> future;
+  base::test::TestFuture<base::DictValue> future;
   probe_config->Eval(categories, future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
 }
@@ -290,7 +289,7 @@ TEST_F(ProbeConfigTest, GetComponentCategory) {
                                     base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   auto category = probe_config->GetComponentCategory("category_1");
   EXPECT_NE(category, nullptr);
-  base::test::TestFuture<base::Value::List> future;
+  base::test::TestFuture<base::ListValue> future;
   category->Eval(future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
 }

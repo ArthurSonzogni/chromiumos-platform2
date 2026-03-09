@@ -35,14 +35,14 @@ struct ReportProgressPercentTestParams {
 // Holds the output from FakeRoutineTask in base::Value form, as well as the
 // expected JSON output SimpleRoutine will generate from the base::Value.
 struct FakeExpectedOutput {
-  base::Value::Dict output_dict;
+  base::DictValue output_dict;
   std::string json;
 };
 
 // Generates expected output for a simple routine in both string and base::Value
 // formats.
 FakeExpectedOutput GetFakeExpectedOutput() {
-  base::Value::Dict output_dict;
+  base::DictValue output_dict;
   output_dict.Set("testOutput", "testValue");
   std::string json;
   base::JSONWriter::Write(output_dict, &json);
@@ -55,7 +55,7 @@ FakeExpectedOutput GetFakeExpectedOutput() {
 // Task for a SimpleRoutine to run.
 void FakeRoutineTask(mojom::DiagnosticRoutineStatusEnum status_in,
                      const std::string& status_message_in,
-                     base::Value::Dict output_dict_in,
+                     base::DictValue output_dict_in,
                      SimpleRoutine::RoutineResultCallback callback) {
   std::move(callback).Run({
       .status = status_in,
@@ -76,7 +76,7 @@ class SimpleRoutineTest : public testing::Test {
 
   mojom::RoutineUpdate* update() { return &update_; }
 
-  void CreateRoutine(base::Value::Dict desired_output,
+  void CreateRoutine(base::DictValue desired_output,
                      mojom::DiagnosticRoutineStatusEnum desired_status =
                          mojom::DiagnosticRoutineStatusEnum::kFailed,
                      const std::string& desired_status_message = "") {

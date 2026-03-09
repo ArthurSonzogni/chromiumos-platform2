@@ -416,7 +416,7 @@ bool WireGuardDriver::Save(StoreInterface* storage,
   // Handles peers.
   std::vector<std::string> encoded_peers;
   for (auto& peer : peers_) {
-    base::Value::Dict root;
+    base::DictValue root;
     for (const auto& property : kPeerProperties) {
       const auto& key = property.name;
       root.Set(key, peer[key]);

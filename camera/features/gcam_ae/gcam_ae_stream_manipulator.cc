@@ -204,7 +204,7 @@ bool GcamAeStreamManipulator::Flush() {
 }
 
 void GcamAeStreamManipulator::OnOptionsUpdated(
-    const base::Value::Dict& json_values) {
+    const base::DictValue& json_values) {
   bool log_frame_metadata;
   if (LoadIfExist(json_values, kLogFrameMetadataKey, &log_frame_metadata)) {
     if (options_.log_frame_metadata && !log_frame_metadata) {

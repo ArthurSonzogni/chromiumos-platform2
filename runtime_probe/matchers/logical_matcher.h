@@ -17,14 +17,14 @@ namespace runtime_probe {
 // Implements a matcher that matches if all sub-matchers match.
 class AndMatcher : public Matcher {
  public:
-  static std::unique_ptr<AndMatcher> Create(const base::Value::List& operands);
+  static std::unique_ptr<AndMatcher> Create(const base::ListValue& operands);
 
   AndMatcher(const AndMatcher&) = delete;
   AndMatcher& operator=(const AndMatcher&) = delete;
   ~AndMatcher() override;
 
   // Matcher overrides.
-  bool Match(const base::Value::Dict& component) const override;
+  bool Match(const base::DictValue& component) const override;
 
  private:
   explicit AndMatcher(std::vector<std::unique_ptr<Matcher>> matchers);
@@ -35,14 +35,14 @@ class AndMatcher : public Matcher {
 // Implements a matcher that matches if any sub-matchers match.
 class OrMatcher : public Matcher {
  public:
-  static std::unique_ptr<OrMatcher> Create(const base::Value::List& operands);
+  static std::unique_ptr<OrMatcher> Create(const base::ListValue& operands);
 
   OrMatcher(const OrMatcher&) = delete;
   OrMatcher& operator=(const OrMatcher&) = delete;
   ~OrMatcher() override;
 
   // Matcher overrides.
-  bool Match(const base::Value::Dict& component) const override;
+  bool Match(const base::DictValue& component) const override;
 
  private:
   explicit OrMatcher(std::vector<std::unique_ptr<Matcher>> matchers);

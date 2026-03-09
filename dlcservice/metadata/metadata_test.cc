@@ -122,7 +122,7 @@ TEST_F(MetadataTest, ModifyMetadata) {
       .WillOnce(Return(std::move(clones[1])));
 
   // Test setting metadata with mocked compressor and decompressor.
-  Metadata::Entry entry{base::Value::Dict(), "table"};
+  Metadata::Entry entry{base::DictValue(), "table"};
   EXPECT_TRUE(metadata_->Set(kFirstDlc, entry));
 
   // The metadata file id list should be unchanged.
@@ -166,7 +166,7 @@ TEST_F(MetadataTest, ModifyMetadataToLargerContent) {
       .WillOnce(Return(std::move(clones[1])))
       .WillOnce(Return(std::move(clones[2])));
 
-  Metadata::Entry entry{base::Value::Dict(), "table"};
+  Metadata::Entry entry{base::DictValue(), "table"};
   EXPECT_TRUE(metadata_->Set(kFirstDlc, entry));
 
   // Verified that a new file is created.

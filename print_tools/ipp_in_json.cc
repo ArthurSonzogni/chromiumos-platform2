@@ -58,7 +58,7 @@ base::Value SaveValueAsJson<ipp::StringWithLanguage>(
     const ipp::StringWithLanguage& value,
     bool expanded) {
   if (expanded) {
-    base::Value::Dict obj;
+    base::DictValue obj;
     obj.Set("value", value.value);
     obj.Set("language", value.language);
     return base::Value(std::move(obj));
@@ -74,7 +74,7 @@ base::Value SaveValuesAsJsonTyped(const ipp::Attribute& attr, bool expanded) {
   std::vector<ValueType> values;
   attr.GetValues(values);
   if (values.size() > 1) {
-    base::Value::List arr;
+    base::ListValue arr;
     for (size_t i = 0; i < values.size(); ++i) {
       arr.Append(SaveValueAsJson(attr, values[i], expanded));
     }
@@ -89,7 +89,7 @@ base::Value SaveValuesAsJsonTyped<const ipp::Collection&>(
     const ipp::Attribute& attr, bool expanded) {
   ipp::ConstCollsView colls = attr.Colls();
   if (colls.size() > 1) {
-    base::Value::List arr;
+    base::ListValue arr;
     for (const ipp::Collection& coll : colls) {
       // Don't filter inner collection attributes.  The outer collection itself
       // would have already been skipped if it didn't match the user's filter.
@@ -129,7 +129,7 @@ base::Value SaveValuesAsJson(const ipp::Attribute& attr, bool expanded) {
 base::Value SaveAsJson(const ipp::Collection& coll,
                        const std::string& filter,
                        bool expanded) {
-  base::Value::Dict obj;
+  base::DictValue obj;
 
   for (const ipp::Attribute& a : coll) {
     if (!filter.empty() && a.Name().find(filter) == std::string::npos) {
@@ -138,7 +138,7 @@ base::Value SaveAsJson(const ipp::Collection& coll,
     auto tag = a.Tag();
     if (!ipp::IsOutOfBand(tag)) {
       if (expanded) {
-        base::Value::Dict obj2;
+        base::DictValue obj2;
         obj2.Set("type", ipp::ToStrView(tag));
         obj2.Set("value", SaveValuesAsJson(a, true));
         obj.Set(a.Name(), std::move(obj2));
@@ -158,7 +158,7 @@ base::Value SaveAsJson(ipp::ConstCollsView groups,
                        const std::string& filter,
                        bool expanded) {
   if (groups.size() > 1) {
-    base::Value::List arr;
+    base::ListValue arr;
     for (const ipp::Collection& g : groups) {
       arr.Append(SaveAsJson(g, filter, expanded));
     }
@@ -172,7 +172,7 @@ base::Value SaveAsJson(ipp::ConstCollsView groups,
 base::Value SaveAsJson(const ipp::Frame& pkg,
                        const std::string& filter,
                        bool expanded) {
-  base::Value::Dict obj;
+  base::DictValue obj;
   for (ipp::GroupTag gt : ipp::kGroupTags) {
     auto groups = pkg.Groups(gt);
     if (groups.empty()) {
@@ -195,7 +195,7 @@ base::Value SaveAsJson(const ipp::Frame& pkg,
 
 // Saves given logs as JSON array.
 base::Value SaveAsJson(const ipp::SimpleParserLog& log) {
-  base::Value::List arr;
+  base::ListValue arr;
   for (const auto& l : log.Errors()) {
     arr.Append(base::Value(ipp::ToString(l)));
   }
@@ -210,7 +210,7 @@ bool ConvertToJson(const ipp::Frame& response,
                    bool compressed_json,
                    std::string* json) {
   // Build structure.
-  base::Value::Dict doc;
+  base::DictValue doc;
   doc.Set("status", ipp::ToString(response.StatusCode()));
   if (!log.Errors().empty()) {
     doc.Set("parsing_logs", SaveAsJson(log));
@@ -232,7 +232,7 @@ bool ConvertToSimpleJson(const ipp::Frame& response,
                          const std::string& filter,
                          std::string* json) {
   // Build structure.
-  base::Value::Dict doc;
+  base::DictValue doc;
   doc.Set("status", ipp::ToString(response.StatusCode()));
   if (!log.Errors().empty()) {
     doc.Set("parsing_logs", SaveAsJson(log));

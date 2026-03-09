@@ -103,9 +103,9 @@ class BiodStorageBaseTest : public ::testing::Test {
     EXPECT_TRUE(base::DeletePathRecursively(temp_dir_.GetPath()));
   }
 
-  base::Value::Dict CreateRecordDictionary(
+  base::DictValue CreateRecordDictionary(
       const std::vector<uint8_t>& validation_val) {
-    base::Value::Dict record_dictionary;
+    base::DictValue record_dictionary;
     std::string validation_value_str(validation_val.begin(),
                                      validation_val.end());
     record_dictionary.Set("match_validation_value",
@@ -570,7 +570,7 @@ class BiodStorageMemlockTest
 };
 
 TEST_P(BiodStorageMemlockTest, ReadReadRecords) {
-  base::Value::Dict record_value;
+  base::DictValue record_value;
   record_value.Set("record_id", kRecordId1);
   record_value.Set("label", "some_label");
   record_value.Set("match_validation_value", "4567");

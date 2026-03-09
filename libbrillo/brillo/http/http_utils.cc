@@ -326,9 +326,9 @@ RequestID PatchJson(const std::string& url,
                      std::move(error_callback));
 }
 
-std::optional<base::Value::Dict> ParseJsonResponse(Response* response,
-                                                   int* status_code,
-                                                   brillo::ErrorPtr* error) {
+std::optional<base::DictValue> ParseJsonResponse(Response* response,
+                                                 int* status_code,
+                                                 brillo::ErrorPtr* error) {
   if (!response) {
     return std::nullopt;
   }

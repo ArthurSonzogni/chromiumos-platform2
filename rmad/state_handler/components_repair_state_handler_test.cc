@@ -156,12 +156,12 @@ TEST_F(ComponentsRepairStateHandlerTest,
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
 
-  const base::Value::List* components =
+  const base::ListValue* components =
       event.FindDict(kDetails)->FindList(kLogReplacedComponents);
   EXPECT_EQ(1, components->size());
   EXPECT_EQ(RmadComponent_Name(RMAD_COMPONENT_BATTERY),
@@ -212,9 +212,9 @@ TEST_F(ComponentsRepairStateHandlerTest,
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_TRUE(event.FindDict(kDetails)->FindBool(kLogReworkSelected).value());
 }
 

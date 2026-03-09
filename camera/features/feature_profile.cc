@@ -98,7 +98,7 @@ bool HasMatchingCameraModule(const EnableConditions& m,
 
 }  // namespace
 
-FeatureProfile::FeatureProfile(std::optional<base::Value::Dict> feature_config,
+FeatureProfile::FeatureProfile(std::optional<base::DictValue> feature_config,
                                std::optional<DeviceMetadata> device_metadata)
     : config_file_(ReloadableConfigFile::Options{
           base::FilePath(kFeatureProfileFilePath), base::FilePath()}),
@@ -159,7 +159,7 @@ base::FilePath FeatureProfile::GetConfigFilePath(FeatureType feature) const {
 }
 
 bool FeatureProfile::ShouldEnableFeature(
-    const base::Value::Dict& feature_descriptor) {
+    const base::DictValue& feature_descriptor) {
   const base::Value* enable_on = feature_descriptor.Find(kKeyEnableOn);
   if (!enable_on) {
     return true;
@@ -184,14 +184,14 @@ bool FeatureProfile::ShouldEnableFeature(
   return true;
 }
 
-void FeatureProfile::OnOptionsUpdated(const base::Value::Dict& json_values) {
+void FeatureProfile::OnOptionsUpdated(const base::DictValue& json_values) {
   if (!device_metadata_.has_value()) {
     LOGF(WARNING) << "Device config is invalid, cannot determine model name";
     return;
   }
 
   // Get the per-model feature profile from the top-level.
-  const base::Value::Dict* feature_profile =
+  const base::DictValue* feature_profile =
       json_values.FindDict(device_metadata_->model_name);
   if (feature_profile == nullptr) {
     feature_profile = json_values.FindDict(kModelNameWildcard);
@@ -205,7 +205,7 @@ void FeatureProfile::OnOptionsUpdated(const base::Value::Dict& json_values) {
   }
 
   // Extract "feature_set" info from the feature profile.
-  const base::Value::List* feature_set =
+  const base::ListValue* feature_set =
       feature_profile->FindList(kKeyFeatureSet);
   if (feature_set == nullptr) {
     LOGF(ERROR) << "Cannot find " << std::quoted(kKeyFeatureSet)

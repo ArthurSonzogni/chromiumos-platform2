@@ -65,7 +65,7 @@ class EmmcLifetimeRoutine final : public DiagnosticRoutineWithStatus {
   org::chromium::debugdProxyInterface* const debugd_proxy_;
 
   uint32_t percent_ = 0;
-  base::Value::Dict output_dict_;
+  base::DictValue output_dict_;
 
   base::WeakPtrFactory<EmmcLifetimeRoutine> weak_ptr_factory_{this};
 };

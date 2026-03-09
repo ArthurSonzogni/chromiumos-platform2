@@ -26,7 +26,7 @@ class MetadataInterface {
   MetadataInterface& operator=(const MetadataInterface&) = delete;
 
   struct Entry {
-    base::Value::Dict manifest;
+    base::DictValue manifest;
     std::string table;
   };
 
@@ -67,7 +67,7 @@ class MetadataInterface {
       const FilterKey& key_enum) = 0;
 
   // Getter for cached raw data.
-  virtual const base::Value::Dict& GetCache() const = 0;
+  virtual const base::DictValue& GetCache() const = 0;
 
   // Getter for file_ids.
   virtual const std::set<DlcId>& GetFileIds() const = 0;

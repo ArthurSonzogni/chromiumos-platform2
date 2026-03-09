@@ -11,44 +11,44 @@
 
 namespace diagnostics {
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const ash::cros_healthd::mojom::AudioDriverRoutineDetailPtr& detail);
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const ash::cros_healthd::mojom::BluetoothDiscoveryRoutineDetailPtr& detail);
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const ash::cros_healthd::mojom::BluetoothPairingRoutineDetailPtr& detail);
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const ash::cros_healthd::mojom::BluetoothPowerRoutineDetailPtr& detail);
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const ash::cros_healthd::mojom::BluetoothScanningRoutineDetailPtr& detail);
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const ash::cros_healthd::mojom::UfsLifetimeRoutineDetailPtr& detail);
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const ash::cros_healthd::mojom::FanRoutineDetailPtr& detail);
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const ash::cros_healthd::mojom::CameraAvailabilityRoutineDetailPtr& detail);
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const ash::cros_healthd::mojom::NetworkBandwidthRoutineDetailPtr& detail);
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const ash::cros_healthd::mojom::SensitiveSensorRoutineDetailPtr& detail);
 
-base::Value::Dict ConvertToValueForV1(
+base::DictValue ConvertToValueForV1(
     const ash::cros_healthd::mojom::SensitiveSensorRoutineDetailPtr& detail);
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const ash::cros_healthd::mojom::CameraFrameAnalysisRoutineDetailPtr&
         detail);
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const ash::cros_healthd::mojom::BatteryDischargeRoutineDetailPtr& detail);
 
 }  // namespace diagnostics

@@ -112,7 +112,7 @@ class DocumentScannerPerfTestEnvironment : public ::testing::Environment {
     LOG(INFO) << "Perf: " << metrics_name << " => " << avg_duration << " ms";
   }
 
-  base::Value::Dict perf_values_;
+  base::DictValue perf_values_;
   base::FilePath output_path_;
   std::vector<uint8_t> jpeg_image_;
   std::vector<uint8_t> nv12_image_;

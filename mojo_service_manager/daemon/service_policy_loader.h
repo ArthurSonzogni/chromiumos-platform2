@@ -44,7 +44,7 @@ std::optional<ServicePolicyMap> ParseServicePolicyFromString(
 
 // Same as above but takes a |base::Value|.
 std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
-    const base::Value::List& value);
+    const base::ListValue& value);
 
 // A delegate for overriding functions for testing.
 class LoadServicePolicyDelegate {

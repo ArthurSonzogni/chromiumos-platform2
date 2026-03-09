@@ -136,16 +136,16 @@ std::string EnumToString(mojom::CameraFrameAnalysisRoutineDetail::Issue issue) {
   }
 }
 
-base::Value::Dict ConvertToValue(const mojom::SensitiveSensorInfoPtr& info) {
-  base::Value::Dict output;
+base::DictValue ConvertToValue(const mojom::SensitiveSensorInfoPtr& info) {
+  base::DictValue output;
   output.Set("id", info->id);
-  base::Value::List out_types;
+  base::ListValue out_types;
   for (const auto& type : info->types) {
     out_types.Append(EnumToString(type));
   }
   output.Set("types", std::move(out_types));
 
-  base::Value::List out_channels;
+  base::ListValue out_channels;
   for (const auto& channel : info->channels) {
     out_channels.Append(channel);
   }
@@ -153,17 +153,17 @@ base::Value::Dict ConvertToValue(const mojom::SensitiveSensorInfoPtr& info) {
   return output;
 }
 
-base::Value::Dict ConvertToValue(const mojom::SensitiveSensorReportPtr& report,
-                                 bool v2_output = true) {
-  base::Value::Dict output;
+base::DictValue ConvertToValue(const mojom::SensitiveSensorReportPtr& report,
+                               bool v2_output = true) {
+  base::DictValue output;
 
-  base::Value::List out_passed_sensors;
+  base::ListValue out_passed_sensors;
   for (const auto& sensor : report->passed_sensors) {
     out_passed_sensors.Append(ConvertToValue(sensor));
   }
   output.Set("passed_sensors", std::move(out_passed_sensors));
 
-  base::Value::List out_failed_sensors;
+  base::ListValue out_failed_sensors;
   for (const auto& sensor : report->failed_sensors) {
     out_failed_sensors.Append(ConvertToValue(sensor));
   }
@@ -181,9 +181,9 @@ base::Value::Dict ConvertToValue(const mojom::SensitiveSensorReportPtr& report,
 
 }  // namespace
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const mojom::AudioDriverRoutineDetailPtr& detail) {
-  base::Value::Dict output;
+  base::DictValue output;
 
   output.Set("internal_card_detected", detail->internal_card_detected);
   output.Set("audio_devices_succeed_to_open",
@@ -192,12 +192,12 @@ base::Value::Dict ConvertToValue(
   return output;
 }
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const mojom::BluetoothDiscoveryRoutineDetailPtr& detail) {
-  base::Value::Dict output;
+  base::DictValue output;
 
   if (detail->start_discovery_result) {
-    base::Value::Dict start_discovery_result;
+    base::DictValue start_discovery_result;
     start_discovery_result.Set("hci_discovering",
                                detail->start_discovery_result->hci_discovering);
     start_discovery_result.Set(
@@ -206,7 +206,7 @@ base::Value::Dict ConvertToValue(
   }
 
   if (detail->stop_discovery_result) {
-    base::Value::Dict stop_discovery_result;
+    base::DictValue stop_discovery_result;
     stop_discovery_result.Set("hci_discovering",
                               detail->stop_discovery_result->hci_discovering);
     stop_discovery_result.Set("dbus_discovering",
@@ -217,18 +217,18 @@ base::Value::Dict ConvertToValue(
   return output;
 }
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const mojom::BluetoothPairingRoutineDetailPtr& detail) {
-  base::Value::Dict output;
+  base::DictValue output;
 
   if (detail->pairing_peripheral) {
-    base::Value::Dict out_peripheral;
+    base::DictValue out_peripheral;
     const auto& peripheral = detail->pairing_peripheral;
     out_peripheral.Set("pair_error", EnumToString(peripheral->pair_error));
     out_peripheral.Set("connect_error",
                        EnumToString(peripheral->connect_error));
 
-    base::Value::List out_uuids;
+    base::ListValue out_uuids;
     for (const auto& uuid : peripheral->uuids) {
       out_uuids.Append(uuid.AsLowercaseString());
     }
@@ -251,12 +251,12 @@ base::Value::Dict ConvertToValue(
   return output;
 }
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const mojom::BluetoothPowerRoutineDetailPtr& detail) {
-  base::Value::Dict output;
+  base::DictValue output;
 
   if (detail->power_off_result) {
-    base::Value::Dict power_off_result;
+    base::DictValue power_off_result;
     power_off_result.Set("hci_powered", detail->power_off_result->hci_powered);
     power_off_result.Set("dbus_powered",
                          detail->power_off_result->dbus_powered);
@@ -264,7 +264,7 @@ base::Value::Dict ConvertToValue(
   }
 
   if (detail->power_on_result) {
-    base::Value::Dict power_on_result;
+    base::DictValue power_on_result;
     power_on_result.Set("hci_powered", detail->power_on_result->hci_powered);
     power_on_result.Set("dbus_powered", detail->power_on_result->dbus_powered);
     output.Set("power_on_result", std::move(power_on_result));
@@ -273,14 +273,14 @@ base::Value::Dict ConvertToValue(
   return output;
 }
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const mojom::BluetoothScanningRoutineDetailPtr& detail) {
-  base::Value::Dict output;
-  base::Value::List out_peripherals;
+  base::DictValue output;
+  base::ListValue out_peripherals;
 
   for (const auto& peripheral : detail->peripherals) {
-    base::Value::Dict out_peripheral;
-    base::Value::List out_rssi_history;
+    base::DictValue out_peripheral;
+    base::ListValue out_rssi_history;
     for (const auto& rssi : peripheral->rssi_history) {
       out_rssi_history.Append(std::move(rssi));
     }
@@ -292,7 +292,7 @@ base::Value::Dict ConvertToValue(
       out_peripheral.Set("peripheral_id", peripheral->peripheral_id.value());
     }
     if (peripheral->uuids.has_value()) {
-      base::Value::List out_uuids;
+      base::ListValue out_uuids;
       for (const auto& uuid : peripheral->uuids.value()) {
         out_uuids.Append(uuid.AsLowercaseString());
       }
@@ -306,9 +306,9 @@ base::Value::Dict ConvertToValue(
   return output;
 }
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const mojom::UfsLifetimeRoutineDetailPtr& detail) {
-  base::Value::Dict output;
+  base::DictValue output;
 
   output.Set("pre_eol_info", detail->pre_eol_info);
   output.Set("device_life_time_est_a", detail->device_life_time_est_a);
@@ -317,10 +317,10 @@ base::Value::Dict ConvertToValue(
   return output;
 }
 
-base::Value::Dict ConvertToValue(const mojom::FanRoutineDetailPtr& detail) {
-  base::Value::Dict output;
-  base::Value::List passed_fan_ids;
-  base::Value::List failed_fan_ids;
+base::DictValue ConvertToValue(const mojom::FanRoutineDetailPtr& detail) {
+  base::DictValue output;
+  base::ListValue passed_fan_ids;
+  base::ListValue failed_fan_ids;
 
   for (const auto& fan_id : detail->passed_fan_ids) {
     passed_fan_ids.Append(fan_id);
@@ -336,9 +336,9 @@ base::Value::Dict ConvertToValue(const mojom::FanRoutineDetailPtr& detail) {
   return output;
 }
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const mojom::CameraAvailabilityRoutineDetailPtr& detail) {
-  base::Value::Dict output;
+  base::DictValue output;
 
   output.Set("camera_service_available_check",
              EnumToString(detail->camera_service_available_check));
@@ -348,9 +348,9 @@ base::Value::Dict ConvertToValue(
   return output;
 }
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const mojom::NetworkBandwidthRoutineDetailPtr& detail) {
-  base::Value::Dict output;
+  base::DictValue output;
 
   output.Set("download_speed_kbps", detail->download_speed_kbps);
   output.Set("upload_speed_kbps", detail->upload_speed_kbps);
@@ -358,9 +358,9 @@ base::Value::Dict ConvertToValue(
   return output;
 }
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const mojom::SensitiveSensorRoutineDetailPtr& detail) {
-  base::Value::Dict output;
+  base::DictValue output;
 
   output.Set("base_accelerometer", ConvertToValue(detail->base_accelerometer));
   output.Set("lid_accelerometer", ConvertToValue(detail->lid_accelerometer));
@@ -375,9 +375,9 @@ base::Value::Dict ConvertToValue(
   return output;
 }
 
-base::Value::Dict ConvertToValueForV1(
+base::DictValue ConvertToValueForV1(
     const mojom::SensitiveSensorRoutineDetailPtr& detail) {
-  base::Value::Dict output;
+  base::DictValue output;
 
   output.Set("base_accelerometer",
              ConvertToValue(detail->base_accelerometer, /*v2_output=*/false));
@@ -399,9 +399,9 @@ base::Value::Dict ConvertToValueForV1(
   return output;
 }
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const mojom::CameraFrameAnalysisRoutineDetailPtr& detail) {
-  base::Value::Dict output;
+  base::DictValue output;
 
   output.Set("issue", EnumToString(detail->issue));
   output.Set("privacy_shutter_open_test",
@@ -411,9 +411,9 @@ base::Value::Dict ConvertToValue(
   return output;
 }
 
-base::Value::Dict ConvertToValue(
+base::DictValue ConvertToValue(
     const mojom::BatteryDischargeRoutineDetailPtr& detail) {
-  base::Value::Dict output;
+  base::DictValue output;
 
   output.Set("discharge_percent", detail->discharge_percent);
 

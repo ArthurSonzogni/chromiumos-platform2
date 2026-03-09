@@ -84,7 +84,7 @@ void BluetoothPairingRoutine::PopulateStatusUpdate(
 
   if (include_output) {
     std::string json;
-    base::Value::Dict output_dict;
+    base::DictValue output_dict;
     if (pairing_peripheral_info_.has_value()) {
       output_dict.Set("pairing_peripheral",
                       pairing_peripheral_info_.value().Clone());
@@ -267,7 +267,7 @@ void BluetoothPairingRoutine::OnDeviceAdded(
     return;
   }
   target_device_ = device;
-  pairing_peripheral_info_ = base::Value::Dict();
+  pairing_peripheral_info_ = base::DictValue();
 
   const auto& address_type = device->address_type();
   pairing_peripheral_info_->Set("address_type", address_type);
@@ -284,7 +284,7 @@ void BluetoothPairingRoutine::OnDeviceAdded(
         "bluetooth_class", base::NumberToString(device->bluetooth_class()));
   }
   if (device->is_uuids_valid()) {
-    base::Value::List out_uuids;
+    base::ListValue out_uuids;
     for (const auto& uuid : device->uuids()) {
       out_uuids.Append(uuid);
     }
@@ -308,7 +308,7 @@ void BluetoothPairingRoutine::OnDevicePropertyChanged(
     }
   } else if (property_name == device->UUIDsName()) {
     if (device->is_uuids_valid()) {
-      base::Value::List out_uuids;
+      base::ListValue out_uuids;
       for (const auto& uuid : device->uuids()) {
         out_uuids.Append(uuid);
       }

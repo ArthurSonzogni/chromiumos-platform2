@@ -386,7 +386,7 @@ EcComponentFunction::DataType EcComponentFunction::ProbeWithManifest(
       continue;
     }
     if (IsValidComponent(comp, dev_fd, &history_tracker, true)) {
-      result.Append(base::Value::Dict()
+      result.Append(base::DictValue()
                         .Set("component_type", comp.component_type)
                         .Set("component_name", comp.component_name));
     }

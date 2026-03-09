@@ -109,7 +109,7 @@ TEST(HexFieldConverterTest, TestIntToDecString) {
       {-0x7b, "-123"},
   };
   for (const auto& [in, out] : cases) {
-    base::Value::Dict dict_value = base::Value::Dict().Set("key", in);
+    base::DictValue dict_value = base::DictValue().Set("key", in);
 
     auto converter = HexFieldConverter::Build("");
 
@@ -125,7 +125,7 @@ TEST(HexFieldConverterTest, TestIntToDecString) {
 
 TEST(IntegerFieldConverterTest, TestDoubleToInt) {
   double v = 123.5;
-  auto dict_value = base::Value::Dict().Set("key", v);
+  auto dict_value = base::DictValue().Set("key", v);
 
   auto converter = IntegerFieldConverter::Build("");
 

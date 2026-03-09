@@ -26,9 +26,9 @@ namespace {
 
 std::string ConvertToJsonString(
     const mojom::Camera3StreamConfigurationPtr& stream_config) {
-  base::Value::List val;
+  base::ListValue val;
   for (const auto& stream : stream_config->streams) {
-    base::Value::Dict s;
+    base::DictValue s;
     s.Set("stream_id", base::NumberToString(stream->id));
     s.Set("width", base::checked_cast<int>(stream->width));
     s.Set("height", base::checked_cast<int>(stream->height));

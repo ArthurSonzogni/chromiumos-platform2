@@ -173,31 +173,31 @@ class BluezBluetoothScanningRoutineTest : public testing::Test {
     is_high_signal_device[device_path] = is_high_signal;
   }
 
-  base::Value::Dict ConstructOutputDict() {
-    base::Value::List peripherals;
+  base::DictValue ConstructOutputDict() {
+    base::ListValue peripherals;
     for (const auto& [device_path, device] : fake_devices_) {
-      base::Value::Dict peripheral;
+      base::DictValue peripheral;
       if (is_high_signal_device[device_path]) {
         peripheral.Set("peripheral_id", device.peripheral_id);
         if (device.name.has_value()) {
           peripheral.Set("name", device.name.value());
         }
         if (device.uuids.has_value()) {
-          base::Value::List out_uuids;
+          base::ListValue out_uuids;
           for (const auto& uuid : device.uuids.value()) {
             out_uuids.Append(uuid);
           }
           peripheral.Set("uuids", std::move(out_uuids));
         }
       }
-      base::Value::List out_rssi_history;
+      base::ListValue out_rssi_history;
       for (const auto& rssi : device.rssi_history) {
         out_rssi_history.Append(rssi);
       }
       peripheral.Set("rssi_history", std::move(out_rssi_history));
       peripherals.Append(std::move(peripheral));
     }
-    base::Value::Dict output_dict;
+    base::DictValue output_dict;
     output_dict.Set("peripherals", std::move(peripherals));
     return output_dict;
   }

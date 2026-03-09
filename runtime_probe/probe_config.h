@@ -54,12 +54,12 @@ class ProbeConfig {
   //     ]
   //   }
   void Eval(const std::vector<std::string>& category,
-            base::OnceCallback<void(base::Value::Dict)> callback) const;
+            base::OnceCallback<void(base::DictValue)> callback) const;
 
   // Evaluates the probe config.
   //
   // This is the same as calling `this->Eval({keys of category_})`.
-  void Eval(base::OnceCallback<void(base::Value::Dict)> callback) const;
+  void Eval(base::OnceCallback<void(base::DictValue)> callback) const;
 
   // Gets the component category with given name or return nullptr on failure.
   ComponentCategory* GetComponentCategory(

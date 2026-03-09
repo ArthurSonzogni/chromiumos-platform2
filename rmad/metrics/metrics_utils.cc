@@ -130,9 +130,9 @@ std::string MetricsUtils::GetMetricsSummaryAsString(
   return output;
 }
 
-base::Value::Dict MetricsUtils::RefineStateMetricsReadability(
-    const base::Value::Dict& original_state_metrics) {
-  base::Value::Dict new_state_metrics;
+base::DictValue MetricsUtils::RefineStateMetricsReadability(
+    const base::DictValue& original_state_metrics) {
+  base::DictValue new_state_metrics;
   for (const auto& [state_case_str, metrics_data] : original_state_metrics) {
     // For each state, we should have a dict to store metrics data.
     CHECK(metrics_data.is_dict());

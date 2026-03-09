@@ -112,7 +112,7 @@ class BluezBluetoothPowerRoutineTest : public testing::Test {
   void CheckRoutineUpdate(uint32_t progress_percent,
                           mojom::DiagnosticRoutineStatusEnum status,
                           std::string status_message,
-                          base::Value::Dict output_dict = base::Value::Dict()) {
+                          base::DictValue output_dict = base::DictValue()) {
     routine_->PopulateStatusUpdate(/*include_output=*/true, update_);
     EXPECT_EQ(update_.progress_percent, progress_percent);
     VerifyNonInteractiveUpdate(update_.routine_update_union, status,
@@ -123,17 +123,17 @@ class BluezBluetoothPowerRoutineTest : public testing::Test {
                                base::JSON_PARSE_CHROMIUM_EXTENSIONS));
   }
 
-  base::Value::Dict ConstructResult(bool hci_powered, bool dbus_powered) {
-    base::Value::Dict out_result;
+  base::DictValue ConstructResult(bool hci_powered, bool dbus_powered) {
+    base::DictValue out_result;
     out_result.Set("hci_powered", hci_powered);
     out_result.Set("dbus_powered", dbus_powered);
     return out_result;
   }
 
-  base::Value::Dict ConstructRoutineOutput(
-      base::Value::Dict power_off_result,
-      std::optional<base::Value::Dict> power_on_result = std::nullopt) {
-    base::Value::Dict output_dict;
+  base::DictValue ConstructRoutineOutput(
+      base::DictValue power_off_result,
+      std::optional<base::DictValue> power_on_result = std::nullopt) {
+    base::DictValue output_dict;
     output_dict.Set("power_off_result", std::move(power_off_result));
     if (power_on_result.has_value()) {
       output_dict.Set("power_on_result", std::move(power_on_result.value()));

@@ -198,10 +198,10 @@ class BluezBluetoothPairingRoutineTest : public testing::Test {
         }));
   }
 
-  base::Value::Dict ConstructOutputDict(
+  base::DictValue ConstructOutputDict(
       const brillo::Error* connect_error = nullptr,
       const brillo::Error* pair_error = nullptr) {
-    base::Value::Dict output_pairing_peripheral;
+    base::DictValue output_pairing_peripheral;
     output_pairing_peripheral.Set("address_type", target_address_type_);
     output_pairing_peripheral.Set("is_address_valid", true);
 
@@ -211,7 +211,7 @@ class BluezBluetoothPairingRoutineTest : public testing::Test {
           base::NumberToString(target_bluetooth_class_.value()));
     }
     if (!target_uuids_.empty()) {
-      base::Value::List out_uuids;
+      base::ListValue out_uuids;
       for (const auto& uuid : target_uuids_) {
         out_uuids.Append(uuid);
       }
@@ -225,7 +225,7 @@ class BluezBluetoothPairingRoutineTest : public testing::Test {
       output_pairing_peripheral.Set("pair_error", pair_error->GetCode());
     }
 
-    base::Value::Dict output_dict;
+    base::DictValue output_dict;
     output_dict.Set("pairing_peripheral", std::move(output_pairing_peripheral));
     return output_dict;
   }
@@ -233,7 +233,7 @@ class BluezBluetoothPairingRoutineTest : public testing::Test {
   void CheckRoutineUpdate(uint32_t progress_percent,
                           mojom::DiagnosticRoutineStatusEnum status,
                           std::string status_message,
-                          base::Value::Dict output_dict = base::Value::Dict()) {
+                          base::DictValue output_dict = base::DictValue()) {
     routine_->PopulateStatusUpdate(/*include_output=*/true, update_);
     EXPECT_EQ(update_.progress_percent, progress_percent);
     VerifyNonInteractiveUpdate(update_.routine_update_union, status,

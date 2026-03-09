@@ -386,14 +386,14 @@ std::string ContainerState(pid_t child_pid,
                            const base::FilePath& bundle_dir,
                            const base::FilePath& container_dir,
                            const std::string& status) {
-  base::Value::Dict state;
+  base::DictValue state;
   state.Set("ociVersion", base::Value("1.0"));
   state.Set("id", base::Value(container_id));
   state.Set("status", base::Value(status));
   state.Set("bundle",
             base::Value(base::MakeAbsoluteFilePath(bundle_dir).value()));
   state.Set("pid", base::Value(child_pid));
-  base::Value::Dict annotations;
+  base::DictValue annotations;
   annotations.Set(
       "org.chromium.run_oci.container_root",
       base::Value(base::MakeAbsoluteFilePath(container_dir).value()));

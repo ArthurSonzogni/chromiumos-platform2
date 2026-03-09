@@ -38,7 +38,7 @@ bool StateMetricsData::operator==(const StateMetricsData& other) const {
 }
 
 base::Value StateMetricsData::ToValue() const {
-  base::Value::Dict dict;
+  base::DictValue dict;
   dict.Set(kStateCase, static_cast<int>(state_case));
   dict.Set(kStateIsAborted, is_aborted);
   dict.Set(kStateSetupTimestamp, setup_timestamp);
@@ -53,7 +53,7 @@ bool StateMetricsData::FromValue(const base::Value* value) {
   if (!value || !value->is_dict()) {
     return false;
   }
-  const base::Value::Dict& dict = value->GetDict();
+  const base::DictValue& dict = value->GetDict();
 
   StateMetricsData data;
   if (auto state_case_it = dict.FindInt(kStateCase)) {

@@ -102,7 +102,7 @@ TEST_F(LoggingTest, OverrideLogConfig_WrongType) {
 TEST_F(LoggingTest, OverrideLogConfig_NoTime) {
   std::string file_content;
   JSONStringValueSerializer json(&file_content);
-  base::Value::Dict log_config;
+  base::DictValue log_config;
 
   log_config.Set("log-level", 1);
   log_config.Set("log-scopes", "device");
@@ -113,7 +113,7 @@ TEST_F(LoggingTest, OverrideLogConfig_NoTime) {
 TEST_F(LoggingTest, OverrideLogConfig_InvalidTime) {
   std::string file_content;
   JSONStringValueSerializer json(&file_content);
-  base::Value::Dict log_config;
+  base::DictValue log_config;
 
   log_config.Set("log-level", -2);
   log_config.Set("log-scopes", "wifi");
@@ -125,7 +125,7 @@ TEST_F(LoggingTest, OverrideLogConfig_InvalidTime) {
 TEST_F(LoggingTest, OverrideLogConfig_TooOld) {
   std::string file_content;
   JSONStringValueSerializer json(&file_content);
-  base::Value::Dict log_config;
+  base::DictValue log_config;
   log_config.Set("log-level", -3);
   log_config.Set("log-scopes", "service");
   // Valid time stamp but older than 3 days.
@@ -138,7 +138,7 @@ TEST_F(LoggingTest, OverrideLogConfig_TooOld) {
 TEST_F(LoggingTest, OverrideLogConfig_TooNew) {
   std::string file_content;
   JSONStringValueSerializer json(&file_content);
-  base::Value::Dict log_config;
+  base::DictValue log_config;
   log_config.Set("log-level", -3);
   log_config.Set("log-scopes", "service");
   // Valid time stamp but in the future.
@@ -151,7 +151,7 @@ TEST_F(LoggingTest, OverrideLogConfig_TooNew) {
 TEST_F(LoggingTest, OverrideLogConfig_NoLevel) {
   std::string file_content;
   JSONStringValueSerializer json(&file_content);
-  base::Value::Dict log_config;
+  base::DictValue log_config;
   auto start = base::Time::Now();
   log_config.Set("start-time", TimeToValue(start));
   log_config.Set("log-scopes", "wifi");
@@ -162,7 +162,7 @@ TEST_F(LoggingTest, OverrideLogConfig_NoLevel) {
 TEST_F(LoggingTest, OverrideLogConfig_NoScopes) {
   std::string file_content;
   JSONStringValueSerializer json(&file_content);
-  base::Value::Dict log_config;
+  base::DictValue log_config;
   auto start = base::Time::Now();
   log_config.Set("start-time", TimeToValue(start));
   log_config.Set("log-level", -1);
@@ -173,7 +173,7 @@ TEST_F(LoggingTest, OverrideLogConfig_NoScopes) {
 TEST_F(LoggingTest, OverrideLogConfig_InvalidLevel) {
   std::string file_content;
   JSONStringValueSerializer json(&file_content);
-  base::Value::Dict log_config;
+  base::DictValue log_config;
   auto start = base::Time::Now();
   log_config.Set("start-time", TimeToValue(start));
   log_config.Set("log-scopes", "wifi");
@@ -185,7 +185,7 @@ TEST_F(LoggingTest, OverrideLogConfig_InvalidLevel) {
 TEST_F(LoggingTest, OverrideLogConfig_InvalidScopes) {
   std::string file_content;
   JSONStringValueSerializer json(&file_content);
-  base::Value::Dict log_config;
+  base::DictValue log_config;
   auto start = base::Time::Now();
   log_config.Set("start-time", TimeToValue(start));
   log_config.Set("log-level", -2);

@@ -256,7 +256,7 @@ std::vector<uint32_t> DiskUsageUtilImpl::GetProjectIds() {
     return project_ids;
   }
 
-  base::Value::List* projects = prj->GetDict().FindList("projects");
+  base::ListValue* projects = prj->GetDict().FindList("projects");
   if (projects == nullptr) {
     LOG(ERROR) << "Failed to get project ids";
     return project_ids;

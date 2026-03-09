@@ -127,7 +127,7 @@ std::optional<base::Value> GetDeviceBusDataFromSysfsDeviceNode(
 
 }  // namespace
 
-bool IsRemovableBusDevice(const base::Value::Dict& result) {
+bool IsRemovableBusDevice(const base::DictValue& result) {
   // Currently the "removable" attribute is only available for USB devices.  We
   // might need to revise the filter once we have removable PCI devices in
   // ChromeOS.

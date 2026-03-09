@@ -149,7 +149,7 @@ class ChromeosPlatformModelLoader final : public PlatformModelLoader {
       mojom::LoadModelResult result);
 
   void LoadBasePlatformModel(
-      const std::optional<base::Value::Dict>& model_dict,
+      const std::optional<base::DictValue>& model_dict,
       const base::Uuid& uuid,
       const base::FilePath& dlc_root,
       const std::string& version,

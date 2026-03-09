@@ -339,7 +339,7 @@ void FrameAnnotatorStreamManipulator::FlushSkSurfaceToBuffer(
 }
 
 void FrameAnnotatorStreamManipulator::OnOptionsUpdated(
-    const base::Value::Dict& json_values) {
+    const base::DictValue& json_values) {
   if (auto flip_type = json_values.FindString(kFlipTypeKey)) {
     std::string_view name = *flip_type;
     if (name == "default") {

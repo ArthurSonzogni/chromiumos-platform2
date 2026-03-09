@@ -727,7 +727,7 @@ std::optional<std::string> EapCredentials::TranslateSubjectAlternativeNameMatch(
           << json_value.error().message;
       return std::nullopt;
     }
-    base::Value::Dict deserialized_value = std::move(json_value->GetDict());
+    base::DictValue deserialized_value = std::move(json_value->GetDict());
 
     const std::string* type = deserialized_value.FindString(
         kEapSubjectAlternativeNameMatchTypeProperty);

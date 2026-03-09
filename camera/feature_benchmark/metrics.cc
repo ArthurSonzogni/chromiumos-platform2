@@ -47,7 +47,7 @@ void Metrics::AddMetricSample(const std::string& name, double val) {
 void Metrics::OutputMetricsToJsonFile(const base::FilePath& output_file_path) {
   CalculateStatistics();
 
-  base::Value::List json_output;
+  base::ListValue json_output;
   constexpr char kFunctionNameKey[] = "function_name";
   constexpr char kMetricNameKey[] = "metric_name";
   constexpr char kAvgMetricName[] = "avg";
@@ -64,35 +64,35 @@ void Metrics::OutputMetricsToJsonFile(const base::FilePath& output_file_path) {
   // //camera/tracing/sql/camera_core_metrics.proto
   for (auto const& [name, metric] : metric_dict_) {
     json_output.Append(
-        base::Value::Dict()
+        base::DictValue()
             .Set(kFunctionNameKey, name)
             .Set(kMetricNameKey, kAvgMetricName)
             .Set(kUnitKey, metric.unit)
             .Set(kValueKey, static_cast<int>(metric.statistics.avg))
             .Set(kBiggerIsBetterKey, metric.bigger_is_better));
     json_output.Append(
-        base::Value::Dict()
+        base::DictValue()
             .Set(kFunctionNameKey, name)
             .Set(kMetricNameKey, kStddevMetricName)
             .Set(kUnitKey, metric.unit)
             .Set(kValueKey, static_cast<int>(metric.statistics.stddev))
             .Set(kBiggerIsBetterKey, false));
     json_output.Append(
-        base::Value::Dict()
+        base::DictValue()
             .Set(kFunctionNameKey, name)
             .Set(kMetricNameKey, kMinMetricName)
             .Set(kUnitKey, metric.unit)
             .Set(kValueKey, static_cast<int>(metric.statistics.min))
             .Set(kBiggerIsBetterKey, metric.bigger_is_better));
     json_output.Append(
-        base::Value::Dict()
+        base::DictValue()
             .Set(kFunctionNameKey, name)
             .Set(kMetricNameKey, kMaxMetricName)
             .Set(kUnitKey, metric.unit)
             .Set(kValueKey, static_cast<int>(metric.statistics.max))
             .Set(kBiggerIsBetterKey, metric.bigger_is_better));
     json_output.Append(
-        base::Value::Dict()
+        base::DictValue()
             .Set(kFunctionNameKey, name)
             .Set(kMetricNameKey, kCountMetricName)
             .Set(kUnitKey, kCountUnit)

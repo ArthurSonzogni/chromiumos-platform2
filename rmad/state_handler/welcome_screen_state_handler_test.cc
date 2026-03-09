@@ -155,10 +155,10 @@ TEST_F(WelcomeScreenStateHandlerTest,
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   CHECK_EQ(events->size(), 1);
 
-  const base::Value::Dict* verification_result =
+  const base::DictValue* verification_result =
       (*events)[0].GetDict().FindDict(kDetails);
   EXPECT_TRUE(verification_result->FindBool(kLogIsCompliant).has_value());
   EXPECT_TRUE(verification_result->FindBool(kLogIsCompliant).value());
@@ -217,10 +217,10 @@ TEST_F(WelcomeScreenStateHandlerTest,
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   CHECK_EQ(events->size(), 1);
 
-  const base::Value::Dict* verification_result =
+  const base::DictValue* verification_result =
       (*events)[0].GetDict().FindDict(kDetails);
   EXPECT_TRUE(verification_result->FindBool(kLogIsCompliant).has_value());
   EXPECT_FALSE(verification_result->FindBool(kLogIsCompliant).value());

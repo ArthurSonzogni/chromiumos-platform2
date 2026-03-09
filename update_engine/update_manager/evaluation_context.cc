@@ -219,12 +219,12 @@ bool EvaluationContext::RunOnValueChangeOrTimeout(base::OnceClosure callback) {
 }
 
 string EvaluationContext::DumpContext() const {
-  base::Value::Dict variables;
+  base::DictValue variables;
   for (auto& it : value_cache_) {
     variables.Set(it.first->GetName(), it.second.ToString());
   }
 
-  base::Value::Dict value;
+  base::DictValue value;
   value.Set("variables", std::move(variables));
   value.Set(
       "evaluation_start_wallclock",

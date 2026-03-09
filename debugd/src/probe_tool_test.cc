@@ -29,7 +29,7 @@ class ProbeToolForTesting : public ProbeTool {
   using ProbeTool::GetValidMinijailArguments;
   using ProbeTool::ProbeTool;
 
-  MOCK_METHOD(std::optional<base::Value::Dict>,
+  MOCK_METHOD(std::optional<base::DictValue>,
               LoadMinijailArguments,
               (brillo::ErrorPtr*),
               (override));

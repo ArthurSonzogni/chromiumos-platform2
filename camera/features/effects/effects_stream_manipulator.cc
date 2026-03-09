@@ -108,7 +108,7 @@ const base::FilePath kEnableOnlyRetouch("/run/camera/enable_only_retouch");
 constexpr char kMLCoreStableDelegateSettingsFile[] =
     "/etc/ml_core/stable_delegate_settings.json";
 
-bool GetStringFromKey(const base::Value::Dict& obj,
+bool GetStringFromKey(const base::DictValue& obj,
                       const std::string& key,
                       std::string* value) {
   const std::string* val = obj.FindString(key);
@@ -119,7 +119,7 @@ bool GetStringFromKey(const base::Value::Dict& obj,
   return true;
 }
 
-bool GetDoubleFromKey(const base::Value::Dict& obj,
+bool GetDoubleFromKey(const base::DictValue& obj,
                       const std::string& key,
                       double* value) {
   std::optional<double> val = obj.FindDouble(key);
@@ -401,7 +401,7 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
     ProcessContext still_process_context;
   };
 
-  void OnOptionsUpdated(const base::Value::Dict& json_values);
+  void OnOptionsUpdated(const base::DictValue& json_values);
 
   void SetEffect(EffectsConfig new_config);
   bool SetupGlThread(base::FilePath config_file_path);
@@ -960,7 +960,7 @@ void EffectsStreamManipulatorImpl::PostProcess(int64_t timestamp,
 }
 
 void EffectsStreamManipulatorImpl::OnOptionsUpdated(
-    const base::Value::Dict& json_values) {
+    const base::DictValue& json_values) {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   LOGF(INFO) << "Reloadable Options update detected";
   CHECK(pipeline_);

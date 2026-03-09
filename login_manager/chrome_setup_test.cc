@@ -288,7 +288,7 @@ TEST_F(ChromeSetupTest, TestPowerButtonPosition) {
   login_manager::SetUpPowerButtonPositionFlag(&builder_, &cros_config_);
   argv = builder_.arguments();
   ASSERT_EQ(1, argv.size());
-  base::Value::Dict position_info;
+  base::DictValue position_info;
   position_info.Set(login_manager::kPowerButtonEdgeField,
                     std::move(kPowerButtonEdge));
   double position_as_double = 0;

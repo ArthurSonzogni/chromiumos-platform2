@@ -830,7 +830,7 @@ class EcComponentFunctionTestECVersion : public EcComponentFunctionTest {
   }
 
   std::unique_ptr<MockEcComponentFunction> probe_function_{
-      CreateProbeFunction<MockEcComponentFunction>(base::Value::Dict{})};
+      CreateProbeFunction<MockEcComponentFunction>(base::DictValue{})};
 };
 
 TEST_F(EcComponentFunctionTestECVersion, MatchRO) {
@@ -921,7 +921,7 @@ TEST_F(EcComponentFunctionTest, ProbeWithManifestPathSuccess) {
         ]
       }
     )JSON");
-  base::Value::Dict argument;
+  base::DictValue argument;
   argument.Set("manifest_path", GetPathUnderRoot(manifest_path).value());
 
   auto probe_function = CreateProbeFunction<MockEcComponentFunction>(argument);
@@ -931,7 +931,7 @@ TEST_F(EcComponentFunctionTest, ProbeWithManifestPathSuccess) {
 
 TEST_F(EcComponentFunctionTest, ProbeWithManifestPathNonFactoryMode) {
   mock_context()->SetFactoryMode(false);
-  base::Value::Dict argument;
+  base::DictValue argument;
   argument.Set("manifest_path", "/a/fake/path/manifest.json");
   ASSERT_FALSE(CreateProbeFunction<MockEcComponentFunction>(argument));
 }
@@ -956,7 +956,7 @@ TEST_F(EcComponentFunctionTest, ProbeWithIshManifestPathSuccess) {
         ]
       }
     )JSON");
-  base::Value::Dict argument;
+  base::DictValue argument;
   argument.Set("ish_manifest_path", GetPathUnderRoot(manifest_path).value());
 
   auto probe_function = CreateProbeFunction<MockEcComponentFunction>(argument);
@@ -967,7 +967,7 @@ TEST_F(EcComponentFunctionTest, ProbeWithIshManifestPathSuccess) {
 TEST_F(EcComponentFunctionTest, ProbeWithIshManifestPathNonFactoryMode) {
   mock_context()->SetFactoryMode(false);
   SetUpIshDevice();
-  base::Value::Dict argument;
+  base::DictValue argument;
   argument.Set("ish_manifest_path", "/a/fake/path/manifest.json");
   ASSERT_FALSE(CreateProbeFunction<MockEcComponentFunction>(argument));
 }

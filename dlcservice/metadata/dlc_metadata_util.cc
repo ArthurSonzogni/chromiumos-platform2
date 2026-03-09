@@ -166,7 +166,7 @@ int DlcMetadataUtil::GetMetadata() {
     return EX_SOFTWARE;
   }
 
-  auto dict = base::Value::Dict()
+  auto dict = base::DictValue()
                   .Set("manifest", std::move(entry->manifest))
                   .Set("table", entry->table);
   auto json =
@@ -195,7 +195,7 @@ int DlcMetadataUtil::SetMetadata() {
 
 int DlcMetadataUtil::ListDlcIds() {
   const auto& ids = metadata_->ListDlcIds(filter_key_, filter_val_);
-  auto id_list = base::Value::List::with_capacity(ids.size());
+  auto id_list = base::ListValue::with_capacity(ids.size());
   for (const auto& id : ids) {
     id_list.Append(id);
   }

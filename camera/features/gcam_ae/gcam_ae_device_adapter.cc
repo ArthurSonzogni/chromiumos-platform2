@@ -66,14 +66,14 @@ AeParameters GcamAeDeviceAdapter::ComputeAeParameters(
   return AeParameters();
 }
 
-std::optional<base::Value::Dict> GcamAeDeviceAdapter::MaybeOverrideOptions(
-    const base::Value::Dict& json_values,
+std::optional<base::DictValue> GcamAeDeviceAdapter::MaybeOverrideOptions(
+    const base::DictValue& json_values,
     const Camera3CaptureDescriptor& result) {
   return std::nullopt;
 }
 
-base::Value::Dict GcamAeDeviceAdapter::GetOverriddenOptions(
-    const base::Value::Dict& json_values) {
+base::DictValue GcamAeDeviceAdapter::GetOverriddenOptions(
+    const base::DictValue& json_values) {
   return json_values.Clone();
 }
 

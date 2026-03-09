@@ -29,7 +29,7 @@ class ShillProxy : public SystemServiceProxy {
   // Gets the properties associated with the interface named |interface_name|
   // of a D-Bus object identified by |object_path| through the GetProperties()
   // D-Bus method exposed by shill. Returns std::nullopt on error.
-  std::optional<base::Value::Dict> GetProperties(
+  std::optional<base::DictValue> GetProperties(
       const std::string& interface_name,
       const dbus::ObjectPath& object_path) override;
 

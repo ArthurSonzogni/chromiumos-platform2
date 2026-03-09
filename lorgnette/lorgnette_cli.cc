@@ -482,23 +482,23 @@ bool DoScan(std::unique_ptr<ManagerProxy> manager,
 
 std::string ScannerCapabilitiesToJson(
     const lorgnette::ScannerCapabilities& caps) {
-  base::Value::Dict caps_dict;
+  base::DictValue caps_dict;
 
   for (const lorgnette::DocumentSource& source : caps.sources()) {
-    base::Value::Dict source_dict;
+    base::DictValue source_dict;
     source_dict.Set("Name", source.name());
     if (source.has_area()) {
-      base::Value::Dict area_dict;
+      base::DictValue area_dict;
       area_dict.Set("Width", RoundThousandth(source.area().width()));
       area_dict.Set("Height", RoundThousandth(source.area().height()));
       source_dict.Set("ScannableArea", std::move(area_dict));
     }
-    base::Value::List resolution_list;
+    base::ListValue resolution_list;
     for (const uint32_t resolution : source.resolutions()) {
       resolution_list.Append(static_cast<int>(resolution));
     }
     source_dict.Set("Resolutions", std::move(resolution_list));
-    base::Value::List color_mode_list;
+    base::ListValue color_mode_list;
     for (const int color_mode : source.color_modes()) {
       color_mode_list.Append(lorgnette::ColorMode_Name(color_mode));
     }

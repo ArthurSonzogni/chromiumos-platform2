@@ -79,13 +79,13 @@ std::string EnumToString(mojom::MemtesterTestItemEnum subtest_enum) {
 }
 
 // Convert memory v2 routine detail to v1 format output.
-base::Value::Dict ConvertToValueInV1Format(
+base::DictValue ConvertToValueInV1Format(
     const mojom::MemoryRoutineDetailPtr& detail) {
-  base::Value::Dict output_dict;
+  base::DictValue output_dict;
   // Holds the results of all subtests.
-  base::Value::Dict subtest_dict;
+  base::DictValue subtest_dict;
   // Holds all the parsed output from memtester.
-  base::Value::Dict result_dict;
+  base::DictValue result_dict;
 
   result_dict.Set("bytesTested", base::NumberToString(detail->bytes_tested));
   for (const auto& subtest_name : detail->result->passed_items) {
@@ -105,10 +105,10 @@ base::Value::Dict ConvertToValueInV1Format(
   return output_dict;
 }
 
-base::Value::Dict ConvertRoutineDetailToOutputDict(
+base::DictValue ConvertRoutineDetailToOutputDict(
     const mojom::RoutineDetailPtr& detail) {
   if (detail.is_null()) {
-    return base::Value::Dict();
+    return base::DictValue();
   }
   switch (detail->which()) {
     case mojom::RoutineDetail::Tag::kUnrecognizedArgument: {

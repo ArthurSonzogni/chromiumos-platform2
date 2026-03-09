@@ -35,7 +35,7 @@ TestImage::PixelFormat StringToPixelFormat(const std::string& str) {
 
 TestImage::Metadata ParseMetadata(const base::Value& value) {
   CHECK(value.is_dict());
-  const base::Value::Dict& dict = value.GetDict();
+  const base::DictValue& dict = value.GetDict();
 
   const std::optional<int> width = dict.FindInt("width");
   const std::optional<int> height = dict.FindInt("height");
@@ -47,7 +47,7 @@ TestImage::Metadata ParseMetadata(const base::Value& value) {
   CHECK_NE(pixel_format, TestImage::PixelFormat::kUnknown);
 
   std::vector<Rect<uint32_t>> face_rectangles;
-  const base::Value::List* face_rects_value = dict.FindList("face_rectangles");
+  const base::ListValue* face_rects_value = dict.FindList("face_rectangles");
   if (face_rects_value) {
     for (auto& face_rect_value : *face_rects_value) {
       CHECK(face_rect_value.is_list());

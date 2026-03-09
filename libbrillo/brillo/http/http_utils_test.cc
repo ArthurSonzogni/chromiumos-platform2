@@ -155,7 +155,7 @@ TEST(HttpUtils, SendRequest_Headers) {
   static const char json_echo_url[] = "http://localhost/echo/json";
   auto JsonEchoHandler = [](const fake::ServerRequest& request,
                             fake::ServerResponse* response) {
-    base::Value::Dict json;
+    base::DictValue json;
     json.Set("method", request.GetMethod());
     json.Set("data", request.GetDataAsString());
     for (const auto& pair : request.GetHeaders()) {

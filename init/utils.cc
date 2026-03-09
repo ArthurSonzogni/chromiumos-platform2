@@ -229,7 +229,7 @@ void EnsureKernelIsBootable(const base::FilePath root_disk,
   sync();
 }
 
-int GetPartitionNumFromImageVars(const base::Value::Dict& image_dict,
+int GetPartitionNumFromImageVars(const base::DictValue& image_dict,
                                  std::string_view key) {
   const std::string* value = image_dict.FindString(key);
   CHECK_NE(value, nullptr);

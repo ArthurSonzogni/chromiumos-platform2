@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
 
   base::RunLoop run_loop;
   probe_config->Eval(base::BindOnce(
-      [](base::OnceClosure quit_closure, base::Value::Dict probe_result) {
+      [](base::OnceClosure quit_closure, base::DictValue probe_result) {
         std::cout << probe_result;
         std::move(quit_closure).Run();
       },

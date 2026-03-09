@@ -538,7 +538,7 @@ std::optional<base::Value> LvmCommandRunner::UnwrapReportContents(
     return std::nullopt;
   }
 
-  base::Value::List* report_list = report->GetDict().FindList("report");
+  base::ListValue* report_list = report->GetDict().FindList("report");
   if (!report_list) {
     LOG(ERROR) << "Failed to find 'report' list";
     return std::nullopt;
@@ -555,7 +555,7 @@ std::optional<base::Value> LvmCommandRunner::UnwrapReportContents(
     return std::nullopt;
   }
 
-  base::Value::List* key_list = report_dictionary.GetDict().FindList(key);
+  base::ListValue* key_list = report_dictionary.GetDict().FindList(key);
   if (!key_list) {
     LOG(ERROR) << "Failed to find " << key << " list";
     return std::nullopt;

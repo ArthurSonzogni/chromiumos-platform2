@@ -31,7 +31,7 @@ class MockProbeStatement : public ProbeStatement {
  public:
   MOCK_METHOD(void,
               Eval,
-              (base::OnceCallback<void(base::Value::List)>),
+              (base::OnceCallback<void(base::ListValue)>),
               (const, override));
   MOCK_METHOD(std::optional<base::Value>,
               GetInformation,
@@ -49,14 +49,13 @@ class ComponentCategoryTest : public ::testing::Test {
   void SetComponent(
       ComponentCategory& component_category,
       const std::string& component_name,
-      const base::Value::List& eval_result,
+      const base::ListValue& eval_result,
       const std::optional<base::Value>& information = std::nullopt,
       const std::optional<std::string>& position = std::nullopt) {
     auto probe_statement = std::make_unique<NiceMock<MockProbeStatement>>();
     ON_CALL(*probe_statement, Eval)
         .WillByDefault(
-            [&eval_result](
-                base::OnceCallback<void(base::Value::List)> callback) {
+            [&eval_result](base::OnceCallback<void(base::ListValue)> callback) {
               std::move(callback).Run(eval_result.Clone());
             });
 
@@ -142,7 +141,7 @@ TEST_F(ComponentCategoryTest, Eval) {
     }
   ])",
                                     base::JSON_PARSE_CHROMIUM_EXTENSIONS);
-  base::test::TestFuture<base::Value::List> future;
+  base::test::TestFuture<base::ListValue> future;
   category->Eval(future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
 }
@@ -191,7 +190,7 @@ TEST_F(ComponentCategoryTest, EvalWithInformation) {
     }
   ])",
                                     base::JSON_PARSE_CHROMIUM_EXTENSIONS);
-  base::test::TestFuture<base::Value::List> future;
+  base::test::TestFuture<base::ListValue> future;
   category->Eval(future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
 }
@@ -248,7 +247,7 @@ TEST_F(ComponentCategoryTest, EvalWithPosition) {
     }
   ])",
                                     base::JSON_PARSE_CHROMIUM_EXTENSIONS);
-  base::test::TestFuture<base::Value::List> future;
+  base::test::TestFuture<base::ListValue> future;
   category->Eval(future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
 }

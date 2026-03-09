@@ -17,7 +17,7 @@ namespace runtime_probe {
 namespace {
 
 std::vector<std::unique_ptr<Matcher>> ParseMatchers(
-    const base::Value::List& operands) {
+    const base::ListValue& operands) {
   if (operands.empty()) {
     LOG(ERROR)
         << "Logical matcher must have at least one sub-matcher in operand";
@@ -43,7 +43,7 @@ std::vector<std::unique_ptr<Matcher>> ParseMatchers(
 
 // static
 std::unique_ptr<AndMatcher> AndMatcher::Create(
-    const base::Value::List& operands) {
+    const base::ListValue& operands) {
   auto matchers = ParseMatchers(operands);
   if (matchers.empty()) {
     return nullptr;
@@ -58,7 +58,7 @@ AndMatcher::AndMatcher(std::vector<std::unique_ptr<Matcher>> matchers)
 
 AndMatcher::~AndMatcher() = default;
 
-bool AndMatcher::Match(const base::Value::Dict& component) const {
+bool AndMatcher::Match(const base::DictValue& component) const {
   for (const auto& matcher : matchers_) {
     if (!matcher->Match(component)) {
       return false;
@@ -68,8 +68,7 @@ bool AndMatcher::Match(const base::Value::Dict& component) const {
 }
 
 // static
-std::unique_ptr<OrMatcher> OrMatcher::Create(
-    const base::Value::List& operands) {
+std::unique_ptr<OrMatcher> OrMatcher::Create(const base::ListValue& operands) {
   auto matchers = ParseMatchers(operands);
   if (matchers.empty()) {
     return nullptr;
@@ -84,7 +83,7 @@ OrMatcher::OrMatcher(std::vector<std::unique_ptr<Matcher>> matchers)
 
 OrMatcher::~OrMatcher() = default;
 
-bool OrMatcher::Match(const base::Value::Dict& component) const {
+bool OrMatcher::Match(const base::DictValue& component) const {
   for (const auto& matcher : matchers_) {
     if (matcher->Match(component)) {
       return true;

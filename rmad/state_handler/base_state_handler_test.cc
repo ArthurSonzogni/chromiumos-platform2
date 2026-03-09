@@ -176,11 +176,11 @@ TEST_F(BaseStateHandlerTest, StoreErrorCode_Success) {
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   const int num_error_codes =
       RmadErrorCode_MAX - RmadErrorCode_MIN - kExpectedErrorCodes.size() + 1;
   EXPECT_EQ(num_error_codes, events->size());
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(current_state), event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kError), event.FindInt(kType));
 

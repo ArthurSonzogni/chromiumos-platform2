@@ -209,7 +209,7 @@ int CameraHal::GetCameraInfo(int id,
   return 0;
 }
 
-void CameraHal::OnSpecUpdated(const base::Value::Dict& json_values) {
+void CameraHal::OnSpecUpdated(const base::DictValue& json_values) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   auto hal_spec = ParseHalSpecFromJsonValue(json_values);

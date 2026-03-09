@@ -75,15 +75,15 @@ class GcamAeDeviceAdapter {
   // Returns the overridden Gcam AE options if the options need update based on
   // |result|. Otherwise, returns std::nullopt. This also updates the internal
   // state that specifies which override key to use in GetOverriddenOptions().
-  virtual std::optional<base::Value::Dict> MaybeOverrideOptions(
-      const base::Value::Dict& json_values,
+  virtual std::optional<base::DictValue> MaybeOverrideOptions(
+      const base::DictValue& json_values,
       const Camera3CaptureDescriptor& result);
 
   // Returns default or overridden Gcam AE options based on the internal state
   // set by MaybeOverrideOptions(). "override" key may be left over in the
   // returned options. If so, its value should be ignored.
-  virtual base::Value::Dict GetOverriddenOptions(
-      const base::Value::Dict& json_values);
+  virtual base::DictValue GetOverriddenOptions(
+      const base::DictValue& json_values);
 };
 
 }  // namespace cros

@@ -169,7 +169,7 @@ void EmmcLifetimeRoutine::OnDebugdResultCallback(const std::string& result) {
     return;
   }
 
-  base::Value::Dict result_dict;
+  base::DictValue result_dict;
   result_dict.Set("PRE_EOL_INFO", static_cast<int>(pre_eol_info));
   result_dict.Set("DEVICE_LIFE_TIME_EST_TYP_A",
                   static_cast<int>(device_life_time_est_typ_a));

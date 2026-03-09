@@ -57,7 +57,7 @@ class Daemon : public brillo::DBusServiceDaemon,
   template <typename MessageType>
   void ProbeCallback(Daemon::DBusCallback<MessageType> cb,
                      std::unique_ptr<ProbeConfig> probe_config,
-                     base::Value::Dict probe_result);
+                     base::DictValue probe_result);
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 

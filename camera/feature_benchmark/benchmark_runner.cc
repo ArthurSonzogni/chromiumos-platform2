@@ -40,7 +40,7 @@ BenchmarkConfig::BenchmarkConfig(const base::FilePath& file_path,
   CHECK(json_values.has_value());
   CHECK(json_values->is_dict());
 
-  base::Value::Dict* test_case_config =
+  base::DictValue* test_case_config =
       json_values->GetDict().FindDict(test_case_name);
   CHECK(test_case_config != nullptr);
   test_case_config_ = std::move(*test_case_config);

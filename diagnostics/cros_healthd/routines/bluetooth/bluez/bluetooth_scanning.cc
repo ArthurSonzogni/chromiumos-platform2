@@ -28,13 +28,12 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-base::Value::Dict ConstructPeripheralDict(
-    const ScannedPeripheralDevice& device) {
-  base::Value::Dict peripheral;
+base::DictValue ConstructPeripheralDict(const ScannedPeripheralDevice& device) {
+  base::DictValue peripheral;
   const auto& rssi_history = device.rssi_history;
 
   // RSSI history.
-  base::Value::List out_rssi_history;
+  base::ListValue out_rssi_history;
   for (const auto& rssi : rssi_history) {
     out_rssi_history.Append(rssi);
   }
@@ -55,7 +54,7 @@ base::Value::Dict ConstructPeripheralDict(
   }
   // UUIDs.
   if (device.uuids.has_value()) {
-    base::Value::List out_uuids;
+    base::ListValue out_uuids;
     for (const auto& uuid : device.uuids.value()) {
       out_uuids.Append(uuid);
     }
@@ -127,11 +126,11 @@ void BluetoothScanningRoutine::PopulateStatusUpdate(
           mojom::NonInteractiveRoutineUpdate::New(status, GetStatusMessage()));
 
   if (include_output) {
-    base::Value::List peripherals;
+    base::ListValue peripherals;
     for (const auto& [unused, device] : scanned_devices_) {
       peripherals.Append(ConstructPeripheralDict(device));
     }
-    base::Value::Dict output_dict;
+    base::DictValue output_dict;
     output_dict.Set("peripherals", std::move(peripherals));
     std::string json;
     base::JSONWriter::Write(output_dict, &json);

@@ -72,9 +72,9 @@ TEST_F(RestockStateHandlerTest, GetNextStateCase_Success_Shutdown) {
     base::Value logs(base::Value::Type::DICT);
     json_store_->GetValue(kLogs, &logs);
 
-    const base::Value::List* events = logs.GetDict().FindList(kEvents);
+    const base::ListValue* events = logs.GetDict().FindList(kEvents);
     EXPECT_EQ(1, events->size());
-    const base::Value::Dict& event = (*events)[0].GetDict();
+    const base::DictValue& event = (*events)[0].GetDict();
     EXPECT_EQ(static_cast<int>(RmadState::kRestock), event.FindInt(kStateId));
     EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
     EXPECT_TRUE(event.FindDict(kDetails)->FindBool(kLogRestockOption).value());
@@ -133,9 +133,9 @@ TEST_F(RestockStateHandlerTest, GetNextStateCase_Success_Continue) {
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kRestock), event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
   EXPECT_FALSE(event.FindDict(kDetails)->FindBool(kLogRestockOption).value());

@@ -19,14 +19,14 @@ constexpr char kField[] = "field";
 
 template <typename T>
 auto MakeMatcher(std::string_view field_value) {
-  base::Value::List operands;
+  base::ListValue operands;
   operands.Append(kField);
   operands.Append(field_value);
   return T::Create(operands);
 }
 
-base::Value::Dict MakeComponent(std::string_view field_value) {
-  base::Value::Dict res;
+base::DictValue MakeComponent(std::string_view field_value) {
+  base::DictValue res;
   res.Set(kField, field_value);
   return res;
 }

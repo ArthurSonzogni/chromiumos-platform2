@@ -31,14 +31,12 @@ class BenchmarkConfig {
 
   const std::string& test_case_name() const { return test_case_name_; }
   float fps() const { return fps_; }
-  const base::Value::Dict& test_case_config() const {
-    return test_case_config_;
-  }
+  const base::DictValue& test_case_config() const { return test_case_config_; }
 
  private:
   std::string test_case_name_;
   float fps_;
-  base::Value::Dict test_case_config_;
+  base::DictValue test_case_config_;
 };
 
 class BenchmarkRunner {

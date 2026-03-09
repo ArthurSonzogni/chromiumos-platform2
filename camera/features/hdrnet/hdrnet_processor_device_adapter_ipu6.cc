@@ -50,9 +50,9 @@ constexpr char kIpu6SensorModeBinningKey[] = "ipu6::sensor_mode_binning";
 }  // namespace
 
 // static
-std::optional<base::Value::Dict>
+std::optional<base::DictValue>
 HdrNetProcessorDeviceAdapter::MaybeOverrideOptions(
-    const base::Value::Dict& json_values,
+    const base::DictValue& json_values,
     const android::CameraMetadata& result_metadata,
     HdrNetProcessorDeviceAdapter::OptionsOverrideData& data) {
   const camera_metadata_ro_entry_t sensor_mode =
@@ -65,26 +65,26 @@ HdrNetProcessorDeviceAdapter::MaybeOverrideOptions(
 }
 
 // static
-base::Value::Dict HdrNetProcessorDeviceAdapter::GetOverriddenOptions(
-    const base::Value::Dict& json_values,
+base::DictValue HdrNetProcessorDeviceAdapter::GetOverriddenOptions(
+    const base::DictValue& json_values,
     const HdrNetProcessorDeviceAdapter::OptionsOverrideData& data) {
   // The default config is for the non-binning mode, i.e. the full mode.
   if (data.sensor_mode != INTEL_VENDOR_CAMERA_SENSOR_MODE_BINNING) {
     return json_values.Clone();
   }
 
-  const base::Value::Dict* overrides = json_values.FindDict(kOverrideKey);
+  const base::DictValue* overrides = json_values.FindDict(kOverrideKey);
   if (!overrides) {
     return json_values.Clone();
   }
 
-  const base::Value::Dict* binning_override =
+  const base::DictValue* binning_override =
       overrides->FindDict(kIpu6SensorModeBinningKey);
   if (!binning_override) {
     return json_values.Clone();
   }
 
-  base::Value::Dict overridden_json_values = json_values.Clone();
+  base::DictValue overridden_json_values = json_values.Clone();
   overridden_json_values.Merge(binning_override->Clone());
   return overridden_json_values;
 }

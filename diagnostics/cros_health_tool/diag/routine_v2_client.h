@@ -44,7 +44,7 @@ class RoutineV2Client : public ash::cros_healthd::mojom::RoutineObserver {
 
  private:
   void OnRoutineDisconnection(uint32_t error, const std::string& message);
-  void PrintOutput(const base::Value::Dict& output);
+  void PrintOutput(const base::DictValue& output);
   void OnUnexpectedError(const std::string& message);
 
   // Handle state transition.

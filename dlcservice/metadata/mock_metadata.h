@@ -32,7 +32,7 @@ class MockMetadata : public MetadataInterface {
   MOCK_METHOD(bool, Set, (const DlcId&, const Entry&), (override));
   MOCK_METHOD(bool, LoadMetadata, (const DlcId&), (override));
   MOCK_METHOD(void, UpdateFileIds, (), (override));
-  MOCK_METHOD(const base::Value::Dict&, GetCache, (), (const override));
+  MOCK_METHOD(const base::DictValue&, GetCache, (), (const override));
   MOCK_METHOD(const std::set<DlcId>&, GetFileIds, (), (const override));
   MOCK_METHOD(DlcIdList,
               ListDlcIds,
@@ -44,7 +44,7 @@ class MockMetadata : public MetadataInterface {
               (override));
 
  private:
-  base::Value::Dict cache_;
+  base::DictValue cache_;
   std::set<DlcId> file_ids_;
 };
 

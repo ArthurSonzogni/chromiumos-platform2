@@ -36,7 +36,7 @@ class BRILLO_EXPORT SarConfigReader {
   bool isCellular() const;
   bool isWifi() const;
 
-  std::optional<base::Value::Dict> GetSarConfigDict() const;
+  std::optional<base::DictValue> GetSarConfigDict() const;
 
  private:
   brillo::CrosConfigInterface* const cros_config_;

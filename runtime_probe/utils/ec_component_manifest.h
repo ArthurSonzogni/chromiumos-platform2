@@ -39,14 +39,14 @@ struct EcComponentManifest {
         std::optional<std::vector<uint8_t>> mask;
         std::optional<std::vector<uint8_t>> value;
         std::optional<uint8_t> override_addr;
-        static std::optional<Expect> Create(const base::Value::Dict&);
+        static std::optional<Expect> Create(const base::DictValue&);
         int bytes;
       };
       uint8_t port;
       uint8_t addr;  // 7-bit I2C address.
       std::vector<Expect> expect;
 
-      static std::optional<I2c> Create(const base::Value::Dict&);
+      static std::optional<I2c> Create(const base::DictValue&);
     };
 
     std::string component_type;
@@ -54,14 +54,14 @@ struct EcComponentManifest {
     I2c i2c;
     ProbeStrategy probe_strategy;
 
-    static std::optional<Component> Create(const base::Value::Dict&);
+    static std::optional<Component> Create(const base::DictValue&);
   };
 
   int manifest_version;
   std::string ec_version;
   std::vector<Component> component_list;
 
-  static std::optional<EcComponentManifest> Create(const base::Value::Dict&);
+  static std::optional<EcComponentManifest> Create(const base::DictValue&);
 };
 
 // A class that reads and parses an EC component manifest file to an

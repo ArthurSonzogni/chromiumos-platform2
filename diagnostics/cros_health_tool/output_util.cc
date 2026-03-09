@@ -563,13 +563,13 @@ std::string EnumToString(mojom::NetworkBandwidthRoutineRunningInfo::Type type) {
   }
 }
 
-std::string GetSingleLineJson(const base::Value::Dict& output) {
+std::string GetSingleLineJson(const base::DictValue& output) {
   std::string json;
   base::JSONWriter::Write(output, &json);
   return json;
 }
 
-void OutputJson(const base::Value::Dict& output) {
+void OutputJson(const base::DictValue& output) {
   std::string json;
   base::JSONWriter::WriteWithOptions(
       output, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
@@ -578,7 +578,7 @@ void OutputJson(const base::Value::Dict& output) {
 }
 
 void OutputSupportStatus(const mojom::SupportStatusPtr status) {
-  base::Value::Dict output;
+  base::DictValue output;
 
   switch (status->which()) {
     case mojom::SupportStatus::Tag::kUnmappedUnionField:

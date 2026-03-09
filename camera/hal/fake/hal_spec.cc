@@ -267,8 +267,7 @@ std::vector<CameraSpec> ParseCameraSpecs(const ListWithPath& cameras_value) {
 
 }  // namespace
 
-std::optional<HalSpec> ParseHalSpecFromJsonValue(
-    const base::Value::Dict& value) {
+std::optional<HalSpec> ParseHalSpecFromJsonValue(const base::DictValue& value) {
   HalSpec spec;
 
   DictWithPath root = {&value, {}};

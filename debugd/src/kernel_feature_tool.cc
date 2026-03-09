@@ -32,7 +32,7 @@ constexpr char kErrorPath[] = "org.chromium.debugd.KernelFeatureError";
 constexpr char kKernelFeaturesPath[] = "/etc/init/kernel-features.json";
 
 // JSON Helper to retrieve a string value given a string key
-bool GetStringFromKey(const base::Value::Dict& obj,
+bool GetStringFromKey(const base::DictValue& obj,
                       const std::string& key,
                       std::string* value) {
   const std::string* val = obj.FindString(key);
@@ -129,7 +129,7 @@ bool JsonFeatureParser::ParseFile(const base::FilePath& path,
     *err_str = "debugd: features conf not list of dicts!";
     return false;
   }
-  base::Value::Dict& feature_json_obj = item.GetDict();
+  base::DictValue& feature_json_obj = item.GetDict();
 
   KernelFeature feature_obj;
   if (!MakeFeatureObject(feature_json_obj, err_str, feature_obj)) {
@@ -154,7 +154,7 @@ bool JsonFeatureParser::ParseFile(const base::FilePath& path,
 }
 
 // KernelFeature implementation (collect and execute commands).
-bool JsonFeatureParser::MakeFeatureObject(base::Value::Dict& feature_obj,
+bool JsonFeatureParser::MakeFeatureObject(base::DictValue& feature_obj,
                                           std::string* err_str,
                                           KernelFeature& kern_feat) {
   std::string feat_name;
@@ -166,7 +166,7 @@ bool JsonFeatureParser::MakeFeatureObject(base::Value::Dict& feature_obj,
   kern_feat.SetName(feat_name);
 
   // Commands for querying if device is supported
-  base::Value::List* support_cmd_list_obj =
+  base::ListValue* support_cmd_list_obj =
       feature_obj.FindList("support_check_commands");
 
   if (!support_cmd_list_obj) {
@@ -208,7 +208,7 @@ bool JsonFeatureParser::MakeFeatureObject(base::Value::Dict& feature_obj,
   }
 
   // Commands to execute to enable feature
-  base::Value::List* cmd_list_obj = feature_obj.FindList("commands");
+  base::ListValue* cmd_list_obj = feature_obj.FindList("commands");
   if (!cmd_list_obj || cmd_list_obj->size() == 0) {
     *err_str = "debugd: Failed to get commands list in feature.";
     return false;

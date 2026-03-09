@@ -58,7 +58,7 @@ IntelPMTCollector::IntelPMTCollector(const base::FilePath& root_dir,
   if (base::ReadFileToString(root_dir_.Append(kIntelPMTConfigPath), &content)) {
     config_ = base::JSONReader::ReadDict(content,
                                          base::JSON_PARSE_CHROMIUM_EXTENSIONS)
-                  .value_or(base::Value::Dict{});
+                  .value_or(base::DictValue{});
   }
 
   // Open the log file.

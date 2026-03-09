@@ -122,7 +122,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkByType) {
   }
   // Filter by each type.
   for (const auto& expected_type : expected_types) {
-    base::Value::Dict arg;
+    base::DictValue arg;
     arg.Set("device_type", expected_type);
     auto probe_function = CreateProbeFunction<NetworkFunction>(arg);
     auto result = EvalProbeFunction(probe_function.get());
@@ -162,7 +162,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkByType) {
 }
 
 TEST_F(NetworkFunctionTest, CreateNetworkFunctionFailed) {
-  base::Value::Dict arg;
+  base::DictValue arg;
   arg.Set("device_type", "unknown_type");
   auto probe_function = CreateProbeFunction<NetworkFunction>(arg);
   EXPECT_FALSE(probe_function);

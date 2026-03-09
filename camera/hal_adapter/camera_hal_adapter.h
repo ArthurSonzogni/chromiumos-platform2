@@ -166,7 +166,7 @@ class CameraHalAdapter {
   void CacheCameraSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
   void SetCameraSWPrivacySwitchStateOnCameraModuleThread(
       mojom::CameraPrivacySwitchState state);
-  void SWPrivacySwitchOverrideChange(const base::Value::Dict& json_values);
+  void SWPrivacySwitchOverrideChange(const base::DictValue& json_values);
 
   // Gets the static metadata of a camera given the original static metadata
   // with updated metadata modifications from the camera service such as vendor

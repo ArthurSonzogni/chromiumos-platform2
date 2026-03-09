@@ -296,7 +296,7 @@ void NvmeSelfTestRoutine::OnDebugdResultCallback(const std::string& result) {
 }
 
 void NvmeSelfTestRoutine::ResetOutputDictToValue(const std::string& value) {
-  base::Value::Dict result_dict;
+  base::DictValue result_dict;
   result_dict.Set("rawData", value);
   output_dict_.Set("resultDetails", std::move(result_dict));
 }

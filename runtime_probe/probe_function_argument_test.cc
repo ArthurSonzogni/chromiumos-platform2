@@ -56,7 +56,7 @@ class ArgProbeFunction : public BaseProbeFunction {
   PROBE_FUNCTION_ARG_DEF(
       std::unique_ptr<ProbeFunction>,
       default_probe_fun,
-      CreateProbeFunction<NoArgProbeFunction>(base::Value::Dict{}));
+      CreateProbeFunction<NoArgProbeFunction>(base::DictValue{}));
 
   static bool post_parse_arg_result_;
 };
@@ -76,9 +76,9 @@ class ProbeFunctionArgumentTest : public ::testing::Test {
     arg_.Set("a_str", "");
     arg_.Set("a_int", 0);
     arg_.Set("a_bool", false);
-    arg_.Set("a_vec_int", base::Value::List{});
-    base::Value::Dict probe_fun;
-    probe_fun.Set("no_arg", base::Value::Dict{});
+    arg_.Set("a_vec_int", base::ListValue{});
+    base::DictValue probe_fun;
+    probe_fun.Set("no_arg", base::DictValue{});
     arg_.Set("a_probe_fun", std::move(probe_fun));
   }
 
@@ -87,7 +87,7 @@ class ProbeFunctionArgumentTest : public ::testing::Test {
     ArgProbeFunction::post_parse_arg_result_ = true;
   }
 
-  base::Value::Dict arg_;
+  base::DictValue arg_;
   ProbeFunction::RegisteredFunctionTableType original_function_table_;
 };
 
@@ -96,15 +96,15 @@ TEST_F(ProbeFunctionArgumentTest, Required) {
   arg_.Set("a_int", 42);
   arg_.Set("a_bool", true);
   {
-    base::Value::List tmp;
+    base::ListValue tmp;
     tmp.Append(1);
     tmp.Append(2);
     tmp.Append(3);
     arg_.Set("a_vec_int", std::move(tmp));
   }
   {
-    base::Value::Dict probe_fun;
-    probe_fun.Set("no_arg", base::Value::Dict{});
+    base::DictValue probe_fun;
+    probe_fun.Set("no_arg", base::DictValue{});
     arg_.Set("a_probe_fun", std::move(probe_fun));
   }
 
@@ -129,15 +129,15 @@ TEST_F(ProbeFunctionArgumentTest, Optional) {
   arg_.Set("default_int", 1);
   arg_.Set("opt_int", 2);
   {
-    base::Value::List tmp;
+    base::ListValue tmp;
     tmp.Append(4);
     tmp.Append(5);
     tmp.Append(6);
     arg_.Set("default_vec_int", std::move(tmp));
   }
   {
-    base::Value::Dict probe_fun;
-    probe_fun.Set("no_arg2", base::Value::Dict{});
+    base::DictValue probe_fun;
+    probe_fun.Set("no_arg2", base::DictValue{});
     arg_.Set("default_probe_fun", std::move(probe_fun));
   }
 
@@ -190,7 +190,7 @@ TEST_F(ProbeFunctionArgumentTest, WrongDefaultType) {
 
 TEST_F(ProbeFunctionArgumentTest, WrongVectorType) {
   {
-    base::Value::List tmp;
+    base::ListValue tmp;
     tmp.Append(4);
     tmp.Append("str");
     tmp.Append(6);

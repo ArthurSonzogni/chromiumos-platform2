@@ -179,7 +179,7 @@ bool CumulativeUseTimeMetric::AccumulatedActiveTime::ReadMetricsFile() {
 }
 
 bool CumulativeUseTimeMetric::AccumulatedActiveTime::WriteMetricsFile() {
-  base::Value::Dict data;
+  base::DictValue data;
   data.Set(kOsVersionHashKey, os_version_hash_);
   data.Set(kStartDayKey, start_day_);
   int64_t elapsed_milliseconds = accumulated_time_.InMilliseconds();

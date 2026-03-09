@@ -884,7 +884,7 @@ std::optional<base::Value> ChromeosStartup::GetImageVars(
     return std::nullopt;
   }
 
-  base::Value::Dict* image_vars = part_vars->GetDict().FindDict(load_vars);
+  base::DictValue* image_vars = part_vars->GetDict().FindDict(load_vars);
   if (image_vars == nullptr) {
     LOG(ERROR) << "Failed to get image variables from " << json_file;
     return std::nullopt;

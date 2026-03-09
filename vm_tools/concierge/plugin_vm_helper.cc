@@ -185,7 +185,7 @@ bool ExecutePvmHelper(const std::string& owner_id,
   }
 }
 
-static std::optional<base::Value::Dict> GetVmInfo(const VmId& vm_id) {
+static std::optional<base::DictValue> GetVmInfo(const VmId& vm_id) {
   std::string output;
   if (!ExecutePvmHelper(vm_id.owner_id(),
                         {"list", "--info", "--json", vm_id.name()}, &output)) {
@@ -267,7 +267,7 @@ void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path) {
     return;
   }
 
-  const base::Value::Dict* hardware = vm_info->FindDict("Hardware");
+  const base::DictValue* hardware = vm_info->FindDict("Hardware");
   if (!hardware) {
     LOG(ERROR) << "Failed to obtain hardware info for " << vm_id;
     return;
@@ -283,7 +283,7 @@ void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path) {
                    << "is not a dictionary";
       continue;
     }
-    const base::Value::Dict& cdrom = value.GetDict();
+    const base::DictValue& cdrom = value.GetDict();
 
     const std::string* image_name = cdrom.FindString("image");
     if (!image_name) {

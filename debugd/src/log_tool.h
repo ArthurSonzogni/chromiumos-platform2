@@ -128,7 +128,7 @@ class LogTool : public debugd::LogProvider {
     // Insert logs collected to the |dict|. Must be called after StartGetLogs().
     // It will wait maximum !timeout_seconds| seconds. The logs which have not
     // finished on time may not be collected.
-    void EndGetLogs(base::Value::Dict* dict);
+    void EndGetLogs(base::DictValue* dict);
 
    private:
     void CollectLogs(const std::map<base::FilePath, Log>& filepath_logs,
@@ -190,7 +190,7 @@ class LogTool : public debugd::LogProvider {
   bool IsUserHashValid(const std::string& userhash);
 
   void GetArcBugReportInDictionary(const std::string& username,
-                                   base::Value::Dict* dictionary);
+                                   base::DictValue* dictionary);
 
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::CryptohomeMiscInterfaceProxyInterface>

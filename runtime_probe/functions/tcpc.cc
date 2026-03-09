@@ -58,7 +58,7 @@ TcpcFunction::DataType TcpcFunction::EvalImpl() const {
       break;
     }
 
-    base::Value::Dict val;
+    base::DictValue val;
     val.Set("port", base::NumberToString(port));
     val.Set("vendor_id", base::StringPrintf("0x%x", cmd->VendorId()));
     val.Set("product_id", base::StringPrintf("0x%x", cmd->ProductId()));

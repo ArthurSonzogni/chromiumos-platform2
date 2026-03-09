@@ -398,7 +398,7 @@ FaceDetectionStreamManipulator::GetOrCreateFrameInfoEntry(int frame_number) {
 }
 
 void FaceDetectionStreamManipulator::OnOptionsUpdated(
-    const base::Value::Dict& json_values) {
+    const base::DictValue& json_values) {
   LoadIfExist(json_values, kFaceDetectionEnableKey, &options_.enable);
   LoadIfExist(json_values, kFdFrameIntervalKey, &options_.fd_frame_interval);
   LoadIfExist(json_values, kDebugKey, &options_.debug);

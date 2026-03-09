@@ -72,7 +72,7 @@ bool SetBytes(const std::string* value, T& val) {
 }
 
 template <typename T>
-bool SetDict(const base::Value::Dict* dict, T& val) {
+bool SetDict(const base::DictValue* dict, T& val) {
   if (!dict) {
     return false;
   }
@@ -85,7 +85,7 @@ bool SetDict(const base::Value::Dict* dict, T& val) {
 }
 
 template <typename T>
-bool SetList(const base::Value::List* list, std::vector<T>& vec) {
+bool SetList(const base::ListValue* list, std::vector<T>& vec) {
   if (!list) {
     return false;
   }
@@ -118,7 +118,7 @@ std::optional<std::string> GetEcProjectName() {
   return std::nullopt;
 }
 
-bool SetBytesFromDict(const base::Value::Dict& dv,
+bool SetBytesFromDict(const base::DictValue& dv,
                       std::string_view key,
                       std::string_view multi_byte_key,
                       std::string_view override_key,
@@ -152,8 +152,7 @@ bool SetBytesFromDict(const base::Value::Dict& dv,
 }  // namespace
 
 std::optional<EcComponentManifest::Component::I2c::Expect>
-EcComponentManifest::Component::I2c::Expect::Create(
-    const base::Value::Dict& dv) {
+EcComponentManifest::Component::I2c::Expect::Create(const base::DictValue& dv) {
   EcComponentManifest::Component::I2c::Expect ret{};
   if (!SetHexValue(dv.FindString("reg"), ret.reg)) {
     LOG(ERROR) << "Invalid or missing field: reg";
@@ -205,7 +204,7 @@ EcComponentManifest::Component::I2c::Expect::Create(
 }
 
 std::optional<EcComponentManifest::Component::I2c>
-EcComponentManifest::Component::I2c::Create(const base::Value::Dict& dv) {
+EcComponentManifest::Component::I2c::Create(const base::DictValue& dv) {
   EcComponentManifest::Component::I2c ret{};
   if (!SetValue(dv.FindInt("port"), ret.port)) {
     LOG(ERROR) << "Invalid or missing field: port";
@@ -224,7 +223,7 @@ EcComponentManifest::Component::I2c::Create(const base::Value::Dict& dv) {
 }
 
 std::optional<EcComponentManifest::Component>
-EcComponentManifest::Component::Create(const base::Value::Dict& dv) {
+EcComponentManifest::Component::Create(const base::DictValue& dv) {
   EcComponentManifest::Component ret{};
   if (!SetValue(dv.FindString("component_type"), ret.component_type)) {
     LOG(ERROR) << "Invalid or missing field: component_type";
@@ -250,7 +249,7 @@ EcComponentManifest::Component::Create(const base::Value::Dict& dv) {
 }
 
 std::optional<EcComponentManifest> EcComponentManifest::Create(
-    const base::Value::Dict& dv) {
+    const base::DictValue& dv) {
   EcComponentManifest ret{};
   if (!SetValue(dv.FindInt("manifest_version"), ret.manifest_version)) {
     LOG(ERROR) << "Invalid or missing field: manifest_version";

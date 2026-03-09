@@ -22,7 +22,7 @@ using dlcservice::metadata::MockMetadata;
 namespace {
 MockMetadata::Entry MakeTestMetadata() {
   return {
-      .manifest = base::Value::Dict()
+      .manifest = base::DictValue()
                       .Set("table-sha256-hash",
                            "4bbb4dc53254e28c6a870d979cbdeaee"
                            "9ad86fae66a8664dd939e6e0f70eb681")

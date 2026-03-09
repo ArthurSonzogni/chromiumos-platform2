@@ -90,7 +90,7 @@ bool BiodStorage::WriteRecord(
   }
 
   const std::string& record_id(record_metadata.record_id);
-  base::Value::Dict record_value;
+  base::DictValue record_value;
   record_value.Set(kLabel, record_metadata.label);
   record_value.Set(kRecordId, record_id);
   record_value.Set(kValidationVal, record_metadata.GetValidationValBase64());
@@ -140,7 +140,7 @@ bool BiodStorage::WriteRecord(
 
 std::unique_ptr<std::vector<uint8_t>>
 BiodStorage::ReadValidationValueFromRecord(
-    const base::Value::Dict& record_dictionary, const FilePath& record_path) {
+    const base::DictValue& record_dictionary, const FilePath& record_path) {
   std::string validation_val_str;
 
   const std::string* validation_val_str_ptr =
@@ -253,7 +253,7 @@ std::optional<BiodStorageInterface::Record> BiodStorage::ReadRecordFromPath(
     LOG(ERROR) << "Value " << record_path.value() << " is not a dictionary.";
     return record;
   }
-  base::Value::Dict record_dictionary = std::move(record_value->GetDict());
+  base::DictValue record_dictionary = std::move(record_value->GetDict());
 
   const std::string* record_id = record_dictionary.FindString(kRecordId);
 

@@ -70,7 +70,7 @@ std::optional<base::Value> SystemServiceProxy::CallMethodAndGetResponseAsValue(
   return std::optional<base::Value>(dbus::PopDataAsValue(&reader));
 }
 
-std::optional<base::Value::Dict> SystemServiceProxy::GetProperties(
+std::optional<base::DictValue> SystemServiceProxy::GetProperties(
     const std::string& interface_name, const dbus::ObjectPath& object_path) {
   dbus::MethodCall method_call(kDBusPropertiesInterface,
                                kDBusPropertiesGetAllMethod);
@@ -83,10 +83,10 @@ std::optional<base::Value::Dict> SystemServiceProxy::GetProperties(
   return std::move(response->GetDict());
 }
 
-base::Value::Dict SystemServiceProxy::BuildObjectPropertiesMap(
+base::DictValue SystemServiceProxy::BuildObjectPropertiesMap(
     const std::string& interface_name,
     const std::vector<dbus::ObjectPath>& object_paths) {
-  base::Value::Dict result;
+  base::DictValue result;
   for (const auto& object_path : object_paths) {
     result.Set(object_path.value(),
                *GetProperties(interface_name, object_path));
@@ -96,10 +96,9 @@ base::Value::Dict SystemServiceProxy::BuildObjectPropertiesMap(
 
 // static
 std::vector<dbus::ObjectPath> SystemServiceProxy::GetObjectPaths(
-    const base::Value::Dict& properties, const std::string& property_name) {
+    const base::DictValue& properties, const std::string& property_name) {
   std::vector<dbus::ObjectPath> object_paths;
-  const base::Value::List* paths =
-      properties.FindListByDottedPath(property_name);
+  const base::ListValue* paths = properties.FindListByDottedPath(property_name);
   if (paths != nullptr) {
     for (const auto& path : *paths) {
       if (path.is_string()) {

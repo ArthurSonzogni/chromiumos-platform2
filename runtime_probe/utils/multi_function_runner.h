@@ -27,7 +27,7 @@ class MultiFunctionRunner {
 
   // Run all probe functions in the runner, and the callback will receive the
   // collected results.
-  void Run(base::OnceCallback<void(base::Value::List)> callback) const;
+  void Run(base::OnceCallback<void(base::ListValue)> callback) const;
 
   // Return if all functions in the runner are valid.
   bool IsValid() const;

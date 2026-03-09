@@ -44,7 +44,7 @@ class IntelPMTCollectorTest : public testing::Test {
 
   base::FilePath GetRoot() { return temp_dir_.GetPath(); }
 
-  void CreateConfig(const base::Value::Dict& config) {
+  void CreateConfig(const base::DictValue& config) {
     std::string json;
     base::JSONWriter::WriteWithOptions(
         config, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
@@ -118,7 +118,7 @@ TEST_F(IntelPMTCollectorTest, NoConfig) {
 }
 
 TEST_F(IntelPMTCollectorTest, EmptyConfigShouldWork) {
-  base::Value::Dict config;
+  base::DictValue config;
   CreateConfig(config);
   Init();
 
@@ -126,7 +126,7 @@ TEST_F(IntelPMTCollectorTest, EmptyConfigShouldWork) {
 }
 
 TEST_F(IntelPMTCollectorTest, WrongHeaderWillBeFixed) {
-  base::Value::Dict config;
+  base::DictValue config;
   CreateConfig(config);
   Init();
 
@@ -141,7 +141,7 @@ TEST_F(IntelPMTCollectorTest, WrongHeaderWillBeFixed) {
 }
 
 TEST_F(IntelPMTCollectorTest, DefaultEmptyLog) {
-  base::Value::Dict config;
+  base::DictValue config;
   CreateConfig(config);
   Init();
 
@@ -151,7 +151,7 @@ TEST_F(IntelPMTCollectorTest, DefaultEmptyLog) {
 }
 
 TEST_F(IntelPMTCollectorTest, VerifyCounterAndSnapshotContent) {
-  base::Value::Dict config;
+  base::DictValue config;
   CreateConfig(config);
   Init();
 
@@ -212,7 +212,7 @@ TEST_F(IntelPMTCollectorTest, CleanUpInNextBootUp) {
 }
 
 TEST_F(IntelPMTCollectorTest, NoCleanUpWithinSameLifeCycle) {
-  base::Value::Dict config;
+  base::DictValue config;
   CreateConfig(config);
   Init();
 

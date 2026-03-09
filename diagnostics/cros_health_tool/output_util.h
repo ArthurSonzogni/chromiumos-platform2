@@ -78,7 +78,7 @@ std::string EnumToString(
 template <typename T>
 void SetJsonDictValue(std::string_view key,
                       const T& value,
-                      base::Value::Dict* output) {
+                      base::DictValue* output) {
   if constexpr (std::is_same_v<T, uint32_t> || std::is_same_v<T, int64_t> ||
                 std::is_same_v<T, uint64_t>) {
     // |base::Value| doesn't support these types, we need to convert them to
@@ -140,7 +140,7 @@ void SetJsonDictValue(std::string_view key,
   } else if constexpr (std::is_enum_v<T>) {
     SetJsonDictValue(key, EnumToString(value), output);
   } else if constexpr (std::is_same_v<T, std::vector<std::string>>) {
-    base::Value::List string_vector;
+    base::ListValue string_vector;
     for (const auto& s : value) {
       string_vector.Append(s);
     }
@@ -154,9 +154,9 @@ void SetJsonDictValue(std::string_view key,
   }
 }
 
-std::string GetSingleLineJson(const base::Value::Dict& output);
+std::string GetSingleLineJson(const base::DictValue& output);
 
-void OutputJson(const base::Value::Dict& output);
+void OutputJson(const base::DictValue& output);
 
 void OutputSupportStatus(
     const ash::cros_healthd::mojom::SupportStatusPtr status);

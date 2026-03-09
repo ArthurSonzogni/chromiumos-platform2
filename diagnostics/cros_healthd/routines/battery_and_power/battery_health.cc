@@ -30,7 +30,7 @@ bool TestWearPercentage(
     uint8_t percent_battery_wear_allowed,
     mojom::DiagnosticRoutineStatusEnum* status,
     std::string* status_message,
-    base::Value::Dict* result_dict) {
+    base::DictValue* result_dict) {
   DCHECK(status);
   DCHECK(status_message);
   DCHECK(result_dict);
@@ -72,7 +72,7 @@ bool TestCycleCount(
     uint32_t maximum_cycle_count,
     mojom::DiagnosticRoutineStatusEnum* status,
     std::string* status_message,
-    base::Value::Dict* result_dict) {
+    base::DictValue* result_dict) {
   DCHECK(status);
   DCHECK(status_message);
   DCHECK(result_dict);
@@ -113,9 +113,9 @@ SimpleRoutine::RoutineResult GetBatteryHealthResult(
 
   mojom::DiagnosticRoutineStatusEnum status;
   std::string status_message;
-  base::Value::Dict output_dict;
+  base::DictValue output_dict;
 
-  base::Value::Dict result_dict;
+  base::DictValue result_dict;
 
   auto power_supply_proto = response.value();
   auto present =

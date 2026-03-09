@@ -45,7 +45,7 @@ JsonStore::ReadError TranslateJsonFileReadErrors(const base::Value* value,
   return JsonStore::READ_ERROR_NONE;
 }
 
-bool SerializeValue(const base::Value::Dict& value, std::string* output) {
+bool SerializeValue(const base::DictValue& value, std::string* output) {
   JSONStringValueSerializer serializer(output);
   serializer.set_pretty_print(false);
   return serializer.Serialize(value);
@@ -113,7 +113,7 @@ bool JsonStore::GetValue(const std::string& key, base::Value* value) const {
   return true;
 }
 
-base::Value::Dict JsonStore::GetValues() const {
+base::DictValue JsonStore::GetValues() const {
   return data_.Clone();
 }
 
@@ -137,7 +137,7 @@ bool JsonStore::RemoveKey(const std::string& key) {
 }
 
 bool JsonStore::Clear() {
-  data_ = base::Value::Dict();
+  data_ = base::DictValue();
   return WriteToFile(true);
 }
 
@@ -148,7 +148,7 @@ bool JsonStore::ClearAndDeleteFile() {
 bool JsonStore::InitFromFile(bool read_only) {
   initialized_ = false;
   std::unique_ptr<JsonStore::ReadResult> read_result = ReadFromFile();
-  data_ = base::Value::Dict();
+  data_ = base::DictValue();
   read_only_ = read_only;
   read_error_ = read_result->read_error;
   switch (read_error_) {

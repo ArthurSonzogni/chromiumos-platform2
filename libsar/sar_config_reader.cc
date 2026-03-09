@@ -41,7 +41,7 @@ bool SarConfigReader::isWifi() const {
   return devlink_.find(kWifi) != std::string::npos;
 }
 
-std::optional<base::Value::Dict> SarConfigReader::GetSarConfigDict() const {
+std::optional<base::DictValue> SarConfigReader::GetSarConfigDict() const {
   std::string config_filename = "";
   for (int i = 0; i < kSystemPathIndexLimit; ++i) {
     std::string system_path;

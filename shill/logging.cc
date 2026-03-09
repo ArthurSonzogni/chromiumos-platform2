@@ -62,7 +62,7 @@ bool PersistOverrideLogConfig(const base::FilePath& path, bool enabled) {
     return true;
   }
   // write config
-  base::Value::Dict log_config;
+  base::DictValue log_config;
 
   std::string tags = ScopeLogger::GetInstance()->GetEnabledScopeNames();
   int level = logging::GetMinLogLevel();

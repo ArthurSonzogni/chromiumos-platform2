@@ -168,8 +168,8 @@ class MemoryRoutineAdapterTest : public MemoryRoutineTestBase {
     }
   }
 
-  // A utility function to parse a mojo::ScopedHandle into a base::Value::Dict.
-  base::Value::Dict GetJsonFromOutput(mojo::ScopedHandle output) {
+  // A utility function to parse a mojo::ScopedHandle into a base::DictValue.
+  base::DictValue GetJsonFromOutput(mojo::ScopedHandle output) {
     EXPECT_TRUE(output->is_valid());
 
     auto json = base::JSONReader::Read(
@@ -223,7 +223,7 @@ class MemoryRoutineAdapterTest : public MemoryRoutineTestBase {
     return mojom::MemtesterTestItemEnum::kUnknown;
   }
 
-  void GetSubtestStatus(const base::Value::Dict& json,
+  void GetSubtestStatus(const base::DictValue& json,
                         std::set<mojom::MemtesterTestItemEnum>& passed_tests,
                         std::set<mojom::MemtesterTestItemEnum>& failed_tests) {
     auto result_details = json.FindDict("resultDetails");
@@ -481,7 +481,7 @@ TEST_F(MemoryRoutineAdapterTest, StuckAddressFailure) {
   EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
   EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
             mojom::DiagnosticRoutineStatusEnum::kFailed);
-  base::Value::Dict json = GetJsonFromOutput(std::move(update->output));
+  base::DictValue json = GetJsonFromOutput(std::move(update->output));
   std::set<mojom::MemtesterTestItemEnum> passed, failed;
   GetSubtestStatus(json, passed, failed);
   EXPECT_EQ(passed, expected_passed);
@@ -531,7 +531,7 @@ TEST_F(MemoryRoutineAdapterTest, MultipleTestFailure) {
   EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
   EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
             mojom::DiagnosticRoutineStatusEnum::kFailed);
-  base::Value::Dict json = GetJsonFromOutput(std::move(update->output));
+  base::DictValue json = GetJsonFromOutput(std::move(update->output));
   std::set<mojom::MemtesterTestItemEnum> passed, failed;
   GetSubtestStatus(json, passed, failed);
   EXPECT_EQ(passed, expected_passed);

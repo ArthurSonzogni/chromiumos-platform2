@@ -103,10 +103,9 @@ TEST_F(MmcHostFunctionTest, UnknownDeviceAttached) {
               Pointee(Eq("0")));
 }
 
-base::Value::Dict MakeMmcHostArg(
-    std::vector<std::pair<std::string, bool>> data) {
-  return base::Value::Dict(std::make_move_iterator(data.begin()),
-                           std::make_move_iterator(data.end()));
+base::DictValue MakeMmcHostArg(std::vector<std::pair<std::string, bool>> data) {
+  return base::DictValue(std::make_move_iterator(data.begin()),
+                         std::make_move_iterator(data.end()));
 }
 
 TEST_F(MmcHostFunctionTest, FilterIsEmmcAttached) {

@@ -197,7 +197,7 @@ class JsonFeatureParser : public FeatureParserBase {
  private:
   // Helper to build a PlatformFeature object by parsing a JSON feature object
   std::optional<PlatformFeature> MakeFeatureObject(
-      const base::Value::Dict& feature_obj);
+      const base::DictValue& feature_obj);
 };
 
 class DbusFeaturedService {

@@ -23,7 +23,7 @@ std::unique_ptr<ShillProxy> ShillProxy::Create() {
 ShillProxy::ShillProxy(scoped_refptr<dbus::Bus> bus)
     : SystemServiceProxy(bus, shill::kFlimflamServiceName) {}
 
-std::optional<base::Value::Dict> ShillProxy::GetProperties(
+std::optional<base::DictValue> ShillProxy::GetProperties(
     const std::string& interface_name, const dbus::ObjectPath& object_path) {
   dbus::MethodCall method_call(interface_name, shill::kGetPropertiesFunction);
   auto response = CallMethodAndGetResponseAsValue(object_path, &method_call);

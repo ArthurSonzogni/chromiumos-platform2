@@ -205,7 +205,7 @@ bool JsonFeatureParser::ParseFileContents(const std::string& file_contents) {
 
 // PlatformFeature implementation (collect and execute commands).
 std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
-    const base::Value::Dict& feature_obj) {
+    const base::DictValue& feature_obj) {
   const std::string* feat_name = feature_obj.FindString("name");
   if (!feat_name) {
     LOG(ERROR) << "features conf contains empty names";
@@ -223,8 +223,7 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
     query_cmds.push_back(std::make_unique<AlwaysSupportedCommand>());
   } else {
     // Verify that the supplied value is actually a list.
-    const base::Value::List* support_cmd_list_obj =
-        support_cmd_obj->GetIfList();
+    const base::ListValue* support_cmd_list_obj = support_cmd_obj->GetIfList();
     if (!support_cmd_list_obj || support_cmd_list_obj->size() == 0) {
       LOG(ERROR) << "Invalid format for support_check_commands commands";
       return std::nullopt;
@@ -270,7 +269,7 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
   }
 
   // Commands to execute to enable feature
-  const base::Value::List* cmd_list_obj = feature_obj.FindList("commands");
+  const base::ListValue* cmd_list_obj = feature_obj.FindList("commands");
   if (!cmd_list_obj || cmd_list_obj->size() == 0) {
     LOG(ERROR) << "Failed to get commands list in feature.";
     return std::nullopt;

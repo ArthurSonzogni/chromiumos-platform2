@@ -174,7 +174,7 @@ std::string EnumToString(mojom::StylusGarageEventInfo::State state) {
 }
 
 void OutputUsbEventInfo(const mojom::UsbEventInfoPtr& info) {
-  base::Value::Dict output;
+  base::DictValue output;
 
   output.Set("event", EnumToString(info->state));
   output.Set("vendor", info->vendor);
@@ -182,7 +182,7 @@ void OutputUsbEventInfo(const mojom::UsbEventInfoPtr& info) {
   output.Set("vid", base::Value(info->vid));
   output.Set("pid", base::Value(info->pid));
 
-  auto* categories = output.Set("categories", base::Value::List{});
+  auto* categories = output.Set("categories", base::ListValue{});
   for (const auto& category : info->categories) {
     categories->GetList().Append(category);
   }
@@ -238,7 +238,7 @@ void OutputKeyboardDiagnosticEventInfo(
 
 void OutputTouchpadButtonEventInfo(
     const mojom::TouchpadButtonEventPtr& button_event) {
-  base::Value::Dict output;
+  base::DictValue output;
   output.Set("button", EnumToString(button_event->button));
   output.Set("pressed", button_event->pressed);
 
@@ -247,8 +247,8 @@ void OutputTouchpadButtonEventInfo(
   std::cout << "Touchpad button event received: " << json << std::endl;
 }
 
-base::Value::Dict TouchPointInfoToDict(const mojom::TouchPointInfoPtr& point) {
-  base::Value::Dict point_dict;
+base::DictValue TouchPointInfoToDict(const mojom::TouchPointInfoPtr& point) {
+  base::DictValue point_dict;
   SET_DICT(tracking_id, point, &point_dict);
   SET_DICT(x, point, &point_dict);
   SET_DICT(y, point, &point_dict);
@@ -260,8 +260,8 @@ base::Value::Dict TouchPointInfoToDict(const mojom::TouchPointInfoPtr& point) {
 
 void OutputTouchpadTouchEventInfo(
     const mojom::TouchpadTouchEventPtr& touch_event) {
-  base::Value::Dict output;
-  base::Value::List touch_points;
+  base::DictValue output;
+  base::ListValue touch_points;
   for (const auto& point : touch_event->touch_points) {
     touch_points.Append(TouchPointInfoToDict(point));
   }
@@ -274,12 +274,12 @@ void OutputTouchpadTouchEventInfo(
 
 void OutputTouchpadConnectedEventInfo(
     const mojom::TouchpadConnectedEventPtr& connected_event) {
-  base::Value::Dict output;
+  base::DictValue output;
   SET_DICT(max_x, connected_event, &output);
   SET_DICT(max_y, connected_event, &output);
   SET_DICT(max_pressure, connected_event, &output);
 
-  auto* buttons = output.Set("buttons", base::Value::List{});
+  auto* buttons = output.Set("buttons", base::ListValue{});
   for (const auto& button : connected_event->buttons) {
     buttons->GetList().Append(EnumToString(button));
   }
@@ -307,8 +307,8 @@ void OutputTouchpadEventInfo(const mojom::TouchpadEventInfoPtr& info) {
 
 void OutputTouchscreenTouchEventInfo(
     const mojom::TouchscreenTouchEventPtr& touch_event) {
-  base::Value::Dict output;
-  base::Value::List touch_points;
+  base::DictValue output;
+  base::ListValue touch_points;
   for (const auto& point : touch_event->touch_points) {
     touch_points.Append(TouchPointInfoToDict(point));
   }
@@ -321,7 +321,7 @@ void OutputTouchscreenTouchEventInfo(
 
 void OutputTouchscreenConnectedEventInfo(
     const mojom::TouchscreenConnectedEventPtr& connected_event) {
-  base::Value::Dict output;
+  base::DictValue output;
   SET_DICT(max_x, connected_event, &output);
   SET_DICT(max_y, connected_event, &output);
   SET_DICT(max_pressure, connected_event, &output);
@@ -409,9 +409,9 @@ void OutputStylusGarageEventInfo(const mojom::StylusGarageEventInfoPtr& info) {
 }
 
 void OutputStylusTouchEventInfo(const mojom::StylusTouchEventPtr& touch_event) {
-  base::Value::Dict output;
+  base::DictValue output;
   if (touch_event->touch_point) {
-    base::Value::Dict point_dict;
+    base::DictValue point_dict;
     const auto& point = touch_event->touch_point;
     SET_DICT(x, point, &point_dict);
     SET_DICT(y, point, &point_dict);
@@ -426,7 +426,7 @@ void OutputStylusTouchEventInfo(const mojom::StylusTouchEventPtr& touch_event) {
 
 void OutputStylusConnectedEventInfo(
     const mojom::StylusConnectedEventPtr& connected_event) {
-  base::Value::Dict output;
+  base::DictValue output;
   SET_DICT(max_x, connected_event, &output);
   SET_DICT(max_y, connected_event, &output);
   SET_DICT(max_pressure, connected_event, &output);
@@ -450,12 +450,12 @@ void OutputStylusEventInfo(const mojom::StylusEventInfoPtr& info) {
 }
 
 void OutputCrashEventInfo(const mojom::CrashEventInfoPtr& info) {
-  base::Value::Dict output;
+  base::DictValue output;
   output.Set("crash_type", static_cast<int>(info->crash_type));
   output.Set("local_id", info->local_id);
   output.Set("capture_time", info->capture_time.InSecondsFSinceUnixEpoch());
   if (!info->upload_info.is_null()) {
-    base::Value::Dict upload_info;
+    base::DictValue upload_info;
     upload_info.Set("crash_report_id", info->upload_info->crash_report_id);
     upload_info.Set(
         "creation_time",

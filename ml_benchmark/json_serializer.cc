@@ -75,25 +75,25 @@ std::optional<std::string> metric_cardinality(const Metric::Cardinality c) {
 
 namespace ml_benchmark {
 
-std::optional<base::Value::Dict> BenchmarkResultsToJson(
+std::optional<base::DictValue> BenchmarkResultsToJson(
     const BenchmarkResults& results) {
-  base::Value::Dict doc;
+  base::DictValue doc;
   doc.Set("status", results.status());
   doc.Set("results_message", results.results_message());
   if (results.status() != chrome::ml_benchmark::OK) {
     return doc;
   }
 
-  base::Value::Dict percentiles;
+  base::DictValue percentiles;
   for (const auto& latencies : results.percentile_latencies_in_us()) {
     std::string percentile = std::to_string(latencies.first);
     percentiles.Set(percentile, static_cast<int>(latencies.second));
   }
   doc.Set("percentile_latencies_in_us", std::move(percentiles));
 
-  base::Value::List metrics;
+  base::ListValue metrics;
   for (const auto& m : results.metrics()) {
-    base::Value::Dict metric;
+    base::DictValue metric;
     metric.Set("name", m.name());
     const auto direction = metric_direction(m.direction());
     if (!direction) {
@@ -117,7 +117,7 @@ std::optional<base::Value::Dict> BenchmarkResultsToJson(
                  << m.name();
       return std::nullopt;
     }
-    base::Value::List values;
+    base::ListValue values;
     for (const auto& v : m.values()) {
       values.Append(v);
     }
@@ -134,7 +134,7 @@ std::optional<base::Value::Dict> BenchmarkResultsToJson(
 
 void WriteResultsToPath(const BenchmarkResults& results,
                         const base::FilePath& output_path) {
-  std::optional<base::Value::Dict> doc = BenchmarkResultsToJson(results);
+  std::optional<base::DictValue> doc = BenchmarkResultsToJson(results);
   if (!doc) {
     return;
   }

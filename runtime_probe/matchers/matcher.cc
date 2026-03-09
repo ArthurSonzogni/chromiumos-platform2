@@ -19,7 +19,7 @@
 namespace runtime_probe {
 
 // static
-std::unique_ptr<Matcher> Matcher::FromValue(const base::Value::Dict& value) {
+std::unique_ptr<Matcher> Matcher::FromValue(const base::DictValue& value) {
   // TODO(chungsheng): Consider using some protobuf type for probe config, so we
   // can use proto to define "operator".
   const std::string* operator_ptr = value.FindString("operator");
@@ -29,7 +29,7 @@ std::unique_ptr<Matcher> Matcher::FromValue(const base::Value::Dict& value) {
   }
   const std::string& op = *operator_ptr;
 
-  const base::Value::List* operands = value.FindList("operand");
+  const base::ListValue* operands = value.FindList("operand");
   if (!operands) {
     LOG(ERROR) << "Matcher must have \"operand\" field";
     return nullptr;

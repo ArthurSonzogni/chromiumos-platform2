@@ -219,7 +219,7 @@ class AeStateMachine {
   void OnNewAeParameters(InputParameters inputs,
                          MetadataLogger* metadata_logger = nullptr);
   void OnReset();
-  void OnOptionsUpdated(const base::Value::Dict& json_values);
+  void OnOptionsUpdated(const base::DictValue& json_values);
 
   float GetCaptureTet();
   float GetFilteredHdrRatio();

@@ -271,7 +271,7 @@ B: ABS=)" +
 
   SetFile(kInputDevicesPath, input_devices);
 
-  base::Value::Dict arg;
+  base::DictValue arg;
   arg.Set("device_type", "stylus");
 
   // Only contain results of given device type.

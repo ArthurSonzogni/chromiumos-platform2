@@ -156,7 +156,7 @@ std::optional<int> ConvertDayOfWeekStringToInt(
   return std::nullopt;
 }
 
-bool DecodeWeeklyTimeFromValue(const base::Value::Dict& dict_value,
+bool DecodeWeeklyTimeFromValue(const base::DictValue& dict_value,
                                int* day_of_week_out,
                                base::TimeDelta* time_out) {
   const std::string* day_of_week_str = dict_value.FindString("day_of_week");
@@ -794,9 +794,9 @@ bool DevicePolicyImpl::GetDisallowedTimeIntervals(
       return false;
     }
 
-    const base::Value::Dict& interval_value_dict = interval_value.GetDict();
-    const base::Value::Dict* start = interval_value_dict.FindDict("start");
-    const base::Value::Dict* end = interval_value_dict.FindDict("end");
+    const base::DictValue& interval_value_dict = interval_value.GetDict();
+    const base::DictValue* start = interval_value_dict.FindDict("start");
+    const base::DictValue* end = interval_value_dict.FindDict("end");
     if (!start || !end) {
       LOG(ERROR) << "Interval is missing start/end.";
       return false;
@@ -885,7 +885,7 @@ bool DevicePolicyImpl::GetHighestDeviceMinimumVersion(
     return false;
   }
 
-  const base::Value::List* requirements_entries =
+  const base::ListValue* requirements_entries =
       decoded_policy->GetDict().FindList("requirements");
   if (!requirements_entries || requirements_entries->empty()) {
     return false;

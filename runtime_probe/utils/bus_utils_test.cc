@@ -23,8 +23,8 @@ using ::testing::Pointee;
 constexpr char kFakeSysClassDir[] = "/sys/class/fake_class";
 
 base::Value MakeValue(std::vector<std::pair<std::string, std::string>> data) {
-  return base::Value(base::Value::Dict(std::make_move_iterator(data.begin()),
-                                       std::make_move_iterator(data.end())));
+  return base::Value(base::DictValue(std::make_move_iterator(data.begin()),
+                                     std::make_move_iterator(data.end())));
 }
 
 class BusUtilsTest : public BaseFileTest {

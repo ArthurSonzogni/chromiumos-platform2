@@ -22,14 +22,14 @@ namespace {
 
 // Callback to handle a single result from |ProbeStatement::EvalAsync|.
 void OnProbeStatementEvalCompleted(
-    base::OnceCallback<void(base::Value::List)> callback,
+    base::OnceCallback<void(base::ListValue)> callback,
     const std::string& component_name,
     std::optional<base::Value> information_dv,
     std::optional<std::string> position,
-    base::Value::List probe_result) {
-  base::Value::List results;
+    base::ListValue probe_result) {
+  base::ListValue results;
   for (auto& probe_statement_dv : probe_result) {
-    base::Value::Dict result;
+    base::DictValue result;
     result.Set("name", component_name);
     result.Set("values", std::move(probe_statement_dv));
     if (information_dv.has_value()) {
@@ -44,9 +44,9 @@ void OnProbeStatementEvalCompleted(
 }
 
 void CollectProbeStatementResults(
-    base::OnceCallback<void(base::Value::List)> callback,
-    std::vector<base::Value::List> probe_results) {
-  base::Value::List results;
+    base::OnceCallback<void(base::ListValue)> callback,
+    std::vector<base::ListValue> probe_results) {
+  base::ListValue results;
   for (auto& probe_result : probe_results) {
     for (auto& result : probe_result) {
       results.Append(std::move(result));
@@ -84,8 +84,8 @@ std::unique_ptr<ComponentCategory> ComponentCategory::FromValue(
 }
 
 void ComponentCategory::Eval(
-    base::OnceCallback<void(base::Value::List)> callback) const {
-  auto barrier_callback = base::BarrierCallback<base::Value::List>(
+    base::OnceCallback<void(base::ListValue)> callback) const {
+  auto barrier_callback = base::BarrierCallback<base::ListValue>(
       component_.size(),
       base::BindOnce(&CollectProbeStatementResults, std::move(callback)));
   for (auto& [component_name, probe_statement] : component_) {

@@ -226,7 +226,7 @@ std::optional<Thinpool> LogicalVolumeManager::CreateThinpool(
 std::optional<LogicalVolume> LogicalVolumeManager::CreateLogicalVolume(
     const VolumeGroup& vg,
     const Thinpool& thinpool,
-    const base::Value::Dict& config) {
+    const base::DictValue& config) {
   std::vector<std::string> cmd = {"lvcreate", "--thin"};
   const std::string* size = config.FindString("size");
   const std::string* name = config.FindString("name");

@@ -58,7 +58,7 @@ void MakeValidLogLine(FuzzedDataProvider& data_provider,
                       uint64_t init_offset,
                       std::ostringstream& input,
                       std::vector<mojom::CrashEventInfoPtr>& expected) {
-  base::Value::Dict log_line;
+  base::DictValue log_line;
   // A random extra field.
   log_line.Set(ConsumeAlphabeticalString(data_provider),
                ConsumeAlphabeticalString(data_provider));

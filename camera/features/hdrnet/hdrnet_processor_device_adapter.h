@@ -45,16 +45,16 @@ class HdrNetProcessorDeviceAdapter {
   // |result_metadata|. Otherwise, returns std::nullopt. This also updates
   // |data| that can be used to specify which override key to use in
   // GetOverriddenOptions().
-  static std::optional<base::Value::Dict> MaybeOverrideOptions(
-      const base::Value::Dict& json_values,
+  static std::optional<base::DictValue> MaybeOverrideOptions(
+      const base::DictValue& json_values,
       const android::CameraMetadata& result_metadata,
       OptionsOverrideData& data);
 
   // Returns default or overridden HDRnet options based on the internal state
   // set by MaybeOverrideOptions(). "override" key may be left over in the
   // returned options. If so, its value should be ignored.
-  static base::Value::Dict GetOverriddenOptions(
-      const base::Value::Dict& json_values, const OptionsOverrideData& data);
+  static base::DictValue GetOverriddenOptions(
+      const base::DictValue& json_values, const OptionsOverrideData& data);
 
   // Returns the result metadata tags that MaybeOverrideOptions() and
   // ProcessResultMetadata() will inspect.

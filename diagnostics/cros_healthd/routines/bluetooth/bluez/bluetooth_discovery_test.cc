@@ -132,7 +132,7 @@ class BluezBluetoothDiscoveryRoutineTest : public testing::Test {
   void CheckRoutineUpdate(uint32_t progress_percent,
                           mojom::DiagnosticRoutineStatusEnum status,
                           std::string status_message,
-                          base::Value::Dict output_dict = base::Value::Dict()) {
+                          base::DictValue output_dict = base::DictValue()) {
     routine_->PopulateStatusUpdate(/*include_output=*/true, update_);
     EXPECT_EQ(update_.progress_percent, progress_percent);
     VerifyNonInteractiveUpdate(update_.routine_update_union, status,
@@ -143,18 +143,17 @@ class BluezBluetoothDiscoveryRoutineTest : public testing::Test {
                                base::JSON_PARSE_CHROMIUM_EXTENSIONS));
   }
 
-  base::Value::Dict ConstructResult(bool hci_discovering,
-                                    bool dbus_discovering) {
-    base::Value::Dict out_result;
+  base::DictValue ConstructResult(bool hci_discovering, bool dbus_discovering) {
+    base::DictValue out_result;
     out_result.Set("hci_discovering", hci_discovering);
     out_result.Set("dbus_discovering", dbus_discovering);
     return out_result;
   }
 
-  base::Value::Dict ConstructRoutineOutput(
-      base::Value::Dict start_discovery_result,
-      std::optional<base::Value::Dict> stop_discovery_result = std::nullopt) {
-    base::Value::Dict output_dict;
+  base::DictValue ConstructRoutineOutput(
+      base::DictValue start_discovery_result,
+      std::optional<base::DictValue> stop_discovery_result = std::nullopt) {
+    base::DictValue output_dict;
     output_dict.Set("start_discovery_result",
                     std::move(start_discovery_result));
     if (stop_discovery_result.has_value()) {

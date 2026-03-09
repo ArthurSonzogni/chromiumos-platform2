@@ -69,7 +69,7 @@ ApI2cFunction::DataType ApI2cFunction::EvalImpl() const {
   std::optional<uint8_t> data = i2cget(i2c_bus_, chip_addr_, data_addr_);
   if (data) {
     VLOG(3) << "data: " << base::StringPrintf("0x%02x", *data);
-    base::Value::Dict dict;
+    base::DictValue dict;
     dict.Set("data", *data);
     result.Append(std::move(dict));
   } else {

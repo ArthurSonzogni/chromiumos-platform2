@@ -40,7 +40,7 @@ MipiCameraFunction::DataType MipiCameraFunction::EvalImpl() const {
   }
 
   for (const auto& camera : *cameras) {
-    base::Value::Dict node;
+    base::DictValue node;
     if (camera.eeprom) {
       node.Set("mipi_sysfs_name", camera.sysfs_name);
       node.Set("mipi_module_id", camera.module_id());

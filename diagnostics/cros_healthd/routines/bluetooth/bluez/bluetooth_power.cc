@@ -205,7 +205,7 @@ void BluetoothPowerRoutine::ValidateAdapterPowered(bool hci_powered) {
   }
 
   // Store the result into output dict.
-  base::Value::Dict out_result;
+  base::DictValue out_result;
   out_result.Set("hci_powered", hci_powered);
   out_result.Set("dbus_powered", dbus_powered);
   output_dict_.Set(result_key, std::move(out_result));

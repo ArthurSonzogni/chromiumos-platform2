@@ -861,7 +861,7 @@ bool GetOciContainerState(const base::FilePath& path,
   }
   *out_container_pid = pid.value();
 
-  const base::Value::Dict* annotations =
+  const base::DictValue* annotations =
       container_state->GetDict().FindDict("annotations");
   if (!annotations) {
     LOG(ERROR) << "Failed to get annotations from container state";

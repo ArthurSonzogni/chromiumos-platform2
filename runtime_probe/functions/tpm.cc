@@ -62,7 +62,7 @@ void ProbeTpmTelemetryInfoCallback(
     if (!tpm_version.is_null() &&
         tpm_version->manufacturer != kVendorIdSimulator) {
       probe_result.Append(
-          base::Value::Dict()
+          base::DictValue()
               .Set("spec_level", std::to_string(tpm_version->spec_level))
               .Set("vendor_specific", tpm_version->vendor_specific.value_or(
                                           kUnknownVendorSpecific))

@@ -22,7 +22,7 @@ TEST(RoutineOutputUtilsTest, ConvertAudioDriverDetail) {
   detail->internal_card_detected = false;
   detail->audio_devices_succeed_to_open = true;
 
-  base::Value::Dict expected_result;
+  base::DictValue expected_result;
   expected_result.Set("internal_card_detected", false);
   expected_result.Set("audio_devices_succeed_to_open", true);
   EXPECT_EQ(ConvertToValue(detail), expected_result);
@@ -37,14 +37,14 @@ TEST(RoutineOutputUtilsTest, ConvertBluetoothDiscoveryDetail) {
   detail->stop_discovery_result->dbus_discovering = true;
   detail->stop_discovery_result->hci_discovering = false;
 
-  base::Value::Dict start_discovery_result;
+  base::DictValue start_discovery_result;
   start_discovery_result.Set("dbus_discovering", true);
   start_discovery_result.Set("hci_discovering", true);
-  base::Value::Dict stop_discovery_result;
+  base::DictValue stop_discovery_result;
   stop_discovery_result.Set("dbus_discovering", true);
   stop_discovery_result.Set("hci_discovering", false);
 
-  base::Value::Dict expected_result;
+  base::DictValue expected_result;
   expected_result.Set("start_discovery_result",
                       std::move(start_discovery_result));
   expected_result.Set("stop_discovery_result",
@@ -70,10 +70,10 @@ TEST(RoutineOutputUtilsTest, ConvertBluetoothPairingDetail) {
   auto detail = mojom::BluetoothPairingRoutineDetail::New();
   detail->pairing_peripheral = std::move(peripheral);
 
-  base::Value::Dict expected_peripheral;
+  base::DictValue expected_peripheral;
   expected_peripheral.Set("connect_error", "None");
   expected_peripheral.Set("pair_error", "Bad Status");
-  base::Value::List expected_uuids;
+  base::ListValue expected_uuids;
   expected_uuids.Append("0000110a-0000-1000-8000-00805f9b34fb");
   expected_uuids.Append("0000110f-0000-1000-8000-00805f9b34fb");
   expected_peripheral.Set("uuids", std::move(expected_uuids));
@@ -82,7 +82,7 @@ TEST(RoutineOutputUtilsTest, ConvertBluetoothPairingDetail) {
   expected_peripheral.Set("is_address_valid", false);
   expected_peripheral.Set("failed_manufacturer_id", "test_id");
 
-  base::Value::Dict expected_result;
+  base::DictValue expected_result;
   expected_result.Set("pairing_peripheral", std::move(expected_peripheral));
   EXPECT_EQ(ConvertToValue(detail), expected_result);
 }
@@ -96,14 +96,14 @@ TEST(RoutineOutputUtilsTest, ConvertBluetoothPowerDetail) {
   detail->power_on_result->dbus_powered = true;
   detail->power_on_result->hci_powered = false;
 
-  base::Value::Dict power_off_result;
+  base::DictValue power_off_result;
   power_off_result.Set("dbus_powered", false);
   power_off_result.Set("hci_powered", false);
-  base::Value::Dict power_on_result;
+  base::DictValue power_on_result;
   power_on_result.Set("dbus_powered", true);
   power_on_result.Set("hci_powered", false);
 
-  base::Value::Dict expected_result;
+  base::DictValue expected_result;
   expected_result.Set("power_off_result", std::move(power_off_result));
   expected_result.Set("power_on_result", std::move(power_on_result));
   EXPECT_EQ(ConvertToValue(detail), expected_result);
@@ -127,29 +127,29 @@ TEST(RoutineOutputUtilsTest, ConvertBluetoothScanningDetail) {
   peripheral2->uuids = std::nullopt;
   detail->peripherals.push_back(std::move(peripheral2));
 
-  base::Value::Dict expected_peripheral1;
-  base::Value::List expected_rssi_history1;
+  base::DictValue expected_peripheral1;
+  base::ListValue expected_rssi_history1;
   expected_rssi_history1.Append(-40);
   expected_rssi_history1.Append(-50);
   expected_rssi_history1.Append(-60);
   expected_peripheral1.Set("rssi_history", std::move(expected_rssi_history1));
   expected_peripheral1.Set("name", "TEST_PERIPHERAL_1");
   expected_peripheral1.Set("peripheral_id", "TEST_ID_1");
-  base::Value::List expected_uuids;
+  base::ListValue expected_uuids;
   expected_uuids.Append("0000110a-0000-1000-8000-00805f9b34fb");
   expected_uuids.Append("0000110f-0000-1000-8000-00805f9b34fb");
   expected_peripheral1.Set("uuids", std::move(expected_uuids));
-  base::Value::Dict expected_peripheral2;
-  base::Value::List expected_rssi_history2;
+  base::DictValue expected_peripheral2;
+  base::ListValue expected_rssi_history2;
   expected_rssi_history2.Append(-100);
   expected_rssi_history2.Append(-90);
   expected_rssi_history2.Append(-80);
   expected_peripheral2.Set("rssi_history", std::move(expected_rssi_history2));
-  base::Value::List expected_peripherals;
+  base::ListValue expected_peripherals;
   expected_peripherals.Append(std::move(expected_peripheral1));
   expected_peripherals.Append(std::move(expected_peripheral2));
 
-  base::Value::Dict expected_result;
+  base::DictValue expected_result;
   expected_result.Set("peripherals", std::move(expected_peripherals));
   EXPECT_EQ(ConvertToValue(detail), expected_result);
 }
@@ -160,7 +160,7 @@ TEST(RoutineOutputUtilsTest, ConvertUfsLifetimeDetail) {
   detail->device_life_time_est_a = 2;
   detail->device_life_time_est_b = 3;
 
-  base::Value::Dict expected_result;
+  base::DictValue expected_result;
   expected_result.Set("pre_eol_info", 1);
   expected_result.Set("device_life_time_est_a", 2);
   expected_result.Set("device_life_time_est_b", 3);
@@ -173,11 +173,9 @@ TEST(RoutineOutputUtilsTest, ConvertFanDetail) {
   detail->failed_fan_ids = {1, 3};
   detail->fan_count_status = mojom::HardwarePresenceStatus::kMatched;
 
-  base::Value::Dict expected_result;
-  expected_result.Set("passed_fan_ids",
-                      base::Value::List().Append(0).Append(2));
-  expected_result.Set("failed_fan_ids",
-                      base::Value::List().Append(1).Append(3));
+  base::DictValue expected_result;
+  expected_result.Set("passed_fan_ids", base::ListValue().Append(0).Append(2));
+  expected_result.Set("failed_fan_ids", base::ListValue().Append(1).Append(3));
   expected_result.Set("fan_count_status", "Matched");
   EXPECT_EQ(ConvertToValue(detail), expected_result);
 }
@@ -188,7 +186,7 @@ TEST(RoutineOutputUtilsTest, ConvertCameraAvailabilityDetail) {
   detail->camera_diagnostic_service_available_check =
       mojom::CameraSubtestResult::kFailed;
 
-  base::Value::Dict expected_result;
+  base::DictValue expected_result;
   expected_result.Set("camera_service_available_check", "Passed");
   expected_result.Set("camera_diagnostic_service_available_check", "Failed");
   EXPECT_EQ(ConvertToValue(detail), expected_result);
@@ -199,7 +197,7 @@ TEST(RoutineOutputUtilsTest, ConvertNetworkBandwidthDetail) {
   detail->download_speed_kbps = 300.0;
   detail->upload_speed_kbps = 100.0;
 
-  base::Value::Dict expected_result;
+  base::DictValue expected_result;
   expected_result.Set("download_speed_kbps", 300.0);
   expected_result.Set("upload_speed_kbps", 100.0);
   EXPECT_EQ(ConvertToValue(detail), expected_result);
@@ -266,19 +264,19 @@ TEST(RoutineOutputUtilsTest, ConvertSensitiveSensorDetail) {
     detail->base_gravity_sensor = default_sensor_report->Clone();
   }
 
-  base::Value::Dict expected_result;
+  base::DictValue expected_result;
   // Construct output.
   {
-    base::Value::Dict expected_default_report;
-    expected_default_report.Set("passed_sensors", base::Value::List());
-    expected_default_report.Set("failed_sensors", base::Value::List());
+    base::DictValue expected_default_report;
+    expected_default_report.Set("passed_sensors", base::ListValue());
+    expected_default_report.Set("failed_sensors", base::ListValue());
     expected_default_report.Set("sensor_presence_status", "Not Configured");
 
-    base::Value::Dict expected_base_accel_gyro;
+    base::DictValue expected_base_accel_gyro;
     expected_base_accel_gyro.Set("id", 0);
     expected_base_accel_gyro.Set(
-        "types", base::Value::List().Append("Accel").Append("Gyro"));
-    expected_base_accel_gyro.Set("channels", base::Value::List()
+        "types", base::ListValue().Append("Accel").Append("Gyro"));
+    expected_base_accel_gyro.Set("channels", base::ListValue()
                                                  .Append("timestamp")
                                                  .Append("accel_x")
                                                  .Append("accel_y")
@@ -300,10 +298,10 @@ TEST(RoutineOutputUtilsTest, ConvertSensitiveSensorDetail) {
     expected_base_gyro_report.Set("sensor_presence_status", "Matched");
     expected_result.Set("base_gyroscope", std::move(expected_base_gyro_report));
 
-    base::Value::Dict expected_lid_magn;
+    base::DictValue expected_lid_magn;
     expected_lid_magn.Set("id", 1);
-    expected_lid_magn.Set("types", base::Value::List().Append("Magn"));
-    expected_lid_magn.Set("channels", base::Value::List()
+    expected_lid_magn.Set("types", base::ListValue().Append("Magn"));
+    expected_lid_magn.Set("channels", base::ListValue()
                                           .Append("timestamp")
                                           .Append("magn_x")
                                           .Append("magn_y")
@@ -315,10 +313,10 @@ TEST(RoutineOutputUtilsTest, ConvertSensitiveSensorDetail) {
     expected_result.Set("lid_magnetometer",
                         std::move(expected_lid_magn_report));
 
-    base::Value::Dict expected_lid_gravity;
+    base::DictValue expected_lid_gravity;
     expected_lid_gravity.Set("id", 2);
-    expected_lid_gravity.Set("types", base::Value::List().Append("Gravity"));
-    expected_lid_gravity.Set("channels", base::Value::List()
+    expected_lid_gravity.Set("types", base::ListValue().Append("Gravity"));
+    expected_lid_gravity.Set("channels", base::ListValue()
                                              .Append("timestamp")
                                              .Append("gravity_x")
                                              .Append("gravity_y")
@@ -401,19 +399,19 @@ TEST(RoutineOutputUtilsTest, ConvertSensitiveSensorDetailForV1) {
     detail->base_gravity_sensor = default_sensor_report->Clone();
   }
 
-  base::Value::Dict expected_result;
+  base::DictValue expected_result;
   // Construct output.
   {
-    base::Value::Dict expected_default_report;
-    expected_default_report.Set("passed_sensors", base::Value::List());
-    expected_default_report.Set("failed_sensors", base::Value::List());
+    base::DictValue expected_default_report;
+    expected_default_report.Set("passed_sensors", base::ListValue());
+    expected_default_report.Set("failed_sensors", base::ListValue());
     expected_default_report.Set("existence_check_result", "skipped");
 
-    base::Value::Dict expected_base_accel_gyro;
+    base::DictValue expected_base_accel_gyro;
     expected_base_accel_gyro.Set("id", 0);
     expected_base_accel_gyro.Set(
-        "types", base::Value::List().Append("Accel").Append("Gyro"));
-    expected_base_accel_gyro.Set("channels", base::Value::List()
+        "types", base::ListValue().Append("Accel").Append("Gyro"));
+    expected_base_accel_gyro.Set("channels", base::ListValue()
                                                  .Append("timestamp")
                                                  .Append("accel_x")
                                                  .Append("accel_y")
@@ -435,10 +433,10 @@ TEST(RoutineOutputUtilsTest, ConvertSensitiveSensorDetailForV1) {
     expected_base_gyro_report.Set("existence_check_result", "passed");
     expected_result.Set("base_gyroscope", std::move(expected_base_gyro_report));
 
-    base::Value::Dict expected_lid_magn;
+    base::DictValue expected_lid_magn;
     expected_lid_magn.Set("id", 1);
-    expected_lid_magn.Set("types", base::Value::List().Append("Magn"));
-    expected_lid_magn.Set("channels", base::Value::List()
+    expected_lid_magn.Set("types", base::ListValue().Append("Magn"));
+    expected_lid_magn.Set("channels", base::ListValue()
                                           .Append("timestamp")
                                           .Append("magn_x")
                                           .Append("magn_y")
@@ -450,10 +448,10 @@ TEST(RoutineOutputUtilsTest, ConvertSensitiveSensorDetailForV1) {
     expected_result.Set("lid_magnetometer",
                         std::move(expected_lid_magn_report));
 
-    base::Value::Dict expected_lid_gravity;
+    base::DictValue expected_lid_gravity;
     expected_lid_gravity.Set("id", 2);
-    expected_lid_gravity.Set("types", base::Value::List().Append("Gravity"));
-    expected_lid_gravity.Set("channels", base::Value::List()
+    expected_lid_gravity.Set("types", base::ListValue().Append("Gravity"));
+    expected_lid_gravity.Set("channels", base::ListValue()
                                              .Append("timestamp")
                                              .Append("gravity_x")
                                              .Append("gravity_y")
@@ -481,7 +479,7 @@ TEST(RoutineOutputUtilsTest, ConvertCameraFrameAnalysisDetail) {
   detail->privacy_shutter_open_test = mojom::CameraSubtestResult::kPassed;
   detail->lens_not_dirty_test = mojom::CameraSubtestResult::kNotRun;
 
-  base::Value::Dict expected_result;
+  base::DictValue expected_result;
   expected_result.Set("issue", "None");
   expected_result.Set("privacy_shutter_open_test", "Passed");
   expected_result.Set("lens_not_dirty_test", "Not Run");
@@ -492,7 +490,7 @@ TEST(RoutineOutputUtilsTest, ConvertBatteryDischargeDetail) {
   auto detail = mojom::BatteryDischargeRoutineDetail::New();
   detail->discharge_percent = 10.0;
 
-  base::Value::Dict expected_result;
+  base::DictValue expected_result;
   expected_result.Set("discharge_percent", 10.0);
   EXPECT_EQ(ConvertToValue(detail), expected_result);
 }

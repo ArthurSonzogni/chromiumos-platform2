@@ -119,7 +119,7 @@ bool LoadOobeConfigRollback::AssembleConfig(const RollbackData& rollback_data,
   // Possible values are defined in
   // chrome/browser/resources/chromeos/login/components/oobe_types.js.
   // TODO(zentaro): Export these strings as constants.
-  base::Value::Dict dictionary;
+  base::DictValue dictionary;
   // Always skip next screen.
   dictionary.Set("welcomeNext", true);
   // Always skip network selection screen if possible.

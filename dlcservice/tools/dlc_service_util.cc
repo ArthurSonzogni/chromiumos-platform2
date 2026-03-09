@@ -40,8 +40,8 @@
 
 using base::FilePath;
 using base::Value;
-using Dict = base::Value::Dict;
-using List = base::Value::List;
+using Dict = base::DictValue;
+using List = base::ListValue;
 using dlcservice::DlcState;
 using dlcservice::DlcsWithContent;
 using org::chromium::DlcServiceInterfaceProxy;

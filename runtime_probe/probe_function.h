@@ -24,8 +24,7 @@ namespace runtime_probe {
 
 // Creates a probe function. This is a syntax suger for |FromKwargsValue|.
 template <typename T>
-std::unique_ptr<T> CreateProbeFunction(
-    const base::Value::Dict& dict_value = {}) {
+std::unique_ptr<T> CreateProbeFunction(const base::DictValue& dict_value = {}) {
   return T::template FromKwargsValue<T>(dict_value);
 }
 
@@ -54,7 +53,7 @@ class ProbeFunction {
   //   }
 
  public:
-  using DataType = base::Value::List;
+  using DataType = base::ListValue;
 
   // Interface to parse a function argument. See RegisterArgumentParser().
   class ArgumentParser {
@@ -85,8 +84,7 @@ class ProbeFunction {
   // Creates a probe function of type |T| with arguments. Returns nullptr if
   // arguments cannot be parsed.
   template <typename T>
-  static std::unique_ptr<T> FromKwargsValue(
-      const base::Value::Dict& dict_value) {
+  static std::unique_ptr<T> FromKwargsValue(const base::DictValue& dict_value) {
     std::unique_ptr<T> fun{new T()};
     if (fun->ParseArguments(dict_value)) {
       return fun;
@@ -119,7 +117,7 @@ class ProbeFunction {
                               ArgumentParser* parser);
 
   using FactoryFunctionType =
-      std::function<std::unique_ptr<ProbeFunction>(const base::Value::Dict&)>;
+      std::function<std::unique_ptr<ProbeFunction>(const base::DictValue&)>;
 
   using RegisteredFunctionTableType =
       std::map<std::string_view, FactoryFunctionType>;
@@ -146,16 +144,16 @@ class ProbeFunction {
   virtual bool PostParseArguments() { return true; }
 
   // Gets the arguments. It is the raw arguments passed to this function.
-  const base::Value::Dict& arguments() const { return arguments_; }
+  const base::DictValue& arguments() const { return arguments_; }
 
  private:
   // Parses the probe function arguments. Returns false when error.
-  bool ParseArguments(const base::Value::Dict& arguments);
+  bool ParseArguments(const base::DictValue& arguments);
 
   // A map of argument field names to argument parsers.
   std::map<std::string, ArgumentParser*> argument_parsers_;
   // The raw arguments.
-  base::Value::Dict arguments_;
+  base::DictValue arguments_;
 };
 
 class PrivilegedProbeFunction : public ProbeFunction {

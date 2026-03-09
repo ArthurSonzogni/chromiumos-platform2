@@ -34,7 +34,7 @@ constexpr std::array<const char*, 4> kExpectedKeys = {kKeyIdentity, kKeyUser,
 constexpr int kJSONOption =
     base::JSON_ALLOW_TRAILING_COMMAS | base::JSON_ALLOW_COMMENTS;
 
-bool ValidateDictKeys(const base::Value::Dict& value) {
+bool ValidateDictKeys(const base::DictValue& value) {
   for (const auto& [key, _] : value) {
     if (!std::ranges::contains(kExpectedKeys, key)) {
       LOG(ERROR) << "Got an unexpected field: " << key;
@@ -44,7 +44,7 @@ bool ValidateDictKeys(const base::Value::Dict& value) {
   return true;
 }
 
-bool ParseOptionalStringListByKey(const base::Value::Dict& value,
+bool ParseOptionalStringListByKey(const base::DictValue& value,
                                   std::string_view key,
                                   std::vector<std::string>& out) {
   const auto* list = value.Find(key);
@@ -70,7 +70,7 @@ bool ParseOptionalStringListByKey(const base::Value::Dict& value,
   return true;
 }
 
-bool GetStringByKey(const base::Value::Dict& value,
+bool GetStringByKey(const base::DictValue& value,
                     const std::string& key,
                     std::string& out) {
   const auto* str = value.Find(key);
@@ -93,7 +93,7 @@ LoadServicePolicyDelegate*& GetLoadServicePolicyDelegate() {
   return g_instanse;
 }
 
-bool GetUidFromPolicy(const base::Value::Dict& policy, uint32_t& out) {
+bool GetUidFromPolicy(const base::DictValue& policy, uint32_t& out) {
   std::string username;
   if (!GetStringByKey(policy, kKeyUser, username)) {
     return false;
@@ -111,7 +111,7 @@ bool GetUidFromPolicy(const base::Value::Dict& policy, uint32_t& out) {
   return true;
 }
 
-bool GetSecurityContextFromPolicy(const base::Value::Dict& policy,
+bool GetSecurityContextFromPolicy(const base::DictValue& policy,
                                   std::string& out) {
   std::string identity;
   if (!GetStringByKey(policy, kKeyIdentity, identity)) {
@@ -216,7 +216,7 @@ std::optional<ServicePolicyMap> ParseServicePolicyFromString(
 }
 
 std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
-    const base::Value::List& value) {
+    const base::ListValue& value) {
   ServicePolicyMap result;
   for (const auto& item : value) {
     if (!item.is_dict()) {

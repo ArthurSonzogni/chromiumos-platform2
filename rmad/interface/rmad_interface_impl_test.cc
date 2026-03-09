@@ -400,10 +400,10 @@ TEST_F(RmadInterfaceImplTest, Setup) {
   // Verify the repair start was recorded to logs.
   base::Value logs(base::Value::Type::DICT);
   json_store->GetValue(kLogs, &logs);
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
 
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kWelcome), event.FindInt(kStateId));
 }
 
@@ -873,19 +873,19 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   // Verify that state transitions were recorded to logs.
   base::Value logs(base::Value::Type::DICT);
   json_store->GetValue(kLogs, &logs);
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(3, events->size());
 
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kWelcome), event.FindInt(kStateId));
 
-  const base::Value::Dict& event1 = (*events)[1].GetDict();
+  const base::DictValue& event1 = (*events)[1].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kWelcome),
             event1.FindDict(kDetails)->FindInt(kFromStateId));
   EXPECT_EQ(static_cast<int>(RmadState::kComponentsRepair),
             event1.FindDict(kDetails)->FindInt(kToStateId));
 
-  const base::Value::Dict& event2 = (*events)[2].GetDict();
+  const base::DictValue& event2 = (*events)[2].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kComponentsRepair),
             event2.FindDict(kDetails)->FindInt(kFromStateId));
   EXPECT_EQ(static_cast<int>(RmadState::kDeviceDestination),
@@ -937,13 +937,13 @@ TEST_F(RmadInterfaceImplTest, TransitionNextStateAfterInterval) {
   // Verify that state transitions were recorded to logs.
   base::Value logs(base::Value::Type::DICT);
   json_store->GetValue(kLogs, &logs);
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(2, events->size());
 
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kWelcome), event.FindInt(kStateId));
 
-  const base::Value::Dict& event1 = (*events)[1].GetDict();
+  const base::DictValue& event1 = (*events)[1].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kWelcome),
             event1.FindDict(kDetails)->FindInt(kFromStateId));
   EXPECT_EQ(static_cast<int>(RmadState::kComponentsRepair),
@@ -1112,19 +1112,19 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
   // Verify that state transitions were recorded to logs.
   base::Value logs(base::Value::Type::DICT);
   json_store->GetValue(kLogs, &logs);
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(3, events->size());
 
-  const base::Value::Dict& event = (*events)[0].GetDict();
+  const base::DictValue& event = (*events)[0].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kWelcome), event.FindInt(kStateId));
 
-  const base::Value::Dict& event1 = (*events)[1].GetDict();
+  const base::DictValue& event1 = (*events)[1].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kWelcome),
             event1.FindDict(kDetails)->FindInt(kFromStateId));
   EXPECT_EQ(static_cast<int>(RmadState::kComponentsRepair),
             event1.FindDict(kDetails)->FindInt(kToStateId));
 
-  const base::Value::Dict& event2 = (*events)[2].GetDict();
+  const base::DictValue& event2 = (*events)[2].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kComponentsRepair),
             event2.FindDict(kDetails)->FindInt(kFromStateId));
   EXPECT_EQ(static_cast<int>(RmadState::kWelcome),

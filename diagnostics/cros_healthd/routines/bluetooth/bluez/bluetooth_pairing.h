@@ -93,7 +93,7 @@ class BluetoothPairingRoutine final : public DiagnosticRoutineWithStatus,
   org::bluez::Device1ProxyInterface* target_device_ = nullptr;
   // Info about the target peripheral, which will be null if the routine can
   // not find the target device. Reported in status updates when requested.
-  std::optional<base::Value::Dict> pairing_peripheral_info_;
+  std::optional<base::DictValue> pairing_peripheral_info_;
   // Must be the last class member.
   base::WeakPtrFactory<BluetoothPairingRoutine> weak_ptr_factory_{this};
 };

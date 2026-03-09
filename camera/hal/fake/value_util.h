@@ -30,21 +30,21 @@ struct WithPath {
 };
 
 typedef WithPath<base::Value> ValueWithPath;
-typedef WithPath<base::Value::List> ListWithPath;
-typedef WithPath<base::Value::Dict> DictWithPath;
+typedef WithPath<base::ListValue> ListWithPath;
+typedef WithPath<base::DictValue> DictWithPath;
 
 template <>
-struct WithPath<base::Value::List> {
+struct WithPath<base::ListValue> {
   struct Iterator {
     const DottedPath& path;
-    const base::Value::List* value;
+    const base::ListValue* value;
     size_t idx;
     const Iterator& operator++();
     ValueWithPath operator*() const;
     bool operator!=(const Iterator& o) const;
   };
 
-  const base::Value::List* value;
+  const base::ListValue* value;
   DottedPath path;
 
   Iterator begin() const;

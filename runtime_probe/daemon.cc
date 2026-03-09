@@ -139,7 +139,7 @@ void Daemon::ProbeSsfcComponents(
 template <typename MessageType>
 void Daemon::ProbeCallback(Daemon::DBusCallback<MessageType> cb,
                            std::unique_ptr<ProbeConfig> probe_config,
-                           base::Value::Dict probe_result) {
+                           base::DictValue probe_result) {
   std::string output_json;
   base::JSONWriter::Write(probe_result, &output_json);
   DVLOG(3) << "Raw JSON probe result\n" << output_json;

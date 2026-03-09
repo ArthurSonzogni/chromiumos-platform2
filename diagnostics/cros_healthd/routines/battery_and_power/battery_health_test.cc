@@ -41,7 +41,7 @@ constexpr double kFakeChargeNow = 6.154;
 
 std::string ConstructOutput() {
   std::string output;
-  base::Value::Dict result_dict;
+  base::DictValue result_dict;
   result_dict.Set("wearPercentage",
                   static_cast<int>(100 - (kHighChargeFull * 100 /
                                           kFakeBatteryChargeFullDesign)));
@@ -54,7 +54,7 @@ std::string ConstructOutput() {
   result_dict.Set("chargeFullAh", kHighChargeFull);
   result_dict.Set("chargeFullDesignAh", kFakeBatteryChargeFullDesign);
   result_dict.Set("chargeNowAh", kFakeChargeNow);
-  base::Value::Dict output_dict;
+  base::DictValue output_dict;
   output_dict.Set("resultDetails", std::move(result_dict));
   base::JSONWriter::Write(output_dict, &output);
   return output;

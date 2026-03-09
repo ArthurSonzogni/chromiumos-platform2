@@ -17,9 +17,9 @@
 namespace runtime_probe {
 namespace {
 
-void CollectProbeResults(base::OnceCallback<void(base::Value::List)> callback,
-                         std::vector<base::Value::List> probe_results) {
-  base::Value::List results;
+void CollectProbeResults(base::OnceCallback<void(base::ListValue)> callback,
+                         std::vector<base::ListValue> probe_results) {
+  base::ListValue results;
   for (auto& result : probe_results) {
     for (auto& value : result) {
       results.Append(std::move(value));
@@ -39,13 +39,13 @@ void MultiFunctionRunner::AddFunction(
 }
 
 void MultiFunctionRunner::Run(
-    base::OnceCallback<void(base::Value::List)> callback) const {
+    base::OnceCallback<void(base::ListValue)> callback) const {
   if (!IsValid()) {
     LOG(ERROR) << "MultiFunctionRunner contains invalid probe functions.";
-    std::move(callback).Run(base::Value::List{});
+    std::move(callback).Run(base::ListValue{});
     return;
   }
-  auto barrier_callback = base::BarrierCallback<base::Value::List>(
+  auto barrier_callback = base::BarrierCallback<base::ListValue>(
       functions_.size(),
       base::BindOnce(&CollectProbeResults, std::move(callback)));
   for (auto& function : functions_) {

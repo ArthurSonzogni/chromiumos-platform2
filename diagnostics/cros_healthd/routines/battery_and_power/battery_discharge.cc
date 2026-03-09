@@ -177,7 +177,7 @@ void BatteryDischargeRoutine::DetermineRoutineResult(
   }
 
   double discharge_percent = beginning_charge_percent - ending_charge_percent;
-  base::Value::Dict result_dict;
+  base::DictValue result_dict;
   result_dict.Set("dischargePercent", discharge_percent);
   output_dict_.Set("resultDetails", std::move(result_dict));
   if (discharge_percent > maximum_discharge_percent_allowed_) {

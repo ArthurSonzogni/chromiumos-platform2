@@ -245,7 +245,7 @@ void BluetoothDiscoveryRoutine::ValidateAdapterDiscovering(
   }
 
   // Store the result into output dict.
-  base::Value::Dict out_result;
+  base::DictValue out_result;
   out_result.Set("hci_discovering", hci_discovering);
   out_result.Set("dbus_discovering", dbus_discovering);
   output_dict_.Set(result_key, std::move(out_result));

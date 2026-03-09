@@ -184,7 +184,7 @@ void CarrierEntitlement::Reset() {
 
 std::unique_ptr<base::Value> CarrierEntitlement::BuildContentPayload(
     const Stringmap& params) {
-  base::Value::Dict dict;
+  base::DictValue dict;
   for (auto pair : params) {
     dict.Set(pair.first, pair.second);
   }

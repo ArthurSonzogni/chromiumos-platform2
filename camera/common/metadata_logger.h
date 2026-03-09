@@ -67,11 +67,11 @@ class CROS_CAMERA_EXPORT MetadataLogger {
   void Clear();
 
  private:
-  base::Value::Dict& GetOrCreateEntryLocked(int frame_number);
+  base::DictValue& GetOrCreateEntryLocked(int frame_number);
 
   Options options_;
   base::Lock frame_metadata_lock_;
-  std::map<int, base::Value::Dict> frame_metadata_
+  std::map<int, base::DictValue> frame_metadata_
       GUARDED_BY(frame_metadata_lock_);
 };
 

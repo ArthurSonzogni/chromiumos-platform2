@@ -874,10 +874,10 @@ void Sender::RecordCrashRemoveReason(SenderBase::CrashRemoveReason reason) {
                               kSendReasonCount);
 }
 
-base::Value::Dict Sender::CreateJsonEntity(const std::string& report_id,
-                                           const std::string& product_name,
-                                           const CrashDetails& details) {
-  base::Value::Dict root_dict;
+base::DictValue Sender::CreateJsonEntity(const std::string& report_id,
+                                         const std::string& product_name,
+                                         const CrashDetails& details) {
+  base::DictValue root_dict;
 
   int64_t timestamp = (base::Time::Now() - base::Time::UnixEpoch()).InSeconds();
   root_dict.Set(kJsonLogKeyUploadTime, std::to_string(timestamp));
@@ -1130,7 +1130,7 @@ absl::variant<std::string, SenderBase::CrashRemoveReason>
 Sender::CreateUploadLogEntry(const std::string& report_id,
                              const std::string& product_name,
                              const CrashDetails& details) {
-  base::Value::Dict json_entity =
+  base::DictValue json_entity =
       CreateJsonEntity(report_id, product_name, details);
   std::string upload_log_entry;
   if (!base::JSONWriter::Write(json_entity, &upload_log_entry)) {

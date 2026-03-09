@@ -133,7 +133,7 @@ void HdrNetProcessorTestFixture::LoadHdrnetConfig(
   ReloadableConfigFile config({
       .default_config_file_path = hdrnet_config_path,
   });
-  base::Value::Dict json_values = config.CloneJsonValues();
+  base::DictValue json_values = config.CloneJsonValues();
 
   ParseHdrnetJsonOptions(json_values, options_);
 

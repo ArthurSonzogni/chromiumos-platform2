@@ -241,8 +241,8 @@ TEST_F(CheckCalibrationStateHandlerTest,
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
-  const base::Value::List* skipped_components =
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* skipped_components =
       (*events)[0].GetDict().FindDict(kDetails)->FindList(
           kLogCalibrationComponents);
   EXPECT_EQ(2, skipped_components->size());
@@ -255,7 +255,7 @@ TEST_F(CheckCalibrationStateHandlerTest,
   EXPECT_EQ(static_cast<int>(LogCalibrationStatus::kFailed),
             (*skipped_components)[1].GetDict().FindInt(kLogCalibrationStatus));
 
-  const base::Value::List* retry_components =
+  const base::ListValue* retry_components =
       (*events)[1].GetDict().FindDict(kDetails)->FindList(
           kLogCalibrationComponents);
   EXPECT_EQ(2, retry_components->size());
@@ -330,8 +330,8 @@ TEST_F(CheckCalibrationStateHandlerTest, GetNextStateCase_SuccessSkipSensors) {
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 
-  const base::Value::List* events = logs.GetDict().FindList(kEvents);
-  const base::Value::List* components =
+  const base::ListValue* events = logs.GetDict().FindList(kEvents);
+  const base::ListValue* components =
       (*events)[1].GetDict().FindDict(kDetails)->FindList(
           kLogCalibrationComponents);
   EXPECT_EQ(2, components->size());

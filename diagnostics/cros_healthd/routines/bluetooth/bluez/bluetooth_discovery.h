@@ -96,7 +96,7 @@ class BluetoothDiscoveryRoutine final : public DiagnosticRoutineWithStatus,
 
   // Details about the routine's execution. Reported in status updates when
   // requested.
-  base::Value::Dict output_dict_;
+  base::DictValue output_dict_;
   // Must be the last class member.
   base::WeakPtrFactory<BluetoothDiscoveryRoutine> weak_ptr_factory_{this};
 };
