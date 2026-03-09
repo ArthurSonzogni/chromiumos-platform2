@@ -123,10 +123,9 @@ class WireGuardDriver : public VPNDriver {
 
   std::unique_ptr<VPNUtil> vpn_util_;
 
-  // Tasks for running `wg show` are bound to this weak factory, so that they
-  // can be cancelled easily.
-  base::WeakPtrFactory<WireGuardDriver> weak_factory_for_read_link_status_{
-      this};
+  // Weak factory for tasks bound to the current connection. All the tasks will
+  // be invalidated in `CleanUp()`.
+  base::WeakPtrFactory<WireGuardDriver> weak_factory_for_connection_{this};
 
   base::WeakPtrFactory<WireGuardDriver> weak_factory_{this};
 };

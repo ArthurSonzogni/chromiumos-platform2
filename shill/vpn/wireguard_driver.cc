@@ -550,7 +550,7 @@ void WireGuardDriver::ConfigureInterface(const std::string& interface_name,
       FROM_HERE, base::FilePath(kWireGuardToolsPath), args,
       /*environment=*/{}, minijail_options,
       base::BindOnce(&WireGuardDriver::OnConfigurationDone,
-                     weak_factory_.GetWeakPtr()));
+                     weak_factory_for_connection_.GetWeakPtr()));
   if (pid == -1) {
     FailService(VPNEndReason::kFailureInternal, "Failed to run `wg setconf`");
     return;
@@ -656,13 +656,10 @@ bool WireGuardDriver::PopulateIPProperties() {
 }
 
 void WireGuardDriver::ScheduleNextReadLinkStatus(base::TimeDelta delay) {
-  // Cancel all ongoing tasks, just in case.
-  weak_factory_for_read_link_status_.InvalidateWeakPtrs();
-
   dispatcher()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&WireGuardDriver::ReadLinkStatus,
-                     weak_factory_for_read_link_status_.GetWeakPtr()),
+                     weak_factory_for_connection_.GetWeakPtr()),
       delay);
 }
 
@@ -675,7 +672,7 @@ void WireGuardDriver::ReadLinkStatus() {
       FROM_HERE, base::FilePath(kWireGuardToolsPath), args,
       /*environment=*/{}, minijail_options,
       base::BindOnce(&WireGuardDriver::OnReadLinkStatusDone,
-                     weak_factory_for_read_link_status_.GetWeakPtr()));
+                     weak_factory_for_connection_.GetWeakPtr()));
 
   if (pid == -1) {
     LOG(ERROR) << "Failed to run `wg show`";
@@ -762,8 +759,10 @@ void WireGuardDriver::Cleanup() {
   network_config_ = std::nullopt;
   config_fd_.reset();
 
+  // Cancel all tasks for the current connection.
+  weak_factory_for_connection_.InvalidateWeakPtrs();
+
   // Clear the stored connection status.
-  weak_factory_for_read_link_status_.InvalidateWeakPtrs();
   args()->Remove(kWireGuardLastReadLinkStatusTime);
   for (auto& peer : peers_) {
     peer.erase(kWireGuardPeerLatestHandshake);
