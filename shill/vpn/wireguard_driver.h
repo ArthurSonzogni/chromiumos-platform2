@@ -108,10 +108,6 @@ class WireGuardDriver : public VPNDriver {
   std::optional<net_base::NetworkConfig> network_config_;
   base::ScopedFD config_fd_;
 
-  // Indicates that whether we have an open wg interface in the kernel which is
-  // created via DeviceInfo now.
-  bool kernel_interface_open_ = false;
-
   // This variable is set in Load() and Save(), and only used to check whether
   // we need to re-calculate the public key in Save().
   std::string saved_private_key_;

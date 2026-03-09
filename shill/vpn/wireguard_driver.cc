@@ -516,15 +516,14 @@ void WireGuardDriver::ConfigureInterface(const std::string& interface_name,
                                          int interface_index) {
   LOG(INFO) << "WireGuard interface " << interface_name
             << " was created. Start configuration";
-  kernel_interface_open_ = true;
+
+  interface_index_ = interface_index;
 
   if (!event_handler_) {
     LOG(ERROR) << "Missing event_handler_";
     Cleanup();
     return;
   }
-
-  interface_index_ = interface_index;
 
   // Writes config file.
   std::string config_contents = GenerateConfigFileContents();
@@ -747,11 +746,10 @@ void WireGuardDriver::FailService(VPNEndReason failure,
 }
 
 void WireGuardDriver::Cleanup() {
-  if (kernel_interface_open_) {
+  if (interface_index_ != -1) {
     manager()->device_info()->DeleteInterface(interface_index_);
-    kernel_interface_open_ = false;
+    interface_index_ = -1;
   }
-  interface_index_ = -1;
   network_config_ = std::nullopt;
   config_fd_.reset();
 
