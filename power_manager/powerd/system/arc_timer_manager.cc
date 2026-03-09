@@ -17,6 +17,7 @@
 #include <base/files/file.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/containers/span.h>
 #include <base/memory/ptr_util.h>
 #include <base/posix/unix_domain_socket.h>
 #include <brillo/daemons/daemon.h>
@@ -54,7 +55,8 @@ void OnExpiration(ArcTimerManager::TimerId timer_id, int expiration_fd) {
   // full (64Kb), a write attempt here will block.
   const uint64_t timer_data = 1;
   if (!base::UnixDomainSocket::SendMsg(
-          expiration_fd, &timer_data, sizeof(timer_data), std::vector<int>())) {
+          expiration_fd, base::byte_span_from_ref(timer_data),
+          std::vector<int>())) {
     PLOG(ERROR) << "Failed to indicate timer expiration to the instance";
   }
 }

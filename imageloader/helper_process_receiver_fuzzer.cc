@@ -8,6 +8,7 @@
 #include <sys/types.h>
 
 #include <base/files/file_util.h>
+#include <base/containers/span.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/posix/unix_domain_socket.h>
@@ -48,8 +49,9 @@ void helper_process_receiver_fuzzer_run(const char* data, size_t size) {
     return;
   }
 
-  if (!base::UnixDomainSocket::SendMsg(writer_fd.get(), data, size,
-                                       {fd.get()})) {
+  if (!base::UnixDomainSocket::SendMsg(
+          writer_fd.get(), base::as_byte_span(base::span(data, size)),
+          {fd.get()})) {
     LOG(ERROR) << "Failed to send all data over socket.";
     return;
   }

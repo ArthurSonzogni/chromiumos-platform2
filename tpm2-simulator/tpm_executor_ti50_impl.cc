@@ -17,6 +17,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/containers/span.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/posix/unix_domain_socket.h>
 #include <base/threading/platform_thread.h>
@@ -177,7 +178,8 @@ void TpmExecutorTi50Impl::InitializeVTPM() {
     return;
   }
 
-  if (!base::UnixDomainSocket::SendMsg(pair.second.get(), kOne, std::size(kOne),
+  if (!base::UnixDomainSocket::SendMsg(pair.second.get(),
+                                       base::as_byte_span(kOne),
                                        {pair.second.get()})) {
     LOG(ERROR) << "Failed to send all data over socket.";
     return;
@@ -208,8 +210,9 @@ std::string TpmExecutorTi50Impl::RunCommand(const std::string& command) {
     return CreateCommandWithCode(0xdead);
   }
 
-  if (!base::UnixDomainSocket::SendMsg(pair.second.get(), command.data(),
-                                       command.length(), {pair.second.get()})) {
+  if (!base::UnixDomainSocket::SendMsg(pair.second.get(),
+                                       base::as_byte_span(command),
+                                       {pair.second.get()})) {
     LOG(ERROR) << "Failed to send all data over socket.";
     return CreateCommandWithCode(0xdead);
   }
@@ -223,13 +226,14 @@ std::string TpmExecutorTi50Impl::RunCommand(const std::string& command) {
     }
 
     std::vector<base::ScopedFD> fds;
-    ssize_t len = base::UnixDomainSocket::RecvMsg(pair.second.get(), buffer,
-                                                  sizeof(buffer), &fds);
-    result += std::string(buffer, len);
+    ssize_t len = base::UnixDomainSocket::RecvMsg(
+        pair.second.get(), base::as_writable_byte_span(buffer), &fds);
 
     if (len < 0) {
       break;
     }
+
+    result += std::string(buffer, len);
   }
 
   CommandHeader header;
