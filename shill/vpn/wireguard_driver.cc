@@ -747,10 +747,6 @@ void WireGuardDriver::FailService(VPNEndReason failure,
 }
 
 void WireGuardDriver::Cleanup() {
-  if (wireguard_pid_ != -1) {
-    process_manager()->StopProcess(wireguard_pid_);
-    wireguard_pid_ = -1;
-  }
   if (kernel_interface_open_) {
     manager()->device_info()->DeleteInterface(interface_index_);
     kernel_interface_open_ = false;

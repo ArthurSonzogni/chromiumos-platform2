@@ -104,7 +104,6 @@ class WireGuardDriver : public VPNDriver {
   Stringmaps peers_;
 
   EventHandler* event_handler_;
-  pid_t wireguard_pid_ = -1;
   int interface_index_ = -1;
   std::optional<net_base::NetworkConfig> network_config_;
   base::ScopedFD config_fd_;
