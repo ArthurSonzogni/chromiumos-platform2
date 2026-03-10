@@ -8,7 +8,6 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/containers/contains.h>
 
 namespace {
 
