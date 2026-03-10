@@ -1774,7 +1774,15 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
 
     // For multi-generation directory delay timer, since we now perform `Write`.
     if (!storage_queue_->generation_guid_.empty()) {
-      storage_queue_->inactivity_check_and_destruct_timer_.Reset();
+      // Reset() assumes user_task() is not null, otherwise it will trigger a
+      // crash when the task is scheduled later. Since the initialization of
+      // `StorageQueue`is async and uses a backoff mechanism to handle failures,
+      // it's possible that this function is called before the queue is
+      // initialized. Check the nullness here to avoid such crashes.
+      if (!storage_queue_->inactivity_check_and_destruct_timer_.user_task()
+               .is_null()) {
+        storage_queue_->inactivity_check_and_destruct_timer_.Reset();
+      }
     }
 
     if (recorder_) {
