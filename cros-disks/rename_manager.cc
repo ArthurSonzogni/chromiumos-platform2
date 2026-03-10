@@ -9,7 +9,6 @@
 #include <string>
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
