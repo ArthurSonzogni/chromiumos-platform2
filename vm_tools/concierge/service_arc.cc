@@ -548,18 +548,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   // By default we don't request any RT CPUs
   ArcVmCPUTopology topology(request.cpus(), 0);
 
-  // We create only 1 RT VCPU for the time being
-  if (request.enable_rt_vcpu()) {
-    topology.SetNumRTCPUs(1);
-  }
-
   topology.CreateCPUAffinity();
-
-  if (request.enable_rt_vcpu()) {
-    params.emplace_back("isolcpus=" + topology.RTCPUMask());
-    params.emplace_back("androidboot.rtcpus=" + topology.RTCPUMask());
-    params.emplace_back("androidboot.non_rtcpus=" + topology.NonRTCPUMask());
-  }
 
   params.emplace_back("ramoops.record_size=" +
                       std::to_string(kArcVmRamoopsRecordSize));
@@ -615,10 +604,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     if (ALLOW_VIRTIO_PVCLOCK) {
       vm_builder.EnablePvClock(request.enable_pvclock() /* enable */);
     }
-  }
-
-  if (request.enable_rt_vcpu()) {
-    vm_builder.AppendCustomParam("--rt-cpus", topology.RTCPUMask());
   }
 
   if (!topology.IsSymmetricCPU() && !topology.AffinityMask().empty()) {
