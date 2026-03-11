@@ -50,23 +50,25 @@ INSTANTIATE_TEST_SUITE_P(AsciiRange,
 TEST_P(FilesystemLabelCharacterTest, ValidateVolumeLabelCharacters) {
   const char* filesystem = GetParam();
 
+  using LabelError::kInvalidCharacter;
+  using LabelError::kSuccess;
+
   // Test allowed characters in volume name
-  EXPECT_EQ(LabelError::kSuccess, ValidateVolumeLabel("AZaz09", filesystem));
-  EXPECT_EQ(LabelError::kSuccess, ValidateVolumeLabel("!#$ %&()", filesystem));
-  EXPECT_EQ(LabelError::kSuccess, ValidateVolumeLabel("@^_-`{}~", filesystem));
+  EXPECT_EQ(kSuccess, ValidateVolumeLabel("AZaz09", filesystem));
+  EXPECT_EQ(kSuccess, ValidateVolumeLabel("!#$ %&()", filesystem));
+  EXPECT_EQ(kSuccess, ValidateVolumeLabel("@^_-`{}~", filesystem));
 
   for (char c : kForbiddenTestCharacters) {
     // Test forbidden characters in volume name
-    EXPECT_EQ(LabelError::kInvalidCharacter,
+    EXPECT_EQ(kInvalidCharacter,
               ValidateVolumeLabel(std::string("ABC") + c, filesystem));
   }
 
   // Test volume name starting with '-'.
-  using LabelError::kInvalidCharacter;
-  EXPECT_EQ(kInvalidCharacter, ValidateVolumeLabel("-", filesystem));
-  EXPECT_EQ(kInvalidCharacter, ValidateVolumeLabel("--", filesystem));
-  EXPECT_EQ(kInvalidCharacter, ValidateVolumeLabel("-V", filesystem));
-  EXPECT_EQ(kInvalidCharacter, ValidateVolumeLabel("--help", filesystem));
+  EXPECT_EQ(kSuccess, ValidateVolumeLabel("-", filesystem));
+  EXPECT_EQ(kSuccess, ValidateVolumeLabel("--", filesystem));
+  EXPECT_EQ(kSuccess, ValidateVolumeLabel("-V", filesystem));
+  EXPECT_EQ(kSuccess, ValidateVolumeLabel("--help", filesystem));
 }
 
 }  // namespace cros_disks

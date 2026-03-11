@@ -135,17 +135,8 @@ RenameError RenameManager::StartRenaming(const std::string& device_path,
       base::FilePath("/usr/share/policy/mkfs-seccomp.policy"));
 
   process.AddArgument(p->program_path);
+  process.AddArgument("--");
   process.AddArgument(device_file);
-
-  // At this stage, the new volume name is already verified and sanitized. In
-  // particular, it is guaranteed that it does not start with '-', which means
-  // that it cannot be mistaken for a command line option by the helper program
-  // (fatlabel, exfatlabel or ntfslabel). There is also no security issue here.
-  // Adding an extra "--" argument before the new volume name does not work with
-  // exfatlabel or ntfslabel. Each helper program has its own argument parsing
-  // rules, and what works with fatlabel does not necessarily work with the
-  // other two.
-  DCHECK(!volume_name.starts_with('-'));
   process.AddArgument(volume_name);
 
   // Sets an output callback, even if it does nothing, to activate the capture

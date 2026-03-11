@@ -74,12 +74,6 @@ LabelError ValidateVolumeLabel(const std::string& volume_label,
     }
   }
 
-  if (volume_label.starts_with('-')) {
-    LOG(WARNING) << "New volume label " << quote(volume_label)
-                 << " starts with a '-'";
-    return LabelError::kInvalidCharacter;
-  }
-
   return LabelError::kSuccess;
 }
 
