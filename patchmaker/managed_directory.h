@@ -26,7 +26,8 @@ class ManagedDirectory {
 
   bool Encode(const base::FilePath& src_path,
               const base::FilePath& dest_path,
-              const std::vector<base::FilePath>& immutable_paths);
+              const std::vector<base::FilePath>& immutable_paths,
+              const double cluster_ratio);
 
   // We are on the decode path. The input managed_dir_path may not be the root
   // of the managed directory, as the caller may be preparing to decode an

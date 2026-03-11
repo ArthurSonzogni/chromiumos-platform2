@@ -24,33 +24,47 @@
 
 namespace {
 
-std::vector<std::vector<base::FilePath>> ClusterFilesInDirectoryBySize(
-    const base::FilePath& src_path) {
+struct FileCluster {
+  std::vector<base::FilePath> paths;
+  double size_sum = 0;
+
+  FileCluster() = default;
+  FileCluster(const base::FilePath& path, uint64_t size) { add(path, size); }
+
+  void add(const base::FilePath& path, uint64_t size) {
+    paths.push_back(path);
+    size_sum += size;
+  }
+
+  double centroid() const {
+    if (paths.empty()) {
+      return 0;
+    }
+    return size_sum / paths.size();
+  }
+};
+
+std::vector<FileCluster> ClusterFilesInDirectoryBySize(
+    const base::FilePath& src_path, double cluster_ratio) {
   util::SortableFileList file_entries = util::GetFilesInDirectory(src_path);
 
-  std::vector<std::vector<base::FilePath>> clusters{};
+  std::vector<FileCluster> clusters;
 
   // Sort files by size so we can do a simple rolling cluster in one pass
   std::sort(file_entries.begin(), file_entries.end(),
             [](auto& left, auto& right) { return left.second < right.second; });
 
-  int num_clustered_files = 0, first_size_in_cluster;
+  int num_clustered_files = 0;
 
-  for (const auto& entry : file_entries) {
-    if (clusters.empty()) {
-      clusters.emplace_back(std::vector<base::FilePath>{entry.first});
-      first_size_in_cluster = entry.second;
-      continue;
+  for (const auto& [current_path, current_size] : file_entries) {
+    if (!clusters.empty() &&
+        current_size <= cluster_ratio * clusters.back().centroid()) {
+      clusters.back().add(current_path, current_size);
+    } else {
+      clusters.emplace_back(current_path, current_size);
     }
-
-    if (entry.second > kClusterRatio * first_size_in_cluster) {
-      num_clustered_files += clusters.back().size();
-      clusters.emplace_back(std::vector<base::FilePath>());
-      first_size_in_cluster = entry.second;
-    }
-    clusters.back().emplace_back(entry.first);
+    num_clustered_files++;
   }
-  num_clustered_files += clusters.back().size();
 
   CHECK(num_clustered_files == file_entries.size());
   return clusters;
@@ -253,7 +267,8 @@ bool ManagedDirectory::CreateNew(
 bool ManagedDirectory::Encode(
     const base::FilePath& src_path,
     const base::FilePath& dest_path,
-    const std::vector<base::FilePath>& immutable_paths) {
+    const std::vector<base::FilePath>& immutable_paths,
+    double cluster_ratio) {
   // Create destination directory
   if (!util::CopyEmptyTreeToDirectory(src_path, dest_path)) {
     return false;
@@ -285,14 +300,14 @@ bool ManagedDirectory::Encode(
     // We were not given a manifest, let's find a recipe for each file.
 
     // Gather files in clusters by size
-    std::vector<std::vector<base::FilePath>> file_clusters =
-        ClusterFilesInDirectoryBySize(src_path);
+    std::vector<FileCluster> file_clusters =
+        ClusterFilesInDirectoryBySize(src_path, cluster_ratio);
 
     // Each cluster is processed individually for performance reasons, as files
     // with very different sizes shouldn't be patched together anyways.
     for (const auto& cluster : file_clusters) {
       std::vector<PatchManifestEntry> entries = EncodeFileClusterFromSrcToDest(
-          cluster, src_path, dest_path, immutable_paths);
+          cluster.paths, src_path, dest_path, immutable_paths);
       for (const auto& m_e : entries) {
         *manifest_.add_entry() = m_e;
       }

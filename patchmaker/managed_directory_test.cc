@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "patchmaker/managed_directory.h"
+
 #include <optional>
 #include <string>
 #include <utility>
@@ -15,7 +17,6 @@
 
 #include "patchmaker/directory_util.h"
 #include "patchmaker/file_util.h"
-#include "patchmaker/managed_directory.h"
 
 const int kNumDirsInRoot = 3;
 const int kNumFilesPerDir = 5;
@@ -72,7 +73,8 @@ class ManagedDirectoryTest : public ::testing::Test {
       const std::vector<base::FilePath>& immutable_paths) {
     ManagedDirectory managed_dir;
     ASSERT_TRUE(managed_dir.CreateNew(dest_path, std::nullopt));
-    ASSERT_TRUE(managed_dir.Encode(src_path, dest_path, immutable_paths));
+    ASSERT_TRUE(managed_dir.Encode(src_path, dest_path, immutable_paths,
+                                   kClusterRatio));
 
     // Verify source and dest have the same number of files (plus one, to
     // account for the patch manifest in dest)
@@ -129,7 +131,7 @@ TEST_F(ManagedDirectoryTest, FullEncodeFromManifest) {
       tmp_encode_from_manifest.GetPath(),
       tmp_encode_fresh.GetPath().Append(kPatchManifestFilename)));
   ASSERT_TRUE(managed_dir.Encode(src_path, tmp_encode_from_manifest.GetPath(),
-                                 std::vector<base::FilePath>()));
+                                 std::vector<base::FilePath>(), kClusterRatio));
 
   // Ensure following the recipe from a precomputed manifest results in an
   // identical output directory as a fresh computation
