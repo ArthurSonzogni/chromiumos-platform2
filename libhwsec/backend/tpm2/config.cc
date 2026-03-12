@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/no_destructor.h>
 #include <base/strings/string_number_conversions.h>
 #include <crypto/sha2.h>
