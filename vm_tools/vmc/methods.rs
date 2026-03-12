@@ -70,6 +70,7 @@ pub enum ChromeOSError {
     BadChromeFeatureStatus,
     BadDiskImageStatus(EnumOrUnknown<DiskImageStatus>, String),
     BadVmStatus(EnumOrUnknown<VmStatus>, String),
+    BadVmManagementCall,
     BadVmPluginDispatcherStatus,
     BiosAlreadySpecified(String),
     BiosDlcNotAllowed(String),
@@ -149,6 +150,7 @@ impl fmt::Display for ChromeOSError {
                 write!(f, "bad disk image status: `{:?}`: {}", s, reason)
             }
             BadVmStatus(s, reason) => write!(f, "bad VM status: `{:?}`: {}", s, reason),
+            BadVmManagementCall => write!(f, "invalid response to vm management request"),
             BadVmPluginDispatcherStatus => write!(f, "failed to start Parallels dispatcher"),
             BiosAlreadySpecified(dlc) => write!(
                 f,
@@ -795,6 +797,33 @@ impl Methods {
             Some(true) => Ok(VmTypeStatus::Enabled),
             Some(false) => Ok(VmTypeStatus::Disabled(reason)),
             _ => Err(BadChromeFeatureStatus.into()),
+        }
+    }
+
+    fn get_ash_vm_type(&mut self, user_id_hash: &str) -> Result<VmType, Box<dyn Error>> {
+        let method = Message::new_method_call(
+            VM_MANAGEMENT_SERVICE_NAME,
+            VM_MANAGEMENT_SERVICE_PATH,
+            VM_MANAGEMENT_SERVICE_INTERFACE,
+            "GetCrostiniVmType",
+        )?
+        .append1(user_id_hash);
+
+        let message = self
+            .connection
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)?;
+        let vm_type: Option<i32> = message.get1();
+        // This value is encoded as the enum value of VmType from
+        // system_api/vm_applications/apps.proto
+        match vm_type {
+            Some(0) => Ok(VmType::TERMINA),
+            Some(1) => Ok(VmType::PLUGIN_VM),
+            Some(2) => Ok(VmType::BOREALIS),
+            Some(3) => Ok(VmType::BRUSCHETTA),
+            Some(4) => Ok(VmType::UNKNOWN),
+            Some(5) => Ok(VmType::ARC_VM),
+            Some(6) => Ok(VmType::BAGUETTE),
+            _ => Err(BadVmManagementCall.into()),
         }
     }
 
@@ -2389,9 +2418,15 @@ impl Methods {
                 .find(|i| i.name == name)
                 .ok_or(MissingVmTypeOnDisk)?;
 
-            let parsed_type = image.vm_type.enum_value_or_default();
+            let mut parsed_type = image.vm_type.enum_value_or_default();
             if parsed_type == VmType::UNKNOWN {
-                return Err(MissingVmTypeOnDisk.into());
+                // Attempt to divine the vm_type from chrome pref
+                let pref_vm_type = self.get_ash_vm_type(user_id_hash)?;
+                if pref_vm_type == VmType::UNKNOWN {
+                    return Err(MissingVmTypeOnDisk.into());
+                } else if pref_vm_type == VmType::TERMINA || pref_vm_type == VmType::BAGUETTE {
+                    parsed_type = pref_vm_type
+                }
             }
             vm_type = Some(parsed_type);
             features.vm_type = Some(parsed_type);
