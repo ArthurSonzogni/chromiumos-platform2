@@ -704,7 +704,8 @@ int GetNextLine(base::File& file, std::string& out_str) {
   char ch;
 
   out_str.clear();
-  while (file.ReadAtCurrentPos(&ch, sizeof(ch)) > 0 && ch != '\n') {
+  while (file.ReadAtCurrentPos(base::byte_span_from_ref(ch)).value_or(0) > 0 &&
+         ch != '\n') {
     out_str.push_back(ch);
   }
 

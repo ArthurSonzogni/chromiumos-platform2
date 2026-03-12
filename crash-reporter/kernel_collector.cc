@@ -11,6 +11,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
@@ -298,9 +299,9 @@ GetWatchdogRebootReasonFromPath(const base::FilePath& watchdog_path,
     }
 
     bootstatus_string.resize(length);
-    int read_result = watchdog_file.ReadAtCurrentPos(
-        bootstatus_string.data(), bootstatus_string.length());
-    if (read_result < 0) {
+    auto read_result = watchdog_file.ReadAtCurrentPos(
+        base::as_writable_byte_span(bootstatus_string));
+    if (!read_result.has_value()) {
       LOG(ERROR) << "Error reading " << watchdog_path;
       return base::unexpected(
           CrashCollectionStatus::kFailureReadingWatchdogFile);
@@ -308,7 +309,7 @@ GetWatchdogRebootReasonFromPath(const base::FilePath& watchdog_path,
     // The crash report may come from pseudo file system which may report
     // the max size of data buffer instead of size of actual data so adjust
     // size of the string according to size of data actually read for the file
-    bootstatus_string.resize(read_result);
+    bootstatus_string.resize(*read_result);
   }
 
   unsigned bootstatus = 0;
@@ -722,7 +723,8 @@ CrashCollectionStatus KernelCollector::HandleCrash(
     SetUseSavedLsb(*force_use_saved_lsb_for_testing_);
   } else if (util::HasSavedOsVersionEntryInKernelLog(kernel_dump) ||
              util::IsKernelLogOverflown(kernel_dump) ||
-             !util::HasCurrentOsReleaseInKernelLog(kernel_dump).value_or(true)) {
+             !util::HasCurrentOsReleaseInKernelLog(kernel_dump)
+                  .value_or(true)) {
     // * Unclean shutdown collector will log "crash-reporter: Saved OS version"
     //   to kernel log when the OS version is saved to file. If the kernel
     //   ramoops contains the string, it means the crash happens after the OS

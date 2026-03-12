@@ -33,6 +33,11 @@ std::string CreateDumpEntry(const std::string& key, const std::string& value);
 bool ReportDefaultPC(base::File& file, std::string* pc);
 bool ReportParseError(ParseErrorReason error_code, base::File& file);
 
+template <typename T>
+bool ReadStruct(base::File& file, T* value) {
+  return file.ReadAtCurrentPosAndCheck(base::byte_span_from_ref(*value));
+}
+
 }  // namespace
 
 namespace vendor {
@@ -105,11 +110,7 @@ struct TlvSubType {
 
 bool ParseEventHeader(base::File& file, int* data_len, std::string* line) {
   struct EventHeader evt_header;
-  int ret;
-
-  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&evt_header),
-                              sizeof(evt_header));
-  if (ret < sizeof(evt_header)) {
+  if (!ReadStruct(file, &evt_header)) {
     LOG(WARNING) << "Error reading Intel devcoredump Event Header";
     return false;
   }
@@ -158,11 +159,7 @@ bool VerifyTlvLength(struct TlvHeader& tlv_header) {
 
 bool ParseTlvHeader(base::File& file, int* tlv_type, int* tlv_len) {
   struct TlvHeader tlv_header;
-  int ret;
-
-  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&tlv_header),
-                              sizeof(tlv_header));
-  if (ret < sizeof(tlv_header)) {
+  if (!ReadStruct(file, &tlv_header)) {
     LOG(WARNING) << "Error reading Intel devcoredump TLV Header";
     return false;
   }
@@ -181,11 +178,7 @@ bool ParseTlvHeader(base::File& file, int* tlv_type, int* tlv_len) {
 
 bool ParseExceptionType(base::File& file, std::string* line) {
   struct TlvExcType exc_type;
-  int ret;
-
-  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&exc_type),
-                              sizeof(exc_type));
-  if (ret < sizeof(exc_type)) {
+  if (!ReadStruct(file, &exc_type)) {
     LOG(WARNING) << "Error reading Intel devcoredump Exception Type";
     return false;
   }
@@ -197,11 +190,7 @@ bool ParseExceptionType(base::File& file, std::string* line) {
 
 bool ParseLineNumber(base::File& file, std::string* line) {
   struct TlvLineNum line_num;
-  int ret;
-
-  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&line_num),
-                              sizeof(line_num));
-  if (ret < sizeof(line_num)) {
+  if (!ReadStruct(file, &line_num)) {
     LOG(WARNING) << "Error reading Intel devcoredump Line Number";
     return false;
   }
@@ -213,11 +202,7 @@ bool ParseLineNumber(base::File& file, std::string* line) {
 
 bool ParseModuleNumber(base::File& file, std::string* line) {
   struct TlvModule module_num;
-  int ret;
-
-  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&module_num),
-                              sizeof(module_num));
-  if (ret < sizeof(module_num)) {
+  if (!ReadStruct(file, &module_num)) {
     LOG(WARNING) << "Error reading Intel devcoredump Module Number";
     return false;
   }
@@ -229,11 +214,7 @@ bool ParseModuleNumber(base::File& file, std::string* line) {
 
 bool ParseErrorId(base::File& file, std::string* line) {
   struct TlvErrorId error_id;
-  int ret;
-
-  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&error_id),
-                              sizeof(error_id));
-  if (ret < sizeof(error_id)) {
+  if (!ReadStruct(file, &error_id)) {
     LOG(WARNING) << "Error reading Intel devcoredump Error Id";
     return false;
   }
@@ -245,10 +226,7 @@ bool ParseErrorId(base::File& file, std::string* line) {
 
 bool ParseBacktrace(base::File& file, std::string* line) {
   struct TlvBacktrace trace;
-  int ret;
-
-  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&trace), sizeof(trace));
-  if (ret < sizeof(trace)) {
+  if (!ReadStruct(file, &trace)) {
     LOG(WARNING) << "Error reading Intel devcoredump Call Backtrace";
     return false;
   }
@@ -265,10 +243,7 @@ bool ParseBacktrace(base::File& file, std::string* line) {
 
 bool ParseAuxRegisters(base::File& file, std::string* pc, std::string* line) {
   struct TlvAuxReg reg;
-  int ret;
-
-  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&reg), sizeof(reg));
-  if (ret < sizeof(reg)) {
+  if (!ReadStruct(file, &reg)) {
     LOG(WARNING) << "Error reading Intel devcoredump Aux Registers";
     return false;
   }
@@ -286,10 +261,7 @@ bool ParseAuxRegistersExtended(base::File& file,
                                std::string* pc,
                                std::string* line) {
   struct TlvAuxRegExt reg;
-  int ret;
-
-  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&reg), sizeof(reg));
-  if (ret < sizeof(reg)) {
+  if (!ReadStruct(file, &reg)) {
     LOG(WARNING) << "Error reading Intel devcoredump Aux Registers";
     return false;
   }
@@ -308,11 +280,7 @@ bool ParseAuxRegistersExtended(base::File& file,
 
 bool ParseExceptionSubtype(base::File& file, std::string* line) {
   struct TlvSubType sub_type;
-  int ret;
-
-  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&sub_type),
-                              sizeof(sub_type));
-  if (ret < sizeof(sub_type)) {
+  if (!ReadStruct(file, &sub_type)) {
     LOG(WARNING) << "Error reading Intel devcoredump Exception Subtype";
     return false;
   }
@@ -506,9 +474,7 @@ struct EventData {
 
 bool ParseEventHeader(base::File& file, int& data_len, std::string& out) {
   struct EventHeader evt_header;
-  int ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&evt_header),
-                                  sizeof(evt_header));
-  if (ret < sizeof(evt_header)) {
+  if (!ReadStruct(file, &evt_header)) {
     LOG(WARNING) << "Error reading Realtek devcoredump Event Header";
     return false;
   }
@@ -532,9 +498,7 @@ bool ParseEventHeader(base::File& file, int& data_len, std::string& out) {
 
 bool ParseEventData(base::File& file, std::string* pc, std::string& out) {
   struct EventData evt_data;
-  int ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&evt_data),
-                                  sizeof(evt_data));
-  if (ret < sizeof(evt_data)) {
+  if (!ReadStruct(file, &evt_data)) {
     LOG(WARNING) << "Error reading Realtek devcoredump Event Data";
     return false;
   }
@@ -923,8 +887,7 @@ bool ParsePC(base::File& file,
 
   uint32_t val;
 
-  if (file.ReadAtCurrentPos(reinterpret_cast<char*>(&val), sizeof(val)) <
-      sizeof(val)) {
+  if (!ReadStruct(file, &val)) {
     LOG(WARNING) << "Error reading PC value";
     return false;
   }
@@ -943,8 +906,7 @@ bool ParseReason(base::File& file, int64_t dump_start, std::string& out) {
 
   uint32_t val;
 
-  if (file.ReadAtCurrentPos(reinterpret_cast<char*>(&val), sizeof(val)) <
-      sizeof(val)) {
+  if (!ReadStruct(file, &val)) {
     LOG(WARNING) << "Error reading Reason Code value";
     return false;
   }

@@ -26,6 +26,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/span.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -843,11 +844,12 @@ bool CrashCollector::CopyFdToNewCompressedFile(
   ssize_t bytes_read;
 
   do {
-    bytes_read = source.ReadAtCurrentPos(buffer.data(), buffer.size());
-    if (bytes_read < 0) {
+    auto count = source.ReadAtCurrentPos(base::as_writable_byte_span(buffer));
+    if (!count.has_value()) {
       gzclose_w(compressed_output);
       return false;
     }
+    bytes_read = *count;
     if (!WriteCompressedFile(compressed_output, buffer.data(), bytes_read)) {
       return false;
     }

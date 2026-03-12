@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/check_op.h>
+#include <base/containers/span.h>
 #include <base/logging.h>
 
 namespace anomaly {
@@ -92,9 +93,9 @@ bool TextFileReader::LoadToBuffer() {
   pos_ = 0;
   end_pos_ = 0;
 
-  int64_t bytes_read = file_.ReadAtCurrentPos(buf_.data(), buf_.size());
-  if (bytes_read > 0) {
-    end_pos_ = bytes_read;
+  auto bytes_read = file_.ReadAtCurrentPos(base::as_writable_byte_span(buf_));
+  if (bytes_read.value_or(0) > 0) {
+    end_pos_ = *bytes_read;
     return true;
   }
 
