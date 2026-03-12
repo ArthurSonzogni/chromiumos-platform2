@@ -9,6 +9,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -99,10 +100,10 @@ std::unique_ptr<password_provider::Password> ReadPasswordFromFile(
   }
 
   brillo::SecureVector tmp_password(password_file.GetLength());
-  int read = password_file.ReadAtCurrentPos(
-      reinterpret_cast<char*>(tmp_password.data()), password_file.GetLength());
-  if (read != password_file.GetLength()) {
-    LOG(ERROR) << "Unexpected password file read length: " << read;
+  auto read = password_file.ReadAtCurrentPos(base::span(tmp_password));
+  if (!read.has_value() ||
+      *read != static_cast<size_t>(password_file.GetLength())) {
+    LOG(ERROR) << "Unexpected password file read length: " << read.value_or(0);
     return nullptr;
   }
 
