@@ -15,7 +15,6 @@
 #include "rgbkbd/keyboard_backlight_logger.h"
 #include "rgbkbd/rgb_keyboard_controller_impl.h"
 
-#include "base/containers/contains.h"
 #include "base/containers/span.h"
 #include "base/files/file.h"
 #include "base/files/file_path.h"
