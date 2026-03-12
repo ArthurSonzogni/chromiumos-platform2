@@ -148,13 +148,13 @@ bool TimberSlide::GetEcUptime(int64_t* ec_uptime_ms) {
   }
 
   // Read single line from file and parse as a number.
-  int count = uptime_file_.ReadAtCurrentPos(uptime_buf, sizeof(uptime_buf) - 1);
-
-  if (count <= 0) {
+  auto count = uptime_file_.ReadAtCurrentPos(
+      base::as_writable_byte_span(uptime_buf).first<sizeof(uptime_buf) - 1>());
+  if (!count.has_value() || *count == 0) {
     return false;
   }
 
-  uptime_buf[count] = '\0';
+  uptime_buf[*count] = '\0';
   base::StringToInt64(uptime_buf, ec_uptime_ms);
 
   // If the 'uptime' file contains zero, that means the kernel patch is
