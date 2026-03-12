@@ -229,7 +229,7 @@ std::string TpmExecutorTi50Impl::RunCommand(const std::string& command) {
     ssize_t len = base::UnixDomainSocket::RecvMsg(
         pair.second.get(), base::as_writable_byte_span(buffer), &fds);
 
-    if (len < 0) {
+    if (len <= 0) {
       break;
     }
 
