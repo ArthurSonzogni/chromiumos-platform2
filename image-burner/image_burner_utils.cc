@@ -4,15 +4,17 @@
 
 #include "image-burner/image_burner_utils.h"
 
-#include <memory>
-
 #include <sys/stat.h>
 
+#include <memory>
+
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <rootdev/rootdev.h>
 
@@ -137,11 +139,17 @@ bool BurnReader::Close() {
 }
 
 int BurnReader::Read(char* data_block, int data_size) {
-  const int read = file_.ReadAtCurrentPos(data_block, data_size);
-  if (read < 0) {
-    PLOG(ERROR) << "Error reading from source file";
+  if (data_size < 0) {
+    return -1;
   }
-  return read;
+
+  base::span<char> data_span(data_block, base::checked_cast<size_t>(data_size));
+  auto read = file_.ReadAtCurrentPos(base::as_writable_bytes(data_span));
+  if (!read.has_value()) {
+    PLOG(ERROR) << "Error reading from source file";
+    return -1;
+  }
+  return static_cast<int>(*read);
 }
 
 int64_t BurnReader::GetSize() {
