@@ -26,6 +26,7 @@
 #include <base/base64.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -1004,12 +1005,12 @@ base::expected<std::string, std::string> Log::GetFileData(
         length = max_bytes;
       }
       std::vector<char> buf(length);
-      int read = file.ReadAtCurrentPos(buf.data(), buf.size());
-      if (read < 0) {
+      auto read = file.ReadAtCurrentPos(base::as_writable_byte_span(buf));
+      if (!read.has_value()) {
         PLOG(ERROR) << "Could not read from file " << path.value();
         result = base::unexpected(kLogNotAvailable);
       } else {
-        result = base::ok(std::string(buf.begin(), buf.begin() + read));
+        result = base::ok(std::string(buf.begin(), buf.begin() + *read));
       }
     }
   }
