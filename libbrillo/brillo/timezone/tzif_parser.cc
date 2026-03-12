@@ -5,14 +5,16 @@
 #include "brillo/timezone/tzif_parser.h"
 
 #include <arpa/inet.h>
-#include <iterator>
-#include <optional>
 #include <stdint.h>
 #include <string.h>
+
+#include <iterator>
+#include <optional>
 #include <utility>
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
@@ -35,8 +37,7 @@ struct tzif_header {
 bool ReadInt(base::File* file, int32_t* out_int) {
   DCHECK(out_int);
   int32_t buf;
-  int read = file->ReadAtCurrentPos(reinterpret_cast<char*>(&buf), sizeof(buf));
-  if (read != sizeof(buf)) {
+  if (!file->ReadAtCurrentPosAndCheck(base::byte_span_from_ref(buf))) {
     return false;
   }
   // Values are stored in network byte order (highest-order byte first).
@@ -47,16 +48,16 @@ bool ReadInt(base::File* file, int32_t* out_int) {
 
 bool ParseTzifHeader(base::File* tzfile, struct tzif_header* header) {
   DCHECK(header);
-  int read = tzfile->ReadAtCurrentPos(header->magic, sizeof(header->magic));
-  if (read != sizeof(header->magic)) {
+  if (!tzfile->ReadAtCurrentPosAndCheck(
+          base::as_writable_byte_span(header->magic))) {
     return false;
   }
   if (memcmp(header->magic, "TZif", 4) != 0) {
     return false;
   }
 
-  read = tzfile->ReadAtCurrentPos(&header->version, sizeof(header->version));
-  if (read != sizeof(header->version)) {
+  if (!tzfile->ReadAtCurrentPosAndCheck(
+          base::byte_span_from_ref(header->version))) {
     return false;
   }
   if (header->version != '\0' && header->version != '2' &&
@@ -64,8 +65,8 @@ bool ParseTzifHeader(base::File* tzfile, struct tzif_header* header) {
     return false;
   }
 
-  read = tzfile->ReadAtCurrentPos(header->reserved, sizeof(header->reserved));
-  if (read != sizeof(header->reserved)) {
+  if (!tzfile->ReadAtCurrentPosAndCheck(
+          base::as_writable_byte_span(header->reserved))) {
     return false;
   }
   for (size_t i = 0; i < sizeof(header->reserved); i++) {
@@ -151,8 +152,8 @@ std::optional<std::string> GetPosixTimezone(const base::FilePath& tzif_path) {
   int64_t offset = tzfile.Seek(base::File::FROM_CURRENT, second_body_size);
 
   std::string time_string(tzfile.GetLength() - offset, '\0');
-  if (tzfile.ReadAtCurrentPos(time_string.data(), time_string.size()) !=
-      time_string.size()) {
+  if (!tzfile.ReadAtCurrentPosAndCheck(
+          base::as_writable_byte_span(time_string))) {
     return std::nullopt;
   }
 
