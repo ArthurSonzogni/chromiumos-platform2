@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/command_line.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback_helpers.h>
@@ -74,13 +75,13 @@ std::optional<lorgnette::DocumentSource> FindMatchingSource(
 
 std::optional<std::vector<std::string>> ReadLines(base::File* file) {
   std::string buf(1 << 20, '\0');
-  int read = file->ReadAtCurrentPos(&buf[0], buf.size());
-  if (read < 0) {
+  auto read = file->ReadAtCurrentPos(base::as_writable_byte_span(buf));
+  if (!read.has_value()) {
     PLOG(ERROR) << "Reading from file failed";
     return std::nullopt;
   }
 
-  buf.resize(read);
+  buf.resize(*read);
   return base::SplitString(buf, "\n", base::KEEP_WHITESPACE,
                            base::SPLIT_WANT_ALL);
 }
