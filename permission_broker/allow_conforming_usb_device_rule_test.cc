@@ -23,7 +23,6 @@
 #include <permission_broker/rule_utils.h>
 #include <permission_broker/udev_scopers.h>
 
-#include "base/containers/contains.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/strings/string_number_conversions.h"
 #include "featured/feature_library.h"
