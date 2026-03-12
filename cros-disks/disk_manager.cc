@@ -30,6 +30,7 @@
 
 #include "cros-disks/device_ejector.h"
 #include "cros-disks/disk_monitor.h"
+#include "cros-disks/filesystem_label.h"
 #include "cros-disks/fuse_mounter.h"
 #include "cros-disks/metrics.h"
 #include "cros-disks/mount_options.h"
@@ -429,7 +430,7 @@ std::string DiskManager::SuggestMountPath(
   disk_monitor_->GetDiskByDevicePath(base::FilePath(source_path), &disk);
   // If GetDiskByDevicePath fails, disk.GetPresentationName() returns
   // the fallback presentation name.
-  return mount_root().Append(disk.GetPresentationName()).value();
+  return mount_root().Append(Sanitize(disk.GetPresentationName())).value();
 }
 
 bool DiskManager::ShouldReserveMountPathOnError(MountError error_type) const {

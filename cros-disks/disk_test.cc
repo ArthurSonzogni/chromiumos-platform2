@@ -20,7 +20,7 @@ TEST_F(DiskTest, GetPresentationNameForDiskWithLabel) {
 
 TEST_F(DiskTest, GetPresentationNameForDiskWithLabelWithSlashes) {
   disk_.label = "This/Is/My/Disk";
-  EXPECT_EQ("This_Is_My_Disk", disk_.GetPresentationName());
+  EXPECT_EQ(disk_.label, disk_.GetPresentationName());
 }
 
 TEST_F(DiskTest, GetPresentationNameForDiskWithoutLabel) {

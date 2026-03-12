@@ -4,6 +4,8 @@
 
 #include "cros-disks/filesystem_label.h"
 
+#include <linux/limits.h>
+
 #include <string>
 
 #include <gtest/gtest.h>
@@ -38,6 +40,36 @@ TEST(FilesystemLabelTest, ValidateVolumeLabel) {
   // Test unsupported file system type
   EXPECT_EQ(LabelError::kUnsupportedFilesystem,
             ValidateVolumeLabel("ABC", "nonexistent-fs"));
+}
+
+TEST(FilesystemLabelTest, Sanitize) {
+  EXPECT_EQ(Sanitize(""), "_");
+  EXPECT_EQ(Sanitize("A"), "A");
+  EXPECT_EQ(Sanitize(".A/B/C.D"), "A_B_C.D");
+  EXPECT_EQ(Sanitize("."), "_");
+  EXPECT_EQ(Sanitize(".."), "_");
+  EXPECT_EQ(Sanitize("..."), "_");
+  EXPECT_EQ(Sanitize(".a"), "a");
+  EXPECT_EQ(Sanitize("..a"), "a");
+  EXPECT_EQ(Sanitize("./"), "_");
+  EXPECT_EQ(Sanitize("../.."), "_..");
+  EXPECT_EQ(Sanitize(std::string(PATH_MAX, 'x')), std::string(NAME_MAX, 'x'));
+  EXPECT_EQ(Sanitize(std::string(PATH_MAX, '/')), std::string(NAME_MAX, '_'));
+  EXPECT_EQ(Sanitize(std::string(PATH_MAX, '.')), "_");
+  EXPECT_EQ(Sanitize(std::string(PATH_MAX, '.') + "a"), "a");
+
+  // Multibyte UTF-8 sequence.
+  const std::string smiley = "\xF0\x9F\x98\x80";
+  EXPECT_EQ(Sanitize(std::string(NAME_MAX, 'x') + smiley),
+            std::string(NAME_MAX, 'x'));
+  EXPECT_EQ(Sanitize(std::string(NAME_MAX - 1, 'x') + smiley),
+            std::string(NAME_MAX - 1, 'x'));
+  EXPECT_EQ(Sanitize(std::string(NAME_MAX - 2, 'x') + smiley),
+            std::string(NAME_MAX - 2, 'x'));
+  EXPECT_EQ(Sanitize(std::string(NAME_MAX - 3, 'x') + smiley),
+            std::string(NAME_MAX - 3, 'x'));
+  EXPECT_EQ(Sanitize(std::string(NAME_MAX - 4, 'x') + smiley),
+            std::string(NAME_MAX - 4, 'x') + smiley);
 }
 
 class FilesystemLabelCharacterTest

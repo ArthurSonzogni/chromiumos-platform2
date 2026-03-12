@@ -4,7 +4,11 @@
 
 #include "cros-disks/filesystem_label.h"
 
+#include <linux/limits.h>
+
+#include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <cstring>
 
 #include <base/logging.h>
@@ -48,18 +52,18 @@ LabelError ValidateVolumeLabel(const std::string& volume_label,
   // Check if the file system is supported for renaming
   const LabelParameters* parameters = FindLabelParameters(filesystem_type);
   if (!parameters) {
-    LOG(WARNING) << filesystem_type
-                 << " filesystem is not supported for labelling";
+    LOG(ERROR) << "Filesystem " << quote(filesystem_type)
+               << " is not supported for labelling";
     return LabelError::kUnsupportedFilesystem;
   }
 
   // Check if new volume label satisfies file system volume label conditions
   // Volume label length
   if (volume_label.size() > parameters->max_label_length) {
-    LOG(WARNING) << "New volume label " << quote(volume_label)
-                 << " exceeds the limit of " << parameters->max_label_length
-                 << " characters for the filesystem "
-                 << quote(parameters->filesystem_type);
+    LOG(ERROR) << "New volume label " << redact(volume_label)
+               << " exceeds the limit of " << parameters->max_label_length
+               << " characters for the filesystem "
+               << quote(parameters->filesystem_type);
     return LabelError::kLongName;
   }
 
@@ -68,13 +72,40 @@ LabelError ValidateVolumeLabel(const std::string& volume_label,
   for (char value : volume_label) {
     if (!base::IsAsciiAlpha(value) && !base::IsAsciiDigit(value) &&
         !std::memchr(kAllowedCharacters, value, sizeof(kAllowedCharacters))) {
-      LOG(WARNING) << "New volume label " << quote(volume_label)
-                   << " contains forbidden character '" << value << "'";
+      LOG(ERROR) << "New volume label " << redact(volume_label)
+                 << " contains forbidden character '" << value << "'";
       return LabelError::kInvalidCharacter;
     }
   }
 
   return LabelError::kSuccess;
+}
+
+std::string Sanitize(std::string_view name) {
+  // Remove leading dots.
+  while (name.starts_with('.')) {
+    name.remove_prefix(1);
+  }
+
+  size_t i = name.size();
+  if (i > NAME_MAX) {
+    // We need to trim.
+    i = NAME_MAX;
+
+    // Ensure that we don't cut in the middle of a multibyte UTF-8 sequence.
+    while (i > 0 && (static_cast<std::uint8_t>(name[i]) >> 6) == 0b10u) {
+      --i;
+    }
+  }
+
+  if (i == 0) {
+    // Ensure that we don't return an empty string.
+    return "_";
+  }
+
+  std::string result(name, 0, i);
+  std::ranges::replace(result, '/', '_');
+  return result;
 }
 
 }  // namespace cros_disks

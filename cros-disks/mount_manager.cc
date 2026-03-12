@@ -22,6 +22,7 @@
 #include <brillo/process/process_reaper.h>
 #include <chromeos/libminijail.h>
 
+#include "cros-disks/filesystem_label.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
@@ -374,7 +375,7 @@ MountError MountManager::CreateMountPathForSource(const std::string& source,
   *mount_path = base::FilePath(SuggestMountPath(source));
   if (!label.empty()) {
     // Replace the basename(|actual_mount_path|) with |label|.
-    *mount_path = mount_path->DirName().Append(label);
+    *mount_path = mount_path->DirName().Append(Sanitize(label));
   }
 
   if (!IsValidMountPath(*mount_path)) {

@@ -4,8 +4,6 @@
 
 #include "cros-disks/disk.h"
 
-#include <algorithm>
-
 namespace cros_disks {
 namespace {
 
@@ -20,9 +18,7 @@ const char kFallbackPresentationName[] = "External Drive";
 
 std::string Disk::GetPresentationName() const {
   if (!label.empty()) {
-    std::string name = label;
-    std::replace(name.begin(), name.end(), '/', '_');
-    return name;
+    return label;
   }
 
   switch (media_type) {
