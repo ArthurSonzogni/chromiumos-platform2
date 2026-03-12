@@ -9,7 +9,6 @@
 #include <optional>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
