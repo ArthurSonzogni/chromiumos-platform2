@@ -7,6 +7,8 @@
 #define __STDC_LIMIT_MACROS 1
 #define __STDC_FORMAT_MACROS 1
 
+#include "verity/file_hasher.h"
+
 #include <linux/fs.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
@@ -16,6 +18,7 @@
 
 #include <base/bits.h>
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -23,7 +26,6 @@
 
 #include "verity/dm-bht.h"
 #include "verity/dm_verity_table.h"
-#include "verity/file_hasher.h"
 
 namespace verity {
 
@@ -108,8 +110,8 @@ bool FileHasher::Hash() {
   uint32_t block = 0;
 
   while (block < block_limit_) {
-    if (source_->ReadAtCurrentPos(reinterpret_cast<char*>(block_data),
-                                  PAGE_SIZE) < 0) {
+    if (!source_->ReadAtCurrentPos(base::as_writable_byte_span(block_data))
+             .has_value()) {
       PLOG(ERROR) << "Failed to read for block: " << block;
       return false;
     }
@@ -138,7 +140,9 @@ const char* FileHasher::RandomSalt() {
 
   LOG_IF(FATAL, !source.IsValid())
       << "Failed to open the random source: " << urandom_path;
-  PLOG_IF(FATAL, source.ReadAtCurrentPos(buf, sizeof(buf)) < 0)
+  PLOG_IF(
+      FATAL,
+      !source.ReadAtCurrentPos(base::as_writable_byte_span(buf)).has_value())
       << "Failed to read the random source";
 
   for (size_t i = 0; i < sizeof(buf); ++i) {
