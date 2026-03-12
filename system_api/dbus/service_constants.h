@@ -323,6 +323,8 @@ constexpr char kVmManagementServiceInterface[] =
 
 constexpr char kVmManagementServiceSetCrostiniVmTypeMethod[] =
     "SetCrostiniVmType";
+constexpr char kVmManagementServiceGetCrostiniVmTypeMethod[] =
+    "GetCrostiniVmType";
 
 constexpr char kChromeReportingServiceInterface[] =
     "org.chromium.ChromeReportingServiceInterface";
