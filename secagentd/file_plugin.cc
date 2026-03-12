@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "base/containers/span.h"
 #include "base/files/file.h"
 #include "base/files/file_enumerator.h"
 #include "base/files/file_path.h"
@@ -403,12 +404,13 @@ bool ReadLine(base::File* file,
 
   // Read new data
   while (true) {
-    int bytes_read = file->ReadAtCurrentPos(&buffer[0], kBufferSize);
-    if (bytes_read < 0) {
+    auto bytes_read =
+        file->ReadAtCurrentPos(base::as_writable_byte_span(buffer));
+    if (!bytes_read.has_value()) {
       return false;
     }
     // Check if there is any remaining data to process
-    if (bytes_read == 0) {
+    if (*bytes_read == 0) {
       // End of file
       if (!line->empty()) {
         return true;
@@ -420,7 +422,7 @@ bool ReadLine(base::File* file,
       return false;
     }
 
-    std::string buffer_data = buffer.substr(0, bytes_read);
+    std::string buffer_data = buffer.substr(0, *bytes_read);
     size_t start = 0;
     size_t newline_pos;
     if ((newline_pos = buffer_data.find('\n', start)) != std::string::npos) {
