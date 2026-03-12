@@ -4,8 +4,10 @@
 
 #include "arc/setup/xml/android_binary_xml_tokenizer.h"
 
-#include <base/logging.h>
 #include <endian.h>
+
+#include <base/containers/span.h>
+#include <base/logging.h>
 
 namespace arc {
 
@@ -28,7 +30,7 @@ bool AndroidBinaryXmlTokenizer::Init(const base::FilePath& path) {
   }
   // Check the magic number.
   char buf[sizeof(kMagicNumber)] = {};
-  if (file_.ReadAtCurrentPos(buf, sizeof(buf)) != sizeof(buf) ||
+  if (!file_.ReadAtCurrentPosAndCheck(base::as_writable_byte_span(buf)) ||
       memcmp(buf, kMagicNumber, sizeof(kMagicNumber)) != 0) {
     LOG(ERROR) << "Invalid magic number";
     return false;
@@ -39,8 +41,8 @@ bool AndroidBinaryXmlTokenizer::Init(const base::FilePath& path) {
 bool AndroidBinaryXmlTokenizer::Next() {
   // Read the token.
   uint8_t value = 0;
-  int result =
-      file_.ReadAtCurrentPos(reinterpret_cast<char*>(&value), sizeof(value));
+  std::optional<size_t> result =
+      file_.ReadAtCurrentPos(base::byte_span_from_ref(value));
   if (result == 0) {  // Reached EOF.
     is_eof_ = true;
     return false;
@@ -126,9 +128,8 @@ bool AndroidBinaryXmlTokenizer::Next() {
             return false;
           }
           bytes_value_.resize(*length);
-          if (file_.ReadAtCurrentPos(
-                  reinterpret_cast<char*>(bytes_value_.data()),
-                  bytes_value_.size()) != bytes_value_.size()) {
+          if (!file_.ReadAtCurrentPosAndCheck(
+                  base::as_writable_byte_span(bytes_value_))) {
             LOG(ERROR) << "Failed to read the attribute value of " << *name;
             return false;
           }
@@ -170,8 +171,7 @@ int64_t AndroidBinaryXmlTokenizer::GetPosition() {
 
 std::optional<uint16_t> AndroidBinaryXmlTokenizer::ConsumeUint16() {
   uint16_t value = 0;
-  if (file_.ReadAtCurrentPos(reinterpret_cast<char*>(&value), sizeof(value)) !=
-      sizeof(value)) {
+  if (!file_.ReadAtCurrentPosAndCheck(base::byte_span_from_ref(value))) {
     return {};
   }
   return be16toh(value);
@@ -179,8 +179,7 @@ std::optional<uint16_t> AndroidBinaryXmlTokenizer::ConsumeUint16() {
 
 std::optional<int32_t> AndroidBinaryXmlTokenizer::ConsumeInt32() {
   uint32_t value = 0;
-  if (file_.ReadAtCurrentPos(reinterpret_cast<char*>(&value), sizeof(value)) !=
-      sizeof(value)) {
+  if (!file_.ReadAtCurrentPosAndCheck(base::byte_span_from_ref(value))) {
     return {};
   }
   return be32toh(value);
@@ -188,8 +187,7 @@ std::optional<int32_t> AndroidBinaryXmlTokenizer::ConsumeInt32() {
 
 std::optional<int64_t> AndroidBinaryXmlTokenizer::ConsumeInt64() {
   uint64_t value = 0;
-  if (file_.ReadAtCurrentPos(reinterpret_cast<char*>(&value), sizeof(value)) !=
-      sizeof(value)) {
+  if (!file_.ReadAtCurrentPosAndCheck(base::byte_span_from_ref(value))) {
     return {};
   }
   return be64toh(value);
@@ -201,7 +199,7 @@ std::optional<std::string> AndroidBinaryXmlTokenizer::ConsumeString() {
     return {};
   }
   std::string data(*length, 0);
-  if (file_.ReadAtCurrentPos(data.data(), data.size()) != data.size()) {
+  if (!file_.ReadAtCurrentPosAndCheck(base::as_writable_byte_span(data))) {
     return {};
   }
   return data;
