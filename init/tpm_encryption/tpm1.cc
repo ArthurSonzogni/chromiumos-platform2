@@ -11,6 +11,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -681,19 +682,20 @@ bool Tpm1SystemKeyLoader::IsTPMFirmwareUpdatePending() {
   {
     base::File pipe(tpm_firmware_update_locator->GetPipe(STDOUT_FILENO));
     char update_location[PATH_MAX];
-    int bytes_read =
-        pipe.ReadAtCurrentPos(update_location, sizeof(update_location));
-    if (bytes_read <= 0) {
+    auto bytes_read =
+        pipe.ReadAtCurrentPos(base::as_writable_byte_span(update_location));
+    if (!bytes_read.has_value() || *bytes_read == 0) {
       LOG(ERROR) << "Failed to read update location from pipe.";
       return false;
     }
 
     // Check that the update location file exists.
-    char* newline_pos = strchr(update_location, '\n');
-    if (newline_pos) {
-      *newline_pos = '\0';
+    std::string update_location_str(update_location, *bytes_read);
+    size_t newline_pos = update_location_str.find('\n');
+    if (newline_pos != std::string::npos) {
+      update_location_str.resize(newline_pos);
     }
-    base::FilePath update_path(update_location);
+    base::FilePath update_path(update_location_str);
     LOG(INFO) << "Checking whether " << rootdir_.Append(paths::kFirmwareDir)
               << " is a parent of " << update_path;
     if (!rootdir_.Append(paths::kFirmwareDir).IsParent(update_path) ||
