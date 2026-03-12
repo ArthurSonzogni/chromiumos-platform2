@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -329,11 +330,13 @@ bool Component::ReadHashAndCopyFile(base::File* file,
     int bytes_to_read =
         std::min(remaining, base::checked_cast<int>(sizeof(buf)));
 
-    rv = file->ReadAtCurrentPos(buf, bytes_to_read);
-    if (rv <= 0) {
+    auto read = file->ReadAtCurrentPos(base::as_writable_byte_span(buf).first(
+        base::checked_cast<size_t>(bytes_to_read)));
+    if (!read.has_value() || *read == 0) {
       break;
     }
 
+    rv = base::checked_cast<int>(*read);
     bytes_read += rv;
     sha256->Update(buf, rv);
     if (out_file) {
