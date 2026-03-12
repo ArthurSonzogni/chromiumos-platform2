@@ -11,6 +11,7 @@
 #include <tuple>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -104,15 +105,14 @@ std::tuple<bool, std::string> ReadFileContentWithinRange(
   int current_col = 0;
   while (bytes_to_read-- > 0) {
     char c;
-    switch (f.ReadAtCurrentPos(&c, 1)) {
-      case -1:
-        PLOG(ERROR) << "Failed to read file " << file_path.value();
-        return {false, {}};
-      case 0:
-        // Equivalent of EOF.
-        return {true, content};
-      default:
-        break;
+    auto read = f.ReadAtCurrentPos(base::byte_span_from_ref(c));
+    if (!read.has_value()) {
+      PLOG(ERROR) << "Failed to read file " << file_path.value();
+      return {false, {}};
+    }
+    if (*read == 0) {
+      // Equivalent of EOF.
+      return {true, content};
     }
     if (c == '\n') {
       if (content.empty() || content.back() != '\n') {
@@ -151,7 +151,10 @@ std::tuple<bool, std::string, int64_t> ReadFileContent(
   content.reserve(num_lines * num_cols);
   int64_t bytes_read = 0;
   int current_col = 0, read_buffer_lines = 0;
-  while (f.ReadAtCurrentPos(&c, 1) > 0 && read_buffer_lines < num_lines) {
+  while (read_buffer_lines < num_lines) {
+    if (f.ReadAtCurrentPos(base::byte_span_from_ref(c)) != 1u) {
+      break;
+    }
     ++bytes_read;
     if (c == '\n') {
       // Skip double newlining.

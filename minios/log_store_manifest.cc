@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 
+#include <base/containers/span.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
@@ -92,7 +93,7 @@ std::optional<LogManifest> LogStoreManifest::Retrieve() {
         partition_size_ -
         (disk_manifest_location_.value() + sizeof(kLogStoreMagic));
     serialized_manifest.resize(max_manifest_size);
-    disk.ReadAtCurrentPos(serialized_manifest.data(), max_manifest_size);
+    disk.ReadAtCurrentPos(base::as_writable_byte_span(serialized_manifest));
     manifest.ParseFromString(serialized_manifest);
     return manifest;
   }
@@ -199,8 +200,7 @@ std::optional<uint64_t> LogStoreManifest::FindManifestMagic(base::File& disk) {
   for (uint64_t block = num_blocks - 1; block > last_kernel_block; --block) {
     disk.Seek(base::File::FROM_BEGIN, kBlockSize * block);
     uint64_t block_magic = 0;
-    disk.ReadAtCurrentPos(reinterpret_cast<char*>(&block_magic),
-                          sizeof(block_magic));
+    disk.ReadAtCurrentPosAndCheck(base::byte_span_from_ref(block_magic));
     if (block_magic == kLogStoreMagic) {
       return kBlockSize * block;
     }
