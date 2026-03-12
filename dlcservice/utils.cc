@@ -15,10 +15,12 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/file_utils.h>
@@ -284,7 +286,8 @@ bool CopyAndHashFile(const base::FilePath& from,
   vector<char> buf(kMaxBufSize);
   for (; size > 0; size -= kMaxBufSize) {
     int bytes = std::min(kMaxBufSize, size);
-    if (f_from.ReadAtCurrentPos(buf.data(), bytes) != bytes) {
+    if (!f_from.ReadAtCurrentPosAndCheck(base::as_writable_byte_span(buf).first(
+            base::checked_cast<size_t>(bytes)))) {
       PLOG(ERROR) << "Failed to read from file at " << from.value();
       return false;
     }

@@ -13,9 +13,11 @@
 #include <string>
 #include <vector>
 
-#include <base/logging.h>
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/values.h>
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
@@ -100,7 +102,8 @@ bool Utils::HashFile(const base::FilePath& path,
   vector<char> buf(kMaxBufSize);
   for (; size > 0; size -= kMaxBufSize) {
     int bytes = std::min(kMaxBufSize, size);
-    if (f.ReadAtCurrentPos(buf.data(), bytes) != bytes) {
+    if (!f.ReadAtCurrentPosAndCheck(base::as_writable_byte_span(buf).first(
+            base::checked_cast<size_t>(bytes)))) {
       PLOG(ERROR) << "Failed to read from file at " << path.value();
       return false;
     }
