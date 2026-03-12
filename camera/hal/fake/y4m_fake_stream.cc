@@ -10,20 +10,21 @@
 
 #include "hal/fake/y4m_fake_stream.h"
 
+#include <libyuv.h>
+#include <linux/videodev2.h>
+
 #include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
 
+#include <base/containers/span.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_tokenizer.h>
-#include <libyuv.h>
-#include <linux/videodev2.h>
-
-#include "hal/fake/frame_buffer/cpu_memory_frame_buffer.h"
-#include "hal/fake/frame_buffer/gralloc_frame_buffer.h"
 
 #include "cros-camera/common.h"
+#include "hal/fake/frame_buffer/cpu_memory_frame_buffer.h"
+#include "hal/fake/frame_buffer/gralloc_frame_buffer.h"
 
 namespace cros {
 
@@ -142,8 +143,8 @@ bool Y4mFakeStream::Initialize(Size size, const FramesSpec& spec) {
   }
 
   std::string header(kY4mHeaderMaxSize, '\0');
-  int ret = file_.ReadAtCurrentPos(header.data(), header.size());
-  if (ret == -1) {
+  auto ret = file_.ReadAtCurrentPos(base::as_writable_byte_span(header));
+  if (!ret.has_value()) {
     auto error = file_.ErrorToString(file_.GetLastFileError());
     LOGF(WARNING) << "Failed to read header for file " << file_path_ << ": "
                   << error;
