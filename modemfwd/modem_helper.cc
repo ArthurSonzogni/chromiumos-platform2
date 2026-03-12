@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -117,9 +118,10 @@ bool RunHelperProcess(const HelperInfo& helper_info,
 
     const int kBufSize = 1024;
     char buf[kBufSize];
-    int bytes_read = output_base_file.ReadAtCurrentPos(buf, kBufSize);
-    if (bytes_read != -1) {
-      output->assign(buf, bytes_read);
+    auto bytes_read =
+        output_base_file.ReadAtCurrentPos(base::as_writable_byte_span(buf));
+    if (bytes_read.has_value()) {
+      output->assign(buf, *bytes_read);
     }
   }
 

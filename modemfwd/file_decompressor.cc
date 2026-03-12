@@ -10,6 +10,7 @@
 
 #include <memory>
 
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/logging.h>
 
@@ -54,19 +55,19 @@ bool DecompressXzFile(const base::FilePath& in_file_path,
 
   for (;;) {
     if (stream.avail_in == 0) {
-      int read_ret = in_file.ReadAtCurrentPos(
-          reinterpret_cast<char*>(in_buffer.get()), in_buffer_size);
-      if (read_ret < 0) {
+      base::span<uint8_t> in_span(in_buffer.get(), in_buffer_size);
+      auto read_ret = in_file.ReadAtCurrentPos(in_span);
+      if (!read_ret.has_value()) {
         PLOG(ERROR) << "Failed to read from '" << out_file_path.value() << "'";
         return false;
       }
 
-      if (read_ret == 0) {
+      if (*read_ret == 0) {
         action = LZMA_FINISH;
       }
 
       stream.next_in = in_buffer.get();
-      stream.avail_in = read_ret;
+      stream.avail_in = *read_ret;
     }
 
     ret = lzma_code(&stream, action);
