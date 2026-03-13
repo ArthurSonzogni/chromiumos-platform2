@@ -2408,7 +2408,7 @@ impl Methods {
             if let Some(ref mut info) = user_info {
                 if info.group_names.is_none() {
                     info.group_names = Some(
-                        "audio,cdrom,dialout,disk,floppy,kvm,netdev,sudo,tss,video"
+                        "audio,cdrom,dialout,disk,floppy,kvm,netdev,plugdev,sudo,tss,video"
                             .split(',')
                             .map(|s| s.to_string())
                             .collect(),
