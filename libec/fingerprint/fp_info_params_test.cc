@@ -24,19 +24,20 @@ TEST(FpInfoParams, ValidateSize) {
   //   - Therefore, sizeof(Header_v2) = 16 + 20 = 36 bytes.
   // - The remaining space in the packet is then available for multiple
   // instances of fp_image_frame_params.
-  // - Each fp_image_frame_params structure has a size of 16 bytes.
+  // - Each fp_image_frame_params structure has a size of 20 bytes.
   // - To find the maximum number of fp_image_frame_params that can fit, we
   // calculate:
   //   (kMaxPacketSize - sizeof(Header_v2)) / sizeof(fp_image_frame_params)
-  //   = (544 - 36) / 16 = 31.75
+  //   = (544 - 36) / 20 = 25.4
   // - Since we can only fit whole structures, the resulting size of
-  //   fp_info::Params_v2().image_frame_params is 31.
-  EXPECT_THAT(fp_info::Params_v2().image_frame_params, SizeIs(31));
+  //   fp_info::Params_v2().image_frame_params is 25.
+  EXPECT_THAT(fp_info::Params_v2().image_frame_params, SizeIs(25));
 }
 
 TEST(FpInfoParams, ImageFrameParamsEqual) {
   struct fp_image_frame_params expected_image_frame_params_0 = {
       .frame_size = 5120,
+      .image_data_offset_bytes = 400,
       .pixel_format = 0x59455247,
       .width = 64,
       .height = 80,
@@ -45,6 +46,7 @@ TEST(FpInfoParams, ImageFrameParamsEqual) {
       .reserved = 0};
   struct fp_image_frame_params expected_image_frame_params_1 = {
       .frame_size = 5120,
+      .image_data_offset_bytes = 400,
       .pixel_format = 0x59455247,
       .width = 64,
       .height = 80,
@@ -57,6 +59,7 @@ TEST(FpInfoParams, ImageFrameParamsEqual) {
 TEST(FpInfoParams, ImageFrameParamsNotEqual) {
   struct fp_image_frame_params expected_image_frame_params_0 = {
       .frame_size = 5120,
+      .image_data_offset_bytes = 400,
       .pixel_format = 0x59455247,
       .width = 64,
       .height = 80,
@@ -65,6 +68,7 @@ TEST(FpInfoParams, ImageFrameParamsNotEqual) {
       .reserved = 0};
   struct fp_image_frame_params expected_image_frame_params_1 = {
       .frame_size = 5120,
+      .image_data_offset_bytes = 400,
       .pixel_format = 0x59455247,
       .width = 64,
       .height = 80,
@@ -85,10 +89,10 @@ TEST(FpInfoParams, ParamsSize) {
   // Unused space calculation within the kMaxPacketSize:
   // - The maximum packet size: kMaxPacketSize = 544 bytes.
   // - The header (Header_v2) occupies 36 bytes.
-  // - We can fit 31 instances of fp_image_frame_params, each 16 bytes in size:
-  //   The total space needed is 31 * 16 = 496 bytes.
-  // - The remaining space in the packet is 544 - 36 - 496 = 12 bytes.
-  EXPECT_EQ(sizeof(fp_info::Params_v2), kMaxPacketSize - 12);
+  // - We can fit 25 instances of fp_image_frame_params, each 20 bytes in size:
+  //   The total space needed is 25 * 20 = 500 bytes.
+  // - The remaining space in the packet is 544 - 36 - 500 = 8 bytes.
+  EXPECT_EQ(sizeof(fp_info::Params_v2), kMaxPacketSize - 8);
 }
 
 }  // namespace
