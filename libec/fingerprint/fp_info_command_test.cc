@@ -238,12 +238,14 @@ TEST_F(FpInfoCommandTest, sensor_image_valid_v2) {
 
   resp.info.sensor_info.num_capture_types = 2;
   resp.image_frame_params[0] = {.frame_size = 5120,
+                                .image_data_offset_bytes = 400,
                                 .pixel_format = 0x59455247,
                                 .width = 64,
                                 .height = 80,
                                 .bpp = 8,
                                 .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE};
   resp.image_frame_params[1] = {.frame_size = 36864,
+                                .image_data_offset_bytes = 172,
                                 .pixel_format = 0x59455247,
                                 .width = 192,
                                 .height = 96,
@@ -259,12 +261,14 @@ TEST_F(FpInfoCommandTest, sensor_image_valid_v2) {
       ElementsAre(SensorImage{.width = 64,
                               .height = 80,
                               .frame_size = 5120,
+                              .image_data_offset_bytes = 400,
                               .pixel_format = 0x59455247,
                               .bpp = 8,
                               .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE},
                   SensorImage{.width = 192,
                               .height = 96,
                               .frame_size = 36864,
+                              .image_data_offset_bytes = 172,
                               .pixel_format = 0x59455247,
                               .bpp = 16,
                               .fp_capture_type = FP_CAPTURE_PATTERN0}));
@@ -333,6 +337,7 @@ TEST_F(FpInfoCommandTest, Parse_sensor_info_v2) {
   resp.info.sensor_info.num_capture_types = 2;
   resp.image_frame_params[0] = {
       .frame_size = 5120,
+      .image_data_offset_bytes = 400,
       .pixel_format = 0x59455247,
       .width = 64,
       .height = 80,
@@ -340,6 +345,7 @@ TEST_F(FpInfoCommandTest, Parse_sensor_info_v2) {
   };
   resp.image_frame_params[1] = {
       .frame_size = 36864,
+      .image_data_offset_bytes = 172,
       .pixel_format = 0x59455247,
       .width = 192,
       .height = 96,
@@ -351,10 +357,12 @@ TEST_F(FpInfoCommandTest, Parse_sensor_info_v2) {
       2, nullptr, std::move(mock_fp_info_command_v2_));
 
   std::string expected_output =
-      "Fingerprint sensor: vendor 1 product 2 model 3 version 4\nError flags: "
-      "BAD_HWID \nDead pixels: 0\nImage [0]: size 64x80 8 bpp\nImage [1]: size "
-      "192x96 16 bpp\nTemplates: version 1 size 1024 count 3/4 dirty bitmap "
-      "8\n";
+      "Fingerprint sensor: vendor 1 product 2 model 3 version 4\n"
+      "Error flags: BAD_HWID \n"
+      "Dead pixels: 0\n"
+      "Image [0]: size 64x80 8 bpp, offset 400 bytes\n"
+      "Image [1]: size 192x96 16 bpp, offset 172 bytes\n"
+      "Templates: version 1 size 1024 count 3/4 dirty bitmap 8\n";
 
   EXPECT_THAT(fp_info_command->ParseSensorInfo(), Eq(expected_output));
 }

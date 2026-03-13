@@ -143,7 +143,13 @@ std::string FpInfoCommand::ParseSensorInfo() {
     int i = 0;
     for (const auto& image : images) {
       ss << "Image [" << i << "]: size " << image.width << "x" << image.height
-         << " " << image.bpp << " bpp" << std::endl;
+         << " " << image.bpp << " bpp";
+
+      if (image.image_data_offset_bytes) {
+        ss << ", offset " << *image.image_data_offset_bytes << " bytes";
+      }
+
+      ss << std::endl;
       i++;
     }
   } else {

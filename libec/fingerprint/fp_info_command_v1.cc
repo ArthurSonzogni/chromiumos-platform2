@@ -37,6 +37,7 @@ std::optional<SensorImage> FpInfoCommand_v1::sensor_image() {
     sensor_image_.emplace(SensorImage{.width = Resp()->width,
                                       .height = Resp()->height,
                                       .frame_size = Resp()->frame_size,
+                                      .image_data_offset_bytes = std::nullopt,
                                       .pixel_format = Resp()->pixel_format,
                                       .bpp = Resp()->bpp,
                                       .fp_capture_type = std::nullopt});
