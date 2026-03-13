@@ -71,10 +71,6 @@ brillo::Blob GetRecoveryKeyHkdfInfo() {
   return brillo::BlobFromString("CryptoHome Wrapping Key");
 }
 
-brillo::Blob GetMediatorShareHkdfInfo() {
-  return brillo::BlobFromString(RecoveryCrypto::kMediatorShareHkdfInfoValue);
-}
-
 brillo::Blob GetRequestPayloadPlainTextHkdfInfo() {
   return brillo::BlobFromString(
       RecoveryCrypto::kRequestPayloadPlainTextHkdfInfoValue);
@@ -196,6 +192,7 @@ bool EncryptHsmPlainText(const HsmPlainText& plain_text,
                          const EllipticCurve& ec,
                          const EC_POINT& shared_secret_point,
                          const brillo::Blob& publisher_pub_key,
+                         const brillo::Blob& hkdf_info,
                          HsmPayload* hsm_payload) {
   brillo::SecureBlob plain_text_cbor;
   if (!SerializeHsmPlainTextToCbor(plain_text, &plain_text_cbor)) {
@@ -207,11 +204,10 @@ bool EncryptHsmPlainText(const HsmPlainText& plain_text,
   // |hkdf_salt| can be empty here because the input already has a high entropy.
   // Bruteforce attacks are not an issue here and as we generate an ephemeral
   // key as input to HKDF the output will already be non-deterministic.
-  if (!GenerateEcdhHkdfSymmetricKey(ec, shared_secret_point, publisher_pub_key,
-                                    GetMediatorShareHkdfInfo(),
-                                    /*hkdf_salt=*/brillo::Blob(),
-                                    RecoveryCrypto::kHkdfHash,
-                                    kAesGcm256KeySize, &aes_gcm_key)) {
+  if (!GenerateEcdhHkdfSymmetricKey(
+          ec, shared_secret_point, publisher_pub_key, hkdf_info,
+          /*hkdf_salt=*/brillo::Blob(), RecoveryCrypto::kHkdfHash,
+          kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys for HSM plain text "
                   "encryption";
     return false;
@@ -716,6 +712,11 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     return false;
   }
 
+  brillo::Blob hkdf_info = RecoveryCrypto::GenerateMediatorShareHkdfInfo(
+      UserIdentifier{.type = request.onboarding_metadata.cryptohome_user_type,
+                     .value = brillo::BlobFromString(
+                         request.onboarding_metadata.cryptohome_user)});
+
   if (!EncryptHsmPlainText(
           HsmPlainText{
               .mediator_share = mediator_share,
@@ -723,7 +724,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
               .key_auth_value =
                   key_auth_value.value().value_or(brillo::SecureBlob()),
           },
-          ec_, *shared_secret_point, publisher_pub_key_blob,
+          ec_, *shared_secret_point, publisher_pub_key_blob, hkdf_info,
           &response->hsm_payload)) {
     LOG(ERROR) << "Failed to encrypt HSM plain text";
     return false;
@@ -1069,6 +1070,8 @@ bool RecoveryCryptoImpl::GenerateOnboardingMetadata(
   }
   onboarding_metadata->rlz_code = GetRlzCode();
   onboarding_metadata->recovery_id = recovery_id;
+  onboarding_metadata->info_format =
+      OnboardingMetadata::InfoFormat::kIncludesUserId;
   return true;
 }
 

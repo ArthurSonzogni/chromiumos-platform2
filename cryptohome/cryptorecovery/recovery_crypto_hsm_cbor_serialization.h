@@ -64,7 +64,8 @@ extern const char kEpochMetaData[];
 
 // Mediation protocol version.
 extern const int kHsmAssociatedDataSchemaVersion;
-extern const int kOnboardingMetaDataSchemaVersion;
+inline constexpr int kOnboardingMetaDataSchemaVersionFixedInfo = 1;
+inline constexpr int kOnboardingMetaDataSchemaVersionUserIdInfo = 2;
 extern const int kRequestMetaDataSchemaVersion;
 extern const int kHsmMetaDataSchemaVersion;
 extern const int kLoggedRecordSchemaVersion;

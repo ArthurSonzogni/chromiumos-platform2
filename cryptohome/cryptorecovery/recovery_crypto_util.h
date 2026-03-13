@@ -49,9 +49,17 @@ using ResponsePayload = AeadPayload;
 // The enum values below are exchanged with the server and must be synced with
 // the server/HSM implementation (or the other party will not be able to decrypt
 // the data). Type of the `cryptohome_user` field sent in `OnboardingMetadata`.
-enum class UserType {
+enum class UserType : uint8_t {
   kUnknown = 0,
   kGaiaId = 1,
+};
+
+// An encoded user identifier, including both the type and the actual value of
+// the user ID as a blob. The encoding of the value is dependent on the type and
+// just like the UserType enum it must be kept in sync with the server.
+struct UserIdentifier {
+  UserType type;
+  brillo::Blob value;
 };
 
 // `OnboardingMetadata` contains essential information that needs to be
@@ -73,6 +81,13 @@ struct OnboardingMetadata {
   // point (SEC 1, 2.3.3) of the public key `h` that was used to encrypt
   // `HSMPlainText`.
   brillo::Blob hsm_pub_key_hash;
+
+  // The format used for the HKDF info on the payload encryption key.
+  enum class InfoFormat {
+    kFixed,
+    kIncludesUserId,
+  };
+  InfoFormat info_format;
 
   friend bool operator==(const OnboardingMetadata& lhs,
                          const OnboardingMetadata& rhs) = default;

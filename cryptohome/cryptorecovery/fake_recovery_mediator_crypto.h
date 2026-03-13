@@ -100,6 +100,7 @@ class FakeRecoveryMediatorCrypto {
       const brillo::Blob& epoch_pub_key,
       const brillo::SecureBlob& epoch_priv_key,
       const brillo::Blob& ephemeral_pub_inv_key,
+      const brillo::Blob& hkdf_info,
       const HsmPayload& hsm_payload,
       CryptoRecoveryRpcResponse* recovery_response_proto) const;
 
@@ -107,6 +108,7 @@ class FakeRecoveryMediatorCrypto {
   // `mediator_priv_key`.
   bool DecryptHsmPayloadPlainText(const brillo::SecureBlob& mediator_priv_key,
                                   const HsmPayload& hsm_payload,
+                                  const brillo::Blob& hkdf_info,
                                   brillo::SecureBlob* plain_text) const;
 
   // Decrypt `cipher_text` from `request_payload' using provided

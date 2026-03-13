@@ -224,6 +224,14 @@ bool ConvertCborMapToOnboardingMetadata(
         << "Failed to get recovery id from the onboarding metadata CBOR map.";
     return false;
   }
+  int64_t schema_version;
+  if (!FindIntegerValueInCborMap(metadata_map, kSchemaVersion,
+                                 &schema_version)) {
+    LOG(ERROR)
+        << "Failed to get schema version from the onboarding metadata CBOR "
+           "map.";
+    return false;
+  }
 
   metadata->cryptohome_user_type = user_type;
   metadata->cryptohome_user = cryptohome_user;
@@ -233,6 +241,18 @@ bool ConvertCborMapToOnboardingMetadata(
   metadata->rlz_code = rlz_code;
   metadata->hsm_pub_key_hash = hsm_pub_key_hash;
   metadata->recovery_id = recovery_id;
+  switch (schema_version) {
+    case kOnboardingMetaDataSchemaVersionFixedInfo:
+      metadata->info_format = OnboardingMetadata::InfoFormat::kFixed;
+      break;
+    case kOnboardingMetaDataSchemaVersionUserIdInfo:
+      metadata->info_format = OnboardingMetadata::InfoFormat::kIncludesUserId;
+      break;
+    default:
+      LOG(ERROR) << "Unrecognized schema version in the onboarding metadata.";
+      return false;
+  }
+
   return true;
 }
 
@@ -543,7 +563,6 @@ const char kGaiaReauthProofToken[] = "gaia_reauth_proof_token";
 const char kEpochMetaData[] = "epoch_meta_data";
 
 const int kHsmAssociatedDataSchemaVersion = 1;
-const int kOnboardingMetaDataSchemaVersion = 1;
 const int kRequestMetaDataSchemaVersion = 1;
 const int kHsmMetaDataSchemaVersion = 1;
 const int kLoggedRecordSchemaVersion = 1;
@@ -583,7 +602,14 @@ cbor::Value::MapValue ConvertOnboardingMetadataToCborMap(
     const OnboardingMetadata& args) {
   cbor::Value::MapValue map;
 
-  map.emplace(kSchemaVersion, kOnboardingMetaDataSchemaVersion);
+  switch (args.info_format) {
+    case OnboardingMetadata::InfoFormat::kFixed:
+      map.emplace(kSchemaVersion, kOnboardingMetaDataSchemaVersionFixedInfo);
+      break;
+    case OnboardingMetadata::InfoFormat::kIncludesUserId:
+      map.emplace(kSchemaVersion, kOnboardingMetaDataSchemaVersionUserIdInfo);
+      break;
+  }
   map.emplace(kCryptohomeUser, args.cryptohome_user);
   map.emplace(kCryptohomeUserType, static_cast<int>(args.cryptohome_user_type));
   map.emplace(kDeviceUserId, args.device_user_id);

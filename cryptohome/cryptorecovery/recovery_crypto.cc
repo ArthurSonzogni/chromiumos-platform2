@@ -10,11 +10,10 @@
 
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <brillo/secure_blob.h>
 #include <libhwsec-foundation/crypto/big_num_util.h>
 #include <libhwsec-foundation/crypto/ecdh_hkdf.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>
-
-#include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
 using ::hwsec_foundation::EllipticCurve;
 using ::hwsec_foundation::Hkdf;
@@ -22,7 +21,18 @@ using ::hwsec_foundation::HkdfHash;
 
 namespace cryptohome::cryptorecovery {
 
-const char RecoveryCrypto::kMediatorShareHkdfInfoValue[] = "HSM-Payload Key";
+brillo::Blob RecoveryCrypto::GenerateMediatorShareHkdfInfo(
+    const UserIdentifier& user_id) {
+  return brillo::CombineBlobs({GenerateMediatorShareHkdfInfo(),
+                               brillo::Blob({std::to_underlying(user_id.type)}),
+                               user_id.value});
+}
+
+brillo::Blob RecoveryCrypto::GenerateMediatorShareHkdfInfo() {
+  // Value must be kept in sync with the server.
+  static constexpr char kHkdfInfoPrefix[] = "HSM-Payload Key";
+  return brillo::BlobFromString(kHkdfInfoPrefix);
+}
 
 const char RecoveryCrypto::kRequestPayloadPlainTextHkdfInfoValue[] =
     "REQUEST-Payload Key";

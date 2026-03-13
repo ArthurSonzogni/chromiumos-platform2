@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/strings/string_number_conversions.h>
+#include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/big_num_util.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>
@@ -130,6 +131,8 @@ class RecoveryCryptoTest : public testing::Test {
     onboarding_metadata_.form_factor = "Model Name";
     onboarding_metadata_.rlz_code = "Rlz Code";
     onboarding_metadata_.recovery_id = "Recovery ID";
+    onboarding_metadata_.info_format =
+        OnboardingMetadata::InfoFormat::kIncludesUserId;
 
     AuthClaim auth_claim;
     auth_claim.gaia_access_token = kFakeGaiaAccessToken;

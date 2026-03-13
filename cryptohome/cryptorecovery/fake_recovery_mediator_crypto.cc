@@ -84,10 +84,6 @@ bool HexStringToBlob(const std::string& hex, brillo::Blob* blob) {
   return true;
 }
 
-brillo::Blob GetMediatorShareHkdfInfo() {
-  return brillo::BlobFromString(RecoveryCrypto::kMediatorShareHkdfInfoValue);
-}
-
 brillo::Blob GetRequestPayloadPlainTextHkdfInfo() {
   return brillo::BlobFromString(
       RecoveryCrypto::kRequestPayloadPlainTextHkdfInfoValue);
@@ -303,6 +299,7 @@ bool FakeRecoveryMediatorCrypto::GetFakeEpochResponse(
 bool FakeRecoveryMediatorCrypto::DecryptHsmPayloadPlainText(
     const brillo::SecureBlob& mediator_priv_key,
     const HsmPayload& hsm_payload,
+    const brillo::Blob& hkdf_info,
     brillo::SecureBlob* plain_text) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
@@ -337,8 +334,7 @@ bool FakeRecoveryMediatorCrypto::DecryptHsmPayloadPlainText(
   }
   brillo::SecureBlob aes_gcm_key;
   if (!GenerateEcdhHkdfSymmetricKey(
-          ec_, *shared_secret_point, publisher_pub_key_blob,
-          GetMediatorShareHkdfInfo(),
+          ec_, *shared_secret_point, publisher_pub_key_blob, hkdf_info,
           /*hkdf_salt=*/brillo::Blob(), RecoveryCrypto::kHkdfHash,
           kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key for HSM "
@@ -429,6 +425,7 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     const brillo::Blob& epoch_pub_key,
     const brillo::SecureBlob& epoch_priv_key,
     const brillo::Blob& ephemeral_pub_inv_key,
+    const brillo::Blob& hkdf_info,
     const HsmPayload& hsm_payload,
     CryptoRecoveryRpcResponse* recovery_response_proto) const {
   ScopedBN_CTX context = CreateBigNumContext();
@@ -438,7 +435,7 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
   }
 
   brillo::SecureBlob hsm_plain_text_cbor;
-  if (!DecryptHsmPayloadPlainText(mediator_priv_key, hsm_payload,
+  if (!DecryptHsmPayloadPlainText(mediator_priv_key, hsm_payload, hkdf_info,
                                   &hsm_plain_text_cbor)) {
     LOG(ERROR) << "Unable to decrypt hsm_plain_text_cbor in hsm_payload";
     return false;
@@ -657,9 +654,22 @@ bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
     return false;
   }
 
+  brillo::Blob hkdf_info;
+  switch (hsm_associated_data.onboarding_meta_data.info_format) {
+    case OnboardingMetadata::InfoFormat::kFixed:
+      hkdf_info = RecoveryCrypto::GenerateMediatorShareHkdfInfo();
+      break;
+    case OnboardingMetadata::InfoFormat::kIncludesUserId:
+      hkdf_info = RecoveryCrypto::GenerateMediatorShareHkdfInfo(UserIdentifier{
+          .type = hsm_associated_data.onboarding_meta_data.cryptohome_user_type,
+          .value = brillo::BlobFromString(
+              hsm_associated_data.onboarding_meta_data.cryptohome_user)});
+      break;
+  }
+
   if (!MediateHsmPayload(mediator_priv_key, epoch_pub_key, epoch_priv_key,
-                         plain_text.ephemeral_pub_inv_key, hsm_payload,
-                         recovery_response_proto)) {
+                         plain_text.ephemeral_pub_inv_key, hkdf_info,
+                         hsm_payload, recovery_response_proto)) {
     LOG(ERROR) << "Unable to mediate hsm_payload";
     return false;
   }
