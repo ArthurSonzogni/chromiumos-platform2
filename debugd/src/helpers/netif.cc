@@ -129,7 +129,7 @@ struct ifflag {
 };
 
 Value flags2list(unsigned int flags) {
-  Value::List lv;
+  base::ListValue lv;
   for (const auto& ifflag : ifflags) {
     if (flags & ifflag.bit) {
       lv.Append(ifflag.name);
@@ -155,9 +155,9 @@ class NetInterface {
   Value ipv6_{Value::Type::DICT};
   Value flags_{Value::Type::LIST};
   std::string mac_;
-  Value::Dict signal_strengths_;
+  base::DictValue signal_strengths_;
 
-  void AddAddressTo(Value::Dict& dv, struct sockaddr* sa);
+  void AddAddressTo(base::DictValue& dv, struct sockaddr* sa);
 };
 
 NetInterface::NetInterface(int fd, const char* name) : fd_(fd), name_(name) {}
@@ -172,10 +172,10 @@ void NetInterface::AddSignalStrength(const std::string& name, int strength) {
   signal_strengths_.Set(name, strength);
 }
 
-void NetInterface::AddAddressTo(Value::Dict& dict, struct sockaddr* sa) {
-  Value::List* lv = dict.FindList("addrs");
+void NetInterface::AddAddressTo(base::DictValue& dict, struct sockaddr* sa) {
+  base::ListValue* lv = dict.FindList("addrs");
   if (lv == nullptr) {
-    lv = dict.Set("addrs", Value::List{})->GetIfList();
+    lv = dict.Set("addrs", base::ListValue{})->GetIfList();
   }
   lv->Append(sockaddr2str(sa));
 }
@@ -204,7 +204,7 @@ void NetInterface::AddAddress(struct ifaddrs* ifa) {
 }
 
 Value NetInterface::ToValue() const {
-  Value::Dict dv;
+  base::DictValue dv;
   if (!ipv4_.GetDict().empty()) {
     dv.Set("ipv4", ipv4_.Clone());
   }
@@ -264,7 +264,7 @@ void AddSignalStrengths(
 int main() {
   struct ifaddrs* ifaddrs;
   int fd;
-  Value::Dict result;
+  base::DictValue result;
   std::map<std::string, std::unique_ptr<NetInterface>> interfaces;
 
   if (getifaddrs(&ifaddrs) == -1) {
