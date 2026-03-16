@@ -648,8 +648,10 @@ const std::array kVarLogFileLogs {
   Log{kFile, "eventlog", "/var/log/eventlog.txt"},
   Log{kFile, "extensions.log", "/var/log/extensions.log"},
   Log{kFile, "fwupd_log", "/var/log/fwupd.log"},
+#if USE_TI50_ONBOARD
   Log{kCommand, "gsclog", "/usr/bin/gsclog; cat /var/log/gsc.log", kRoot,
       kRoot},
+#endif  // USE_TI50_ONBOARD
   Log{kFile, "hammerd", "/var/log/hammerd.log"},
   Log{kFile, "hypervisor.log", "/var/log/hypervisor.log"},
   Log{kFile, "kiosk_apps_log", "/var/log/kiosk_apps.log"},
