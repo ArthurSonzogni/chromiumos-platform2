@@ -6,6 +6,8 @@
 
 #include <vector>
 
+#include <base/strings/string_util.h>
+
 namespace ec {
 
 uint32_t FpInfoCommand::GetVersion() const {
@@ -134,42 +136,43 @@ std::string FpInfoCommand::ParseSensorInfo() {
   auto sensor_id = this->sensor_id();
   ss << "Fingerprint sensor: ";
   if (sensor_id) {
-    ss << "vendor " << std::hex << sensor_id->vendor_id << " product "
-       << sensor_id->product_id << " model " << sensor_id->model_id
-       << " version " << sensor_id->version << std::dec << std::endl;
+    ss << "vendor 0x" << std::hex << sensor_id->vendor_id << " product 0x"
+       << sensor_id->product_id << " model 0x" << sensor_id->model_id
+       << " version 0x" << sensor_id->version << std::dec << std::endl;
   } else {
     ss << "Not available" << std::endl;
   }
 
   auto errors = GetFpSensorErrors();
-  ss << "Error flags: ";
+  std::vector<std::string> error_flags;
+
   if (errors == FpSensorErrors::kNone) {
-    ss << "NONE";
+    error_flags.emplace_back("NONE");
   } else {
-    if ((errors & FpSensorErrors::kNoIrq) != ec::FpSensorErrors::kNone) {
-      ss << "NO_IRQ ";
+    if ((errors & FpSensorErrors::kNoIrq) != FpSensorErrors::kNone) {
+      error_flags.emplace_back("NO_IRQ");
     }
-    if ((errors & FpSensorErrors::kSpiCommunication) !=
-        ec::FpSensorErrors::kNone) {
-      ss << "SPI_COMM ";
+    if ((errors & FpSensorErrors::kSpiCommunication) != FpSensorErrors::kNone) {
+      error_flags.emplace_back("SPI_COMM");
     }
-    if ((errors & FpSensorErrors::kBadHardwareID) !=
-        ec::FpSensorErrors::kNone) {
-      ss << "BAD_HWID ";
+    if ((errors & FpSensorErrors::kBadHardwareID) != FpSensorErrors::kNone) {
+      error_flags.emplace_back("BAD_HWID");
     }
     if ((errors & FpSensorErrors::kInitializationFailure) !=
-        ec::FpSensorErrors::kNone) {
-      ss << "INIT_FAIL ";
+        FpSensorErrors::kNone) {
+      error_flags.emplace_back("INIT_FAIL");
     }
   }
-  ss << std::endl;
+
+  ss << "Error flags: " << base::JoinString(error_flags, " ") << std::endl;
 
   int dead_pixels = NumDeadPixels();
   if (dead_pixels == kDeadPixelsUnknown) {
-    ss << "Dead pixels: UNKNOWN" << std::endl;
+    ss << "Dead pixels: UNKNOWN";
   } else {
-    ss << "Dead pixels: " << dead_pixels << std::endl;
+    ss << "Dead pixels: " << dead_pixels;
   }
+  ss << std::endl;
 
   auto images = sensor_image();
   if (!images.empty()) {

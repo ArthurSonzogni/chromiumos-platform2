@@ -200,8 +200,8 @@ TEST_F(FpInfoCommandTest, Parse_sensor_info_v1) {
       1, std::move(mock_fp_info_command_v1_), nullptr, nullptr);
 
   std::string expected_output =
-      "Fingerprint sensor: vendor 1 product 2 model 3 version 4\n"
-      "Error flags: INIT_FAIL \n"
+      "Fingerprint sensor: vendor 0x1 product 0x2 model 0x3 version 0x4\n"
+      "Error flags: INIT_FAIL\n"
       "Dead pixels: UNKNOWN\n"
       "Image [0]: size 3x4 bpp 5\n"
       "Templates: version 1 size 1024 count 3/4 dirty bitmap 8\n";
@@ -367,8 +367,8 @@ TEST_F(FpInfoCommandTest, Parse_sensor_info_v2) {
       2, nullptr, std::move(mock_fp_info_command_v2_), nullptr);
 
   std::string expected_output =
-      "Fingerprint sensor: vendor 1 product 2 model 3 version 4\n"
-      "Error flags: BAD_HWID \n"
+      "Fingerprint sensor: vendor 0x1 product 0x2 model 0x3 version 0x4\n"
+      "Error flags: BAD_HWID\n"
       "Dead pixels: 0\n"
       "Image [0]: size 64x80 bpp 8\n"
       "Image [1]: size 192x96 bpp 16\n"
@@ -541,8 +541,8 @@ TEST_F(FpInfoCommandTest, Parse_sensor_info_v3) {
       3, nullptr, nullptr, std::move(mock_fp_info_command_v3_));
 
   std::string expected_output =
-      "Fingerprint sensor: vendor 1 product 2 model 3 version 4\n"
-      "Error flags: BAD_HWID \n"
+      "Fingerprint sensor: vendor 0x1 product 0x2 model 0x3 version 0x4\n"
+      "Error flags: BAD_HWID\n"
       "Dead pixels: 0\n"
       "Image [0]: size 64x80 bpp 8 offset 400\n"
       "Image [1]: size 192x96 bpp 16 offset 172\n"
