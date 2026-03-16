@@ -186,9 +186,11 @@ TEST_F(FpInfoCommandTest, Parse_sensor_info_v1) {
       1, std::move(mock_fp_info_command_v1_), nullptr);
 
   std::string expected_output =
-      "Fingerprint sensor: vendor 1 product 2 model 3 version 4\nError flags: "
-      "INIT_FAIL \nDead pixels: UNKNOWN\nImage [0]: size 3x4 5 bpp\nTemplates: "
-      "version 1 size 1024 count 3/4 dirty bitmap 8\n";
+      "Fingerprint sensor: vendor 1 product 2 model 3 version 4\n"
+      "Error flags: INIT_FAIL \n"
+      "Dead pixels: UNKNOWN\n"
+      "Image [0]: size 3x4 5 bpp\n"
+      "Templates: version 1 size 1024 count 3/4 dirty bitmap 8\n";
 
   EXPECT_THAT(fp_info_command->ParseSensorInfo(), Eq(expected_output));
 }
