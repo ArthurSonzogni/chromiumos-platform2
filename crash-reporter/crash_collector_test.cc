@@ -20,6 +20,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
@@ -253,8 +254,8 @@ TEST_F(CrashCollectorTest,
   EXPECT_TRUE(file.IsValid());
   EXPECT_EQ(file.GetLength(), strlen(kBuffer));
   char result_buffer[100] = {'\0'};
-  EXPECT_EQ(file.Read(0, result_buffer, sizeof(result_buffer)),
-            strlen(kBuffer));
+  EXPECT_TRUE(file.Read(0, base::as_writable_byte_span(result_buffer)) ==
+              strlen(kBuffer));
   EXPECT_EQ(std::string(kBuffer), std::string(result_buffer));
   // This should be an in-memory file, not a real file.
   EXPECT_FALSE(base::PathExists(kPath));
@@ -307,8 +308,8 @@ TEST_F(CrashCollectorTest,
     EXPECT_TRUE(file.IsValid());
     EXPECT_EQ(file.GetLength(), strlen(expected_buffer));
     char result_buffer[100] = {'\0'};
-    EXPECT_EQ(file.Read(0, result_buffer, sizeof(result_buffer)),
-              strlen(expected_buffer));
+    EXPECT_TRUE(file.Read(0, base::as_writable_byte_span(result_buffer)) ==
+                strlen(expected_buffer));
     EXPECT_EQ(std::string(expected_buffer), std::string(result_buffer));
   }
   // These should be an in-memory files, not a real files.
@@ -461,10 +462,11 @@ TEST_F(CrashCollectorTest,
   base::File file(std::get<1>(result[0]).release());
   EXPECT_TRUE(file.IsValid());
   char compressed_result_buffer[100] = {'\0'};
-  int read_amount =
-      file.Read(0, compressed_result_buffer, sizeof(compressed_result_buffer));
-  ASSERT_GT(read_amount, 0);
-  EXPECT_EQ(collector.get_bytes_written(), read_amount);
+  auto read_amount =
+      file.Read(0, base::as_writable_byte_span(compressed_result_buffer));
+  ASSERT_TRUE(read_amount.has_value());
+  ASSERT_GT(*read_amount, 0u);
+  EXPECT_EQ(collector.get_bytes_written(), static_cast<int64_t>(*read_amount));
 
   // Uncompress the data.
   base::FilePath uncompressed_path = test_dir_.Append("result.txt");
@@ -473,8 +475,11 @@ TEST_F(CrashCollectorTest,
                              base::File::FLAG_CREATE | base::File::FLAG_WRITE);
   EXPECT_TRUE(compressed_file.IsValid())
       << base::File::ErrorToString(compressed_file.error_details());
-  EXPECT_EQ(compressed_file.Write(0, compressed_result_buffer, read_amount),
-            read_amount);
+  EXPECT_TRUE(
+      compressed_file.Write(
+          0, base::as_byte_span(
+                 base::span(compressed_result_buffer).first(*read_amount))) ==
+      *read_amount);
   compressed_file.Close();
   int decompress_result = system(("gunzip " + compressed_path.value()).c_str());
   EXPECT_TRUE(WIFEXITED(decompress_result));
@@ -3018,9 +3023,9 @@ void CrashCollectorTest::TestFinishCrashInCrashLoopMode(
             EXPECT_TRUE(payload_file.IsValid());
             EXPECT_EQ(payload_file.GetLength(), strlen(kBuffer));
             char result_buffer[100] = {'\0'};
-            EXPECT_EQ(
-                payload_file.Read(0, result_buffer, sizeof(result_buffer)),
-                strlen(kBuffer));
+            EXPECT_TRUE(payload_file.Read(
+                            0, base::as_writable_byte_span(result_buffer)) ==
+                        strlen(kBuffer));
             EXPECT_EQ(std::string(kBuffer), std::string(result_buffer));
 
             base::File meta_file(meta_fd.release());

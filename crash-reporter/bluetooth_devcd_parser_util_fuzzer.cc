@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -38,7 +39,8 @@ class Environment {
                     base::File::FLAG_CREATE | base::File::FLAG_WRITE);
 
     if (file.IsValid()) {
-      file.WriteAtCurrentPos(static_cast<const char*>(data), size);
+      (void)file.WriteAtCurrentPos(
+          base::span<const uint8_t>(static_cast<const uint8_t*>(data), size));
     }
 
     return true;

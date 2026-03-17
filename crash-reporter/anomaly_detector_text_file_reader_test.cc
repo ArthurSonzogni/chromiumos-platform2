@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <gtest/gtest.h>
 
 #include "crash-reporter/test_util.h"
@@ -110,8 +111,8 @@ class AnomalyDetectorFileReaderConcurrentTest : public ::testing::Test {
   // Use this method to append lines to file_.
   void AppendToFile(const std::vector<std::string>& lines) {
     for (auto line : lines) {
-      file_.WriteAtCurrentPos(line.c_str(), line.length());
-      file_.WriteAtCurrentPos("\n", 1);
+      (void)file_.WriteAtCurrentPos(base::as_byte_span(line));
+      (void)file_.WriteAtCurrentPos(base::as_byte_span(std::string_view("\n")));
     }
   }
 
@@ -168,11 +169,11 @@ TEST_F(AnomalyDetectorFileReaderConcurrentTest, ReadAfterSeekToEndTest) {
 TEST_F(AnomalyDetectorFileReaderConcurrentTest, ReadDuringWriteTest) {
   auto r = std::make_unique<TextFileReader>(path_);
 
-  file_.WriteAtCurrentPos("li", 2);
+  (void)file_.WriteAtCurrentPos(base::as_byte_span(std::string_view("li")));
   // r will not return any line since there is no '\n' at the end.
   ReaderTest(r, {});
 
-  file_.WriteAtCurrentPos("ne\n", 3);
+  (void)file_.WriteAtCurrentPos(base::as_byte_span(std::string_view("ne\n")));
   ReaderTest(r, {"line"});
 }
 
@@ -187,8 +188,8 @@ TEST_F(AnomalyDetectorFileReaderConcurrentTest, ReadLineLongerThanBufferTest) {
   std::string long_line(size_larger_than_buffer, 'a');
 
   for (int i = 0; i < 2; i++) {
-    file_.WriteAtCurrentPos(long_line.c_str(), size_larger_than_buffer);
-    file_.WriteAtCurrentPos("\n", 1);
+    (void)file_.WriteAtCurrentPos(base::as_byte_span(long_line));
+    (void)file_.WriteAtCurrentPos(base::as_byte_span(std::string_view("\n")));
   }
 
   ReaderTest(r, {long_line, long_line});

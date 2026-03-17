@@ -7,9 +7,11 @@
 #include <optional>
 #include <utility>
 
+#include <base/containers/span.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/rand_util.h>
 #include <base/strings/strcat.h>
 #include <base/strings/stringprintf.h>
@@ -108,12 +110,12 @@ std::string CrashReporterParser::GetLast50Lines(
     return "Error getting length\n";
   }
 
-  int read;
-  if (length > kMaxLogBytesRead) {
-    read = file.Read(length - kMaxLogBytesRead, buffer, kMaxLogBytesRead);
-  } else {
-    read = file.Read(0, buffer, kMaxLogBytesRead);
-  }
+  auto read_result = length > kMaxLogBytesRead
+                         ? file.Read(length - kMaxLogBytesRead,
+                                     base::as_writable_byte_span(buffer))
+                         : file.Read(0, base::as_writable_byte_span(buffer));
+  int read =
+      read_result.has_value() ? base::checked_cast<int>(*read_result) : -1;
 
   if (read < 0) {
     LOG(WARNING) << "Error reading " << file_path.value();

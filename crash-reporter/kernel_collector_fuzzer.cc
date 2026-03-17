@@ -8,6 +8,7 @@
 #include <memory>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -133,7 +134,7 @@ class KernelCollectorForFuzzing : public KernelCollector {
 
     const std::string& file_contents =
         data_provider->ConsumeRandomLengthString(kArbitraryMaxFileLength);
-    file.Write(0, file_contents.c_str(), file_contents.length());
+    (void)file.Write(0, base::as_byte_span(file_contents));
 
     return true;
   }

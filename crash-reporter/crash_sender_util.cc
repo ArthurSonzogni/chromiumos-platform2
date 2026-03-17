@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/hash/md5.h>
@@ -1105,10 +1106,12 @@ SenderBase::CrashRemoveReason Sender::WriteUploadLog(
       }
       const std::string& upload_log_entry =
           absl::get<std::string>(entry_or_reason);
-      if (!upload_logs_file.IsValid() ||
-          upload_logs_file.WriteAtCurrentPos(upload_log_entry.c_str(),
-                                             upload_log_entry.size()) !=
-              upload_log_entry.size()) {
+      auto write_result = upload_logs_file.IsValid()
+                              ? upload_logs_file.WriteAtCurrentPos(
+                                    base::as_byte_span(upload_log_entry))
+                              : std::nullopt;
+      if (!write_result.has_value() ||
+          *write_result != upload_log_entry.size()) {
         PLOG(ERROR) << "Error writing to Chrome uploads.log file";
       }
     } else {

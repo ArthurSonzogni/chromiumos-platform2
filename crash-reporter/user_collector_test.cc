@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -1040,13 +1041,15 @@ class ShouldCaptureEarlyChromeCrashTest : public UserCollectorTest {
         << ": " << base::File::ErrorToString(cmdline_file.error_details());
 
     for (const std::string& arg : cmdline) {
-      CHECK_EQ(cmdline_file.WriteAtCurrentPos(arg.c_str(), arg.length()),
-               arg.length());
-      CHECK_EQ(cmdline_file.WriteAtCurrentPos(&cmdline_separator, 1), 1);
+      CHECK(cmdline_file.WriteAtCurrentPos(base::as_byte_span(arg)) ==
+            arg.length());
+      CHECK(cmdline_file.WriteAtCurrentPos(
+                base::byte_span_from_ref(cmdline_separator)) == 1u);
     }
     // Both Chrome and normal processes end with an extra \0.
     const char kNulByte = '\0';
-    CHECK_EQ(cmdline_file.WriteAtCurrentPos(&kNulByte, 1), 1);
+    CHECK(cmdline_file.WriteAtCurrentPos(base::byte_span_from_ref(kNulByte)) ==
+          1u);
   }
 
   // The fake pid of the browser process which is still in early startup.

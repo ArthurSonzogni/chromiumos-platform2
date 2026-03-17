@@ -11,11 +11,13 @@
 #include <utility>
 
 #include <base/check_op.h>
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/numerics/byte_conversions.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/default_clock.h>
@@ -335,7 +337,11 @@ bool Serializer::WriteCoredump(int64_t crash_id, base::FilePath core_path) {
     std::vector<char> buf(max_message_size_bytes_);
     // Don't read the entire core into memory at once, as it could be multiple
     // GBs.
-    int read = core_file.Read(total_read, buf.data(), max_message_size_bytes_);
+    auto read_result = core_file.Read(
+        total_read, base::as_writable_byte_span(buf).first(
+                        base::checked_cast<size_t>(max_message_size_bytes_)));
+    int read =
+        read_result.has_value() ? base::checked_cast<int>(*read_result) : -1;
     if (read < 0) {
       LOG(ERROR) << "Failed to read: " << core_path.value()
                  << "at offset: " << total_read << ": "
