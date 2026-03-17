@@ -205,7 +205,7 @@ bool ResizeFile(const base::FilePath& path, int64_t size) {
     // Set the lesser of either |kMaxBufSize| or |size| bytes.
     const size_t len = std::min(size, kMaxBufSize);
     // Write out |len| from |buf| to |fd|.
-    if (f.WriteAtCurrentPos(buf, len) != len) {
+    if (!f.WriteAtCurrentPosAndCheck(base::as_byte_span(buf).first(len))) {
       PLOG(ERROR) << "Failed to write zero to " << path.value();
       return false;
     }
@@ -291,7 +291,8 @@ bool CopyAndHashFile(const base::FilePath& from,
       PLOG(ERROR) << "Failed to read from file at " << from.value();
       return false;
     }
-    if (f_to.WriteAtCurrentPos(buf.data(), bytes) != bytes) {
+    if (!f_to.WriteAtCurrentPosAndCheck(
+            base::as_byte_span(buf).first(base::checked_cast<size_t>(bytes)))) {
       PLOG(ERROR) << "Failed to write " << from.value() << " to " << to.value();
       return false;
     }
