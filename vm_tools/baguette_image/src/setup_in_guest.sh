@@ -14,6 +14,7 @@ CROS_PACKAGES=(
   cros-port-listener
   cros-sommelier
   cros-sommelier-config
+  cros-ui-config
   cros-wayland
 )
 PACKAGES=(
@@ -40,6 +41,7 @@ PACKAGES=(
   wireplumber
   wget
   xz-utils
+  xdg-desktop-portal-gtk
 )
 DATA_ROOT="/tmp/data"
 
