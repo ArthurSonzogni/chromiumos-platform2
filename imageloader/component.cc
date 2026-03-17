@@ -119,8 +119,7 @@ bool WriteFileToDisk(const base::FilePath& path, const std::string& contents) {
   }
 
   base::File file(fd.release());
-  int size = base::checked_cast<int>(contents.size());
-  return file.Write(0, contents.data(), contents.size()) == size;
+  return file.WriteAndCheck(0, base::as_byte_span(contents));
 }
 
 bool GetAndVerifyTable(const base::FilePath& path,
@@ -340,7 +339,8 @@ bool Component::ReadHashAndCopyFile(base::File* file,
     bytes_read += rv;
     sha256->Update(buf, rv);
     if (out_file) {
-      out_file->WriteAtCurrentPos(buf, rv);
+      out_file->WriteAtCurrentPos(base::as_byte_span(
+          base::span<const char>(buf, base::checked_cast<size_t>(rv))));
     }
   } while (bytes_read <= size);
 
