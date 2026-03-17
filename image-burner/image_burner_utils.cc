@@ -76,10 +76,18 @@ bool BurnWriter::Close() {
 }
 
 int BurnWriter::Write(const char* data_block, int data_size) {
-  const int written = file_.WriteAtCurrentPos(data_block, data_size);
-  if (written != data_size) {
+  if (data_size < 0) {
+    return -1;
+  }
+
+  base::span<const char> data_span(data_block,
+                                   base::checked_cast<size_t>(data_size));
+  auto written = file_.WriteAtCurrentPos(base::as_byte_span(data_span));
+  const int written_int =
+      written.has_value() ? base::checked_cast<int>(*written) : -1;
+  if (written_int != data_size) {
     PLOG(ERROR) << "Error writing to target file";
-    return written;
+    return written_int;
   }
 
   if (!writes_count_ && !file_.Flush()) {
@@ -92,7 +100,7 @@ int BurnWriter::Write(const char* data_block, int data_size) {
     writes_count_ = 0;
   }
 
-  return written;
+  return written_int;
 }
 
 BurnReader::BurnReader() {}
