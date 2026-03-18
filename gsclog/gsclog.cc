@@ -2,17 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <memory>
-#include <string>
+#include "gsclog/gsclog.h"
 
 #include <sysexits.h>
 
+#include <memory>
+#include <string>
+
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <brillo/files/file_util.h>
-#include "gsclog/gsclog.h"
 
 namespace gsclog {
 namespace {
@@ -57,7 +59,7 @@ int GscLog::Fetch() {
     return EX_NOPERM;
   }
 
-  if (!log.Write(0, logs.c_str(), logs.length())) {
+  if (log.Write(0, base::as_byte_span(logs)) == 0) {
     PLOG(ERROR) << "Could not append to log file";
     return EX_CANTCREAT;
   }
