@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
@@ -77,8 +78,8 @@ bool ReadNextDocument(ManagerProxy* manager,
           base::PlatformThread::Sleep(base::Milliseconds(100));
           continue;
         }
-        if (!output_file.WriteAtCurrentPos(read_response.data().data(),
-                                           read_response.data().length())) {
+        if (output_file.WriteAtCurrentPos(
+                base::as_byte_span(read_response.data())) == 0) {
           std::cerr << "Unable to write " << read_response.data().length()
                     << " bytes to output file." << std::endl;
           return false;
