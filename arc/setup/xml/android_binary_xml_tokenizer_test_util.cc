@@ -4,6 +4,7 @@
 
 #include "arc/setup/xml/android_binary_xml_tokenizer_test_util.h"
 
+#include "base/containers/span.h"
 #include "base/logging.h"
 
 namespace arc {
@@ -27,7 +28,9 @@ bool AndroidBinaryXmlWriter::Init(const base::FilePath& path) {
 }
 
 bool AndroidBinaryXmlWriter::WriteData(const void* buf, size_t size) {
-  return file_.WriteAtCurrentPos(static_cast<const char*>(buf), size) == size;
+  auto written = file_.WriteAtCurrentPos(
+      base::span<const uint8_t>(static_cast<const uint8_t*>(buf), size));
+  return written.has_value() && *written == size;
 }
 
 bool AndroidBinaryXmlWriter::WriteToken(Token token, Type type) {

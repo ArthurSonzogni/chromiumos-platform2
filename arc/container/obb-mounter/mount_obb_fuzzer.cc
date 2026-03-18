@@ -2,20 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc/container/obb-mounter/mount_obb_fuse_main.h"
-
 #include <cstddef>
 #include <cstdint>
-#include <fuse/fuse.h>
 #include <string>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <fuse/fuse.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
+#include "arc/container/obb-mounter/mount_obb_fuse_main.h"
 #include "arc/container/obb-mounter/volume.h"
 
 namespace {
@@ -64,7 +64,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   const std::string& file_contents =
       data_provider.ConsumeRemainingBytesAsString();
-  file.Write(0, file_contents.c_str(), file_contents.length());
+  (void)file.Write(0, base::as_byte_span(file_contents));
 
   mount_obb_fuse_main(path.value(), file_path.value(), mount_path, owner_uid,
                       owner_gid);

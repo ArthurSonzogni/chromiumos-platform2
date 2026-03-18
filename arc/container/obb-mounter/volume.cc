@@ -12,8 +12,10 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
 
 #include "arc/container/obb-mounter/util.h"
 
@@ -86,8 +88,12 @@ int64_t Volume::FileReader::Read(char* buf, int64_t size, int64_t offset) {
         volume_->GetSectorPosition(
             volume_->GetClusterStartSector(current_cluster_)) +
         current_offset_ % cluster_size;
-    const int64_t read_bytes =
-        volume_->image_file_.Read(position, buf + total, read_size);
+    auto read_result = volume_->image_file_.Read(
+        position, base::as_writable_byte_span(base::span(
+                      buf + total, base::checked_cast<size_t>(read_size))));
+    const int64_t read_bytes = read_result.has_value()
+                                   ? base::checked_cast<int64_t>(*read_result)
+                                   : -1;
     if (read_bytes == 0) {
       break;
     } else if (read_bytes < 0) {
@@ -135,8 +141,9 @@ bool Volume::Initialize(base::File image_file) {
 
   // The first sector is the boot sector.
   fat_boot_sector boot_sector = {};
-  if (image_file_.Read(0, reinterpret_cast<char*>(&boot_sector),
-                       sizeof(boot_sector)) != sizeof(boot_sector)) {
+  if (!image_file_.ReadAndCheck(
+          0,
+          base::byte_span_from_ref(base::allow_nonunique_obj, boot_sector))) {
     LOG(ERROR) << "Failed to read the boot sector.";
     return false;
   }
@@ -226,9 +233,8 @@ bool Volume::ReadDirectory(int64_t start_sector,
        pos < FAT_MAX_DIR_SIZE && sector != kInvalidValue;
        pos += bytes_per_sector_, sector = GetNextSector(sector)) {
     // Read the sector.
-    if (image_file_.Read(GetSectorPosition(sector), dir_entry_buf.data(),
-                         dir_entry_buf.size()) !=
-        static_cast<int>(dir_entry_buf.size())) {
+    if (!image_file_.ReadAndCheck(GetSectorPosition(sector),
+                                  base::as_writable_byte_span(dir_entry_buf))) {
       LOG(ERROR) << "Failed to read sector " << sector;
       return false;
     }

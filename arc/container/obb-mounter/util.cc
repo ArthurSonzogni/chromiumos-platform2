@@ -6,7 +6,9 @@
 
 #include <iterator>
 
+#include <base/containers/span.h>
 #include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
 
 namespace fat {
 
@@ -57,7 +59,9 @@ int64_t ReadFileAllocationTable(base::File* file,
   const int64_t read_pos = fat_start + fat_offset;
   const int read_size = fat_type == FatType::FAT_32 ? 4 : 2;
   char buf[4];
-  if (file->Read(read_pos, buf, read_size) != read_size) {
+  if (!file->ReadAndCheck(read_pos,
+                          base::as_writable_byte_span(buf).first(
+                              base::checked_cast<size_t>(read_size)))) {
     LOG(ERROR) << "Read error at " << read_pos;
     return kInvalidValue;
   }

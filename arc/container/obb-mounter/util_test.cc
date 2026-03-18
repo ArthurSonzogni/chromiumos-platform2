@@ -2,14 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "arc/container/obb-mounter/util.h"
+
 #include <algorithm>
 #include <string>
 
+#include <base/containers/span.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/utf_string_conversions.h>
 #include <gtest/gtest.h>
-
-#include "arc/container/obb-mounter/util.h"
 
 namespace fat {
 
@@ -55,9 +56,8 @@ TEST(UtilTest, ReadFileAllocationTable) {
   // 0x123, 0x456, 0x789, EOF
   const int64_t fat_start = 0x100;
   const uint8_t data12[] = {0x23, 0x61, 0x45, 0x89, 0xf7, 0xff};
-  EXPECT_EQ(file.Write(fat_start, reinterpret_cast<const char*>(data12),
-                       sizeof(data12)),
-            sizeof(data12));
+  EXPECT_TRUE(
+      file.WriteAndCheck(fat_start, base::as_byte_span(base::span(data12))));
   EXPECT_EQ(0x123,
             ReadFileAllocationTable(&file, FatType::FAT_12, fat_start, 0));
   EXPECT_EQ(0x456,
@@ -70,9 +70,8 @@ TEST(UtilTest, ReadFileAllocationTable) {
   // Test FAT 16.
   const __le16 data16[] = {htole16(0x1234), htole16(0x5678), htole16(0x9abc),
                            htole16(0xffff)};
-  EXPECT_EQ(file.Write(fat_start, reinterpret_cast<const char*>(data16),
-                       sizeof(data16)),
-            sizeof(data16));
+  EXPECT_TRUE(
+      file.WriteAndCheck(fat_start, base::as_byte_span(base::span(data16))));
   EXPECT_EQ(0x1234,
             ReadFileAllocationTable(&file, FatType::FAT_16, fat_start, 0));
   EXPECT_EQ(0x5678,
@@ -85,9 +84,8 @@ TEST(UtilTest, ReadFileAllocationTable) {
   // Test FAT 32.
   const __le32 data32[] = {htole32(0x01234567), htole32(0x089abcde),
                            htole32(0x0f123456), htole32(0xffffffff)};
-  EXPECT_EQ(file.Write(fat_start, reinterpret_cast<const char*>(data32),
-                       sizeof(data32)),
-            sizeof(data32));
+  EXPECT_TRUE(
+      file.WriteAndCheck(fat_start, base::as_byte_span(base::span(data32))));
   EXPECT_EQ(0x01234567,
             ReadFileAllocationTable(&file, FatType::FAT_32, fat_start, 0));
   EXPECT_EQ(0x089abcde,

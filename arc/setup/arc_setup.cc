@@ -28,6 +28,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/command_line.h>
+#include <base/containers/span.h>
 #include <base/environment.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -291,8 +292,10 @@ void UnregisterBinFmtMiscEntry(const base::FilePath& entry_path) {
     return;
   }
   static constexpr char kBinfmtMiscUnregister[] = "-1";
-  IGNORE_ERRORS(
-      entry.Write(0, kBinfmtMiscUnregister, sizeof(kBinfmtMiscUnregister) - 1));
+  IGNORE_ERRORS(entry.WriteAndCheck(
+      0, base::span<const uint8_t>(
+             reinterpret_cast<const uint8_t*>(kBinfmtMiscUnregister),
+             sizeof(kBinfmtMiscUnregister) - 1)));
 }
 
 // Prepends |path_to_prepend| to each element in [first, last), and returns the
