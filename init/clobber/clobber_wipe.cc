@@ -5,11 +5,10 @@
 #include "init/clobber/clobber_wipe.h"
 
 #include <fcntl.h>
+#include <linux/fs.h>
 #include <sys/ioctl.h>
 #include <sys/sysmacros.h>
 #include <sys/types.h>
-
-#include <linux/fs.h>
 
 #include <algorithm>
 #include <memory>
@@ -18,19 +17,21 @@
 #include <vector>
 
 #include <base/bits.h>
+#include <base/containers/span.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <brillo/files/file_util.h>
-#include <brillo/process/process.h>
 #include <brillo/blkdev_utils/get_backing_block_device.h>
 #include <brillo/blkdev_utils/storage_device.h>
 #include <brillo/blkdev_utils/storage_utils.h>
+#include <brillo/files/file_util.h>
+#include <brillo/process/process.h>
 #include <chromeos/secure_erase_file/secure_erase_file.h>
 
 #include "init/clobber/clobber_state_log.h"
@@ -181,8 +182,10 @@ bool ClobberWipe::WipeDevice(const base::FilePath& device_path, bool discard) {
   while (total_written < to_write) {
     int write_size = std::min(static_cast<uint64_t>(write_block_size),
                               to_write - total_written);
-    int64_t bytes_written = device.WriteAtCurrentPos(buffer.data(), write_size);
-    if (bytes_written < 0) {
+    auto bytes_written =
+        device.WriteAtCurrentPos(base::as_byte_span(buffer).first(
+            base::checked_cast<size_t>(write_size)));
+    if (!bytes_written.has_value()) {
       PLOG(ERROR) << "Failed to write to " << device_path.value();
       LOG(ERROR) << "Wrote " << total_written << " bytes before failing";
       return false;
@@ -193,7 +196,7 @@ bool ClobberWipe::WipeDevice(const base::FilePath& device_path, bool discard) {
                   << " at offset=" << total_written << " size=" << write_size;
       return false;
     }
-    total_written += bytes_written;
+    total_written += *bytes_written;
     if (display_progress) {
       ui_->UpdateWipeProgress(total_written);
     }

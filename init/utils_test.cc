@@ -2,16 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "init/utils.h"
+
 #include <stdlib.h>
+
 #include <string>
 
+#include <base/containers/span.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
 #include <gtest/gtest.h>
 #include <rootdev/rootdev.h>
-#include "init/utils.h"
 
 namespace {
 
@@ -101,9 +104,8 @@ class CgptTest : public testing::Test {
         base::StringPrintf(kSfdiskCommandFormat, kRWFWPartition, "RWFW"),
         base::StringPrintf(kSfdiskCommandFormat, kEFIPartition, "EFI-SYSTEM")};
     for (const std::string& command : sfdisk_commands) {
-      EXPECT_EQ(
-          sfdisk_input.WriteAtCurrentPos(command.c_str(), command.length()),
-          command.length());
+      EXPECT_TRUE(
+          sfdisk_input.WriteAtCurrentPosAndCheck(base::as_byte_span(command)));
     }
     sfdisk_input.Close();
 

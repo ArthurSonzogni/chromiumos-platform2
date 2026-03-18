@@ -11,6 +11,7 @@
 #include <string>
 #include <utility>
 
+#include <base/containers/span.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
@@ -161,7 +162,7 @@ bool ClobberUi::ShowCountdownTimer(const base::TimeDelta& duration) {
     std::string countdown =
         base::StringPrintf("%2d:%02" PRIi64 "\r", remaining.InMinutes(),
                            remaining.InSeconds() % 60);
-    terminal_.WriteAtCurrentPos(countdown.c_str(), countdown.size());
+    (void)terminal_.WriteAtCurrentPos(base::as_byte_span(countdown));
     base::PlatformThread::Sleep(base::Milliseconds(100));
     elapsed = base::TimeTicks::Now() - start_time;
   }
@@ -194,8 +195,10 @@ void ClobberUi::ThreadMain() {
     }
     std::string output = BuildUiString(terminal_width, elapsed, progress);
 
-    terminal_.WriteAtCurrentPos("\r", 1);
-    terminal_.WriteAtCurrentPos(output.c_str(), output.size());
+    constexpr char kCarriageReturn = '\r';
+    (void)terminal_.WriteAtCurrentPos(
+        base::byte_span_from_ref(kCarriageReturn));
+    (void)terminal_.WriteAtCurrentPos(base::as_byte_span(output));
 
     {
       base::AutoUnlock auto_unlock(lock_);
