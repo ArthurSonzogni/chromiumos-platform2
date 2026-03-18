@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -93,9 +94,7 @@ StatusOr<std::string> MaybeReadFile(const base::FilePath& file_path,
 
   std::string result;
   result.resize(file_info.size - offset);
-  const int read_result =
-      file.Read(offset, result.data(), file_info.size - offset);
-  if (read_result != file_info.size - offset) {
+  if (!file.ReadAndCheck(offset, base::as_writable_byte_span(result))) {
     return base::unexpected(Status(
         error::DATA_LOSS,
         base::StrCat({"Failed to read data file ", file_path.MaybeAsASCII()})));
@@ -115,15 +114,17 @@ Status AppendLine(const base::FilePath& file_path,
   }
 
   const std::string line = base::StrCat({data, "\n"});
-  const int write_count = file.Write(0, line.data(), line.size());
-  if (write_count < 0 || static_cast<size_t>(write_count) < line.size()) {
+  auto write_count = file.Write(0, base::as_byte_span(line));
+  if (!write_count.has_value() || *write_count < line.size()) {
     analytics::Metrics::SendEnumToUMA(kUmaDataLossErrorReason,
                                       DataLossErrorReason::FAILED_TO_WRITE_FILE,
                                       DataLossErrorReason::MAX_VALUE);
     return Status(error::DATA_LOSS,
                   base::StrCat({"Failed to write health data file ",
                                 file_path.MaybeAsASCII(), " write count=",
-                                base::NumberToString(write_count)}));
+                                write_count.has_value()
+                                    ? base::NumberToString(*write_count)
+                                    : std::string("-1")}));
   }
   return Status::StatusOK();
 }
@@ -166,12 +167,14 @@ Status MaybeWriteFile(const base::FilePath& file_path,
                                                   file_path.MaybeAsASCII()}));
   }
 
-  const int write_count = file.Write(0, data.data(), data.size());
-  if (write_count < 0 || static_cast<size_t>(write_count) < data.size()) {
-    return Status(
-        error::DATA_LOSS,
-        base::StrCat({"Failed to write data file ", file_path.MaybeAsASCII(),
-                      " write count=", base::NumberToString(write_count)}));
+  auto write_count = file.Write(0, base::as_byte_span(data));
+  if (!write_count.has_value() || *write_count < data.size()) {
+    return Status(error::DATA_LOSS,
+                  base::StrCat({"Failed to write data file ",
+                                file_path.MaybeAsASCII(), " write count=",
+                                write_count.has_value()
+                                    ? base::NumberToString(*write_count)
+                                    : std::string("-1")}));
   }
 
   return Status::StatusOK();

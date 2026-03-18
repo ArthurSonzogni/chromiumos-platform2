@@ -2875,9 +2875,10 @@ StatusOr<std::string_view> StorageQueue::SingleFile::Read(
   while (actual_size < size) {
     // Read as much as possible.
     CHECK_LT(data_end_, buffer_.size());
-    const int32_t result =
-        handle_->Read(pos, buffer_.at(data_end_), buffer_.size() - data_end_);
-    if (result < 0) {
+    auto result = handle_->Read(
+        pos, base::as_writable_byte_span(base::span(
+                 buffer_.at(data_end_), buffer_.size() - data_end_)));
+    if (!result.has_value()) {
       analytics::Metrics::SendEnumToUMA(
           kUmaDataLossErrorReason, DataLossErrorReason::FAILED_TO_READ_FILE,
           DataLossErrorReason::MAX_VALUE);
@@ -2887,13 +2888,13 @@ StatusOr<std::string_view> StorageQueue::SingleFile::Read(
                         handle_->ErrorToString(handle_->GetLastFileError()),
                         " ", name()})));
     }
-    if (result == 0) {
+    if (*result == 0) {
       break;
     }
-    pos += result;
-    data_end_ += result;
+    pos += *result;
+    data_end_ += *result;
     CHECK_LE(data_end_, buffer_.size());
-    actual_size += result;
+    actual_size += *result;
   }
   if (actual_size > size) {
     actual_size = size;
@@ -2928,8 +2929,8 @@ StatusOr<uint32_t> StorageQueue::SingleFile::Append(std::string_view data) {
   }
   size_t actual_size = 0;
   while (data.size() > 0) {
-    const int32_t result = handle_->Write(size_, data.data(), data.size());
-    if (result < 0) {
+    auto result = handle_->Write(size_, base::as_byte_span(data));
+    if (!result.has_value()) {
       analytics::Metrics::SendEnumToUMA(
           kUmaDataLossErrorReason, DataLossErrorReason::FAILED_TO_WRITE_FILE,
           DataLossErrorReason::MAX_VALUE);
@@ -2939,9 +2940,9 @@ StatusOr<uint32_t> StorageQueue::SingleFile::Append(std::string_view data) {
                         handle_->ErrorToString(handle_->GetLastFileError()),
                         " ", name()})));
     }
-    size_ += result;
-    actual_size += result;
-    data = data.substr(result);  // Skip data that has been written.
+    size_ += *result;
+    actual_size += *result;
+    data = data.substr(*result);  // Skip data that has been written.
   }
   return actual_size;
 }

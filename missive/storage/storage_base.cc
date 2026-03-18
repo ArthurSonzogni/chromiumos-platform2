@@ -18,6 +18,7 @@
 
 #include <base/barrier_closure.h>
 #include <base/containers/adapters.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
@@ -552,9 +553,9 @@ Status KeyInStorage::WriteKeyInfoFile(
                   base::StrCat({"Failed to seralize key into file='",
                                 key_file_path.MaybeAsASCII(), "'"}));
   }
-  const int32_t write_result = key_file.Write(
-      /*offset=*/0, serialized_key.data(), serialized_key.size());
-  if (write_result < 0) {
+  auto write_result =
+      key_file.Write(/*offset=*/0, base::as_byte_span(serialized_key));
+  if (!write_result.has_value()) {
     analytics::Metrics::SendEnumToUMA(
         kUmaDataLossErrorReason, DataLossErrorReason::FAILED_TO_WRITE_KEY_FILE,
         DataLossErrorReason::MAX_VALUE);
@@ -564,7 +565,7 @@ Status KeyInStorage::WriteKeyInfoFile(
                       key_file.ErrorToString(key_file.GetLastFileError()),
                       " file=", key_file_path.MaybeAsASCII()}));
   }
-  if (static_cast<size_t>(write_result) != serialized_key.size()) {
+  if (*write_result != serialized_key.size()) {
     analytics::Metrics::SendEnumToUMA(
         kUmaDataLossErrorReason, DataLossErrorReason::FAILED_TO_WRITE_KEY_FILE,
         DataLossErrorReason::MAX_VALUE);
@@ -654,19 +655,19 @@ KeyInStorage::LocateValidKeyAndParse(
     SignedEncryptionInfo signed_encryption_key;
     {
       char key_file_buffer[kEncryptionKeyMaxFileSize];
-      const int32_t read_result = key_file.Read(
-          /*offset=*/0, key_file_buffer, kEncryptionKeyMaxFileSize);
-      if (read_result < 0) {
+      auto read_result = key_file.Read(
+          /*offset=*/0, base::as_writable_byte_span(key_file_buffer));
+      if (!read_result.has_value()) {
         LOG(WARNING) << "File read error="
                      << key_file.ErrorToString(key_file.GetLastFileError())
                      << " " << file_path.MaybeAsASCII();
         continue;  // File read error.
       }
-      if (read_result == 0 || read_result >= kEncryptionKeyMaxFileSize) {
+      if (*read_result == 0 || *read_result >= kEncryptionKeyMaxFileSize) {
         continue;  // Unexpected file size.
       }
       google::protobuf::io::ArrayInputStream key_stream(  // Zero-copy stream.
-          key_file_buffer, read_result);
+          key_file_buffer, static_cast<int>(*read_result));
       if (!signed_encryption_key.ParseFromZeroCopyStream(&key_stream)) {
         LOG(WARNING) << "Failed to parse key file, full_name='"
                      << file_path.MaybeAsASCII() << "'";
