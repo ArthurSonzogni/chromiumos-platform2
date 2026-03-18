@@ -18,6 +18,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/containers/lru_cache.h"
+#include "base/containers/span.h"
 #include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/logging.h"
@@ -151,13 +152,13 @@ absl::StatusOr<ImageCacheInterface::HashValue> ImageCache::GenerateImageHash(
 
   while (offset < file_size) {
     // Read bytes from the file.
-    int bytes_read = file.Read(offset, buf.char_data(), sha_chunk_size_);
-    if (bytes_read < 0) {
+    auto bytes_read = file.Read(offset, base::as_writable_byte_span(buf));
+    if (!bytes_read.has_value()) {
       return absl::AbortedError(
           base::StrCat({kErrorBytesRead, image_path_in_current_ns.value()}));
     }
     // Update SHA256 context with the read data.
-    if (!SHA256_Update(&ctx, buf.data(), bytes_read)) {
+    if (!SHA256_Update(&ctx, buf.data(), *bytes_read)) {
       return absl::InternalError(kErrorSslSha);
     }
 
