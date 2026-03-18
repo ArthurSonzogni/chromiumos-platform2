@@ -4,17 +4,19 @@
 
 #include "oobe_config/filesystem/file_handler.h"
 
+#include <sys/file.h>
+
 #include <optional>
 #include <vector>
 
-#include <base/posix/eintr_wrapper.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <brillo/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/logging.h>
-#include <sys/file.h>
+#include <base/posix/eintr_wrapper.h>
+#include <brillo/files/file_util.h>
 
 namespace oobe_config {
 
@@ -212,8 +214,7 @@ std::optional<std::string> FileHandler::GetOpenedFileData(
     base::File& file) const {
   // Read the full content of the file from the beginning.
   std::vector<char> file_content(file.GetLength());
-  if (file.Read(0, file_content.data(), file_content.size()) !=
-      file_content.size()) {
+  if (!file.ReadAndCheck(0, base::as_writable_byte_span(file_content))) {
     LOG(ERROR) << "Unexpected data file read length.";
     return std::nullopt;
   }
@@ -227,7 +228,7 @@ bool FileHandler::ExtendOpenedFile(base::File& file,
   // File is opened in append mode; we can write the event data to the current
   // position to extend it.
   int initial_length = file.GetLength();
-  if (file.WriteAtCurrentPos(data.c_str(), data.length()) != data.length()) {
+  if (!file.WriteAtCurrentPosAndCheck(base::as_byte_span(data))) {
     LOG(ERROR) << "Unable to write data in file.";
     return false;
   }
