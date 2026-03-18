@@ -75,9 +75,9 @@ bool DecompressXzFile(const base::FilePath& in_file_path,
     // Flushes the decoded data from the output buffer to the output file.
     if (stream.avail_out == 0 || ret == LZMA_STREAM_END) {
       size_t write_size = out_buffer_size - stream.avail_out;
-      if (out_file.WriteAtCurrentPos(reinterpret_cast<char*>(out_buffer.get()),
-                                     write_size) !=
-          static_cast<int>(write_size)) {
+      auto written = out_file.WriteAtCurrentPos(
+          base::span<const uint8_t>(out_buffer.get(), write_size));
+      if (!written.has_value() || *written != write_size) {
         PLOG(ERROR) << "Failed to write to '" << out_file_path.value() << "'";
         return false;
       }
