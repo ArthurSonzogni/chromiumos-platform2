@@ -8,18 +8,18 @@
 #include <string>
 #include <vector>
 
-#include <base/logging.h>
-
-#include <gtest/gtest.h>
-#include <dbus/object_path.h>
-#include <brillo/dbus/dbus_object.h>
+#include <base/containers/span.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
+#include <brillo/dbus/dbus_object.h>
+#include <dbus/object_path.h>
+#include <dbus/private_computing/dbus-constants.h>
+#include <google/protobuf/message_lite.h>
+#include <gtest/gtest.h>
+
 #include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
-#include <dbus/private_computing/dbus-constants.h>
-#include <google/protobuf/message_lite.h>
-
 #include "private_computing/proto_bindings/private_computing_service.pb.h"
 
 namespace private_computing {
@@ -128,9 +128,9 @@ TEST_F(PrivateComputingAdaptorTest, ReadFromPreserveDir) {
   // Prepare the input test case.
   SaveStatusRequest request = GenerateSaveStatusRequest();
   std::string request_str = request.SerializeAsString();
-  const int write_count =
-      file.Write(0, request_str.c_str(), request_str.size());
-  EXPECT_GT(write_count, 0);
+  auto write_count = file.Write(0, base::as_byte_span(request_str));
+  ASSERT_TRUE(write_count.has_value());
+  EXPECT_GT(*write_count, 0u);
 
   std::vector<uint8_t> actual_response_blob =
       adaptor_->GetLastPingDatesStatus();

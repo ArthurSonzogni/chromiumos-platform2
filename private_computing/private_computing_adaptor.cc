@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file_util.h>
 #include <base/location.h>
 #include <base/logging.h>
@@ -70,10 +71,7 @@ std::optional<std::string> ReadActiveStatusFile(
 
   std::string result;
   result.resize(file_info.size);
-  const int read_result =
-      file.Read(/* offset */ 0, result.data(), file_info.size);
-
-  if (read_result != file_info.size) {
+  if (!file.ReadAndCheck(/* offset */ 0, base::as_writable_byte_span(result))) {
     return std::nullopt;
   }
 
@@ -119,14 +117,13 @@ std::vector<uint8_t> PrivateComputingAdaptor::SaveLastPingDatesStatus(
   }
 
   std::string request_str = request.SerializeAsString();
-  const int write_count =
-      file.Write(0, request_str.c_str(), request_str.size());
-  if (write_count < 0 ||
-      static_cast<size_t>(write_count) < request_str.size()) {
-    response.set_error_message(
-        base::StrCat({"Failed to write data file ",
-                      kPrivateComputingLastActiveDatesWritePath,
-                      " write count=", std::to_string(write_count)}));
+  auto write_count = file.Write(0, base::as_byte_span(request_str));
+  if (!write_count.has_value() || *write_count < request_str.size()) {
+    response.set_error_message(base::StrCat(
+        {"Failed to write data file ",
+         kPrivateComputingLastActiveDatesWritePath, " write count=",
+         write_count.has_value() ? std::to_string(*write_count)
+                                 : std::string("-1")}));
     return SerializeProto(response);
   }
 
