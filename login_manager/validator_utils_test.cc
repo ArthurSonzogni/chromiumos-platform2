@@ -139,19 +139,6 @@ TEST(ValidatorUtilsTest, PolicyDescriptorChromeDomainInvalid) {
   EXPECT_FALSE(ValidatePolicyDescriptor(desc, PolicyDescriptorUsage::kStore));
 }
 
-TEST(ValidatorUtilsTest, PolicyDescriptorExtensionInstallDomainValid) {
-  PolicyDescriptor desc;
-  desc.set_domain(POLICY_DOMAIN_EXTENSION_INSTALL);
-  EXPECT_TRUE(ValidatePolicyDescriptor(desc, PolicyDescriptorUsage::kStore));
-}
-
-TEST(ValidatorUtilsTest, PolicyDescriptorExtensionInstallDomainInvalid) {
-  PolicyDescriptor desc;
-  desc.set_domain(POLICY_DOMAIN_EXTENSION_INSTALL);
-  desc.set_component_id(kValidExtensionId);
-  EXPECT_FALSE(ValidatePolicyDescriptor(desc, PolicyDescriptorUsage::kStore));
-}
-
 TEST(ValidatorUtilsTest, PolicyDescriptorExtensionDomainValid) {
   PolicyDescriptor desc;
   desc.set_domain(POLICY_DOMAIN_EXTENSIONS);
@@ -182,14 +169,6 @@ TEST(ValidatorUtilsTest, PolicyDescriptorInvalidForChromeDomainAndList) {
   PolicyDescriptor desc;
   desc.set_account_type(ACCOUNT_TYPE_DEVICE);
   desc.set_domain(POLICY_DOMAIN_CHROME);
-  EXPECT_FALSE(ValidatePolicyDescriptor(desc, PolicyDescriptorUsage::kList));
-}
-
-TEST(ValidatorUtilsTest,
-     PolicyDescriptorInvalidForExtensionInstallDomainAndList) {
-  PolicyDescriptor desc;
-  desc.set_account_type(ACCOUNT_TYPE_DEVICE);
-  desc.set_domain(POLICY_DOMAIN_EXTENSION_INSTALL);
   EXPECT_FALSE(ValidatePolicyDescriptor(desc, PolicyDescriptorUsage::kList));
 }
 

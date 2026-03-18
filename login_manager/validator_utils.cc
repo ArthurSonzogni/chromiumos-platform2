@@ -147,7 +147,6 @@ bool ValidatePolicyDescriptor(const PolicyDescriptor& descriptor,
 
   switch (descriptor.domain()) {
     case POLICY_DOMAIN_CHROME:
-    case POLICY_DOMAIN_EXTENSION_INSTALL:
       if (usage == PolicyDescriptorUsage::kList) {
         return false;
       }

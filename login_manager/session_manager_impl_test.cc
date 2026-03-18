@@ -254,15 +254,6 @@ std::vector<uint8_t> MakePolicyDescriptor(PolicyAccountType account_type,
   return StringToBlob(descriptor.SerializeAsString());
 }
 
-std::vector<uint8_t> MakeExtensionInstallPolicyDescriptor(
-    PolicyAccountType account_type, const std::string& account_id) {
-  PolicyDescriptor descriptor;
-  descriptor.set_account_type(account_type);
-  descriptor.set_account_id(account_id);
-  descriptor.set_domain(POLICY_DOMAIN_EXTENSION_INSTALL);
-  return StringToBlob(descriptor.SerializeAsString());
-}
-
 std::vector<uint8_t> MakeLoginScreenStorageMetadata(
     bool clear_on_session_exit) {
   LoginScreenStorageMetadata metadata;
@@ -423,13 +414,6 @@ class SessionManagerImplTest : public ::testing::Test,
                          int flags) {
     EXPECT_CALL(*service,
                 Store(MakeChromePolicyNamespace(), policy_blob, flags, _));
-  }
-  void ExpectStoreExtensionInstallPolicy(
-      MockDevicePolicyService* service,
-      const std::vector<uint8_t>& policy_blob,
-      int flags) {
-    EXPECT_CALL(*service, Store(MakeExtensionInstallPolicyNamespace(),
-                                policy_blob, flags, _));
   }
 
   void ExpectNoStorePolicy(MockDevicePolicyService* service) {
@@ -911,17 +895,6 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_NoSession) {
       MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
 }
 
-TEST_F(SessionManagerImplTest, StoreExtensionInstallPolicyEx_NoSession) {
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  ExpectStoreExtensionInstallPolicy(device_policy_service_, policy_blob,
-                                    kAllKeyFlags);
-  ResponseCapturer capturer;
-  impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
-                       MakeExtensionInstallPolicyDescriptor(ACCOUNT_TYPE_DEVICE,
-                                                            kEmptyAccountId),
-                       policy_blob);
-}
-
 TEST_F(SessionManagerImplTest, StorePolicyEx_SessionStarted) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
@@ -934,20 +907,6 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_SessionStarted) {
       MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
 }
 
-TEST_F(SessionManagerImplTest, StoreExtensionInstallPolicyEx_SessionStarted) {
-  ExpectAndRunStartSession(kSaneEmail);
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  ExpectStoreExtensionInstallPolicy(
-      device_policy_service_, policy_blob,
-      PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW);
-
-  ResponseCapturer capturer;
-  impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
-                       MakeExtensionInstallPolicyDescriptor(ACCOUNT_TYPE_DEVICE,
-                                                            kEmptyAccountId),
-                       policy_blob);
-}
-
 TEST_F(SessionManagerImplTest, RetrievePolicyEx) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   EXPECT_CALL(*device_policy_service_, Retrieve(MakeChromePolicyNamespace(), _))
@@ -957,21 +916,6 @@ TEST_F(SessionManagerImplTest, RetrievePolicyEx) {
   EXPECT_TRUE(impl_->RetrievePolicyEx(
       &error, MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId),
       &out_blob));
-  EXPECT_FALSE(error.get());
-  EXPECT_EQ(policy_blob, out_blob);
-}
-
-TEST_F(SessionManagerImplTest, RetrieveExtensionInstallPolicyEx) {
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  EXPECT_CALL(*device_policy_service_,
-              Retrieve(MakeExtensionInstallPolicyNamespace(), _))
-      .WillOnce(DoAll(SetArgPointee<1>(policy_blob), Return(true)));
-  std::vector<uint8_t> out_blob;
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->RetrievePolicyEx(&error,
-                                      MakeExtensionInstallPolicyDescriptor(
-                                          ACCOUNT_TYPE_DEVICE, kEmptyAccountId),
-                                      &out_blob));
   EXPECT_FALSE(error.get());
   EXPECT_EQ(policy_blob, out_blob);
 }
@@ -1055,18 +999,6 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSession) {
   EXPECT_EQ(dbus_error::kGetServiceFail, capturer.response()->GetErrorName());
 }
 
-TEST_F(SessionManagerImplTest, StoreUserExtensionInstallPolicyEx_NoSession) {
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-
-  ResponseCapturer capturer;
-  impl_->StorePolicyEx(
-      capturer.CreateMethodResponse<>(),
-      MakeExtensionInstallPolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail),
-      policy_blob);
-  ASSERT_TRUE(capturer.response());
-  EXPECT_EQ(dbus_error::kGetServiceFail, capturer.response()->GetErrorName());
-}
-
 TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SessionStarted) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
@@ -1079,22 +1011,6 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SessionStarted) {
   impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
                        MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail),
                        policy_blob);
-}
-
-TEST_F(SessionManagerImplTest,
-       StoreUserExtensionInstallPolicyEx_SessionStarted) {
-  ExpectAndRunStartSession(kSaneEmail);
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  EXPECT_CALL(
-      *user_policy_services_[kSaneEmail],
-      Store(MakeExtensionInstallPolicyNamespace(), policy_blob,
-            PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW, _));
-
-  ResponseCapturer capturer;
-  impl_->StorePolicyEx(
-      capturer.CreateMethodResponse<>(),
-      MakeExtensionInstallPolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail),
-      policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
@@ -1145,74 +1061,11 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
   Mock::VerifyAndClearExpectations(user_policy_services_[kEmail2]);
 }
 
-TEST_F(SessionManagerImplTest,
-       StoreUserExtensionInstallPolicyEx_SecondSession) {
-  ExpectAndRunStartSession(kSaneEmail);
-  ASSERT_TRUE(user_policy_services_[kSaneEmail]);
-
-  // Store policy for the signed-in user.
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  EXPECT_CALL(
-      *user_policy_services_[kSaneEmail],
-      Store(MakeExtensionInstallPolicyNamespace(), policy_blob,
-            PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW, _));
-
-  {
-    ResponseCapturer capturer;
-    impl_->StorePolicyEx(
-        capturer.CreateMethodResponse<>(),
-        MakeExtensionInstallPolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail),
-        policy_blob);
-    Mock::VerifyAndClearExpectations(user_policy_services_[kSaneEmail]);
-  }
-
-  // Storing policy for another username fails before their session starts.
-  constexpr char kEmail2[] = "user2@somewhere.com";
-  {
-    ResponseCapturer capturer;
-    impl_->StorePolicyEx(
-        capturer.CreateMethodResponse<>(),
-        MakeExtensionInstallPolicyDescriptor(ACCOUNT_TYPE_USER, kEmail2),
-        policy_blob);
-    ASSERT_TRUE(capturer.response());
-    EXPECT_EQ(dbus_error::kGetServiceFail, capturer.response()->GetErrorName());
-  }
-
-  // Now start another session for the 2nd user.
-  ExpectAndRunStartSession(kEmail2);
-  ASSERT_TRUE(user_policy_services_[kEmail2]);
-
-  // Storing policy for that user now succeeds.
-  EXPECT_CALL(
-      *user_policy_services_[kEmail2],
-      Store(MakeExtensionInstallPolicyNamespace(), policy_blob,
-            PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW, _));
-  {
-    ResponseCapturer capturer;
-    impl_->StorePolicyEx(
-        capturer.CreateMethodResponse<>(),
-        MakeExtensionInstallPolicyDescriptor(ACCOUNT_TYPE_USER, kEmail2),
-        policy_blob);
-  }
-  Mock::VerifyAndClearExpectations(user_policy_services_[kEmail2]);
-}
-
 TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_NoSession) {
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
   EXPECT_FALSE(impl_->RetrievePolicyEx(
       &error, MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail), &out_blob));
-  ASSERT_TRUE(error.get());
-  EXPECT_EQ(dbus_error::kSigEncodeFail, error->GetCode());
-}
-
-TEST_F(SessionManagerImplTest, RetrieveUserExtensionInstallPolicyEx_NoSession) {
-  std::vector<uint8_t> out_blob;
-  brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_->RetrievePolicyEx(
-      &error,
-      MakeExtensionInstallPolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail),
-      &out_blob));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kSigEncodeFail, error->GetCode());
 }
@@ -1228,24 +1081,6 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_SessionStarted) {
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->RetrievePolicyEx(
       &error, MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail), &out_blob));
-  EXPECT_FALSE(error.get());
-  EXPECT_EQ(policy_blob, out_blob);
-}
-
-TEST_F(SessionManagerImplTest,
-       RetrieveUserExtensionInstallPolicyEx_SessionStarted) {
-  ExpectAndRunStartSession(kSaneEmail);
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail],
-              Retrieve(MakeExtensionInstallPolicyNamespace(), _))
-      .WillOnce(DoAll(SetArgPointee<1>(policy_blob), Return(true)));
-
-  std::vector<uint8_t> out_blob;
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->RetrievePolicyEx(
-      &error,
-      MakeExtensionInstallPolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail),
-      &out_blob));
   EXPECT_FALSE(error.get());
   EXPECT_EQ(policy_blob, out_blob);
 }
@@ -1294,62 +1129,6 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_SecondSession) {
     brillo::ErrorPtr error;
     EXPECT_TRUE(impl_->RetrievePolicyEx(
         &error, MakePolicyDescriptor(ACCOUNT_TYPE_USER, kEmail2), &out_blob));
-    EXPECT_FALSE(error.get());
-    Mock::VerifyAndClearExpectations(user_policy_services_[kEmail2]);
-    EXPECT_EQ(policy_blob, out_blob);
-  }
-}
-
-TEST_F(SessionManagerImplTest,
-       RetrieveUserExtensionInstallPolicyEx_SecondSession) {
-  ExpectAndRunStartSession(kSaneEmail);
-  ASSERT_TRUE(user_policy_services_[kSaneEmail]);
-
-  // Retrieve policy for the signed-in user.
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail],
-              Retrieve(MakeExtensionInstallPolicyNamespace(), _))
-      .WillOnce(DoAll(SetArgPointee<1>(policy_blob), Return(true)));
-  {
-    std::vector<uint8_t> out_blob;
-    brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_->RetrievePolicyEx(
-        &error,
-        MakeExtensionInstallPolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail),
-        &out_blob));
-    EXPECT_FALSE(error.get());
-    Mock::VerifyAndClearExpectations(user_policy_services_[kSaneEmail]);
-    EXPECT_EQ(policy_blob, out_blob);
-  }
-
-  // Retrieving policy for another username fails before their session starts.
-  constexpr char kEmail2[] = "user2@somewhere.com";
-  {
-    std::vector<uint8_t> out_blob;
-    brillo::ErrorPtr error;
-    EXPECT_FALSE(impl_->RetrievePolicyEx(
-        &error,
-        MakeExtensionInstallPolicyDescriptor(ACCOUNT_TYPE_USER, kEmail2),
-        &out_blob));
-    ASSERT_TRUE(error.get());
-    EXPECT_EQ(dbus_error::kSigEncodeFail, error->GetCode());
-  }
-
-  // Now start another session for the 2nd user.
-  ExpectAndRunStartSession(kEmail2);
-  ASSERT_TRUE(user_policy_services_[kEmail2]);
-
-  // Retrieving policy for that user now succeeds.
-  EXPECT_CALL(*user_policy_services_[kEmail2],
-              Retrieve(MakeExtensionInstallPolicyNamespace(), _))
-      .WillOnce(DoAll(SetArgPointee<1>(policy_blob), Return(true)));
-  {
-    std::vector<uint8_t> out_blob;
-    brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_->RetrievePolicyEx(
-        &error,
-        MakeExtensionInstallPolicyDescriptor(ACCOUNT_TYPE_USER, kEmail2),
-        &out_blob));
     EXPECT_FALSE(error.get());
     Mock::VerifyAndClearExpectations(user_policy_services_[kEmail2]);
     EXPECT_EQ(policy_blob, out_blob);

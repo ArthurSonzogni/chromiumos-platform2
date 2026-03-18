@@ -38,9 +38,6 @@ using PolicyNamespace = std::pair<PolicyDomain, std::string>;
 // Returns the namespace for Chrome policies.
 extern PolicyNamespace MakeChromePolicyNamespace();
 
-// Returns the namespace for extension install policies.
-extern PolicyNamespace MakeExtensionInstallPolicyNamespace();
-
 // Manages policy storage and retrieval from underlying PolicyStores, thereby
 // enforcing policy signatures against a given policy key. Also handles key
 // rotations in case a new policy payload comes with an updated policy key.
@@ -50,8 +47,6 @@ class PolicyService {
  public:
   // File name of Chrome policy.
   static const char kChromePolicyFileName[];
-  // File name of the extension install policy.
-  static const char kExtensionInstallPolicyFileName[];
   // Prefix of the filename of extension policy. The full file name is suffixed
   // by the extension ID.
   static const char kExtensionsPolicyFileNamePrefix[];
