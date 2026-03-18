@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -682,9 +683,10 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFile) {
   ASSERT_TRUE(kToFile.IsValid());
   kToFile.SetLength(kFinalFileSize);
   const size_t kToFileOffset = kFinalFileSize - kToFileSize;
-  ASSERT_EQ(
-      kToFileSize,
-      kToFile.Write(kToFileOffset, full_contents + kToFileOffset, kToFileSize));
+  ASSERT_TRUE(kToFile.WriteAndCheck(
+      kToFileOffset,
+      base::as_byte_span(
+          base::span(full_contents).subspan(kToFileOffset, kToFileSize))));
   ASSERT_EQ(kFinalFileSize, kToFile.GetLength());
   kToFile.Close();
 
@@ -723,9 +725,10 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFileDuplicateData) {
   ASSERT_TRUE(kToFile.IsValid());
   kToFile.SetLength(kFinalFileSize);
   const size_t kToFileOffset = kFinalFileSize - kToFileSize;
-  ASSERT_EQ(
-      kDefaultChunkSize,
-      kToFile.Write(kToFileOffset, full_contents + kToFileOffset, kToFileSize));
+  ASSERT_TRUE(kToFile.WriteAndCheck(
+      kToFileOffset,
+      base::as_byte_span(
+          base::span(full_contents).subspan(kToFileOffset, kToFileSize))));
   ASSERT_EQ(kFinalFileSize, kToFile.GetLength());
   kToFile.Close();
 

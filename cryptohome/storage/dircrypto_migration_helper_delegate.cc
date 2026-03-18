@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/logging.h>
 
 #include "cryptohome/cryptohome_metrics.h"
@@ -160,11 +161,9 @@ void DircryptoMigrationHelperDelegate::RecordSkippedFile(
     return;
   }
   std::string data = rel_path.value() + "\n";
-  int write_size = data.size();
   // O_APPEND was used to open, so write is always done at the end of the file
   // even without seek.
-  if (write_size !=
-      skipped_file_list.WriteAtCurrentPos(data.data(), write_size)) {
+  if (!skipped_file_list.WriteAtCurrentPosAndCheck(base::as_byte_span(data))) {
     PLOG(ERROR) << "Failed to write " << rel_path.value()
                 << " to the list of skipped files";
     return;
