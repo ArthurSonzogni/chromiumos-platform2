@@ -4,6 +4,8 @@
  * found in the LICENSE file.
  */
 
+#include "tools/connector_client/cros_camera_connector_client.h"
+
 #include <linux/videodev2.h>
 #include <sysexits.h>
 
@@ -12,15 +14,16 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/functional/bind.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/posix/safe_strerror.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/task/sequenced_task_runner.h>
 
 #include "cros-camera/common.h"
-#include "tools/connector_client/cros_camera_connector_client.h"
 
 namespace {
 
@@ -187,8 +190,9 @@ void CrosCameraConnectorClient::ProcessFrame(const cros_cam_frame_t* frame) {
                                        base::StringPrintf("%06u", frame_iter));
     base::File file(base::FilePath(output_path),
                     base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
-    file.WriteAtCurrentPos(reinterpret_cast<char*>(frame->planes[0].data),
-                           frame->planes[0].size);
+    (void)file.WriteAtCurrentPos(base::span<const uint8_t>(
+        static_cast<const uint8_t*>(frame->planes[0].data),
+        frame->planes[0].size));
     LOGF(INFO) << "Saved JPEG: " << output_path
                << "  (size = " << frame->planes[0].size << ")";
   } else if (frame->format.fourcc == V4L2_PIX_FMT_NV12) {
@@ -197,12 +201,14 @@ void CrosCameraConnectorClient::ProcessFrame(const cros_cam_frame_t* frame) {
                                        base::StringPrintf("%06u", frame_iter));
     base::File file(base::FilePath(output_path),
                     base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
-    file.WriteAtCurrentPos(
-        reinterpret_cast<const char*>(frame->planes[0].data),
-        current_format_info_.height * frame->planes[0].stride);
-    file.WriteAtCurrentPos(
-        reinterpret_cast<const char*>(frame->planes[1].data),
-        (current_format_info_.height + 1) / 2 * frame->planes[1].stride);
+    (void)file.WriteAtCurrentPos(base::span<const uint8_t>(
+        static_cast<const uint8_t*>(frame->planes[0].data),
+        base::checked_cast<size_t>(current_format_info_.height *
+                                   frame->planes[0].stride)));
+    (void)file.WriteAtCurrentPos(base::span<const uint8_t>(
+        static_cast<const uint8_t*>(frame->planes[1].data),
+        base::checked_cast<size_t>((current_format_info_.height + 1) / 2 *
+                                   frame->planes[1].stride)));
     LOGF(INFO) << "Saved YUV (NV12): " << output_path;
   }
 

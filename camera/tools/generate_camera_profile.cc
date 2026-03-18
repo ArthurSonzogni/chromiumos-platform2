@@ -12,6 +12,7 @@
 #include <base/at_exit.h>
 #include <base/check.h>
 #include <base/command_line.h>
+#include <base/containers/span.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -122,8 +123,8 @@ bool GenerateCameraProfile(int num_cameras) {
 
   size_t i;
   for (i = 0; i < lines.size(); i++) {
-    file.WriteAtCurrentPos(lines[i].data(), lines[i].length());
-    file.WriteAtCurrentPos("\n", 1);
+    (void)file.WriteAtCurrentPos(base::as_byte_span(lines[i]));
+    (void)file.WriteAtCurrentPos(base::as_byte_span(std::string_view("\n")));
     if (lines[i].find("</CamcorderProfiles>") != std::string_view::npos) {
       break;
     }
@@ -132,11 +133,11 @@ bool GenerateCameraProfile(int num_cameras) {
   // configuration file instead of using default value.
   for (int id = 1; id < num_cameras; id++) {
     std::string camcorder_string = GetCamcorderString(id);
-    file.WriteAtCurrentPos(camcorder_string.c_str(), camcorder_string.length());
+    (void)file.WriteAtCurrentPos(base::as_byte_span(camcorder_string));
   }
   for (i++; i < lines.size(); i++) {
-    file.WriteAtCurrentPos(lines[i].data(), lines[i].length());
-    file.WriteAtCurrentPos("\n", 1);
+    (void)file.WriteAtCurrentPos(base::as_byte_span(lines[i]));
+    (void)file.WriteAtCurrentPos(base::as_byte_span(std::string_view("\n")));
   }
   file.Close();
   return true;

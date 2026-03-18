@@ -12,6 +12,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/command_line.h>
+#include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -246,7 +247,7 @@ CameraMetadataInspector::CameraMetadataInspector(
       thread_(std::move(thread)) {}
 
 void CameraMetadataInspector::Write(std::string_view msg) {
-  output_file_.WriteAtCurrentPos(msg.data(), msg.size());
+  (void)output_file_.WriteAtCurrentPos(base::as_byte_span(msg));
   output_file_.Flush();
 }
 
