@@ -100,8 +100,8 @@ bool FileHasher::Initialize() {
 }
 
 bool FileHasher::Store() {
-  return destination_->WriteAtCurrentPos(hash_data_.data(),
-                                         hash_data_.size()) >= 0;
+  return destination_->WriteAtCurrentPos(base::as_byte_span(hash_data_))
+      .has_value();
 }
 
 bool FileHasher::Hash() {
