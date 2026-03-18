@@ -12,6 +12,7 @@
 
 #include <base/containers/span.h>
 #include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/strings/stringprintf.h>
 
 namespace minios {
@@ -119,12 +120,10 @@ bool LogStoreManifest::Write() {
   // If manifest had been generated, write it to disk.
   disk.Seek(base::File::FROM_BEGIN, manifest_store_start_);
   // Write magic block header.
-  disk.WriteAtCurrentPos(reinterpret_cast<const char*>(&kLogStoreMagic),
-                         sizeof(kLogStoreMagic));
+  (void)disk.WriteAtCurrentPos(base::byte_span_from_ref(kLogStoreMagic));
 
   auto serialized_manifest = manifest_->SerializeAsString();
-  disk.WriteAtCurrentPos(serialized_manifest.c_str(),
-                         serialized_manifest.size());
+  (void)disk.WriteAtCurrentPos(base::as_byte_span(serialized_manifest));
   // Flush and close disk stream.
   if (!disk.Flush()) {
     LOG(ERROR) << "Failed to flush manifest to device: " << disk_path_
@@ -167,7 +166,8 @@ void LogStoreManifest::Clear() {
   std::array<char, kBlockSize> zeros{0};
   auto bytes_to_write = partition_size_ - disk_manifest_location_.value();
   while (bytes_to_write > 0) {
-    disk.WriteAtCurrentPos(zeros.data(), std::min(kBlockSize, bytes_to_write));
+    (void)disk.WriteAtCurrentPos(base::as_byte_span(zeros).first(
+        base::checked_cast<size_t>(std::min(kBlockSize, bytes_to_write))));
     if (bytes_to_write <= kBlockSize) {
       break;
     }
