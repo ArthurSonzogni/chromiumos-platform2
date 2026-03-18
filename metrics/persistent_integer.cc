@@ -4,10 +4,12 @@
 
 #include "metrics/persistent_integer.h"
 
-#include <algorithm>
 #include <fcntl.h>
 
+#include <algorithm>
+
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
@@ -82,11 +84,8 @@ void PersistentInteger::Write() {
     return;
   }
 
-  const char* version_ptr = reinterpret_cast<const char*>(&version_);
-  const char* value_ptr = reinterpret_cast<const char*>(&value_);
-  if (!(f.Write(0, version_ptr, sizeof(version_)) == sizeof(version_) &&
-        f.Write(sizeof(version_), value_ptr, sizeof(value_)) ==
-            sizeof(value_))) {
+  if (!(f.WriteAndCheck(0, base::byte_span_from_ref(version_)) &&
+        f.WriteAndCheck(sizeof(version_), base::byte_span_from_ref(value_)))) {
     PLOG(ERROR) << "cannot write to " << path_.MaybeAsASCII();
     return;
   }
@@ -100,11 +99,9 @@ bool PersistentInteger::Read() {
   }
   int32_t version;
   int64_t value;
-  char* version_ptr = reinterpret_cast<char*>(&version);
-  char* value_ptr = reinterpret_cast<char*>(&value);
-  if (f.Read(0, version_ptr, sizeof(version)) != sizeof(version) ||
+  if (!f.ReadAndCheck(0, base::byte_span_from_ref(version)) ||
       version != version_ ||
-      f.Read(sizeof(version), value_ptr, sizeof(value)) != sizeof(value)) {
+      !f.ReadAndCheck(sizeof(version), base::byte_span_from_ref(value))) {
     return false;
   }
   value_ = value;

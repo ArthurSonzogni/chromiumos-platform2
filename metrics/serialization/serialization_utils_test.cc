@@ -16,6 +16,7 @@
 
 #include <base/check.h>
 #include <base/command_line.h>
+#include <base/containers/span.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
@@ -332,9 +333,8 @@ TEST_F(SerializationUtilsTest, ReadLongMessageTest) {
   std::string message(SerializationUtils::kMessageMaxLength + 1, 'c');
 
   int32_t message_size = message.length() + sizeof(int32_t);
-  test_file.WriteAtCurrentPos(reinterpret_cast<const char*>(&message_size),
-                              sizeof(message_size));
-  test_file.WriteAtCurrentPos(message.c_str(), message.length());
+  (void)test_file.WriteAtCurrentPos(base::byte_span_from_ref(message_size));
+  (void)test_file.WriteAtCurrentPos(base::as_byte_span(message));
   test_file.Close();
 
   MetricSample crash = MetricSample::CrashSample("test", /*num_samples=*/1);
