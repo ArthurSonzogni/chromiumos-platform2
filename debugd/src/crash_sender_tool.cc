@@ -12,10 +12,12 @@
 #include <memory>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "debugd/src/error_utils.h"
@@ -87,7 +89,8 @@ bool CrashSenderTool::UploadSingleCrash(
     ssize_t len;
     while ((len = HANDLE_EINTR(
                 read(file_descriptor.get(), buf.get(), kBufferSize))) > 0) {
-      if (!new_file.WriteAtCurrentPos(buf.get(), len)) {
+      if (new_file.WriteAtCurrentPos(base::as_byte_span(base::span<const char>(
+              buf.get(), base::checked_cast<size_t>(len)))) == 0) {
         LOG(WARNING) << "Error writing to file " << file_path.value() << ": "
                      << base::File::ErrorToString(new_file.error_details());
         break;
