@@ -375,18 +375,29 @@ std::optional<int32_t> CrosFpDevice::GetRollBackInfoId() {
 }
 
 bool CrosFpDevice::InitEntropy(bool reset) {
-  std::optional<int32_t> block_id = GetRollBackInfoId();
-  if (!block_id) {
-    LOG(ERROR) << "Failed to read block ID from FPMCU.";
-    return false;
-  }
+  if (!reset) {
+    auto cmd_rb_info = ec_command_factory_->RollbackInfoCommand(this);
+    if (!cmd_rb_info || !cmd_rb_info->Run(cros_fd_.get())) {
+      LOG(ERROR) << "Failed to run rollback info command on FPMCU.";
+      return false;
+    }
 
-  if (!reset && *block_id != 0) {
-    // Secret has been set.
-    LOG(INFO) << "Entropy source had been initialized previously.";
-    return true;
+    std::optional<bool> secret_inited = cmd_rb_info->IsSecretInited();
+
+    if (secret_inited.value_or(false)) {
+      LOG(INFO) << "Entropy source had been initialized previously.";
+      return true;
+    }
+
+    // Fallback for v0 rollback info command
+    if (!secret_inited.has_value() && cmd_rb_info->ID() != 0) {
+      LOG(WARNING) << "Can't reliably determine entropy status. "
+                   << "Assuming entropy is initialized.";
+      return true;
+    }
+
+    LOG(INFO) << "Entropy source has not been initialized yet.";
   }
-  LOG(INFO) << "Entropy source has not been initialized yet.";
 
   bool success = UpdateEntropy(reset);
   if (!success) {
