@@ -20,6 +20,40 @@ using ::testing::Return;
 TEST(RollbackInfoCommandFactoryTest, Create_v0) {
   MockEcCommandVersionSupported mock_version_supported;
 
+  EXPECT_CALL(mock_version_supported,
+              EcCmdVersionSupported(EC_CMD_ROLLBACK_INFO, 1))
+      .WillOnce(Return(EcCmdVersionSupportStatus::UNSUPPORTED));
+
+  auto cmd = RollbackInfoCommandFactory::Create(&mock_version_supported);
+
+  ASSERT_NE(cmd, nullptr);
+  EXPECT_EQ(cmd->Version(), 0);
+  EXPECT_EQ(cmd->GetVersion(), 0);
+  EXPECT_EQ(cmd->Command(), EC_CMD_ROLLBACK_INFO);
+}
+
+TEST(RollbackInfoCommandFactoryTest, Create_v1) {
+  MockEcCommandVersionSupported mock_version_supported;
+
+  EXPECT_CALL(mock_version_supported,
+              EcCmdVersionSupported(EC_CMD_ROLLBACK_INFO, 1))
+      .WillOnce(Return(EcCmdVersionSupportStatus::SUPPORTED));
+
+  auto cmd = RollbackInfoCommandFactory::Create(&mock_version_supported);
+
+  ASSERT_NE(cmd, nullptr);
+  EXPECT_EQ(cmd->Version(), 1);
+  EXPECT_EQ(cmd->GetVersion(), 1);
+  EXPECT_EQ(cmd->Command(), EC_CMD_ROLLBACK_INFO);
+}
+
+TEST(RollbackInfoCommandFactoryTest, Create_Version_Supported_Unknown) {
+  MockEcCommandVersionSupported mock_version_supported;
+
+  EXPECT_CALL(mock_version_supported,
+              EcCmdVersionSupported(EC_CMD_ROLLBACK_INFO, 1))
+      .WillOnce(Return(EcCmdVersionSupportStatus::UNKNOWN));
+
   auto cmd = RollbackInfoCommandFactory::Create(&mock_version_supported);
 
   ASSERT_NE(cmd, nullptr);

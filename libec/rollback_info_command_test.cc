@@ -16,10 +16,15 @@ namespace {
 using ::testing::Return;
 
 TEST(RollbackInfoCommand, RollbackInfoCommand) {
-  RollbackInfoCommand cmd(0);
-  EXPECT_EQ(cmd.Version(), 0);
-  EXPECT_EQ(cmd.GetVersion(), 0);
-  EXPECT_EQ(cmd.Command(), EC_CMD_ROLLBACK_INFO);
+  RollbackInfoCommand cmd_v0(0);
+  EXPECT_EQ(cmd_v0.Version(), 0);
+  EXPECT_EQ(cmd_v0.GetVersion(), 0);
+  EXPECT_EQ(cmd_v0.Command(), EC_CMD_ROLLBACK_INFO);
+
+  RollbackInfoCommand cmd_v1(1);
+  EXPECT_EQ(cmd_v1.Version(), 1);
+  EXPECT_EQ(cmd_v1.GetVersion(), 1);
+  EXPECT_EQ(cmd_v1.Command(), EC_CMD_ROLLBACK_INFO);
 }
 
 // Mock the underlying EcCommand to test.
@@ -29,6 +34,15 @@ class RollbackInfoCommandTest : public testing::Test {
    public:
     using RollbackInfoCommand_v0::RollbackInfoCommand_v0;
     MOCK_METHOD(const struct ec_response_rollback_info*,
+                Resp,
+                (),
+                (const, override));
+  };
+
+  class MockRollbackInfoCommand_v1 : public RollbackInfoCommand_v1 {
+   public:
+    using RollbackInfoCommand_v1::RollbackInfoCommand_v1;
+    MOCK_METHOD(const struct ec_response_rollback_info_v1*,
                 Resp,
                 (),
                 (const, override));
@@ -44,11 +58,31 @@ TEST_F(RollbackInfoCommandTest, Success_v0) {
   };
   EXPECT_CALL(*mock_v0, Resp).WillRepeatedly(Return(&response));
 
-  RollbackInfoCommand mock_command(0, std::move(mock_v0));
+  RollbackInfoCommand mock_command(0, std::move(mock_v0), nullptr);
 
   EXPECT_EQ(mock_command.ID(), 3);
   EXPECT_EQ(mock_command.MinVersion(), 2);
   EXPECT_EQ(mock_command.RWVersion(), 1);
+  EXPECT_FALSE(mock_command.IsSecretInited().has_value());
+}
+
+TEST_F(RollbackInfoCommandTest, Success_v1) {
+  auto mock_v1 = std::make_unique<MockRollbackInfoCommand_v1>();
+  struct ec_response_rollback_info_v1 response = {
+      .id = 4,
+      .rollback_min_version = 3,
+      .rw_rollback_version = 2,
+      .is_secret_inited = 1,
+  };
+  EXPECT_CALL(*mock_v1, Resp).WillRepeatedly(Return(&response));
+
+  RollbackInfoCommand mock_command(1, nullptr, std::move(mock_v1));
+
+  EXPECT_EQ(mock_command.ID(), 4);
+  EXPECT_EQ(mock_command.MinVersion(), 3);
+  EXPECT_EQ(mock_command.RWVersion(), 2);
+  ASSERT_TRUE(mock_command.IsSecretInited().has_value());
+  EXPECT_TRUE(mock_command.IsSecretInited().value());
 }
 
 }  // namespace

@@ -25,17 +25,38 @@ class BRILLO_EXPORT RollbackInfoCommand_v0
   int32_t RWVersion() const;
 };
 
+class BRILLO_EXPORT RollbackInfoCommand_v1
+    : public EcCommand<EmptyParam, struct ec_response_rollback_info_v1> {
+ public:
+  RollbackInfoCommand_v1() : EcCommand(EC_CMD_ROLLBACK_INFO, 1) {}
+  ~RollbackInfoCommand_v1() override = default;
+
+  int32_t ID() const;
+  int32_t MinVersion() const;
+  int32_t RWVersion() const;
+  bool IsSecretInited() const;
+};
+
 class BRILLO_EXPORT RollbackInfoCommand : public EcCommandInterface {
  public:
   explicit RollbackInfoCommand(uint32_t version) : command_version_(version) {
-    cmd_v0_ = std::make_unique<RollbackInfoCommand_v0>();
+    if (version == 1) {
+      cmd_v1_ = std::make_unique<RollbackInfoCommand_v1>();
+    } else {
+      cmd_v0_ = std::make_unique<RollbackInfoCommand_v0>();
+    }
   }
 
   // Only for testing.
   RollbackInfoCommand(uint32_t version,
-                      std::unique_ptr<RollbackInfoCommand_v0> v0)
+                      std::unique_ptr<RollbackInfoCommand_v0> v0,
+                      std::unique_ptr<RollbackInfoCommand_v1> v1)
       : command_version_(version) {
-    cmd_v0_ = std::move(v0);
+    if (version == 1) {
+      cmd_v1_ = std::move(v1);
+    } else {
+      cmd_v0_ = std::move(v0);
+    }
   }
 
   bool Run(int ec_fd) override;
@@ -50,9 +71,11 @@ class BRILLO_EXPORT RollbackInfoCommand : public EcCommandInterface {
   virtual int32_t ID() const;
   virtual int32_t MinVersion() const;
   virtual int32_t RWVersion() const;
+  virtual std::optional<bool> IsSecretInited() const;
 
  private:
   std::unique_ptr<RollbackInfoCommand_v0> cmd_v0_ = nullptr;
+  std::unique_ptr<RollbackInfoCommand_v1> cmd_v1_ = nullptr;
   uint32_t command_version_;
 };
 
