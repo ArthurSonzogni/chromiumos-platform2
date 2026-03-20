@@ -4,6 +4,9 @@
 
 #include "libec/rollback_info_command.h"
 
+#include <memory>
+#include <utility>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -13,17 +16,18 @@ namespace {
 using ::testing::Return;
 
 TEST(RollbackInfoCommand, RollbackInfoCommand) {
-  RollbackInfoCommand cmd;
+  RollbackInfoCommand cmd(0);
   EXPECT_EQ(cmd.Version(), 0);
+  EXPECT_EQ(cmd.GetVersion(), 0);
   EXPECT_EQ(cmd.Command(), EC_CMD_ROLLBACK_INFO);
 }
 
 // Mock the underlying EcCommand to test.
 class RollbackInfoCommandTest : public testing::Test {
  public:
-  class MockRollbackInfoCommand : public RollbackInfoCommand {
+  class MockRollbackInfoCommand_v0 : public RollbackInfoCommand_v0 {
    public:
-    using RollbackInfoCommand::RollbackInfoCommand;
+    using RollbackInfoCommand_v0::RollbackInfoCommand_v0;
     MOCK_METHOD(const struct ec_response_rollback_info*,
                 Resp,
                 (),
@@ -31,14 +35,16 @@ class RollbackInfoCommandTest : public testing::Test {
   };
 };
 
-TEST_F(RollbackInfoCommandTest, Success) {
-  MockRollbackInfoCommand mock_command;
+TEST_F(RollbackInfoCommandTest, Success_v0) {
+  auto mock_v0 = std::make_unique<MockRollbackInfoCommand_v0>();
   struct ec_response_rollback_info response = {
       .id = 3,
       .rollback_min_version = 2,
       .rw_rollback_version = 1,
   };
-  EXPECT_CALL(mock_command, Resp).WillRepeatedly(Return(&response));
+  EXPECT_CALL(*mock_v0, Resp).WillRepeatedly(Return(&response));
+
+  RollbackInfoCommand mock_command(0, std::move(mock_v0));
 
   EXPECT_EQ(mock_command.ID(), 3);
   EXPECT_EQ(mock_command.MinVersion(), 2);

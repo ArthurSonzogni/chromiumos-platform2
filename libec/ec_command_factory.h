@@ -29,6 +29,7 @@
 #include "libec/motion_sense_command_lid_angle.h"
 #include "libec/pwm/pwm_get_fan_target_rpm_command.h"
 #include "libec/pwm/pwm_set_fan_target_rpm_command.h"
+#include "libec/rollback_info_command.h"
 #include "libec/thermal/get_memmap_temp_b_command.h"
 #include "libec/thermal/get_memmap_temp_command.h"
 #include "libec/thermal/get_memmap_thermal_version_command.h"
@@ -193,6 +194,13 @@ class EcCommandFactoryInterface {
                 "All commands created by this class should derive from "
                 "EcCommandInterface");
 
+  virtual std::unique_ptr<ec::RollbackInfoCommand> RollbackInfoCommand(
+      EcCommandVersionSupportedInterface* ec_cmd_ver_supported) = 0;
+  static_assert(
+      std::is_base_of<EcCommandInterface, ec::RollbackInfoCommand>::value,
+      "All commands created by this class should derive from "
+      "EcCommandInterface");
+
   virtual std::unique_ptr<ec::GetMemmapTempCommand> GetMemmapTempCommand(
       uint8_t id) = 0;
   static_assert(
@@ -295,6 +303,9 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
 
   std::unique_ptr<ec::GetMemmapThermalVersionCommand>
   GetMemmapThermalVersionCommand() override;
+
+  std::unique_ptr<ec::RollbackInfoCommand> RollbackInfoCommand(
+      EcCommandVersionSupportedInterface* ec_cmd_ver_supported) override;
 
   std::unique_ptr<ec::GetMemmapTempCommand> GetMemmapTempCommand(
       uint8_t id) override;

@@ -12,6 +12,7 @@
 #include "libec/fingerprint/fp_info_command_factory.h"
 #include "libec/fingerprint/fp_template_command.h"
 #include "libec/flash_protect_command_factory.h"
+#include "libec/rollback_info_command_factory.h"
 
 namespace ec {
 
@@ -131,6 +132,11 @@ EcCommandFactory::ThermalAutoFanCtrlCommand(uint8_t fan_idx) {
 std::unique_ptr<ec::GetMemmapThermalVersionCommand>
 EcCommandFactory::GetMemmapThermalVersionCommand() {
   return std::make_unique<ec::GetMemmapThermalVersionCommand>();
+}
+
+std::unique_ptr<ec::RollbackInfoCommand> EcCommandFactory::RollbackInfoCommand(
+    EcCommandVersionSupportedInterface* ec_cmd_ver_supported) {
+  return RollbackInfoCommandFactory::Create(ec_cmd_ver_supported);
 }
 
 std::unique_ptr<ec::GetMemmapTempCommand>

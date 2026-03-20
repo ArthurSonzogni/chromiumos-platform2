@@ -6,16 +6,44 @@
 
 namespace ec {
 
+uint32_t RollbackInfoCommand::GetVersion() const {
+  return command_version_;
+}
+
 int32_t RollbackInfoCommand::ID() const {
-  return Resp()->id;
+  return cmd_v0_->ID();
 }
 
 int32_t RollbackInfoCommand::MinVersion() const {
-  return Resp()->rollback_min_version;
+  return cmd_v0_->MinVersion();
 }
 
 int32_t RollbackInfoCommand::RWVersion() const {
-  return Resp()->rw_rollback_version;
+  return cmd_v0_->RWVersion();
+}
+
+bool RollbackInfoCommand::Run(int ec_fd) {
+  return cmd_v0_->Run(ec_fd);
+}
+
+bool RollbackInfoCommand::Run(ec::EcUsbEndpointInterface& uep) {
+  return cmd_v0_->Run(uep);
+}
+
+bool RollbackInfoCommand::RunWithMultipleAttempts(int fd, int num_attempts) {
+  return cmd_v0_->RunWithMultipleAttempts(fd, num_attempts);
+}
+
+uint32_t RollbackInfoCommand::Version() const {
+  return cmd_v0_->Version();
+}
+
+uint32_t RollbackInfoCommand::Command() const {
+  return cmd_v0_->Command();
+}
+
+uint32_t RollbackInfoCommand::Result() const {
+  return cmd_v0_->Result();
 }
 
 }  // namespace ec

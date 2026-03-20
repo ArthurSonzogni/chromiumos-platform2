@@ -116,6 +116,10 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               GetMemmapThermalVersionCommand,
               (),
               (override));
+  MOCK_METHOD(std::unique_ptr<ec::RollbackInfoCommand>,
+              RollbackInfoCommand,
+              (EcCommandVersionSupportedInterface * ec_cmd_ver_supported),
+              (override));
   MOCK_METHOD(std::unique_ptr<ec::GetMemmapTempCommand>,
               GetMemmapTempCommand,
               (uint8_t id),

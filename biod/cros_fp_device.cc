@@ -29,6 +29,7 @@
 #include <libec/get_protocol_info_command.h>
 #include <libec/get_version_command.h>
 #include <libec/reboot_command.h>
+#include <libec/rollback_info_command.h>
 #include <libec/versions_command.h>
 
 #include "biod/utils.h"
@@ -365,13 +366,12 @@ bool CrosFpDevice::AddEntropy(bool reset) {
 }
 
 std::optional<int32_t> CrosFpDevice::GetRollBackInfoId() {
-  EcCommand<EmptyParam, struct ec_response_rollback_info> cmd_rb_info(
-      EC_CMD_ROLLBACK_INFO);
-  if (!cmd_rb_info.Run(cros_fd_.get())) {
+  auto cmd_rb_info = ec_command_factory_->RollbackInfoCommand(this);
+  if (!cmd_rb_info || !cmd_rb_info->Run(cros_fd_.get())) {
     return std::nullopt;
   }
 
-  return cmd_rb_info.Resp()->id;
+  return cmd_rb_info->ID();
 }
 
 bool CrosFpDevice::InitEntropy(bool reset) {
