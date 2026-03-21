@@ -5,8 +5,10 @@
 #include "rgbkbd/keyboard_backlight_logger.h"
 
 #include <stdint.h>
+
 #include <string>
 
+#include "base/containers/span.h"
 #include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
@@ -76,8 +78,7 @@ bool KeyboardBacklightLogger::WriteLogEntry(const std::string& log) {
   // Add a new line between each log.
   const std::string to_write = base::StrCat({log, "\n"});
 
-  const int len = to_write.length();
-  return (len == file_->WriteAtCurrentPos(to_write.data(), len));
+  return file_->WriteAtCurrentPosAndCheck(base::as_byte_span(to_write));
 }
 
 bool KeyboardBacklightLogger::ResetLog() {
