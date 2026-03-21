@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -149,9 +150,8 @@ bool HostsModifier::WriteHostsFile() {
   }
 
   // First write out the base contents for the file.
-  if (temp_file.WriteAtCurrentPos(base_hosts_contents_.c_str(),
-                                  base_hosts_contents_.size()) !=
-      base_hosts_contents_.size()) {
+  if (!temp_file.WriteAtCurrentPosAndCheck(
+          base::as_byte_span(base_hosts_contents_))) {
     PLOG(ERROR) << "Failed writing base contents to temp file: "
                 << temp_file_path.value();
     return false;
@@ -160,9 +160,9 @@ bool HostsModifier::WriteHostsFile() {
   if (!hostname_ipv4_map_.empty()) {
     // Now write out our delimiter, which includes newlines at both ends so we
     // are sure it is on its own line and we will be on a new line after this.
-    if (temp_file.WriteAtCurrentPos(kFileModificationDelimeter,
-                                    sizeof(kFileModificationDelimeter) - 1) !=
-        sizeof(kFileModificationDelimeter) - 1) {
+    if (!temp_file.WriteAtCurrentPosAndCheck(base::as_byte_span(
+            base::span(kFileModificationDelimeter)
+                .first<sizeof(kFileModificationDelimeter) - 1>()))) {
       PLOG(ERROR) << "Failed writing delimiter to temp file: "
                   << temp_file_path.value();
       return false;
@@ -172,8 +172,7 @@ bool HostsModifier::WriteHostsFile() {
     for (const auto& entry : hostname_ipv4_map_) {
       std::string curr_line = base::StringPrintf(
           "%s %s\n", entry.second.c_str(), entry.first.c_str());
-      if (temp_file.WriteAtCurrentPos(curr_line.c_str(), curr_line.size()) !=
-          curr_line.size()) {
+      if (!temp_file.WriteAtCurrentPosAndCheck(base::as_byte_span(curr_line))) {
         PLOG(ERROR) << "Failed writing hostname entry to temp file: "
                     << temp_file_path.value();
         return false;
