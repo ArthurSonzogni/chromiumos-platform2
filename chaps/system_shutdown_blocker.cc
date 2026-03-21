@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/containers/span.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/location.h>
@@ -65,9 +66,11 @@ void SystemShutdownBlocker::PerformBlock(int slot_id) {
              base::FILE_PERMISSION_WRITE_BY_USER |
              base::FILE_PERMISSION_READ_BY_GROUP |
              base::FILE_PERMISSION_READ_BY_OTHERS;  // chmod 644
-  if (!lock_file.IsValid() ||
-      lock_file.WriteAtCurrentPos(lock_contents.data(), lock_contents.size()) <
-          0 ||
+  auto write_result =
+      lock_file.IsValid()
+          ? lock_file.WriteAtCurrentPos(base::as_byte_span(lock_contents))
+          : std::nullopt;
+  if (!lock_file.IsValid() || !write_result.has_value() ||
       !base::SetPosixFilePermissions(lock_path, mode)) {
     PLOG(ERROR) << "Failed to create lock file.";
     return;
