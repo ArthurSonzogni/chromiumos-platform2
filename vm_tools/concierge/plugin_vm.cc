@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -457,11 +458,11 @@ void PluginVm::OnVmFileCanWriteWithoutBlocking() {
 
   if (!usb_req_waiting_xmit_.empty()) {
     UsbCtrlRequest req = usb_req_waiting_xmit_.front().first;
-    struct iovec io {};
+    struct iovec io{};
     io.iov_base = &req;
     io.iov_len = sizeof(req);
 
-    struct msghdr msg {};
+    struct msghdr msg{};
     msg.msg_iov = &io;
     msg.msg_iovlen = 1;
 
@@ -526,8 +527,7 @@ bool PluginVm::WriteResolvConf(const base::FilePath& parent_dir,
   for (auto& ns : nameservers) {
     std::string nameserver_line =
         base::StringPrintf("nameserver %s\n", ns.c_str());
-    if (!file.WriteAtCurrentPos(nameserver_line.c_str(),
-                                nameserver_line.length())) {
+    if (file.WriteAtCurrentPos(base::as_byte_span(nameserver_line)) == 0) {
       LOG(ERROR) << "Failed to write nameserver to temporary file";
       return false;
     }
@@ -536,8 +536,7 @@ bool PluginVm::WriteResolvConf(const base::FilePath& parent_dir,
   if (!search_domains.empty()) {
     std::string search_domains_line = base::StringPrintf(
         "search %s\n", base::JoinString(search_domains, " ").c_str());
-    if (!file.WriteAtCurrentPos(search_domains_line.c_str(),
-                                search_domains_line.length())) {
+    if (file.WriteAtCurrentPos(base::as_byte_span(search_domains_line)) == 0) {
       LOG(ERROR) << "Failed to write search domains to temporary file";
       return false;
     }
@@ -545,7 +544,9 @@ bool PluginVm::WriteResolvConf(const base::FilePath& parent_dir,
 
   static constexpr char kResolvConfOptions[] =
       "options single-request timeout:1 attempts:5\n";
-  if (!file.WriteAtCurrentPos(kResolvConfOptions, strlen(kResolvConfOptions))) {
+  if (file.WriteAtCurrentPos(base::as_byte_span(
+          base::span(kResolvConfOptions)
+              .first<sizeof(kResolvConfOptions) - 1>())) == 0) {
     LOG(ERROR) << "Failed to write search resolver options to temporary file";
     return false;
   }

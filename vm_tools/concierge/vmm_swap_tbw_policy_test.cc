@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -255,7 +256,9 @@ TEST_F(VmmSwapTbwPolicyTest, InitIfFileIsBroken) {
   base::File history_file = base::File(
       history_file_path_, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
   ASSERT_TRUE(history_file.IsValid());
-  ASSERT_TRUE(history_file.Write(0, "invalid_data", 12));
+  ASSERT_NE(history_file.Write(
+                0, base::as_byte_span(std::string_view("invalid_data"))),
+            0);
   EXPECT_FALSE(policy.Init(now));
 
   // The pessimistic history does not allow to swap out for 1 day.

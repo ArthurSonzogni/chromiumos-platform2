@@ -6,14 +6,16 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <map>
-#include <sstream>
 #include <signal.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include <map>
+#include <sstream>
 #include <utility>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -89,10 +91,10 @@ base::FilePath AnsiblePlaybookApplication::CreateAnsiblePlaybookFile(
     return base::FilePath();
   }
 
-  int bytes = ansible_playbook_file.WriteAtCurrentPos(playbook.c_str(),
-                                                      playbook.length());
+  auto bytes =
+      ansible_playbook_file.WriteAtCurrentPos(base::as_byte_span(playbook));
 
-  if (bytes != playbook.length()) {
+  if (!bytes.has_value() || *bytes != playbook.length()) {
     *error_msg = "Failed to write Ansible playbook content to file";
     return base::FilePath();
   }
