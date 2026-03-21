@@ -8,8 +8,10 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/tick_clock.h>
 
@@ -268,16 +270,18 @@ bool MountManager::SavePasswordToFile(int32_t mount_id) {
   if (credential.password) {
     password_length = credential.password->size();
   }
-  int written = password_file.WriteAtCurrentPos(
-      reinterpret_cast<const char*>(&password_length), sizeof(password_length));
-  if (written != sizeof(password_length)) {
+  auto written = password_file.WriteAtCurrentPos(
+      base::byte_span_from_ref(password_length));
+  if (!written.has_value() || *written != sizeof(password_length)) {
     LOG(ERROR) << "Unable to write password length";
     return false;
   }
   if (password_length > 0) {
-    written = password_file.WriteAtCurrentPos(credential.password->GetRaw(),
-                                              password_length);
-    if (written != password_length) {
+    written = password_file.WriteAtCurrentPos(base::as_byte_span(
+        base::span<const char>(credential.password->GetRaw(),
+                               base::checked_cast<size_t>(password_length))));
+    if (!written.has_value() ||
+        *written != base::checked_cast<size_t>(password_length)) {
       LOG(ERROR) << "Unable to write password";
       return false;
     }
