@@ -4,12 +4,13 @@
 
 #include "arc/container/obb-mounter/mount_obb_fuse_main.h"
 
-#include <fuse/fuse.h>
+#include <time.h>
+
 #include <iterator>
 #include <optional>
-#include <time.h>
 #include <utility>
 
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
@@ -19,6 +20,7 @@
 #include <base/strings/utf_string_conversions.h>
 #include <base/synchronization/lock.h>
 #include <brillo/syslog_logging.h>
+#include <fuse/fuse.h>
 
 #include "arc/container/obb-mounter/volume.h"
 
@@ -43,9 +45,9 @@ class FileReaderThreadSafe {
 
   ~FileReaderThreadSafe() = default;
 
-  int64_t Read(char* buf, int64_t size, int64_t offset) {
+  int64_t Read(base::span<char> buf, int64_t offset) {
     base::AutoLock auto_lock(lock_);
-    return reader_.Read(buf, size, offset);
+    return reader_.Read(buf, offset);
   }
 
  private:
@@ -153,8 +155,8 @@ int fat_read(const char* path,
              size_t size,
              off_t off,
              struct fuse_file_info* fi) {
-  int64_t result =
-      reinterpret_cast<FileReaderThreadSafe*>(fi->fh)->Read(buf, size, off);
+  int64_t result = reinterpret_cast<FileReaderThreadSafe*>(fi->fh)->Read(
+      base::span<char>(buf, size), off);
   if (result < 0) {
     return -EIO;
   }

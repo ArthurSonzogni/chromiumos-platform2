@@ -293,9 +293,7 @@ void UnregisterBinFmtMiscEntry(const base::FilePath& entry_path) {
   }
   static constexpr char kBinfmtMiscUnregister[] = "-1";
   IGNORE_ERRORS(entry.WriteAndCheck(
-      0, base::span<const uint8_t>(
-             reinterpret_cast<const uint8_t*>(kBinfmtMiscUnregister),
-             sizeof(kBinfmtMiscUnregister) - 1)));
+      0, base::byte_span_from_cstring(kBinfmtMiscUnregister)));
 }
 
 // Prepends |path_to_prepend| to each element in [first, last), and returns the

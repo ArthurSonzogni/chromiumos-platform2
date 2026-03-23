@@ -9,6 +9,7 @@
 
 #include <string_view>
 
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/functional/callback_forward.h>
 #include <base/time/time.h>
@@ -61,9 +62,9 @@ class Volume {
 
     ~FileReader();
 
-    // Reads the given number of bytes from the given offset and returns the
-    // number of bytes read, or -1 on error.
-    int64_t Read(char* buf, int64_t size, int64_t offset);
+    // Reads into |buf| from the given offset and returns the number of bytes
+    // read, or -1 on error.
+    int64_t Read(base::span<char> buf, int64_t offset);
 
    private:
     // Updates current_offset_ and current_cluster_ with the given offset value.

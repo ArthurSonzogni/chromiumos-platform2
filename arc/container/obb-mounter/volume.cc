@@ -71,9 +71,11 @@ Volume::FileReader::FileReader(Volume* volume,
 
 Volume::FileReader::~FileReader() {}
 
-int64_t Volume::FileReader::Read(char* buf, int64_t size, int64_t offset) {
+int64_t Volume::FileReader::Read(base::span<char> buf, int64_t offset) {
   int64_t total = 0;
-  const int64_t end_offset = std::min(offset + size, file_size_);
+  auto buf_bytes = base::as_writable_byte_span(buf);
+  const int64_t end_offset =
+      std::min(offset + base::checked_cast<int64_t>(buf.size()), file_size_);
   while (offset + total < end_offset) {
     if (!Seek(offset + total)) {
       LOG(ERROR) << "Failed to seek.";
@@ -89,8 +91,8 @@ int64_t Volume::FileReader::Read(char* buf, int64_t size, int64_t offset) {
             volume_->GetClusterStartSector(current_cluster_)) +
         current_offset_ % cluster_size;
     auto read_result = volume_->image_file_.Read(
-        position, base::as_writable_byte_span(base::span(
-                      buf + total, base::checked_cast<size_t>(read_size))));
+        position, buf_bytes.subspan(base::checked_cast<size_t>(total),
+                                    base::checked_cast<size_t>(read_size)));
     const int64_t read_bytes = read_result.has_value()
                                    ? base::checked_cast<int64_t>(*read_result)
                                    : -1;
