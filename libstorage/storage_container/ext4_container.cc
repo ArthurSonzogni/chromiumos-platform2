@@ -12,10 +12,12 @@
 #include <utility>
 
 #include <absl/cleanup/cleanup.h>
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <libstorage/platform/platform.h>
@@ -88,9 +90,10 @@ bool ReadSuperBlock(Platform* platform,
     PLOG(ERROR) << "unable to open: " << device_file;
     return false;
   }
-  if (device_raw_file.Read(SUPERBLOCK_OFFSET,
-                           reinterpret_cast<char*>(super_block),
-                           SUPERBLOCK_SIZE) != SUPERBLOCK_SIZE) {
+  if (!device_raw_file.ReadAndCheck(
+          SUPERBLOCK_OFFSET,
+          base::span<uint8_t>(reinterpret_cast<uint8_t*>(super_block),
+                              base::checked_cast<size_t>(SUPERBLOCK_SIZE)))) {
     PLOG(ERROR) << "unable to read superblock from: " << device_file;
     return false;
   }
