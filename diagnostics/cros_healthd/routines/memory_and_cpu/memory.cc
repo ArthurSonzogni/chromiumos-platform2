@@ -10,9 +10,11 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/platform_file.h>
 #include <base/functional/callback_helpers.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
@@ -303,14 +305,16 @@ void MemoryRoutine::ReadNewMemtesterResult() {
   }
 
   while (offset < current_stdout_size) {
-    int read_len = stdout_file_.Read(
-        offset, buf, std::min<int64_t>(kBufSize, current_stdout_size - offset));
-    if (read_len < 0) {
+    const size_t read_size = base::checked_cast<size_t>(
+        std::min<int64_t>(kBufSize, current_stdout_size - offset));
+    auto read_len = stdout_file_.Read(
+        offset, base::as_writable_byte_span(buf).first(read_size));
+    if (!read_len.has_value()) {
       LOG(ERROR) << "Read memtester stdout unsuccessful";
       return;
     }
-    offset += read_len;
-    output.append(buf, read_len);
+    offset += *read_len;
+    output.append(buf, *read_len);
   }
 
   // Append a new std::vector<std::string> for each line, and

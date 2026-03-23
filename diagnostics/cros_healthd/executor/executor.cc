@@ -19,6 +19,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -449,8 +450,7 @@ void Executor::ReadMsr(const uint32_t msr_reg,
   // Read MSR register. See
   // https://github.com/intel/msr-tools/blob/0fcbda4e47a2aab73904e19b3fc0a7a73135c415/rdmsr.c#L235
   // for the use of reinterpret_case
-  if (sizeof(val) !=
-      msr_fd.Read(msr_reg, reinterpret_cast<char*>(&val), sizeof(val))) {
+  if (!msr_fd.ReadAndCheck(msr_reg, base::byte_span_from_ref(val))) {
     LOG(ERROR) << "Could not read MSR register from " << msr_path.value();
     std::move(callback).Run(std::nullopt);
     return;

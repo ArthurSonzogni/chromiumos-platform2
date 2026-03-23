@@ -12,10 +12,12 @@
 
 #include <base/cancelable_callback.h>
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
 #include <base/memory/ptr_util.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <base/types/expected.h>
@@ -273,14 +275,16 @@ void DiskReadRoutine::HandleStderrResponse(
     return;
   }
 
-  int read_len = stderr_file.Read(
-      0, buf, std::min(static_cast<int64_t>(kStderrBufSize), stderr_file_len));
-  if (read_len < 0) {
+  const size_t read_size = base::checked_cast<size_t>(
+      std::min(static_cast<int64_t>(kStderrBufSize), stderr_file_len));
+  auto read_len =
+      stderr_file.Read(0, base::as_writable_byte_span(buf).first(read_size));
+  if (!read_len.has_value()) {
     std::move(response_cb).Run("Failed to read fio stderr");
     return;
   }
 
-  std::move(response_cb).Run(std::string(buf, read_len));
+  std::move(response_cb).Run(std::string(buf, *read_len));
 }
 
 void DiskReadRoutine::UpdatePercentage() {

@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/files/platform_file.h>
@@ -54,16 +55,14 @@ void FakeProcessControl::GetReturnCode(GetReturnCodeCallback callback) {
 void FakeProcessControl::SetStdoutFileContent(
     const std::string& stdout_content) {
   base::File stdout_file = base::File(HANDLE_EINTR(dup(stdout_fd_.get())));
-  stdout_file.Write(/*offset=*/0, stdout_content.c_str(),
-                    stdout_content.size());
+  (void)stdout_file.Write(/*offset=*/0, base::as_byte_span(stdout_content));
   stdout_file.Close();
 }
 
 void FakeProcessControl::SetStderrFileContent(
     const std::string& stderr_content) {
   base::File stderr_file = base::File(HANDLE_EINTR(dup(stderr_fd_.get())));
-  stderr_file.Write(/*offset=*/0, stderr_content.c_str(),
-                    stderr_content.size());
+  (void)stderr_file.Write(/*offset=*/0, base::as_byte_span(stderr_content));
   stderr_file.Close();
 }
 

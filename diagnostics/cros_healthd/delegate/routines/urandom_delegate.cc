@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/memory/ptr_util.h>
 
@@ -30,9 +31,8 @@ UrandomDelegate::UrandomDelegate(base::File urandom_file)
 UrandomDelegate::~UrandomDelegate() = default;
 
 bool UrandomDelegate::Run() {
-  return kNumBytesRead == urandom_file_.Read(/*offset=*/0,
-                                             /*data=*/urandom_data_,
-                                             /*size=*/kNumBytesRead);
+  return urandom_file_.ReadAndCheck(
+      /*offset=*/0, base::as_writable_byte_span(urandom_data_));
 }
 
 }  // namespace diagnostics

@@ -11,6 +11,7 @@
 #include <limits>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
@@ -95,8 +96,8 @@ std::optional<std::string> ReadFilePart(const base::FilePath& file_path,
     return "";
   }
   std::string content(read_size, '\0');
-  if (file.Read(base::checked_cast<int64_t>(begin), content.data(),
-                read_size) != read_size) {
+  if (!file.ReadAndCheck(base::checked_cast<int64_t>(begin),
+                         base::as_writable_byte_span(content))) {
     PLOG(ERROR) << "Failed to read file " << file_path << " from " << begin
                 << " for size " << read_size;
     return std::nullopt;
