@@ -83,10 +83,8 @@ bool SavePasswordToFile(const base::FilePath& file_path,
     return false;
   }
 
-  int written = password_file.WriteAtCurrentPos(
-      reinterpret_cast<const char*>(obfuscated_password.data()),
-      obfuscated_password.size());
-  return written == obfuscated_password.size();
+  return password_file.WriteAtCurrentPosAndCheck(base::span<const uint8_t>(
+      obfuscated_password.data(), obfuscated_password.size()));
 }
 
 std::unique_ptr<password_provider::Password> ReadPasswordFromFile(
