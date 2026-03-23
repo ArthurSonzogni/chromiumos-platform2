@@ -4,6 +4,11 @@
 
 #include "libtouchraw/parser.h"
 
+#include <linux/hidraw.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
+
 #include <limits>
 #include <memory>
 #include <span>
@@ -11,11 +16,7 @@
 #include <utility>
 #include <vector>
 
-#include <linux/hidraw.h>
-#include <sys/ioctl.h>
-#include <sys/stat.h>
-#include <sys/sysmacros.h>
-
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
@@ -181,8 +182,8 @@ int Parser::GetReportDescriptorSysfs(const int fd,
   }
 
   memset(rpt_desc, 0x0, sizeof(*rpt_desc));
-  res = file.Read(0, reinterpret_cast<char*>(rpt_desc->value),
-                  sizeof(rpt_desc->value));
+  auto read_result = file.Read(0, base::span(rpt_desc->value));
+  res = read_result.has_value() ? static_cast<int>(*read_result) : -1;
   if (res < 0) {
     LOG(WARNING) << "Error reading " << rpt_path;
   }
