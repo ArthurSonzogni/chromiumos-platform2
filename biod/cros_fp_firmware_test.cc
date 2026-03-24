@@ -15,11 +15,13 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/types/cxx23_to_underlying.h>
 #include <gtest/gtest.h>
 
@@ -130,7 +132,7 @@ class CrosFpFirmwareTest : public ::testing::Test {
     rw_version.copy(&verbuf[1 * FMAP_STRLEN], FMAP_STRLEN - 1);
 
     // place ro and rw versions at the front of the file
-    if (file.WriteAtCurrentPos(&verbuf[0], 2 * FMAP_STRLEN) < 0) {
+    if (!file.WriteAtCurrentPos(base::as_byte_span(verbuf)).has_value()) {
       LOG(ERROR) << "Failed to write version strings into fake image.";
       return false;
     }
@@ -158,7 +160,11 @@ class CrosFpFirmwareTest : public ::testing::Test {
       LOG(ERROR) << "Fmap data or size are invalid.";
       return false;
     }
-    if (file.WriteAtCurrentPos(fmap.GetData(), fmap.GetDataLength()) < 0) {
+    if (!file
+             .WriteAtCurrentPos(base::span<const uint8_t>(
+                 reinterpret_cast<const uint8_t*>(fmap.GetData()),
+                 base::checked_cast<size_t>(fmap.GetDataLength())))
+             .has_value()) {
       LOG(ERROR) << "Failed to write fmap into fake image.";
       return false;
     }
@@ -267,7 +273,9 @@ TEST_F(CrosFpFirmwareTest, NoFMAP) {
   const auto image_path = GetTestTempDir().Append(kTestImageFileName);
   base::File file(image_path,
                   base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
-  EXPECT_GE(file.WriteAtCurrentPos("a", 1), 1);
+  auto bytes_written =
+      file.WriteAtCurrentPos(base::as_byte_span(std::string_view("a")));
+  EXPECT_TRUE(bytes_written.has_value() && *bytes_written >= 1u);
   file.Close();
   EXPECT_TRUE(base::PathExists(image_path));
 
