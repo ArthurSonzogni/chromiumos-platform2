@@ -2,15 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <stddef.h>
+#include <stdint.h>
+
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <fuzzer/FuzzedDataProvider.h>
-#include <stddef.h>
-#include <stdint.h>
 
 #include "bootid-logger/bootid_logger.h"
 #include "bootid-logger/constants.h"
@@ -60,7 +62,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   const std::string& file_contents =
       data_provider.ConsumeRemainingBytesAsString();
-  file.Write(0, file_contents.c_str(), file_contents.length());
+  (void)file.Write(0, base::as_byte_span(file_contents));
 
   WriteBootEntry(path, cur_boot_id, now, keep, max_entries);
 
