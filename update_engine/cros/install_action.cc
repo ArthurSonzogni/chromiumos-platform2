@@ -9,9 +9,11 @@
 #include <string>
 #include <utility>
 
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/constants/imageloader.h>
 #include <crypto/secure_hash.h>
@@ -198,17 +200,18 @@ bool InstallAction::ReceivedBytes(HttpFetcher* fetcher,
   hash_->Update(bytes, length);
   int64_t total_written_bytes = 0;
   do {
-    int written_bytes =
+    auto written_bytes =
         f_.Write(offset_ + total_written_bytes,
-                 static_cast<const char*>(bytes) + total_written_bytes,
-                 length - total_written_bytes);
-    if (written_bytes == -1) {
+                 base::span<const uint8_t>(
+                     static_cast<const uint8_t*>(bytes) + total_written_bytes,
+                     base::checked_cast<size_t>(length - total_written_bytes)));
+    if (!written_bytes.has_value()) {
       PLOG(ERROR) << "Failed to write bytes.";
       http_fetcher_->TerminateTransfer();
       return false;
     }
 
-    total_written_bytes += written_bytes;
+    total_written_bytes += base::checked_cast<int64_t>(*written_bytes);
   } while (total_written_bytes != length);
 
   offset_ = new_offset;
