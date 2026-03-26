@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <base/containers/span.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
@@ -496,7 +497,7 @@ TEST_F(PlatformTest, RunAsRootUnmountForce) {
 
   // Can we still use the open file handle?
   const std::string_view s = "Some data...";
-  EXPECT_TRUE(file.WriteAtCurrentPos(s.data(), s.size()));
+  EXPECT_NE(file.WriteAtCurrentPos(base::as_byte_span(s)), 0);
   EXPECT_EQ(file.GetLength(), s.size());
 }
 
