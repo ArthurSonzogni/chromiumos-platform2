@@ -7,15 +7,15 @@
 #include <iterator>
 #include <string>
 
+#include "base/containers/span.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
 #include "base/threading/platform_thread.h"
 #include "base/time/time.h"
-#include "gtest/gtest.h"
-
 #include "croslog/file_map_reader.h"
+#include "gtest/gtest.h"
 
 namespace croslog {
 
@@ -337,9 +337,8 @@ TEST_F(LogLineReaderTest, ReadFileBeingWritten) {
     std::string test_string("TESTTEST");
     std::string test_string_with_lf = test_string + "\n";
     int previous_change_event_counter = changed_event_receieved();
-    EXPECT_EQ(file.WriteAtCurrentPos(test_string_with_lf.c_str(),
-                                     test_string_with_lf.length()),
-              test_string_with_lf.length());
+    EXPECT_TRUE(file.WriteAtCurrentPos(base::as_byte_span(
+                    test_string_with_lf)) == test_string_with_lf.length());
     WaitForChangeEvent(previous_change_event_counter);
 
     auto [s, result] = reader.Forward();
@@ -354,9 +353,8 @@ TEST_F(LogLineReaderTest, ReadFileBeingWritten) {
     std::string test_string("HOGEHOGE");
     std::string test_string_with_lf = test_string + "\n";
     int previous_change_event_counter = changed_event_receieved();
-    EXPECT_EQ(file.WriteAtCurrentPos(test_string_with_lf.c_str(),
-                                     test_string_with_lf.length()),
-              test_string_with_lf.length());
+    EXPECT_TRUE(file.WriteAtCurrentPos(base::as_byte_span(
+                    test_string_with_lf)) == test_string_with_lf.length());
     WaitForChangeEvent(previous_change_event_counter);
 
     auto [s, result] = reader.Forward();
@@ -389,9 +387,8 @@ TEST_F(LogLineReaderTest, ReadFileRotated) {
     std::string test_string1("TESTTEST");
     std::string test_string1_with_lf = test_string1 + "\n";
     int previous_change_event_counter = changed_event_receieved();
-    EXPECT_EQ(file.WriteAtCurrentPos(test_string1_with_lf.c_str(),
-                                     test_string1_with_lf.length()),
-              test_string1_with_lf.length());
+    EXPECT_TRUE(file.WriteAtCurrentPos(base::as_byte_span(
+                    test_string1_with_lf)) == test_string1_with_lf.length());
     WaitForChangeEvent(previous_change_event_counter);
 
     auto [s, result] = reader.Forward();
@@ -423,9 +420,8 @@ TEST_F(LogLineReaderTest, ReadFileRotated) {
     std::string test_string2("FUGAFUGA");
     std::string test_string2_with_lf = test_string2 + "\n";
     int previous_change_event_counter = changed_event_receieved();
-    EXPECT_EQ(file.WriteAtCurrentPos(test_string2_with_lf.c_str(),
-                                     test_string2_with_lf.length()),
-              test_string2_with_lf.length());
+    EXPECT_TRUE(file.WriteAtCurrentPos(base::as_byte_span(
+                    test_string2_with_lf)) == test_string2_with_lf.length());
     WaitForChangeEvent(previous_change_event_counter);
 
     auto [s, result] = reader.Forward();
@@ -457,9 +453,8 @@ TEST_F(LogLineReaderTest, ReadFileRotatedMisorder) {
   // Write to the first file.
   {
     int previous_change_event_counter = changed_event_receieved();
-    EXPECT_EQ(file.WriteAtCurrentPos(test_string1_with_lf.c_str(),
-                                     test_string1_with_lf.length()),
-              test_string1_with_lf.length());
+    EXPECT_TRUE(file.WriteAtCurrentPos(base::as_byte_span(
+                    test_string1_with_lf)) == test_string1_with_lf.length());
     WaitForChangeEvent(previous_change_event_counter);
   }
 
@@ -478,9 +473,8 @@ TEST_F(LogLineReaderTest, ReadFileRotatedMisorder) {
   // Write to the second file.
   {
     int previous_change_event_counter = changed_event_receieved();
-    EXPECT_EQ(file.WriteAtCurrentPos(test_string2_with_lf.c_str(),
-                                     test_string2_with_lf.length()),
-              test_string2_with_lf.length());
+    EXPECT_TRUE(file.WriteAtCurrentPos(base::as_byte_span(
+                    test_string2_with_lf)) == test_string2_with_lf.length());
     EXPECT_EQ(previous_change_event_counter, changed_event_receieved());
   }
 
@@ -526,9 +520,8 @@ TEST_F(LogLineReaderTest, ReadFileRotatedWithoutLf) {
   // Write to the first file.
   {
     int previous_change_event_counter = changed_event_receieved();
-    EXPECT_EQ(
-        file.WriteAtCurrentPos(test_string1.c_str(), test_string1.length()),
-        test_string1.length());
+    EXPECT_TRUE(file.WriteAtCurrentPos(base::as_byte_span(test_string1)) ==
+                test_string1.length());
     WaitForChangeEvent(previous_change_event_counter);
   }
 
@@ -547,9 +540,8 @@ TEST_F(LogLineReaderTest, ReadFileRotatedWithoutLf) {
   // Write to the second file.
   {
     int previous_change_event_counter = changed_event_receieved();
-    EXPECT_EQ(file.WriteAtCurrentPos(test_string2_with_lf.c_str(),
-                                     test_string2_with_lf.length()),
-              test_string2_with_lf.length());
+    EXPECT_TRUE(file.WriteAtCurrentPos(base::as_byte_span(
+                    test_string2_with_lf)) == test_string2_with_lf.length());
     EXPECT_EQ(previous_change_event_counter, changed_event_receieved());
   }
 
@@ -585,8 +577,8 @@ TEST_F(LogLineReaderTest, ReadLarge) {
   // Write
   for (int i = 0; i < (10 * 1024); i++) {
     std::string test_string = base::StringPrintf("%019d\n", i);
-    EXPECT_EQ(file.WriteAtCurrentPos(test_string.c_str(), test_string.length()),
-              test_string.length());
+    EXPECT_TRUE(file.WriteAtCurrentPos(base::as_byte_span(test_string)) ==
+                test_string.length());
   }
 
   LogLineReader reader(LogLineReader::Backend::FILE_FOLLOW);
@@ -627,9 +619,8 @@ TEST_F(LogLineReaderTest, ReadLargeAppend) {
     std::string test_string_with_lf = test_string + "\n";
 
     int previous_change_event_counter = changed_event_receieved();
-    EXPECT_EQ(file.WriteAtCurrentPos(test_string_with_lf.c_str(),
-                                     test_string_with_lf.length()),
-              test_string_with_lf.length());
+    EXPECT_TRUE(file.WriteAtCurrentPos(base::as_byte_span(
+                    test_string_with_lf)) == test_string_with_lf.length());
     WaitForChangeEvent(previous_change_event_counter);
 
     auto [s, result] = reader.Forward();
@@ -656,8 +647,8 @@ TEST_F(LogLineReaderTest, ReadLargeBackward) {
   // Write
   for (int i = 0; i < (10 * 1024); i++) {
     std::string test_string = base::StringPrintf("%019d\n", i);
-    EXPECT_EQ(file.WriteAtCurrentPos(test_string.c_str(), test_string.length()),
-              test_string.length());
+    EXPECT_TRUE(file.WriteAtCurrentPos(base::as_byte_span(test_string)) ==
+                test_string.length());
   }
 
   LogLineReader reader(LogLineReader::Backend::FILE_FOLLOW);

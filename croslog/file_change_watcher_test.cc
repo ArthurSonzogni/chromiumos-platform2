@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include "base/containers/span.h"
 #include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
@@ -66,14 +67,14 @@ TEST_F(FileChangeWatcherTest, FileChange) {
 
     // Write
     uint32_t previous_counter = counter();
-    EXPECT_EQ(file.WriteAtCurrentPos(test_string.c_str(), test_string.length()),
-              test_string.length());
+    EXPECT_TRUE(file.WriteAtCurrentPos(base::as_byte_span(test_string)) ==
+                test_string.length());
     EXPECT_TRUE(WaitForCounterValue(previous_counter + 1u));
 
     // Write (append)
     previous_counter = counter();
-    EXPECT_EQ(file.WriteAtCurrentPos(test_string.c_str(), test_string.length()),
-              test_string.length());
+    EXPECT_TRUE(file.WriteAtCurrentPos(base::as_byte_span(test_string)) ==
+                test_string.length());
     EXPECT_TRUE(WaitForCounterValue(previous_counter + 1u));
 
     // Close
@@ -94,8 +95,8 @@ TEST_F(FileChangeWatcherTest, FileChange) {
 
     // Write (append)
     previous_counter = counter();
-    EXPECT_EQ(file.WriteAtCurrentPos(test_string.c_str(), test_string.length()),
-              test_string.length());
+    EXPECT_TRUE(file.WriteAtCurrentPos(base::as_byte_span(test_string)) ==
+                test_string.length());
     EXPECT_TRUE(WaitForCounterValue(previous_counter + 1u));
 
     // Close
