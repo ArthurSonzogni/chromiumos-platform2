@@ -2,12 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "hps/hps.h"
+
 #include <deque>
 #include <memory>
 #include <optional>
 #include <string>
 #include <utility>
 
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
@@ -18,7 +21,6 @@
 
 #include "hps/dev.h"
 #include "hps/hal/fake_dev.h"
-#include "hps/hps.h"
 #include "hps/hps_impl.h"
 #include "hps/hps_metrics.h"
 #include "hps/hps_reg.h"
@@ -845,10 +847,8 @@ TEST(ReadVersionFromFile, CorrectVersion) {
 
   const uint32_t expected_version = 0xFFFFFFFFU;
   const std::string file_contents = "4294967295\n";
-  ASSERT_EQ(
-      file_contents.size(),
-      file.WriteAtCurrentPos(file_contents.data(),
-                             base::checked_cast<int>(file_contents.size())));
+  ASSERT_TRUE(
+      file.WriteAtCurrentPosAndCheck(base::as_byte_span(file_contents)));
 
   uint32_t version;
   ASSERT_TRUE(hps::ReadVersionFromFile(path, &version));
