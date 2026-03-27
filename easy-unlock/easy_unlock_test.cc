@@ -5,13 +5,13 @@
 #include <stdint.h>
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/strings/string_view_util.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_object.h>
 #include <chromeos/dbus/service_constants.h>
@@ -30,6 +30,11 @@ using ::testing::Invoke;
 using ::testing::Return;
 
 namespace {
+
+std::string BytesAsString(base::span<const uint8_t> bytes) {
+  const auto chars = base::as_chars(bytes);
+  return std::string(chars.begin(), chars.end());
+}
 
 class MethodCallHandlers {
  public:
@@ -160,10 +165,10 @@ class EasyUnlockTest : public ::testing::Test {
     base::span<const uint8_t> bytes;
 
     ASSERT_TRUE(reader.PopArrayOfBytes(&bytes));
-    ASSERT_EQ("private_key_1", std::string(base::as_string_view(bytes)));
+    ASSERT_EQ("private_key_1", BytesAsString(bytes));
 
     ASSERT_TRUE(reader.PopArrayOfBytes(&bytes));
-    ASSERT_EQ("public_key_1", std::string(base::as_string_view(bytes)));
+    ASSERT_EQ("public_key_1", BytesAsString(bytes));
   }
 
   void VerifyDataResponse(const std::string& expected_content,
@@ -175,7 +180,7 @@ class EasyUnlockTest : public ::testing::Test {
     base::span<const uint8_t> bytes;
 
     ASSERT_TRUE(reader.PopArrayOfBytes(&bytes));
-    ASSERT_EQ(expected_content, std::string(base::as_string_view(bytes)));
+    ASSERT_EQ(expected_content, BytesAsString(bytes));
   }
 
   void VerifyNoDataResponse(std::unique_ptr<dbus::Response> response) {
