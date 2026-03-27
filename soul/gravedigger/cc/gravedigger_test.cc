@@ -4,11 +4,13 @@
 
 #include "soul/gravedigger/cc/gravedigger.h"
 
+#include <string>
+
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
-#include <string>
 
 namespace gravedigger {
 
@@ -23,8 +25,9 @@ class GravediggerTest : public testing::Test {
     ASSERT_TRUE(file.IsValid());
 
     data_ = "Hello World!";
-    int bytes_written = file.WriteAtCurrentPos(data_.data(), data_.size());
-    ASSERT_EQ(bytes_written, data_.size());
+    auto bytes_written = file.WriteAtCurrentPos(base::as_byte_span(data_));
+    ASSERT_TRUE(bytes_written.has_value());
+    ASSERT_EQ(*bytes_written, data_.size());
   }
 
   base::ScopedTempDir temp_dir_;
