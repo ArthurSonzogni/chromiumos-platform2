@@ -8,10 +8,12 @@
 
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -92,8 +94,9 @@ class EcFirmwareTest : public testing::Test {
     for (auto& [data, reported_size, name] : areas) {
       /* Place areas at the front of the file */
       if (data.size()) {
-        if (file.WriteAtCurrentPos(reinterpret_cast<const char*>(data.data()),
-                                   data.size()) < 0) {
+        if (!file.WriteAtCurrentPos(
+                     base::span<const uint8_t>(data.data(), data.size()))
+                 .has_value()) {
           LOG(ERROR) << "Failed to write area into fake image file.";
           return false;
         }
@@ -114,7 +117,11 @@ class EcFirmwareTest : public testing::Test {
       return false;
     }
 
-    if (file.WriteAtCurrentPos(fmap.GetData(), fmap.GetDataLength()) < 0) {
+    if (!file
+             .WriteAtCurrentPos(base::span<const uint8_t>(
+                 reinterpret_cast<const uint8_t*>(fmap.GetData()),
+                 base::checked_cast<size_t>(fmap.GetDataLength())))
+             .has_value()) {
       LOG(ERROR) << "Failed to write fmap into fake image.";
       return false;
     }
