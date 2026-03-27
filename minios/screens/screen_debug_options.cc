@@ -17,7 +17,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <base/strings/to_string.h>
 #include <brillo/namespaces/platform.h>
 #include <minios/proto_bindings/minios.pb.h>
 #include <vpd/vpd.h>
@@ -123,7 +122,7 @@ void ScreenDebugOptions::UpdateStorageDevices(
     const auto& display_label =
         label.has_value()
             ? label.value()
-            : ("Removable Device " + base::ToString(storage_devices_.size()));
+            : ("Removable Device " + std::to_string(storage_devices_.size()));
 
     storage_devices_.emplace_back(display_label, device);
     LOG(INFO) << "Added, device_label=" << display_label << " path=" << device;
