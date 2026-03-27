@@ -7,6 +7,7 @@
 #include <optional>
 #include <string>
 
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -573,14 +574,14 @@ TEST_F(DevicePolicyImplTest, LoadPolicyRequestTokenPresenceCases) {
   policy_data.set_policy_value(device_policy_proto_.SerializeAsString());
   policy_response.set_policy_data(policy_data.SerializeAsString());
   std::string data = policy_response.SerializeAsString();
-  file.Write(0, data.c_str(), data.length());
+  (void)file.Write(0, base::as_byte_span(data));
   ASSERT_FALSE(device_policy_.LoadPolicy(/*delete_invalid_files=*/false));
 
   // Create policy file with request token.
   policy_data.set_request_token("1234");
   policy_response.set_policy_data(policy_data.SerializeAsString());
   data = policy_response.SerializeAsString();
-  file.Write(0, data.c_str(), data.length());
+  (void)file.Write(0, base::as_byte_span(data));
   ASSERT_TRUE(device_policy_.LoadPolicy(/*delete_invalid_files=*/false));
 }
 
