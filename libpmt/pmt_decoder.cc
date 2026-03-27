@@ -19,7 +19,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/to_string.h>
 #include <re2/re2.h>
 
 #include "bits/pmt_data_interface.h"
@@ -500,7 +499,7 @@ int PmtDecoder::SetUpDecoding(const vector<Guid> guids,
       string xpath_sample_intf_id =
           "/TELI:AggregatorInterface/TELI:AggregatorSamples/"
           "TELI:T_AggregatorSample[@sampleID='";
-      xpath_sample_intf_id += base::ToString(guid_sample_idx);
+      xpath_sample_intf_id += std::to_string(guid_sample_idx);
       xpath_sample_intf_id += "']";
       xml::ScopedXmlXPathObject sample_intf_match =
           agg_intf_parser.XPathEval(xpath_sample_intf_id);
