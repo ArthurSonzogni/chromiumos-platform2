@@ -6,6 +6,7 @@
 
 #include <map>
 #include <optional>
+#include <sstream>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -26,6 +27,14 @@ constexpr std::string_view kFwupdServiceName = "org.freedesktop.fwupd";
 constexpr std::string_view kFwupdServicePath = "/";
 constexpr std::string_view kFwupdInterface = "org.freedesktop.fwupd";
 constexpr std::string_view kFwupdGetHistory = "GetHistory";
+
+// Keep the persisted timestamp format aligned with base::Time's stream output,
+// which is what the existing read path already parses.
+std::string FormatTimestamp(base::Time time) {
+  std::ostringstream stream;
+  stream << time;
+  return stream.str();
+}
 
 // Get the value of a field in `dict`.
 //
@@ -231,7 +240,7 @@ std::optional<base::Time> GetAndUpdateFwupMetricTimestamp(
 
   // Update the timestamp file. Do this early, before any returns from
   // the function, to ensure we never skip updating the timestamp.
-  if (!base::WriteFile(path, base::ToString(new_timestamp).append("\n"))) {
+  if (!base::WriteFile(path, FormatTimestamp(new_timestamp).append("\n"))) {
     PLOG(ERROR) << "Failed to write " << path;
     return std::nullopt;
   }
