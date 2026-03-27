@@ -19,7 +19,6 @@
 #include <base/numerics/byte_conversions.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/strings/string_util.h>
-#include <base/strings/string_view_util.h>
 #include <base/sys_byteorder.h>
 #include <openssl/sha.h>
 
@@ -291,7 +290,8 @@ bool DnsRecordParser::ReadRecord(DnsResourceRecord* out) {
       reader.ReadU16BigEndian(out->klass) &&
       reader.ReadU32BigEndian(out->ttl) && reader.ReadU16BigEndian(rdlen) &&
       reader.ReadInto(rdlen, rdata)) {
-    out->rdata = base::as_string_view(rdata);
+    const auto rdata_chars = base::as_chars(rdata);
+    out->rdata = std::string_view(rdata_chars.begin(), rdata_chars.end());
     cur_ = reinterpret_cast<const char*>(reader.remaining_span().data());
     return true;
   }
