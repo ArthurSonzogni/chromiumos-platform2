@@ -148,10 +148,9 @@ uint16_t AttestedCredentialData::GetCredentialIdLength() {
 std::string AttestedCredentialData::ToString() {
   std::stringstream ss;
   ss << "attested data: {"
-     << "aaguid: " << base::HexEncode(aaguid_.data(), aaguid_.size()) << ", "
+     << "aaguid: " << base::HexEncode(aaguid_) << ", "
      << "credential length: " << GetCredentialIdLength() << ", "
-     << "credential id: "
-     << base::HexEncode(credential_id_.data(), credential_id_.size()) << ", "
+     << "credential id: " << base::HexEncode(credential_id_) << ", "
      << "credential: " << public_key_->ToString();
   return ss.str();
 }

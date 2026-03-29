@@ -59,7 +59,7 @@ std::optional<AuthenticatorData> AuthenticatorData::DecodeAuthenticatorData(
     if (!extensions) {
       LOG(ERROR) << "CBOR decoding of authenticator data extensions failed ("
                  << cbor::Reader::ErrorCodeToString(error) << ") from "
-                 << base::HexEncode(auth_data.data(), auth_data.size());
+                 << base::HexEncode(auth_data);
       return std::nullopt;
     }
     if (!extensions->is_map()) {

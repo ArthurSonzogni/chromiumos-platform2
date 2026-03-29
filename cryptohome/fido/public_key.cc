@@ -22,8 +22,8 @@ bool PublicKey::DumpToDer(brillo::SecureBlob* der) {
 
 std::string PublicKey::ToString() {
   std::stringstream ss;
-  ss << "algorithm: " << algorithm_ << ", " << "COSE public key: "
-     << base::HexEncode(EncodeAsCOSEKey().data(), EncodeAsCOSEKey().size());
+  ss << "algorithm: " << algorithm_ << ", "
+     << "COSE public key: " << base::HexEncode(EncodeAsCOSEKey());
 
   return ss.str();
 }

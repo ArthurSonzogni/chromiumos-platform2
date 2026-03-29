@@ -190,8 +190,7 @@ bool ReadHexFileToSecureBlobLogged(const FilePath& file_path,
 template <typename Alloc>
 bool WriteHexFileLogged(const FilePath& file_path,
                         const std::vector<uint8_t, Alloc>& contents) {
-  if (base::WriteFile(file_path,
-                      base::HexEncode(contents.data(), contents.size()))) {
+  if (base::WriteFile(file_path, base::HexEncode(contents))) {
     return true;
   }
   LOG(ERROR) << "Failed to write to file " << file_path.value() << ".";

@@ -1554,8 +1554,7 @@ int main(int argc, char** argv) {
       std::string* salt_ptr = brillo::cryptohome::home::GetSystemSalt();
       system_salt = SecureBlob(*salt_ptr);
     }
-    std::string hex_salt =
-        base::HexEncode(system_salt.data(), system_salt.size());
+    std::string hex_salt = base::HexEncode(system_salt);
     // We want to follow the convention of having low case hex for output as in
     // GetSanitizedUsername().
     std::transform(hex_salt.begin(), hex_salt.end(), hex_salt.begin(),

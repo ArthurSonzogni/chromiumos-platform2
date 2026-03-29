@@ -149,8 +149,8 @@ crypto::ScopedEC_Key ECPublicKey::GetEC_KEY() const {
 
 std::string ECPublicKey::ToString() {
   std::stringstream ss;
-  ss << "EC P256 public key, x = " << base::HexEncode(x_.data(), x_.size())
-     << ", y = " << base::HexEncode(y_.data(), y_.size());
+  ss << "EC P256 public key, x = " << base::HexEncode(x_)
+     << ", y = " << base::HexEncode(y_);
 
   return ss.str();
 }
