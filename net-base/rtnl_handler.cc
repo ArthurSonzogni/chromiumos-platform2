@@ -264,7 +264,8 @@ void RTNLHandler::ParseRTNL(base::span<const uint8_t> data) {
 
     const uint8_t* payload = reinterpret_cast<const uint8_t*>(hdr);
     VLOG(5) << __func__ << "RTNL received payload length " << hdr->nlmsg_len
-            << ": \"" << base::HexEncode(payload, hdr->nlmsg_len) << "\"";
+            << ": \"" << base::HexEncode(base::span(payload, hdr->nlmsg_len))
+            << "\"";
 
     // Swapping out of |stored_requests_| here ensures that the RTNLMessage will
     // be destructed regardless of the control flow below.

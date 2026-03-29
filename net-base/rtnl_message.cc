@@ -21,6 +21,7 @@
 #include <array>
 #include <memory>
 #include <optional>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -390,7 +391,7 @@ std::unique_ptr<RTNLAttrMap> ParseAttrs(const struct rtattr* data,
 
   if (len) {
     LOG(ERROR) << "Error parsing RTNL attributes <"
-               << base::HexEncode(attr_data, attr_len)
+               << base::HexEncode(std::string_view(attr_data, attr_len))
                << ">, trailing length: " << len;
     return nullptr;
   }
