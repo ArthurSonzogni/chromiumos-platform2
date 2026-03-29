@@ -2,19 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "hwsec-test-utils/ownership_id/ownership_id_tpm2.h"
+
 #include <memory>
 #include <optional>
 #include <string>
 #include <utility>
 
 #include <base/logging.h>
-#include <base/time/time.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/time/time.h>
 #include <crypto/sha2.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
-
-#include "hwsec-test-utils/ownership_id/ownership_id_tpm2.h"
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
 namespace {
 // A constant to represent the corner case.
@@ -73,7 +73,7 @@ std::optional<std::string> OwnershipIdTpm2::Get() {
 
   const std::string id =
       crypto::SHA256HashString(status_reply.local_data().lockout_password());
-  return base::HexEncode(id.data(), id.length());
+  return base::HexEncode(id);
 }
 
 }  // namespace hwsec_test_utils
