@@ -321,7 +321,7 @@ void DeviceIdentifierGenerator::DerivePsmDeviceActiveSecret(
       return;
     }
 
-    *derived_secret = base::HexEncode(secret_key, kHmacInitLength);
+    *derived_secret = base::HexEncode(base::as_byte_span(secret_key));
   } else {
     LOG(ERROR) << "No stable device secret available.";
   }

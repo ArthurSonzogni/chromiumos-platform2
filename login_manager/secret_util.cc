@@ -143,7 +143,7 @@ bool SaveSecretFromPipe(password_provider::PasswordProviderInterface* provider,
 
 base::FilePath StringToSafeFilename(std::string data) {
   std::string sha256hash = crypto::SHA256HashString(data);
-  return base::FilePath(base::HexEncode(sha256hash.data(), sha256hash.size()));
+  return base::FilePath(base::HexEncode(sha256hash));
 }
 
 }  // namespace secret_util

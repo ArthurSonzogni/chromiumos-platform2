@@ -40,8 +40,7 @@ const int kMaxPolicyFileCount = 3;
 base::FilePath GetCleanupDoneFilePath(const base::FilePath& policy_path) {
   const std::string policy_path_hash =
       base::SHA1HashString(policy_path.value());
-  const std::string policy_path_hex =
-      base::HexEncode(policy_path_hash.c_str(), policy_path_hash.size());
+  const std::string policy_path_hex = base::HexEncode(policy_path_hash);
   const std::string cleanup_done_path(kCleanupDoneFilePrefix + policy_path_hex);
   return base::FilePath(cleanup_done_path);
 }
