@@ -4,6 +4,7 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+
 #include <string>
 
 #include <base/logging.h>
@@ -19,9 +20,8 @@ namespace {
 class MurmurHashTest : public ::testing::Test {
  protected:
   void TestMurmurHash3x8632(std::string input, uint32_t seed, uint32_t out) {
-    LOG(INFO) << "Testng MurmurHash3_x86_32("
-              << base::HexEncode(input.data(), input.size()) << ", " << seed
-              << ", " << out << ")";
+    LOG(INFO) << "Testng MurmurHash3_x86_32(" << base::HexEncode(input) << ", "
+              << seed << ", " << out << ")";
 
     // Requires 1 extra byte because we need to test unaligned access.
     // Note that malloc() will return aligned memory for input.size() that is

@@ -61,9 +61,8 @@ std::string GenerateDeviceLocalAccountUserId(
     domain_prefix = it->second;
   }
 
-  return CanonicalizeEmail(
-      base::HexEncode(account_id.c_str(), account_id.size()) + "@" +
-      domain_prefix + ".device-local.localhost");
+  return CanonicalizeEmail(base::HexEncode(account_id) + "@" + domain_prefix +
+                           ".device-local.localhost");
 }
 
 base::expected<em::DeviceLocalAccountInfoProto_AccountType,

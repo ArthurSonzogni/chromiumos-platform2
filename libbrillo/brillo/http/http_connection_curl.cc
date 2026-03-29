@@ -2,14 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/check.h>
-#include <brillo/http/http_connection_curl.h>
-
 #include <utility>
 
+#include <base/check.h>
 #include <base/logging.h>
-#include <base/strings/string_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <brillo/http/http_connection_curl.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport_curl.h>
 #include <brillo/streams/memory_stream.h>
@@ -35,19 +34,19 @@ static int curl_trace(CURL* /* handle */,
       VLOG(3) << "=> Send headers: " << msg;
       break;
     case CURLINFO_DATA_OUT:
-      VLOG(3) << "=> Send data: <" << base::HexEncode(data, size) << ">";
+      VLOG(3) << "=> Send data: <" << base::HexEncode(msg) << ">";
       break;
     case CURLINFO_SSL_DATA_OUT:
-      VLOG(3) << "=> Send SSL data: <" << base::HexEncode(data, size) << ">";
+      VLOG(3) << "=> Send SSL data: <" << base::HexEncode(msg) << ">";
       break;
     case CURLINFO_HEADER_IN:
       VLOG(3) << "<= Recv header: " << msg;
       break;
     case CURLINFO_DATA_IN:
-      VLOG(3) << "<= Recv data: <" << base::HexEncode(data, size) << ">";
+      VLOG(3) << "<= Recv data: <" << base::HexEncode(msg) << ">";
       break;
     case CURLINFO_SSL_DATA_IN:
-      VLOG(3) << "<= Recv SSL data: <" << base::HexEncode(data, size) << ">";
+      VLOG(3) << "<= Recv SSL data: <" << base::HexEncode(msg) << ">";
       break;
     default:
       break;

@@ -4,7 +4,6 @@
 
 #include "brillo/cryptohome.h"
 
-#include <openssl/sha.h>
 #include <stdint.h>
 
 #include <algorithm>
@@ -21,6 +20,7 @@
 #include <base/no_destructor.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <openssl/sha.h>
 
 namespace brillo::cryptohome::home {
 namespace {
@@ -75,7 +75,7 @@ ObfuscatedUsername SanitizeUserNameWithSalt(const Username& username,
   SHA1_Update(&ctx, salt.data(), salt.size());
   SHA1_Update(&ctx, lowercase.data(), lowercase.size());
   SHA1_Final(binmd, &ctx);
-  std::string final = base::HexEncode(binmd, sizeof(binmd));
+  std::string final = base::HexEncode(base::as_byte_span(binmd));
   // Stay compatible with CryptoLib::HexEncodeToBuffer()
   std::transform(final.begin(), final.end(), final.begin(), ::tolower);
   return ObfuscatedUsername(std::move(final));

@@ -67,7 +67,7 @@ std::string GetRandomSuffix() {
   const int kBufferSize = 6;
   unsigned char buffer[kBufferSize];
   base::RandBytes(base::as_writable_byte_span(buffer));
-  return base::HexEncode(buffer, std::size(buffer));
+  return base::HexEncode(base::as_byte_span(buffer));
 }
 
 void FileTest::SetUpTestCase() {
