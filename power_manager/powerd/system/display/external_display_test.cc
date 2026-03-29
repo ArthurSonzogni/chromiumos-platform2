@@ -4,8 +4,8 @@
 
 #include "power_manager/powerd/system/display/external_display.h"
 
-#include <linux/i2c.h>
 #include <linux/i2c-dev.h>
+#include <linux/i2c.h>
 #include <sys/ioctl.h>
 
 #include <string>
@@ -28,7 +28,7 @@ namespace {
 
 // Returns a two-character hexadecimal representation of |byte|.
 std::string Hex(uint8_t byte) {
-  return base::HexEncode(&byte, 1);
+  return base::HexEncode(base::byte_span_from_ref(byte));
 }
 
 // Test implementation of ExternalDisplay::Delegate.
@@ -86,7 +86,8 @@ class TestDelegate : public ExternalDisplay::Delegate {
         return false;
       }
 
-      sent_messages_.push_back(base::HexEncode(message, message_length));
+      sent_messages_.push_back(
+          base::HexEncode(base::span(message, message_length)));
       return true;
     }
 

@@ -5,8 +5,8 @@
 #include "power_manager/powerd/system/display/external_display.h"
 
 #include <fcntl.h>
-#include <linux/i2c.h>
 #include <linux/i2c-dev.h>
+#include <linux/i2c.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
@@ -38,7 +38,7 @@ const uint8_t kDdcMaxMessageLength = 32;
 
 // Returns a hexadecimal string representation of |byte|.
 std::string ByteToHex(uint8_t byte) {
-  return "0x" + base::HexEncode(&byte, 1);
+  return "0x" + base::HexEncode(base::byte_span_from_ref(byte));
 }
 
 }  // namespace
@@ -347,7 +347,7 @@ ExternalDisplay::SendResult ExternalDisplay::SendMessage(
   ioctl_data.nmsgs = 1;
 
   VLOG(1) << "Sending data to " << delegate_->GetName() << ": "
-          << base::HexEncode(&message[0], message.size());
+          << base::HexEncode(message);
   return delegate_->PerformI2COperation(&ioctl_data) ? SendResult::SUCCESS
                                                      : SendResult::IOCTL_FAILED;
 }
@@ -377,7 +377,7 @@ ExternalDisplay::ReceiveResult ExternalDisplay::ReceiveMessage(
   }
 
   VLOG(1) << "Received data from " << delegate_->GetName() << ": "
-          << base::HexEncode(&(message[0]), message.size());
+          << base::HexEncode(message);
 
   // The final byte in a message from the display is the "virtual host address"
   // XOR-ed with all other bytes in the message (excluding the final byte).
@@ -390,8 +390,7 @@ ExternalDisplay::ReceiveResult ExternalDisplay::ReceiveMessage(
     LOG(WARNING) << "Ignoring reply from " << delegate_->GetName()
                  << " with checksum " << ByteToHex(received_checksum)
                  << " (expected " << ByteToHex(computed_checksum)
-                 << " for message "
-                 << base::HexEncode(&(message[0]), message.size()) << ")";
+                 << " for message " << base::HexEncode(message) << ")";
     return ReceiveResult::BAD_CHECKSUM;
   }
   if (message[0] != kDdcDisplayAddress) {
