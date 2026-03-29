@@ -12,6 +12,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -52,7 +53,7 @@ using ::testing::StrictMock;
 std::string ApduToHexString(const U2fResponseApdu& apdu) {
   std::string apdu_str;
   apdu.ToString(&apdu_str);
-  return base::HexEncode(apdu_str.c_str(), apdu_str.size());
+  return base::HexEncode(apdu_str);
 }
 
 brillo::Blob ArrayToBlob(const char* array) {
@@ -81,7 +82,7 @@ MATCHER_P(MsgEqStr, expected, "") {
 }
 
 MATCHER_P(StructEqStr, expected, "") {
-  std::string arg_hex = base::HexEncode(&arg, sizeof(arg));
+  std::string arg_hex = base::HexEncode(base::byte_span_from_ref(arg));
 
   if (arg_hex == expected) {
     return true;
@@ -93,7 +94,7 @@ MATCHER_P(StructEqStr, expected, "") {
 }
 
 MATCHER_P(StructMatchesRegex, pattern, "") {
-  std::string arg_hex = base::HexEncode(&arg, sizeof(arg));
+  std::string arg_hex = base::HexEncode(base::byte_span_from_ref(arg));
 
   if (std::regex_match(arg_hex, std::regex(pattern))) {
     return true;

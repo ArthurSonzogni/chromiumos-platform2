@@ -60,8 +60,7 @@ WebAuthnStorage::~WebAuthnStorage() = default;
 bool WebAuthnStorage::WriteRecord(const WebAuthnRecord& record) {
   DCHECK(allow_access_ && !sanitized_user_.empty());
 
-  const std::string credential_id_hex =
-      base::HexEncode(record.credential_id.data(), record.credential_id.size());
+  const std::string credential_id_hex = base::HexEncode(record.credential_id);
 
   if (record.secret.size() != kCredentialSecretSize) {
     LOG(ERROR) << "Wrong secret size in record with id " << credential_id_hex;
@@ -76,8 +75,7 @@ bool WebAuthnStorage::WriteRecord(const WebAuthnRecord& record) {
           .Set(kKeyBlobKey, base::Base64Encode(record.key_blob))
           .Set(kRpIdKey, record.rp_id)
           .Set(kRpDisplayNameKey, record.rp_display_name)
-          .Set(kUserIdKey,
-               base::HexEncode(record.user_id.data(), record.user_id.size()))
+          .Set(kUserIdKey, base::HexEncode(record.user_id))
           .Set(kUserDisplayNameKey, record.user_display_name)
           .Set(kCreatedTimestampKey, record.timestamp)
           .Set(kIsResidentKeyKey, record.is_resident_key);
@@ -96,9 +94,7 @@ bool WebAuthnStorage::WriteRecord(const WebAuthnRecord& record) {
       util::Sha256(record.credential_id);
   std::vector<FilePath> paths = {
       FilePath(sanitized_user_), FilePath(kWebAuthnDirName),
-      FilePath(kRecordFileNamePrefix +
-               base::HexEncode(credential_id_hash.data(),
-                               credential_id_hash.size()))};
+      FilePath(kRecordFileNamePrefix + base::HexEncode(credential_id_hash))};
 
   FilePath record_storage_filename = root_path_;
   for (const auto& path : paths) {
@@ -368,9 +364,7 @@ bool WebAuthnStorage::DeleteRecordWithCredentialId(
   const std::vector<uint8_t> credential_id_hash = util::Sha256(credential_id);
   std::vector<FilePath> paths = {
       FilePath(sanitized_user_), FilePath(kWebAuthnDirName),
-      FilePath(kRecordFileNamePrefix +
-               base::HexEncode(credential_id_hash.data(),
-                               credential_id_hash.size()))};
+      FilePath(kRecordFileNamePrefix + base::HexEncode(credential_id_hash))};
 
   FilePath record_storage_filename = root_path_;
   for (const auto& path : paths) {

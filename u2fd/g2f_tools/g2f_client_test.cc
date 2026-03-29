@@ -2,18 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "u2fd/g2f_tools/g2f_client.h"
+
 #include <algorithm>
-#include <base/check.h>
-#include <base/logging.h>
-#include <base/strings/stringprintf.h>
-#include <base/strings/string_number_conversions.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-#include <hidapi/hidapi.h>
 #include <memory>
 #include <vector>
 
-#include "u2fd/g2f_tools/g2f_client.h"
+#include <base/check.h>
+#include <base/containers/span.h>
+#include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <hidapi/hidapi.h>
 
 namespace {
 
@@ -172,7 +174,8 @@ TEST_F(G2fClientTest, HidDeviceSend) {
   brillo::Blob payload{0xDD, 0xFF};
   EXPECT_TRUE(device_->SendRequest(kDummyCid, 0xAB, payload));
 
-  EXPECT_THAT(base::HexEncode(hid_write_data, hid_write_count),
+  EXPECT_THAT(base::HexEncode(base::span(hid_write_data,
+                                         static_cast<size_t>(hid_write_count))),
               MatchesRegex(".*"
                            "AABBCCDD.*"  // Cid
                            "AB.*"        // Command
@@ -188,7 +191,8 @@ TEST_F(G2fClientTest, HidDeviceSendMultipleFrames) {
   }
   EXPECT_TRUE(device_->SendRequest(kDummyCid, 0xAB, payload));
 
-  EXPECT_THAT(base::HexEncode(hid_write_data, hid_write_count),
+  EXPECT_THAT(base::HexEncode(base::span(hid_write_data,
+                                         static_cast<size_t>(hid_write_count))),
               MatchesRegex(".*"
                            "AABBCCDD.*"  // Cid
                            "AB.*"        // Command

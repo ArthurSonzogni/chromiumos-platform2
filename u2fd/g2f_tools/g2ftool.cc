@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
     if (!u2f_hid.Msg(request, &response)) {
       return EX_SOFTWARE;
     }
-    std::cout << base::HexEncode(response.data(), response.size()) << std::endl;
+    std::cout << base::HexEncode(response) << std::endl;
   } else if (FLAGS_reg) {
     if (FLAGS_p1 < -1 || FLAGS_p1 > 255) {
       LOG(ERROR) << "P1 value should be 0-255, or -1 for default" << std::endl;
@@ -145,16 +145,10 @@ int main(int argc, char* argv[]) {
                       &key_handle, &certificate_and_signature)) {
       return EX_SOFTWARE;
     }
-    std::cout << "public_key="
-              << base::HexEncode(public_key.data(), public_key.size())
-              << std::endl
-              << "key_handle="
-              << base::HexEncode(key_handle.data(), key_handle.size())
-              << std::endl
+    std::cout << "public_key=" << base::HexEncode(public_key) << std::endl
+              << "key_handle=" << base::HexEncode(key_handle) << std::endl
               << "certificate_and_signature="
-              << base::HexEncode(certificate_and_signature.data(),
-                                 certificate_and_signature.size())
-              << std::endl;
+              << base::HexEncode(certificate_and_signature) << std::endl;
   } else if (FLAGS_auth) {
     if (FLAGS_p1 < -1 || FLAGS_p1 > 255) {
       LOG(ERROR) << "P1 value should be 0-255, or -1 for default" << std::endl;
@@ -190,11 +184,8 @@ int main(int argc, char* argv[]) {
       return EX_SOFTWARE;
     }
     std::cout << "presence_verified=" << presence_verified << std::endl
-              << "counter=" << base::HexEncode(counter.data(), counter.size())
-              << std::endl
-              << "signature="
-              << base::HexEncode(signature.data(), signature.size())
-              << std::endl;
+              << "counter=" << base::HexEncode(counter) << std::endl
+              << "signature=" << base::HexEncode(signature) << std::endl;
   }
 
   return EX_OK;

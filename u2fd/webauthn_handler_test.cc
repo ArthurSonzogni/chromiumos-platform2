@@ -382,13 +382,12 @@ TEST_F(WebAuthnHandlerTestBase, MakeCredentialVerificationSuccess) {
   auto aaguid = GetAaguid();
 
   const std::string expected_authenticator_data_regex =
-      base::HexEncode(rp_id_hash.data(),
-                      rp_id_hash.size()) +  // RP ID hash
+      base::HexEncode(rp_id_hash) +  // RP ID hash
       std::string(
-          "45"          // Flag: user present, user verified, attested
-                        // credential data included.
-          "(..){4}") +  // Signature counter
-      base::HexEncode(aaguid.data(), aaguid.size()) +  // AAGUID
+          "45"                   // Flag: user present, user verified, attested
+                                 // credential data included.
+          "(..){4}") +           // Signature counter
+      base::HexEncode(aaguid) +  // AAGUID
       std::string(
           "0091"      // Credential ID length
                       // Credential ID, from kU2fGenerateVersionedResponse:
@@ -406,8 +405,7 @@ TEST_F(WebAuthnHandlerTestBase, MakeCredentialVerificationSuccess) {
       [](bool* called_ptr, const std::string& expected_authenticator_data,
          const MakeCredentialResponse& resp) {
         EXPECT_EQ(resp.status(), MakeCredentialResponse::SUCCESS);
-        EXPECT_THAT(base::HexEncode(resp.authenticator_data().data(),
-                                    resp.authenticator_data().size()),
+        EXPECT_THAT(base::HexEncode(resp.authenticator_data()),
                     MatchesRegex(expected_authenticator_data));
         EXPECT_EQ(resp.attestation_format(), "none");
         EXPECT_EQ(resp.attestation_statement(), "\xa0");
@@ -646,13 +644,11 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionVerificationSuccess) {
         ASSERT_EQ(resp.assertion_size(), 1);
         auto assertion = resp.assertion(0);
         EXPECT_EQ(assertion.credential_id(), expected_credential_id);
-        EXPECT_THAT(
-            base::HexEncode(assertion.authenticator_data().data(),
-                            assertion.authenticator_data().size()),
-            MatchesRegex(base::HexEncode(rp_id_hash.data(),
-                                         rp_id_hash.size()) +  // RP ID hash
-                         std::string("05"  // Flag: user present, user verified
-                                     "(..){4}")));  // Signature counter
+        EXPECT_THAT(base::HexEncode(assertion.authenticator_data()),
+                    MatchesRegex(base::HexEncode(rp_id_hash) +  // RP ID hash
+                                 std::string("05") +  // Flag: user present,
+                                                      // user verified
+                                 "(..){4}"));         // Signature counter
         EXPECT_EQ(util::ToVector(assertion.signature()), GetSignature());
         *called_ptr = true;
       },
@@ -956,21 +952,19 @@ TEST_F(WebAuthnHandlerTestBase, MakeAuthenticatorDataWithAttestedCredData) {
                 kCredentialIdLengthBytes + cred_id.size() + cred_pubkey.size());
   auto rp_id_hash = GetRpIdHash();
   auto aaguid = GetAaguid();
-  const std::string rp_id_hash_hex =
-      base::HexEncode(rp_id_hash.data(), rp_id_hash.size());
+  const std::string rp_id_hash_hex = base::HexEncode(rp_id_hash);
   const std::string expected_authenticator_data_regex =
       rp_id_hash_hex +  // RP ID hash
       std::string(
           "41"          // Flag: user present, attested credential data included
           "(..){4}") +  // Signature counter
-      base::HexEncode(aaguid.data(), aaguid.size()) +  // AAGUID
+      base::HexEncode(aaguid) +  // AAGUID
       std::string(
           "0040"        // Credential ID length
           "(AA){64}"    // Credential ID
           "(BB){65}");  // Credential public key
-  EXPECT_THAT(
-      base::HexEncode(authenticator_data.data(), authenticator_data.size()),
-      MatchesRegex(expected_authenticator_data_regex));
+  EXPECT_THAT(base::HexEncode(authenticator_data),
+              MatchesRegex(expected_authenticator_data_regex));
 }
 
 TEST_F(WebAuthnHandlerTestBase, MakeAuthenticatorDataNoAttestedCredData) {
@@ -983,16 +977,14 @@ TEST_F(WebAuthnHandlerTestBase, MakeAuthenticatorDataNoAttestedCredData) {
       authenticator_data.size(),
       kRpIdHashBytes + kAuthenticatorDataFlagBytes + kSignatureCounterBytes);
   auto rp_id_hash = GetRpIdHash();
-  const std::string rp_id_hash_hex =
-      base::HexEncode(rp_id_hash.data(), rp_id_hash.size());
+  const std::string rp_id_hash_hex = base::HexEncode(rp_id_hash);
   const std::string expected_authenticator_data_regex =
       rp_id_hash_hex +  // RP ID hash
       std::string(
           "01"         // Flag: user present
           "(..){4}");  // Signature counter
-  EXPECT_THAT(
-      base::HexEncode(authenticator_data.data(), authenticator_data.size()),
-      MatchesRegex(expected_authenticator_data_regex));
+  EXPECT_THAT(base::HexEncode(authenticator_data),
+              MatchesRegex(expected_authenticator_data_regex));
 }
 
 TEST_F(WebAuthnHandlerTestBase,
@@ -1089,8 +1081,7 @@ TEST_F(WebAuthnHandlerTestU2fMode, MakeCredentialPresenceSuccess) {
       [](bool* called_ptr, const std::string& expected_authenticator_data,
          const MakeCredentialResponse& resp) {
         EXPECT_EQ(resp.status(), MakeCredentialResponse::SUCCESS);
-        EXPECT_THAT(base::HexEncode(resp.authenticator_data().data(),
-                                    resp.authenticator_data().size()),
+        EXPECT_THAT(base::HexEncode(resp.authenticator_data()),
                     MatchesRegex(expected_authenticator_data));
         EXPECT_EQ(resp.attestation_format(), "fido-u2f");
         const std::string expected_attestation_statement =
@@ -1102,8 +1093,7 @@ TEST_F(WebAuthnHandlerTestU2fMode, MakeCredentialPresenceSuccess) {
             "783563"  // "x5c"
             "81"      // Start CBOR array of 1 element
             ".+";     // Random x509
-        EXPECT_THAT(base::HexEncode(resp.attestation_statement().data(),
-                                    resp.attestation_statement().size()),
+        EXPECT_THAT(base::HexEncode(resp.attestation_statement()),
                     MatchesRegex(expected_attestation_statement));
         *called_ptr = true;
       },
@@ -1191,8 +1181,7 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialSuccess) {
         auto assertion = resp.assertion(0);
         EXPECT_EQ(assertion.credential_id(), GetCredIdString());
         EXPECT_EQ(
-            base::HexEncode(assertion.authenticator_data().data(),
-                            assertion.authenticator_data().size()),
+            base::HexEncode(assertion.authenticator_data()),
             base::HexEncode(GetRpIdHash()) +
                 std::string(
                     "01"           // Flag: user present
@@ -1238,8 +1227,7 @@ TEST_F(WebAuthnHandlerTestU2fMode,
         ASSERT_EQ(resp.assertion_size(), 1);
         auto assertion = resp.assertion(0);
         EXPECT_EQ(assertion.credential_id(), GetCredIdString());
-        EXPECT_THAT(base::HexEncode(assertion.authenticator_data().data(),
-                                    assertion.authenticator_data().size()),
+        EXPECT_THAT(base::HexEncode(assertion.authenticator_data()),
                     MatchesRegex(base::HexEncode(GetRpIdHash()) +
                                  std::string("01"  // Flag: user present
                                              "(..){4}")));  // SignatureCounter
@@ -1300,8 +1288,7 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialAppIdMatch) {
         auto assertion = resp.assertion(0);
         EXPECT_EQ(assertion.credential_id(), GetCredIdString());
         EXPECT_EQ(
-            base::HexEncode(assertion.authenticator_data().data(),
-                            assertion.authenticator_data().size()),
+            base::HexEncode(assertion.authenticator_data()),
             base::HexEncode(GetRpIdHash()) +
                 std::string(
                     "01"           // Flag: user present
@@ -1366,13 +1353,11 @@ TEST_F(WebAuthnHandlerTestU2fMode,
         ASSERT_EQ(resp.assertion_size(), 1);
         auto assertion = resp.assertion(0);
         EXPECT_EQ(assertion.credential_id(), expected_credential_id);
-        EXPECT_THAT(
-            base::HexEncode(assertion.authenticator_data().data(),
-                            assertion.authenticator_data().size()),
-            MatchesRegex(base::HexEncode(rp_id_hash.data(),
-                                         rp_id_hash.size()) +  // RP ID hash
-                         std::string("05"  // Flag: user present, user verified
-                                     "(..){4}")));  // Signature counter
+        EXPECT_THAT(base::HexEncode(assertion.authenticator_data()),
+                    MatchesRegex(base::HexEncode(rp_id_hash) +  // RP ID hash
+                                 std::string("05") +  // Flag: user present,
+                                                      // user verified
+                                 "(..){4}"));         // Signature counter
         EXPECT_EQ(util::ToVector(assertion.signature()), GetSignature());
         *called_ptr = true;
       },
@@ -1442,13 +1427,11 @@ TEST_F(WebAuthnHandlerTestU2fMode,
         ASSERT_EQ(resp.assertion_size(), 1);
         auto assertion = resp.assertion(0);
         EXPECT_EQ(assertion.credential_id(), expected_credential_id);
-        EXPECT_THAT(
-            base::HexEncode(assertion.authenticator_data().data(),
-                            assertion.authenticator_data().size()),
-            MatchesRegex(base::HexEncode(rp_id_hash.data(),
-                                         rp_id_hash.size()) +  // RP ID hash
-                         std::string("05"  // Flag: user present, user verified
-                                     "(..){4}")));  // Signature counter
+        EXPECT_THAT(base::HexEncode(assertion.authenticator_data()),
+                    MatchesRegex(base::HexEncode(rp_id_hash) +  // RP ID hash
+                                 std::string("05") +  // Flag: user present,
+                                                      // user verified
+                                 "(..){4}"));         // Signature counter
         EXPECT_EQ(util::ToVector(assertion.signature()), GetSignature());
         *called_ptr = true;
       },
@@ -1530,8 +1513,7 @@ TEST_F(WebAuthnHandlerTestG2fMode, MakeCredentialPresenceSuccess) {
             "783563"  // "x5c"
             "81"      // Start CBOR array of 1 element
             ".+";     // Random x509
-        EXPECT_THAT(base::HexEncode(resp.attestation_statement().data(),
-                                    resp.attestation_statement().size()),
+        EXPECT_THAT(base::HexEncode(resp.attestation_statement()),
                     MatchesRegex(expected_attestation_statement));
         *called_ptr = true;
       },
@@ -1588,8 +1570,7 @@ TEST_F(WebAuthnHandlerTestG2fMode, MakeCredentialGlobalKey) {
             "783563"  // "x5c"
             "81"      // Start CBOR array of 1 element
             ".+";     // Random x509
-        EXPECT_THAT(base::HexEncode(resp.attestation_statement().data(),
-                                    resp.attestation_statement().size()),
+        EXPECT_THAT(base::HexEncode(resp.attestation_statement()),
                     MatchesRegex(expected_attestation_statement));
         *called_ptr = true;
       },

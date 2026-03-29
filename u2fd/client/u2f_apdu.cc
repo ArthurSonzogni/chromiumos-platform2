@@ -53,8 +53,7 @@ class U2fCommandApdu::Parser {
     if (ParseHeader(u2f_status) && ParseLc() && ParseBody() && ParseLe()) {
       return apdu_;
     } else {
-      VLOG(2) << "Failed to parse APDU: "
-              << base::HexEncode(apdu_raw_.data(), apdu_raw_.size());
+      VLOG(2) << "Failed to parse APDU: " << base::HexEncode(apdu_raw_);
       return std::nullopt;
     }
   }
@@ -261,7 +260,7 @@ std::optional<U2fRegisterRequestApdu> U2fRegisterRequestApdu::FromCommandApdu(
   if (!ParseApduBody(apdu.Body(), {{{0, 32}, &reg_apdu.challenge_},
                                    {{32, 32}, &reg_apdu.app_id_}})) {
     LOG(WARNING) << "Received invalid U2F_REGISTER APDU: "
-                 << base::HexEncode(apdu.Body().data(), apdu.Body().size());
+                 << base::HexEncode(apdu.Body());
     if (u2f_status) {
       *u2f_status = U2F_SW_WRONG_LENGTH;
     }
@@ -330,7 +329,7 @@ U2fAuthenticateRequestApdu::FromCommandApdu(const U2fCommandApdu& apdu,
                       {{32, 32}, &auth_apdu.app_id_},
                       {{65, kh_length}, &auth_apdu.key_handle_}})) {
     LOG(WARNING) << "Received invalid U2F_AUTHENTICATE APDU: "
-                 << base::HexEncode(apdu.Body().data(), apdu.Body().size());
+                 << base::HexEncode(apdu.Body());
     if (u2f_status) {
       *u2f_status = U2F_SW_WRONG_LENGTH;
     }

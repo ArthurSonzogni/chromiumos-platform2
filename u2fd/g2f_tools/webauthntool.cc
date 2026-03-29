@@ -113,7 +113,7 @@ std::string ResponseStatusToString(
 }
 
 std::string HexEncodeStr(const std::string& str) {
-  return base::HexEncode(str.data(), str.size());
+  return base::HexEncode(str);
 }
 
 void AppendToString(const std::vector<uint8_t>& vect, std::string* str) {

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "u2fd/u2fhid.h"
+
 #include <algorithm>
 #include <memory>
 #include <utility>
@@ -22,7 +24,6 @@
 #include "u2fd/client/user_state.h"
 #include "u2fd/client/util.h"
 #include "u2fd/u2f_corp_processor_interface.h"
-#include "u2fd/u2fhid.h"
 
 namespace {
 
@@ -185,8 +186,7 @@ int U2fHid::HidMessage::BuildReport(int offset, std::string* report_out) {
   report_out->insert(report_out->end(), kU2fReportSize - report_out->size(), 0);
   offset += data_size;
 
-  VLOG(2) << "TX RPT ["
-          << base::HexEncode(report_out->data(), report_out->size()) << "]";
+  VLOG(2) << "TX RPT [" << base::HexEncode(*report_out) << "]";
 
   return offset != payload_.size() ? offset : 0;
 }
@@ -274,7 +274,7 @@ void U2fHid::CmdInit(uint32_t cid, const std::string& payload) {
   }
 
   VLOG(1) << "INIT CID:" << std::hex << cid << " NONCE "
-          << base::HexEncode(payload.data(), payload.size());
+          << base::HexEncode(payload);
 
   if (cid == kCidBroadcast) {  // Allocate Channel ID
     cid = free_cid_++;
@@ -419,8 +419,8 @@ void U2fHid::ExecuteCmd() {
 void U2fHid::ProcessReport(const std::string& report) {
   HidPacket pkt(report);
 
-  VLOG(2) << "RX RPT/" << report.size() << " ["
-          << base::HexEncode(report.data(), report.size()) << "]";
+  VLOG(2) << "RX RPT/" << report.size() << " [" << base::HexEncode(report)
+          << "]";
   if (!pkt.IsValidFrame()) {
     return;  // Invalid report
   }

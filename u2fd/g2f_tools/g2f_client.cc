@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "u2fd/g2f_tools/g2f_client.h"
+
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
@@ -10,6 +12,7 @@
 #include <optional>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -17,9 +20,7 @@
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 #include <brillo/syslog_logging.h>
-
 #include <trunks/cr50_headers/u2f.h>
-#include "u2fd/g2f_tools/g2f_client.h"
 
 namespace {
 
@@ -232,7 +233,8 @@ bool HidDevice::RecvResponse(const Cid& cid,
 bool HidDevice::WriteBlob(const FrameBlob& blob) {
   const unsigned char* data =
       static_cast<const unsigned char*>(&blob.report_id);
-  VLOG(3) << "HID Send Frame " << base::HexEncode(data + 1, kFrameSize);
+  VLOG(3) << "HID Send Frame "
+          << base::HexEncode(base::span(data + 1, kFrameSize));
   return CheckDeviceError("hid_write", hid_write(dev_, data, sizeof(FrameBlob)),
                           sizeof(FrameBlob));
 }
@@ -246,7 +248,7 @@ bool HidDevice::ReadBlob(FrameBlob* blob, int timeout_ms) {
                         kFrameSize)) {
     return false;
   }
-  VLOG(3) << "HID Recv Frame " << base::HexEncode(data, kFrameSize);
+  VLOG(3) << "HID Recv Frame " << base::HexEncode(base::span(data, kFrameSize));
   return true;
 }
 
@@ -284,7 +286,7 @@ std::string U2FHid::Command::Description() const {
 }
 
 std::string U2FHid::Command::FullDump() const {
-  return Description() + ": " + base::HexEncode(payload.data(), payload.size());
+  return Description() + ": " + base::HexEncode(payload);
 }
 
 std::string U2FHid::Command::CommandName() const {

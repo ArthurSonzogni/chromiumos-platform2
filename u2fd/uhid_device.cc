@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
@@ -118,7 +119,8 @@ void UHidDevice::FdEvent() {
         break;
       }
       VLOG(2) << "HID Report: "
-              << base::HexEncode(ev.u.output.data, ev.u.output.size);
+              << base::HexEncode(
+                     base::span(ev.u.output.data, ev.u.output.size));
 
       if (!on_output_report_.is_null()) {
         std::string report(reinterpret_cast<char*>(ev.u.output.data),
