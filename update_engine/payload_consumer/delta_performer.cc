@@ -1075,11 +1075,9 @@ bool DeltaPerformer::ValidateSourceHash(const brillo::Blob& calculated_hash,
                << "that the source partition was modified after it was "
                << "installed, for example, by mounting a filesystem.";
     LOG(ERROR) << "Expected:   sha256|hex = "
-               << base::HexEncode(expected_source_hash.data(),
-                                  expected_source_hash.size());
+               << base::HexEncode(expected_source_hash);
     LOG(ERROR) << "Calculated: sha256|hex = "
-               << base::HexEncode(calculated_hash.data(),
-                                  calculated_hash.size());
+               << base::HexEncode(calculated_hash);
 
     vector<string> source_extents;
     for (const Extent& ext : operation.src_extents()) {
@@ -1158,10 +1156,8 @@ bool DeltaPerformer::PerformSourceCopyOperation(
     }
 
     LOG(WARNING) << "Source hash from RAW device mismatched: found "
-                 << base::HexEncode(source_hash.data(), source_hash.size())
-                 << ", expected "
-                 << base::HexEncode(expected_source_hash.data(),
-                                    expected_source_hash.size());
+                 << base::HexEncode(source_hash) << ", expected "
+                 << base::HexEncode(expected_source_hash);
     if (should_optimize) {
       TEST_AND_RETURN_FALSE(fd_utils::ReadAndHashExtents(
           source_ecc_fd_, operation.src_extents(), block_size_, &source_hash));
@@ -1236,10 +1232,8 @@ FileDescriptorPtr DeltaPerformer::ChooseSourceFD(
     return nullptr;
   }
   LOG(WARNING) << "Source hash from RAW device mismatched: found "
-               << base::HexEncode(source_hash.data(), source_hash.size())
-               << ", expected "
-               << base::HexEncode(expected_source_hash.data(),
-                                  expected_source_hash.size());
+               << base::HexEncode(source_hash) << ", expected "
+               << base::HexEncode(expected_source_hash);
 
   if (fd_utils::ReadAndHashExtents(source_ecc_fd_, operation.src_extents(),
                                    block_size_, &source_hash) &&

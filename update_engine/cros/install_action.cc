@@ -248,11 +248,9 @@ void InstallAction::TransferComplete(HttpFetcher* fetcher, bool successful) {
   std::vector<uint8_t> sha256(crypto::kSHA256Length);
   hash_->Finish(sha256.data(), sha256.size());
   auto expected_sha256 = manifest_->image_sha256();
-  auto expected_sha256_str =
-      base::HexEncode(expected_sha256.data(), expected_sha256.size());
+  auto expected_sha256_str = base::HexEncode(expected_sha256);
   if (sha256 != expected_sha256) {
-    LOG(ERROR) << "Transferred bytes hash ("
-               << base::HexEncode(sha256.data(), sha256.size())
+    LOG(ERROR) << "Transferred bytes hash (" << base::HexEncode(sha256)
                << ") don't match the expected hash ("
                << manifest_->sanitized_image_sha256() << ").";
     TerminateInstallation();

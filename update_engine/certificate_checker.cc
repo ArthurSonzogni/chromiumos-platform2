@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/containers/span.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
@@ -149,7 +150,7 @@ bool CertificateChecker::CheckCertificateChange(int preverify_ok,
 
   // We convert the raw bytes of the digest to an hex string, for storage in
   // prefs.
-  string digest_string = base::HexEncode(digest, digest_length);
+  string digest_string = base::HexEncode(base::span(digest, digest_length));
 
   string storage_key =
       base::StringPrintf("%s-%d-%d", kPrefsUpdateServerCertificate,
