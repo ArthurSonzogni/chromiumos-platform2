@@ -481,8 +481,8 @@ void PluginVmExportOperation::Finalize() {
   if (out_digest_fd_.is_valid()) {
     std::vector<uint8_t> digest(sha256_->GetHashLength());
     sha256_->Finish(std::data(digest), digest.size());
-    std::string str = base::StringPrintf(
-        "%s\n", base::HexEncode(std::data(digest), digest.size()).c_str());
+    std::string str =
+        base::StringPrintf("%s\n", base::HexEncode(digest).c_str());
     bool written = base::WriteFileDescriptor(out_digest_fd_.get(), str);
     out_digest_fd_.reset();
     if (!written) {
@@ -919,8 +919,8 @@ void TerminaVmExportOperation::Finalize() {
   if (out_digest_fd_.is_valid()) {
     std::vector<uint8_t> digest(sha256_->GetHashLength());
     sha256_->Finish(std::data(digest), digest.size());
-    std::string str = base::StringPrintf(
-        "%s\n", base::HexEncode(std::data(digest), digest.size()).c_str());
+    std::string str =
+        base::StringPrintf("%s\n", base::HexEncode(digest).c_str());
     bool written = base::WriteFileDescriptor(out_digest_fd_.get(), str);
     out_digest_fd_.reset();
     if (!written) {
