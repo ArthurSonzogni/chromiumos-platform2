@@ -4,10 +4,6 @@
 
 #include "imageloader/verity_mounter.h"
 
-#include <algorithm>
-#include <memory>
-#include <utility>
-
 #include <fcntl.h>
 #include <libdevmapper.h>
 #include <linux/loop.h>
@@ -18,6 +14,10 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <sys/vfs.h>
+
+#include <algorithm>
+#include <memory>
+#include <utility>
 
 #include <base/check.h>
 #include <base/command_line.h>
@@ -199,7 +199,7 @@ bool SetupDeviceMapper(const std::string& device_path,
   // have sufficiently low chance of collision to assume the name isn't taken.
   std::vector<uint8_t> rand_bytes(32);
   base::RandBytes(rand_bytes);
-  std::string name = base::HexEncode(rand_bytes.data(), rand_bytes.size());
+  std::string name = base::HexEncode(rand_bytes);
 
   if (!LaunchDMCreate(name, final_table)) {
     LOG(ERROR) << "Failed to run dmsetup.";
