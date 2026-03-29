@@ -139,8 +139,8 @@ struct GetVersionInfo {
     ASSIGN_OR_RETURN(brillo::Blob vendor_specific, hwsec->GetVendorSpecific(),
                      _.LogError().As(EXIT_FAILURE));
 
-    std::string vendor_specific_str = base::ToLowerASCII(
-        base::HexEncode(vendor_specific.data(), vendor_specific.size()));
+    std::string vendor_specific_str =
+        base::ToLowerASCII(base::HexEncode(vendor_specific));
 
     printf("tpm_family %08" PRIx32
            "\n"

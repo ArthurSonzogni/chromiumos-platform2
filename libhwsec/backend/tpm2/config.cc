@@ -167,9 +167,9 @@ StatusOr<Mode> ConfigTpm2::ToBootMode(const std::string& value) {
   if (auto it = mapping.find(value); it != mapping.end()) {
     return it->second;
   }
-  return MakeStatus<TPMError>("Encountered invalid boot mode value: " +
-                                  base::HexEncode(value.data(), value.size()),
-                              TPMRetryAction::kNoRetry);
+  return MakeStatus<TPMError>(
+      "Encountered invalid boot mode value: " + base::HexEncode(value),
+      TPMRetryAction::kNoRetry);
 }
 
 StatusOr<ConfigTpm2::PcrMap> ConfigTpm2::ToPcrMap(

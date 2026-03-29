@@ -141,9 +141,9 @@ StatusOr<Mode> ConfigTpm1::ToBootMode(const brillo::Blob& value) {
   if (auto it = mapping.find(value); it != mapping.end()) {
     return it->second;
   }
-  return MakeStatus<TPMError>("Encountered invalid boot mode value: " +
-                                  base::HexEncode(value.data(), value.size()),
-                              TPMRetryAction::kNoRetry);
+  return MakeStatus<TPMError>(
+      "Encountered invalid boot mode value: " + base::HexEncode(value),
+      TPMRetryAction::kNoRetry);
 }
 
 StatusOr<ConfigTpm1::PcrMap> ConfigTpm1::ToPcrMap(
