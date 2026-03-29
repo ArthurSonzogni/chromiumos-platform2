@@ -98,7 +98,7 @@ bool PairManager::VerifyChallenge(const PairChallengeRequest& request,
        sizeof(request.nonce), myauth, nullptr);
 
   LOG(INFO) << "Authenticator (local):\n"
-            << base::HexEncode(myauth, sizeof(myauth));
+            << base::HexEncode(base::span(myauth));
   // The authenticator is truncated, so we only compare the remaining part.
   static_assert(sizeof(resp.authenticator) <= SHA256_DIGEST_LENGTH,
                 "size of authenticator must be <= SHA256_DIGEST_LENGTH.");
@@ -107,7 +107,7 @@ bool PairManager::VerifyChallenge(const PairChallengeRequest& request,
     return true;
   }
   LOG(ERROR) << "Authenticator does not match (remote):"
-             << base::HexEncode(resp.authenticator, sizeof(resp.authenticator));
+             << base::HexEncode(base::span(resp.authenticator));
   return false;
 }
 

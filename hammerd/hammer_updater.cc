@@ -15,9 +15,9 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
@@ -654,7 +654,7 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
   LOG(INFO) << "fw_address: 0x" << std::hex << response.fw_address;
   LOG(INFO) << "fw_size: " << response.fw_size << " bytes";
   LOG(INFO) << "allowed_fw_hash: 0x"
-            << base::HexEncode(response.allowed_fw_hash, SHA256_DIGEST_LENGTH);
+            << base::HexEncode(base::span(response.allowed_fw_hash));
   LOG(INFO) << "product_id: " << response.elan.id << ".0";
 
   std::string base_fw_ver = VersionString(response);
@@ -685,7 +685,7 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
   SHA256(reinterpret_cast<const uint8_t*>(touchpad_image_.data()),
          response.fw_size, reinterpret_cast<unsigned char*>(&digest));
   LOG(INFO) << "Computed local touchpad firmware hash: 0x"
-            << base::HexEncode(digest, SHA256_DIGEST_LENGTH);
+            << base::HexEncode(base::span(digest));
   if (std::memcmp(digest, response.allowed_fw_hash, SHA256_DIGEST_LENGTH)) {
     LOG(ERROR) << "Touchpad firmware mismatches hash in RW EC.";
     return HammerUpdater::RunStatus::kTouchpadMismatched;

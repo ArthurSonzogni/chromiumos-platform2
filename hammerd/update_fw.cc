@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "hammerd/update_fw.h"
-#include "hammerd/vb21_struct.h"
 
 #include <fmap.h>
 
@@ -19,6 +18,8 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <openssl/rand.h>
+
+#include "hammerd/vb21_struct.h"
 
 namespace hammerd {
 
@@ -546,8 +547,8 @@ bool FirmwareUpdater::SendFirstPdu() {
     if (rxed_size < kMinimumResponseSize) {
       LOG(ERROR) << "Unexpected response size: " << rxed_size
                  << ". Response content: "
-                 << base::HexEncode(reinterpret_cast<uint8_t*>(&rpdu),
-                                    rxed_size);
+                 << base::HexEncode(base::span(
+                        reinterpret_cast<const uint8_t*>(&rpdu), rxed_size));
       return false;
     }
 
@@ -678,7 +679,8 @@ bool FirmwareUpdater::TransferBlock(
 
   // First send the header.
   LOG(INFO) << "Send the block header: "
-            << base::HexEncode(reinterpret_cast<uint8_t*>(ufh), sizeof(*ufh));
+            << base::HexEncode(base::span(reinterpret_cast<const uint8_t*>(ufh),
+                                          sizeof(*ufh)));
   endpoint_->Send(ufh, sizeof(*ufh));
 
   // Now send the block, chunk by chunk.
