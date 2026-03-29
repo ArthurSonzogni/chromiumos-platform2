@@ -4,17 +4,19 @@
 
 #include "hermes/modem_qrtr.h"
 
+#include <libqrtr.h>
+
 #include <algorithm>
 #include <array>
 #include <optional>
 #include <utility>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
-#include <libqrtr.h>
 
 #include "hermes/apdu.h"
 #include "hermes/dms_cmd.h"
@@ -192,7 +194,7 @@ void ModemQrtr::InitializeUim() {
 void ModemQrtr::OpenConnection(
     const std::vector<uint8_t>& aid,
     base::OnceCallback<void(std::vector<uint8_t>)> cb) {
-  LOG(INFO) << __func__ << base::HexEncode(aid.data(), aid.size());
+  LOG(INFO) << __func__ << base::HexEncode(aid);
   AcquireChannel(aid,
                  base::BindOnce(&ModemQrtr::OpenConnectionResponse,
                                 weak_factory_.GetWeakPtr(), std::move(cb)));
@@ -424,8 +426,10 @@ bool ModemQrtr::SendCommand(QmiCmdInterface* qmi_command,
   if (qmi_command->qmi_type() != UimCmd::QmiType::kSendApdu) {
     LOG(INFO) << "ModemQrtr sending transaction type "
               << qmi_command->qmi_type()
-              << " with data (size : " << packet.data_len
-              << ") : " << base::HexEncode(packet.data, packet.data_len);
+              << " with data (size : " << packet.data_len << ") : "
+              << base::HexEncode(
+                     base::span(static_cast<const uint8_t*>(packet.data),
+                                packet.data_len));
   } else {
     // We aren't sure about what data is contained in SendApdu, so avoid
     // logging it.
@@ -831,8 +835,7 @@ int ModemQrtr::ParseQmiOpenLogicalChannel(const qrtr_packet& packet) {
     open_channel_raw_response_.push_back(resp.card_result.sw2);
   }
   VLOG(2) << __func__ << " Open Channel Response: "
-          << base::HexEncode(open_channel_raw_response_.data(),
-                             open_channel_raw_response_.size());
+          << base::HexEncode(open_channel_raw_response_);
 
   if (!resp.channel_id_valid) {
     LOG(ERROR) << "QMI UIM response for " << cmd.ToString()
@@ -869,9 +872,11 @@ int ModemQrtr::ReceiveQmiSendApdu(const qrtr_packet& packet) {
     return resp.result.error;
   }
 
-  VLOG(2) << "Adding to payload from APDU response ("
-          << resp.apdu_response_len - 2 << " bytes): "
-          << base::HexEncode(resp.apdu_response, resp.apdu_response_len - 2);
+  const size_t apdu_payload_size =
+      static_cast<size_t>(resp.apdu_response_len) - 2;
+  VLOG(2) << "Adding to payload from APDU response (" << apdu_payload_size
+          << " bytes): "
+          << base::HexEncode(base::span(resp.apdu_response, apdu_payload_size));
   payload.AddData(resp.apdu_response, resp.apdu_response_len);
   if (payload.MorePayloadIncoming()) {
     // Make the next transmit operation be a request for more APDU data
@@ -912,8 +917,9 @@ void ModemQrtr::OnDataAvailable(SocketInterface* socket) {
     LOG(ERROR) << "Socket recv failed";
     return;
   }
-  LOG(INFO) << "ModemQrtr received raw data (" << bytes_received
-            << " bytes): " << base::HexEncode(buffer_.data(), bytes_received);
+  const size_t received_size = static_cast<size_t>(bytes_received);
+  LOG(INFO) << "ModemQrtr received raw data (" << bytes_received << " bytes): "
+            << base::HexEncode(base::span(buffer_.data(), received_size));
   ProcessQrtrPacket(data.node, data.port, bytes_received);
 }
 

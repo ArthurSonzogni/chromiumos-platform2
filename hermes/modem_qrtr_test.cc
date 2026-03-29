@@ -12,6 +12,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/containers/span.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -253,8 +254,9 @@ class MockSocketQrtr : public SocketInterface {
   int Recv(void* buf, size_t size, void* metadata) override {
     int bytes_read = read(socket_.get(), buf, size);
     EXPECT_EQ(bytes_read, size);
-    LOG(INFO) << "Mock ModemQrtr receiving data (" << size
-              << " bytes): " << base::HexEncode(buf, size);
+    LOG(INFO) << "Mock ModemQrtr receiving data (" << size << " bytes): "
+              << base::HexEncode(
+                     base::span(static_cast<const uint8_t*>(buf), size));
 
     if (metadata) {
       auto data = reinterpret_cast<SocketQrtr::PacketMetadata*>(metadata);

@@ -215,8 +215,7 @@ void Modem<T>::TransmitApdu(const std::vector<uint8_t>& apduCommand,
   DCHECK(tx_queue_.empty())
       << __func__
       << ": expected tx queue to be empty, size=" << tx_queue_.size();
-  LOG(INFO) << __func__ << ": APDU command="
-            << base::HexEncode(apduCommand.data(), apduCommand.size());
+  LOG(INFO) << __func__ << ": APDU command=" << base::HexEncode(apduCommand);
   DCHECK(apduCommand.size() > 2) << "APDU does not have a header.";
   CommandApdu apdu(apduCommand);
   auto transmit_apdu_resp =
@@ -249,8 +248,7 @@ template <typename T>
 void Modem<T>::OpenConnectionResponse(
     base::OnceCallback<void(std::vector<uint8_t>)> cb, int err) {
   LOG(INFO) << __func__ << "Open Channel Response: "
-            << base::HexEncode(open_channel_raw_response_.data(),
-                               open_channel_raw_response_.size());
+            << base::HexEncode(open_channel_raw_response_);
   DCHECK(!open_channel_raw_response_.empty());
   std::move(cb).Run(std::move(open_channel_raw_response_));
 }
@@ -265,8 +263,7 @@ void Modem<T>::TransmitApduResponse(
   }
   std::vector<uint8_t> response = responses_[0].Release();
   responses_.clear();
-  LOG(INFO) << __func__ << ": response="
-            << base::HexEncode(response.data(), response.size());
+  LOG(INFO) << __func__ << ": response=" << base::HexEncode(response);
   std::move(cb).Run(std::move(response));
 }
 

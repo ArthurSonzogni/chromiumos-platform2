@@ -66,7 +66,7 @@ CommandApdu::CommandApdu(uint8_t cls,
 
 CommandApdu::CommandApdu(const std::vector<uint8_t>& data)
     : has_more_fragments_(true) {
-  VLOG(2) << __func__ << " data:" << base::HexEncode(data.data(), data.size());
+  VLOG(2) << __func__ << " data:" << base::HexEncode(data);
   data_ = data;
   cls_ = data[0];
   is_apdu_ready_ = true;
@@ -97,8 +97,7 @@ size_t CommandApdu::GetNextFragment(uint8_t** fragment) {
   }
 
   if (is_apdu_ready_) {
-    VLOG(2) << __func__
-            << " data_:" << base::HexEncode(data_.data(), data_.size());
+    VLOG(2) << __func__ << " data_:" << base::HexEncode(data_);
     // We don't perform any fragmentation/lc logic if data_ already contains the
     // APDU.
     *fragment = &data_[0];
@@ -169,7 +168,8 @@ size_t CommandApdu::GetNextFragment(uint8_t** fragment) {
   *fragment = &data_[current_index_];
   current_index_ += current_size;
   VLOG(2) << "APDU fragment #" << current_fragment_ - 1 << " (" << current_size
-          << " bytes): " << base::HexEncode(*fragment, current_size);
+          << " bytes): "
+          << base::HexEncode(base::span(*fragment, current_size));
   return current_size;
 }
 

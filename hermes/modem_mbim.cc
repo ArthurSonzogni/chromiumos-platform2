@@ -2,17 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "hermes/modem_mbim.h"
+
+#include <glib.h>
+
 #include <algorithm>
 #include <array>
 #include <utility>
+
+#include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <glib.h>
 #include <gio/gio.h>
+
 #include "hermes/apdu.h"
 #include "hermes/euicc_manager_interface.h"
 #include "hermes/hermes_common.h"
-#include "hermes/modem_mbim.h"
 #include "hermes/sgp_22.h"
 #include "hermes/type_traits.h"
 
@@ -550,7 +555,7 @@ void ModemMbim::TransmitMbimSendApdu(TxElement* tx_element) {
   }
   LOG(INFO) << "Sending APDU fragment (" << apdu_len << " bytes): over channel "
             << channel_;
-  VLOG(2) << "APDU:" << base::HexEncode(apduCmd, apdu_len);
+  VLOG(2) << "APDU:" << base::HexEncode(base::span(apduCmd, apdu_len));
   message = (mbim_message_ms_uicc_low_level_access_apdu_set_new(
       channel_, secure_messaging, class_byte_type, apdu_len, apduCmd, NULL));
   libmbim_->MbimDeviceCommand(
@@ -699,8 +704,7 @@ void ModemMbim::UiccLowLevelAccessOpenChannelSetCb(MbimDevice* device,
     modem_mbim->open_channel_raw_response_.push_back(status & 0xFF);
     modem_mbim->open_channel_raw_response_.push_back((status >> 8) & 0xFF);
     VLOG(2) << __func__ << " Open Channel Response: "
-            << base::HexEncode(modem_mbim->open_channel_raw_response_.data(),
-                               modem_mbim->open_channel_raw_response_.size());
+            << base::HexEncode(modem_mbim->open_channel_raw_response_);
     modem_mbim->ProcessMbimResult(kModemSuccess);
     return;
   }
@@ -753,8 +757,8 @@ bool ModemMbim::ParseEidApduResponse(const MbimMessage* response,
     return false;
   }
   VLOG(2) << "Decoding EID from APDU response (" << response_size << " bytes)"
-          << base::HexEncode(&out_response[kGetEidDgiTag.size()],
-                             response_size - kGetEidDgiTag.size());
+          << base::HexEncode(base::span(out_response + kGetEidDgiTag.size(),
+                                        response_size - kGetEidDgiTag.size()));
   for (int j = kGetEidDgiTag.size(); j < response_size; j++) {
     *eid += bcd_chars[(out_response[j] >> 4) & 0xF];
     *eid += bcd_chars[out_response[j] & 0xF];
@@ -819,7 +823,8 @@ void ModemMbim::UiccLowLevelAccessApduResponseParse(MbimDevice* device,
           response, &status, &response_size, &out_response, &error)) {
     LOG(INFO) << "Adding to payload from APDU response (" << response_size
               << " bytes)";
-    VLOG(2) << "Payload: " << base::HexEncode(out_response, response_size)
+    VLOG(2) << "Payload: "
+            << base::HexEncode(base::span(out_response, response_size))
             << ", status: " << status;
 
     payload.AddData(out_response, response_size);
@@ -1358,7 +1363,7 @@ void ModemMbim::OpenConnection(
   DCHECK(tx_queue_.empty())
       << __func__
       << ": expected tx queue to be empty, size=" << tx_queue_.size();
-  LOG(INFO) << __func__ << base::HexEncode(aid.data(), aid.size());
+  LOG(INFO) << __func__ << base::HexEncode(aid);
   ReacquireChannel(EuiccEventStep::CLOSE_CHANNEL, aid,
                    base::BindOnce(&ModemMbim::OpenConnectionResponse,
                                   weak_factory_.GetWeakPtr(), std::move(cb)));
