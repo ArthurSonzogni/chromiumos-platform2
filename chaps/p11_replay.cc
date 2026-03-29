@@ -31,10 +31,10 @@
 #include <brillo/syslog_logging.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
+#include <dbus/chaps/dbus-constants.h>
 #include <libhwsec-foundation/crypto/openssl.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
-#include <dbus/chaps/dbus-constants.h>
 
 #include "chaps/chaps_utility.h"
 #include "pkcs11/cryptoki.h"
@@ -849,8 +849,7 @@ void GetAttribute(CK_SESSION_HANDLE session,
 
   // Print out the attribute value.
   if (output_format == "hex" || output_format == "") {
-    printf("Attribute Data in hex: %s\n",
-           base::HexEncode(std::data(buffer), buffer.size()).c_str());
+    printf("Attribute Data in hex: %s\n", base::HexEncode(buffer).c_str());
   } else {
     printf("Invalid output format: %s\n", output_format.c_str());
     exit(-1);
