@@ -3323,9 +3323,7 @@ TPM_RC TpmUtilityImpl::SerializeCommand_GscVendor(
   Serialize_TPM_CC(kGscVendorCC, serialized_command);
   Serialize_UINT16(subcommand, serialized_command);
   serialized_command->append(command_payload);
-  VLOG(2) << "Command: "
-          << base::HexEncode(serialized_command->data(),
-                             serialized_command->size());
+  VLOG(2) << "Command: " << base::HexEncode(*serialized_command);
 
   // We didn't check the return statuses of Serialize_Xxx routines above, which
   // in practice always succeed. Let's at least check the resulting command
@@ -3341,7 +3339,7 @@ TPM_RC TpmUtilityImpl::SerializeCommand_GscVendor(
 TPM_RC TpmUtilityImpl::ParseResponse_GscVendor(const std::string& response,
                                                std::string* response_payload) {
   VLOG(3) << __func__;
-  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(2) << "Response: " << base::HexEncode(response);
   response_payload->assign(response);
 
   TPM_ST tag;

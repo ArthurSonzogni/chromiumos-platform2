@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "trunks/tpm_generated.h"
-
 #include <iterator>
 
 #include <base/check.h>
@@ -16,6 +14,7 @@
 #include "trunks/authorization_delegate.h"
 #include "trunks/command_transceiver.h"
 #include "trunks/error_codes.h"
+#include "trunks/tpm_generated.h"
 
 namespace trunks {
 // static
@@ -205,9 +204,7 @@ TPM_RC Tpm::SerializeCommand_PolicyFidoSigned(
                         handle_section_bytes + authorization_size_bytes +
                         authorization_section_bytes + parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: "
-          << base::HexEncode(serialized_command->data(),
-                             serialized_command->size());
+  VLOG(2) << "Command: " << base::HexEncode(*serialized_command);
   return TPM_RC_SUCCESS;
 }
 
@@ -216,7 +213,7 @@ TPM_RC Tpm::ParseResponse_PolicyFidoSigned(
     const std::string& response,
     AuthorizationDelegate* authorization_delegate) {
   VLOG(3) << __func__;
-  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(2) << "Response: " << base::HexEncode(response);
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;

@@ -3629,7 +3629,7 @@ TEST_F(TpmUtilityTest,
       "81EB9C9EACF0029C4F41B2E4033AB68453884D5BB3E0DD9F680E150CB604428546CFA32B"
       "05743B073BAE97964A847756BB79D132EAEFF44EE1B25315C6B45CE74087A777CFD14276"
       "9B5CF4E5";
-  EXPECT_EQ(hex_encoded_ekm, base::HexEncode(ekm.data(), ekm.size()));
+  EXPECT_EQ(hex_encoded_ekm, base::HexEncode(ekm));
 }
 
 TEST_F(TpmUtilityTest, GetRsuDeviceIdDecodesCorrectly) {

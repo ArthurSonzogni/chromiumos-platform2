@@ -55,7 +55,7 @@ void PrintUsage() {
 }
 
 std::string HexEncode(const std::string& bytes) {
-  return base::HexEncode(bytes.data(), bytes.size());
+  return base::HexEncode(bytes);
 }
 
 // All TPM extension commands use this struct for input and output. Any other

@@ -14,6 +14,7 @@
 
 #include <base/check.h>
 #include <base/command_line.h>
+#include <base/containers/span.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -139,17 +140,17 @@ void PrintUsage() {
 }
 
 std::string HexEncode(const std::string& bytes) {
-  return base::HexEncode(bytes.data(), bytes.size());
+  return base::HexEncode(bytes);
 }
 
 std::string HexEncode(const trunks::TPM2B_DIGEST& tpm2b) {
-  return base::HexEncode(tpm2b.buffer, tpm2b.size);
+  return base::HexEncode(base::span(tpm2b.buffer, tpm2b.size));
 }
 std::string HexEncode(const trunks::TPM2B_ECC_PARAMETER& tpm2b) {
-  return base::HexEncode(tpm2b.buffer, tpm2b.size);
+  return base::HexEncode(base::span(tpm2b.buffer, tpm2b.size));
 }
 std::string HexEncode(const trunks::TPM2B_PUBLIC_KEY_RSA& tpm2b) {
-  return base::HexEncode(tpm2b.buffer, tpm2b.size);
+  return base::HexEncode(base::span(tpm2b.buffer, tpm2b.size));
 }
 
 int OutputToFile(const std::string& file_name, const std::string& data) {

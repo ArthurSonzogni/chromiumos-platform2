@@ -4,8 +4,13 @@
 // pinweaver_client is a command line tool for executing PinWeaver vendor
 // specific commands to GSC.
 
+#include <algorithm>
+#include <cinttypes>
+#include <memory>
+
 #include <base/check.h>
 #include <base/command_line.h>
+#include <base/containers/span.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
@@ -19,10 +24,6 @@
 #include <libhwsec-foundation/crypto/ecdh_hkdf.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <openssl/sha.h>
-
-#include <algorithm>
-#include <cinttypes>
-#include <memory>
 
 #include "trunks/tpm_pinweaver.h"
 #include "trunks/tpm_utility.h"
@@ -99,7 +100,7 @@ void PrintUsage() {
 }
 
 std::string HexEncode(const std::string& bytes) {
-  return base::HexEncode(bytes.data(), bytes.size());
+  return base::HexEncode(bytes);
 }
 
 std::string HexDecode(const std::string& hex) {
@@ -677,10 +678,8 @@ int HandleGenerateBiometricsAuthPk(
   base::DictValue outcome = SetupBaseOutcome(result_code, root);
   if (result_code == 0) {
     base::DictValue server_public_key;
-    server_public_key.Set(
-        "x", base::HexEncode(server_pt.x, trunks::PinWeaverEccPointSize));
-    server_public_key.Set(
-        "y", base::HexEncode(server_pt.y, trunks::PinWeaverEccPointSize));
+    server_public_key.Set("x", base::HexEncode(base::span(server_pt.x)));
+    server_public_key.Set("y", base::HexEncode(base::span(server_pt.y)));
     outcome.Set("server_public_key", std::move(server_public_key));
   }
   puts(GetOutcomeJson(outcome).c_str());

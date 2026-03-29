@@ -1430,15 +1430,14 @@ TPM_RC Tpm::SerializeCommand_%(method_name)s(%(method_args)s) {
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
-                                            serialized_command->size());
+  VLOG(2) << "Command: " << base::HexEncode(*serialized_command);
   return TPM_RC_SUCCESS;
 }
 """
     _RESPONSE_PARSER_START = """
 TPM_RC Tpm::ParseResponse_%(method_name)s(%(method_args)s) {
   VLOG(3) << __func__;
-  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(2) << "Response: " << base::HexEncode(response);
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);"""
     _PARSE_LOCAL_VAR = """
@@ -2317,9 +2316,10 @@ def main():
     parser.add_argument("structures_file")
     parser.add_argument("commands_file")
     args = parser.parse_args()
-    with open(args.structures_file, "r", encoding="utf-8") as s_file, open(
-        args.commands_file, "r", encoding="utf-8"
-    ) as c_file:
+    with (
+        open(args.structures_file, "r", encoding="utf-8") as s_file,
+        open(args.commands_file, "r", encoding="utf-8") as c_file,
+    ):
         structure_parser = StructureParser(s_file)
         types, constants, structs, defines, typemap = structure_parser.Parse()
         command_parser = CommandParser(c_file)
