@@ -208,9 +208,9 @@ class EfiBootEntryContents {
   }
 
   std::string ToString() const {
-    return base::StringPrintf(
-        "description: '%s'\npath_data: %s", description_.c_str(),
-        base::HexEncode(device_path_.data(), device_path_.size()).c_str());
+    return base::StringPrintf("description: '%s'\npath_data: %s",
+                              description_.c_str(),
+                              base::HexEncode(device_path_).c_str());
   }
 
   std::string Description() const { return description_; }

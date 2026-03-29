@@ -167,8 +167,7 @@ bool EfiVarInterface::LoadoptCreate(uint32_t loadopt_attributes,
   if (rv < 0) {
     LOG(ERROR) << "Error formatting data for efi variable.\n"
                << "attributes: " << loadopt_attributes << "\n"
-               << "efidp_data: "
-               << base::HexEncode(efidp_data.data(), efidp_data.size()) << "\n"
+               << "efidp_data: " << base::HexEncode(efidp_data) << "\n"
                << "description: " << description << "\n";
 
     return false;
@@ -242,7 +241,7 @@ std::optional<EfiVarError> EfiVarImpl::SetVariable(const std::string& name,
                        // mode
                        0644) < 0) {
     LOG(ERROR) << "Error setting '" << name
-               << "' data: " << base::HexEncode(data.data(), data.size());
+               << "' data: " << base::HexEncode(data);
     return log_wrapper.GetFirstErrno();
   }
 
