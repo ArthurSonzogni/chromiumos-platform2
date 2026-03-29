@@ -448,8 +448,7 @@ bool DlcBase::Verify() {
     LOG(WARNING) << "Verification failed for image file: "
                  << (IsUserTied() ? kPathNameImage : image_path.value())
                  << ". Expected: " << manifest_->sanitized_image_sha256()
-                 << " Found: "
-                 << base::HexEncode(image_sha256.data(), image_sha256.size());
+                 << " Found: " << base::HexEncode(image_sha256);
     return false;
   }
 
@@ -508,11 +507,8 @@ bool DlcBase::PreloadedCopier(ErrorPtr* err) {
   if (image_sha256 != manifest_image_sha256) {
     auto err_str = base::StringPrintf(
         "Image is corrupted or modified for DLC=%s. Expected: %s Found: %s",
-        id_.c_str(),
-        base::HexEncode(manifest_image_sha256.data(),
-                        manifest_image_sha256.size())
-            .c_str(),
-        base::HexEncode(image_sha256.data(), image_sha256.size()).c_str());
+        id_.c_str(), base::HexEncode(manifest_image_sha256).c_str(),
+        base::HexEncode(image_sha256).c_str());
     *err = Error::Create(FROM_HERE, kErrorInternal, err_str);
     return false;
   }
@@ -561,8 +557,7 @@ bool DlcBase::FactoryInstallCopier() {
     LOG(WARNING) << "Factory installed image is corrupt or modified for DLC ("
                  << sanitized_id_
                  << "). Expected=" << manifest_->sanitized_image_sha256()
-                 << " Found="
-                 << base::HexEncode(image_sha256.data(), image_sha256.size());
+                 << " Found=" << base::HexEncode(image_sha256);
     brillo::DeletePathRecursively(
         JoinPaths(SystemState::Get()->factory_install_dir(), id_));
     return false;
@@ -618,11 +613,8 @@ bool DlcBase::DeployCopier(ErrorPtr* err) {
   if (image_sha256 != manifest_image_sha256) {
     auto err_str = base::StringPrintf(
         "Image is corrupted or modified for DLC=%s. Expected: %s Found: %s",
-        id_.c_str(),
-        base::HexEncode(manifest_image_sha256.data(),
-                        manifest_image_sha256.size())
-            .c_str(),
-        base::HexEncode(image_sha256.data(), image_sha256.size()).c_str());
+        id_.c_str(), base::HexEncode(manifest_image_sha256).c_str(),
+        base::HexEncode(image_sha256).c_str());
     *err = Error::Create(FROM_HERE, kErrorInternal, err_str);
     return false;
   }
