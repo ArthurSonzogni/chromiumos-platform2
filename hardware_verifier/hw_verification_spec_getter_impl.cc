@@ -31,7 +31,7 @@ constexpr char kUsrLocal[] = "usr/local";
 
 std::string GetSHA1HashHexString(const std::string& content) {
   const auto& sha1_hash = base::SHA1HashString(content);
-  return base::HexEncode(sha1_hash.data(), sha1_hash.size());
+  return base::HexEncode(sha1_hash);
 }
 
 std::optional<HwVerificationSpec> ReadOutHwVerificationSpecFromFile(

@@ -26,7 +26,7 @@ constexpr char kRuntimeHWIDFilePath[] =
 
 std::string CalculateChecksum(std::string_view runtime_hwid) {
   const auto& sha1_hash = base::SHA1HashString(runtime_hwid);
-  return base::HexEncode(sha1_hash.data(), sha1_hash.size());
+  return base::HexEncode(sha1_hash);
 }
 
 bool VerifyRuntimeHWID(std::string_view runtime_hwid,
