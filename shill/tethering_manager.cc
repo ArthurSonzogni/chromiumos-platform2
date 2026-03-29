@@ -195,13 +195,13 @@ void TetheringManager::ResetConfiguration() {
     std::string suffix = std::to_string(rand);
     std::string ssid =
         kSSIDPrefix + suffix.substr(suffix.size() - kSSIDSuffixLength);
-    hex_ssid = base::HexEncode(ssid.data(), ssid.size());
+    hex_ssid = base::HexEncode(ssid);
   } while (hex_ssid == hex_ssid_);
   hex_ssid_ = hex_ssid;
 
   do {
     passphrase = base::RandBytesAsString(kMinWiFiPassphraseLength >> 1);
-    passphrase = base::HexEncode(passphrase.data(), passphrase.size());
+    passphrase = base::HexEncode(passphrase);
   } while (passphrase == passphrase_);
   passphrase_ = passphrase;
 

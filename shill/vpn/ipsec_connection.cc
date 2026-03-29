@@ -636,8 +636,7 @@ void IPsecConnection::WriteSwanctlConfig() {
 
       // Sets local id.
       const std::string tunnel_group = config_->tunnel_group.value();
-      const std::string hex_tunnel_id =
-          base::HexEncode(tunnel_group.c_str(), tunnel_group.length());
+      const std::string hex_tunnel_id = base::HexEncode(tunnel_group);
       const std::string local_id =
           base::StringPrintf("@#%s", hex_tunnel_id.c_str());
       local->AddKeyValue("id", local_id);

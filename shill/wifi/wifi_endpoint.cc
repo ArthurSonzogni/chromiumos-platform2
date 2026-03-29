@@ -108,7 +108,7 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
                  properties.Get<std::vector<uint8_t>>(
                      WPASupplicant::kBSSPropertyBSSID))
                  .value()),
-      ssid_hex_(base::HexEncode(ssid_.data(), ssid_.size())),
+      ssid_hex_(base::HexEncode(ssid_)),
       frequency_(0),
       physical_mode_(Metrics::kWiFiNetworkPhyModeUndef),
       metrics_(metrics),

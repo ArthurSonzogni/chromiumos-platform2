@@ -2759,8 +2759,7 @@ void CellularCapability3gpp::OnPcoChanged(const PcoList& pco_list) {
 
     SLOG(this, 3) << "PCO: session-id=" << session_id
                   << ", complete=" << is_complete
-                  << ", data=" << base::HexEncode(data.data(), data.size())
-                  << "";
+                  << ", data=" << base::HexEncode(data) << "";
 
     std::unique_ptr<CellularPco> pco = CellularPco::CreateFromRawData(data);
     if (!pco) {
@@ -2885,7 +2884,7 @@ void CellularCapability3gpp::OnGetSimProperties(
   }
   if (properties.Contains<std::vector<uint8_t>>(MM_SIM_PROPERTY_GID1)) {
     auto bin_gid1 = properties.Get<std::vector<uint8_t>>(MM_SIM_PROPERTY_GID1);
-    sim_properties.gid1 = base::HexEncode(bin_gid1.data(), bin_gid1.size());
+    sim_properties.gid1 = base::HexEncode(bin_gid1);
   }
 
   MMSimType sim_type = MM_SIM_TYPE_UNKNOWN;

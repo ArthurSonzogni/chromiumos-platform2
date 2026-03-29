@@ -31,8 +31,7 @@ bool Pkcs11CertStore::Delete(CK_SLOT_ID slot, std::string_view cka_id) {
   CK_ULONG count = 0;
   CK_OBJECT_HANDLE handles[kMaxObjectCount];
   if (!FindObjects(session.handle(), cka_id, kMaxObjectCount, handles, count)) {
-    LOG(ERROR) << "Failed to find objects with ID: "
-               << base::HexEncode(cka_id.data(), cka_id.length());
+    LOG(ERROR) << "Failed to find objects with ID: " << base::HexEncode(cka_id);
     return false;
   }
 
@@ -41,18 +40,17 @@ bool Pkcs11CertStore::Delete(CK_SLOT_ID slot, std::string_view cka_id) {
     CK_OBJECT_CLASS object_class;
     if (!GetObjectClass(session.handle(), handles[i], &object_class)) {
       LOG(WARNING) << "Failed to get object class with ID: "
-                   << base::HexEncode(cka_id.data(), cka_id.length());
+                   << base::HexEncode(cka_id);
       continue;
     }
     if (object_class != CKO_PRIVATE_KEY && object_class != CKO_CERTIFICATE) {
-      LOG(WARNING) << "Unexpected object class " << object_class << " with ID: "
-                   << base::HexEncode(cka_id.data(), cka_id.length());
+      LOG(WARNING) << "Unexpected object class " << object_class
+                   << " with ID: " << base::HexEncode(cka_id);
       continue;
     }
     if (C_DestroyObject(session.handle(), handles[i]) != CKR_OK) {
       LOG(ERROR) << "C_DestroyObject failed for object class " << object_class
-                 << " with ID: "
-                 << base::HexEncode(cka_id.data(), cka_id.length());
+                 << " with ID: " << base::HexEncode(cka_id);
       success = false;
     }
   }
@@ -72,8 +70,7 @@ bool Pkcs11CertStore::FindObjects(CK_SESSION_HANDLE session_handle,
       (C_FindObjects(session_handle, object_handles, max_object_count,
                      &out_count) != CKR_OK) ||
       (C_FindObjectsFinal(session_handle) != CKR_OK)) {
-    LOG(ERROR) << "ID search failed: "
-               << base::HexEncode(cka_id.data(), cka_id.length());
+    LOG(ERROR) << "ID search failed: " << base::HexEncode(cka_id);
     return false;
   }
   return true;

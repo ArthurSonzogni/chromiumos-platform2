@@ -279,7 +279,7 @@ void SetWiFiProperties(FakeStore* store,
                        const std::vector<uint8_t>& ssid,
                        const std::string& security_class,
                        WiFiSecurity security = {}) {
-  auto hex_ssid = base::HexEncode(ssid.data(), ssid.size());
+  auto hex_ssid = base::HexEncode(ssid);
   store->SetString(id, WiFiService::kStorageType, kTypeWifi);
   store->SetString(id, WiFiService::kStorageSSID, hex_ssid);
   store->SetString(id, WiFiService::kStorageSecurityClass, security_class);

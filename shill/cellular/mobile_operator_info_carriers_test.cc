@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/check_op.h>
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/rand_util.h>
 #include <base/strings/strcat.h>
@@ -160,7 +161,8 @@ class MobileOperatorInfoCarriersTest : public Test {
   std::string CreateRandomGid1NotInSet(std::set<std::string> gid1s) {
     while (true) {
       int gid1 = base::RandInt(0, 0xFFFF);
-      std::string gid1_s = base::HexEncode(&gid1, 2);
+      std::string gid1_s =
+          base::HexEncode(base::byte_span_from_ref(gid1).first<2>());
       if (gid1s.count(gid1_s) == 0) {
         return gid1_s;
       }

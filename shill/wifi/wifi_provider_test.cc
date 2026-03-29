@@ -494,8 +494,7 @@ class WiFiProviderTest : public testing::Test {
                                 kTypeWifi);
     if (ssid) {
       const std::string ssid_string(ssid);
-      const std::string hex_ssid(
-          base::HexEncode(ssid_string.data(), ssid_string.size()));
+      const std::string hex_ssid(base::HexEncode(ssid_string));
       AddStringParameterToStorage(profile_storage, id,
                                   WiFiService::kStorageSSID, hex_ssid);
     }
@@ -1398,7 +1397,7 @@ TEST_F(WiFiProviderTest, GetServiceFullySpecified) {
 TEST_F(WiFiProviderTest, GetServiceByHexSsid) {
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   const std::string kSSID("bar");
-  const std::string kHexSsid(base::HexEncode(kSSID.c_str(), kSSID.length()));
+  const std::string kHexSsid(base::HexEncode(kSSID));
 
   KeyValueStore args;
   SetServiceParameters(nullptr, nullptr, kSecurityClassPsk, false, true, &args);

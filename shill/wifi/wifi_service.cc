@@ -199,7 +199,7 @@ WiFiService::WiFiService(Manager* manager,
                                  &WiFiService::CalculateRoamState);
   store->RegisterConstBool(kWifiRekeyInProgressProperty,
                            &is_rekey_in_progress_);
-  hex_ssid_ = base::HexEncode(ssid_.data(), ssid_.size());
+  hex_ssid_ = base::HexEncode(ssid_);
   store->RegisterConstString(kWifiHexSsid, &hex_ssid_);
 
   HelpRegisterConstDerivedString(kPasspointFQDNProperty,
