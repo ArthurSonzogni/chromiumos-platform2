@@ -63,7 +63,7 @@ constexpr char kValueTwoHash[] = "87CEF12FB15E0B3A";
 constexpr int kKeyRotationPeriod = 90;
 
 std::string HashToHex(const uint64_t hash) {
-  return base::HexEncode(&hash, sizeof(uint64_t));
+  return base::HexEncode(base::byte_span_from_ref(hash));
 }
 
 }  // namespace
