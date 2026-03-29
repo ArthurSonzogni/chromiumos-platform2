@@ -726,8 +726,7 @@ TEST_F(AttestationServiceBaseTest, GetEnrollmentId) {
   service_->set_crypto_utility(&crypto_utility);
   std::string enrollment_id = GetEnrollmentId();
   EXPECT_EQ("635c4526dfa583362273e2987944007b09131cfa0f4e5874e7a76d55d333e3cc",
-            base::ToLowerASCII(
-                base::HexEncode(enrollment_id.data(), enrollment_id.size())));
+            base::ToLowerASCII(base::HexEncode(enrollment_id)));
 
   // Cache the EID in the database.
   AttestationDatabase database_pb;
@@ -739,8 +738,7 @@ TEST_F(AttestationServiceBaseTest, GetEnrollmentId) {
   service_->set_abe_data(&abe_data_new);
   enrollment_id = GetEnrollmentId();
   EXPECT_EQ("635c4526dfa583362273e2987944007b09131cfa0f4e5874e7a76d55d333e3cc",
-            base::ToLowerASCII(
-                base::HexEncode(enrollment_id.data(), enrollment_id.size())));
+            base::ToLowerASCII(base::HexEncode(enrollment_id)));
 }
 
 TEST_F(AttestationServiceBaseTest, SignSimpleChallengeSuccess) {
@@ -2301,8 +2299,7 @@ TEST_P(AttestationServiceTest, ComputeEnterpriseEnrollmentId) {
   service_->set_crypto_utility(&crypto_utility);
   std::string enrollment_id = ComputeEnterpriseEnrollmentId();
   EXPECT_EQ("635c4526dfa583362273e2987944007b09131cfa0f4e5874e7a76d55d333e3cc",
-            base::ToLowerASCII(
-                base::HexEncode(enrollment_id.data(), enrollment_id.size())));
+            base::ToLowerASCII(base::HexEncode(enrollment_id)));
 }
 
 TEST_P(AttestationServiceTest, CreateCertificateRequestSuccess) {

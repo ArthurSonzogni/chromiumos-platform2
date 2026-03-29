@@ -701,7 +701,7 @@ void AttestationService::GetEndorsementInfoTask(
   result->set_ek_info(
       base::StringPrintf("EK Certificate:\n%s\nHash:\n%s\n",
                          CreatePEMCertificate(certificate.value()).c_str(),
-                         base::HexEncode(hash.data(), hash.size()).c_str()));
+                         base::HexEncode(hash).c_str()));
 }
 
 void AttestationService::GetAttestationKeyInfo(

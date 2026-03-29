@@ -4,13 +4,14 @@
 
 #include "attestation/common/crypto_utility_impl.h"
 
+#include <arpa/inet.h>
+
 #include <iterator>
 #include <limits>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <arpa/inet.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/hash/sha1.h>
@@ -21,8 +22,8 @@
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/secure_util.h>
 #include <crypto/sha2.h>
-#include <libhwsec/frontend/attestation/frontend.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
+#include <libhwsec/frontend/attestation/frontend.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -847,8 +848,7 @@ bool CryptoUtilityImpl::CreateSPKACInternal(
     LOG(ERROR) << __func__ << ": Failed to GetRandom(challenge).";
     return false;
   }
-  std::string challenge_hex =
-      base::HexEncode(challenge.data(), challenge.size());
+  std::string challenge_hex = base::HexEncode(challenge);
   if (!ASN1_STRING_set(spki.get()->spkac->challenge, challenge_hex.data(),
                        challenge_hex.size())) {
     LOG(ERROR) << __func__ << ": Failed to set challenge in SPKAC.";
