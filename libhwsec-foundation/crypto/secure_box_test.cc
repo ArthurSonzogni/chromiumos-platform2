@@ -22,12 +22,10 @@ TEST(SecureBoxTest, DeriveKeyPairFromSeed) {
   std::optional<secure_box::KeyPair> key_pair =
       secure_box::DeriveKeyPairFromSeed(seed);
   ASSERT_TRUE(key_pair.has_value());
-  EXPECT_EQ(
-      base::HexEncode(key_pair->public_key.data(), key_pair->public_key.size()),
-      "0492B36A9A2FCF1398328C3E6ECA6D5D3D952930E8833319167A31BF3313CA15BD"
-      "D9B29C4D323062BD23330CBF58631116C5373FF5A90D791DBB197E56A6FF49B3");
-  EXPECT_EQ(base::HexEncode(key_pair->private_key.data(),
-                            key_pair->private_key.size()),
+  EXPECT_EQ(base::HexEncode(key_pair->public_key),
+            "0492B36A9A2FCF1398328C3E6ECA6D5D3D952930E8833319167A31BF3313CA15BD"
+            "D9B29C4D323062BD23330CBF58631116C5373FF5A90D791DBB197E56A6FF49B3");
+  EXPECT_EQ(base::HexEncode(key_pair->private_key),
             "00000000000000000000000000000000000000000000000000000000DEADBEF004"
             "92B36A9A2FCF1398328C3E6ECA6D5D3D952930E8833319167A31BF3313CA15BDD9"
             "B29C4D323062BD23330CBF58631116C5373FF5A90D791DBB197E56A6FF49B3");

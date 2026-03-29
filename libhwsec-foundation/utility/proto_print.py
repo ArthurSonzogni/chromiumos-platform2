@@ -495,8 +495,7 @@ std::string GetProtoDebugStringWithIndent(const %(name)s& value,
         "uint32": '"%%" PRIu32 " (0x%%08" PRIX32 ")", %(value)s, %(value)s',
         "uint64": '"%%" PRIu64 " (0x%%016" PRIX64 ")", %(value)s, %(value)s',
         "string": '"%%s", %(value)s.c_str()',
-        "bytes": """"%%s", base::HexEncode(%(value)s.data(),
-                                         %(value)s.size()).c_str()""",
+        "bytes": '"%%s", base::HexEncode(%(value)s).c_str()',
     }
     subtype_format = (
         '"%%s", GetProtoDebugStringWithIndent(%(value)s, '
