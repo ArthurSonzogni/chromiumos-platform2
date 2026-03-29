@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "tpm_manager/server/tpm2_initializer_impl.h"
-
 #include <memory>
 
 #include <base/functional/bind.h>
@@ -19,6 +17,7 @@
 #include "tpm_manager/server/mock_local_data_store.h"
 #include "tpm_manager/server/mock_openssl_crypto_util.h"
 #include "tpm_manager/server/mock_tpm_status.h"
+#include "tpm_manager/server/tpm2_initializer_impl.h"
 #include "tpm_manager/server/tpm_status.h"
 
 using testing::_;
@@ -122,8 +121,7 @@ TEST_F(Tpm2InitializerTest, InitializeTpmSuccess) {
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
       .WillOnce(DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
   std::string owner_random_bytes("\xFF\xF7\x00\x01\xD2\xA3", 6);
-  std::string owner_password =
-      base::HexEncode(owner_random_bytes.data(), owner_random_bytes.size());
+  std::string owner_password = base::HexEncode(owner_random_bytes);
   EXPECT_EQ(owner_random_bytes.size() * 2, owner_password.size());
   std::string endorsement_password = "hunter2";
   std::string lockout_password = "sesame";

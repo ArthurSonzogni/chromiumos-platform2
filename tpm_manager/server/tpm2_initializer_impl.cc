@@ -8,8 +8,8 @@
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <trunks/error_codes.h>
 #include <trunks/tpm_state.h>
 #include <trunks/tpm_utility.h>
@@ -96,7 +96,7 @@ bool Tpm2InitializerImpl::InitializeTpm(bool* already_owned) {
       LOG(ERROR) << "Error generating a random owner password.";
       return false;
     }
-    owner_password = base::HexEncode(random_bytes.data(), random_bytes.size());
+    owner_password = base::HexEncode(random_bytes);
     // Other passwords don't have to be printable.
     if (!GetTpmRandomData(kDefaultPasswordSize, &endorsement_password)) {
       LOG(ERROR) << "Error generating a random endorsement password.";

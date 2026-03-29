@@ -93,7 +93,7 @@ bool TpmInitializerImpl::InitializeTpm(bool* already_owned) {
   if (!openssl_util_.GetRandomBytes(kOwnerPasswordRandomBytes, &random_bytes)) {
     return false;
   }
-  owner_password = base::HexEncode(random_bytes.data(), random_bytes.size());
+  owner_password = base::HexEncode(random_bytes);
   LocalData local_data;
   local_data.clear_owner_dependency();
   for (auto value : kInitialTpmOwnerDependencies) {
