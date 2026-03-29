@@ -38,6 +38,10 @@ bool ReadStruct(base::File& file, T* value) {
   return file.ReadAtCurrentPosAndCheck(base::byte_span_from_ref(*value));
 }
 
+std::string HexEncodeBytes(const void* data, size_t size) {
+  return base::HexEncode(base::span(static_cast<const uint8_t*>(data), size));
+}
+
 }  // namespace
 
 namespace vendor {
@@ -116,7 +120,7 @@ bool ParseEventHeader(base::File& file, int* data_len, std::string* line) {
   }
 
   *line = CreateDumpEntry("Intel Event Header",
-                          base::HexEncode(&evt_header, sizeof(evt_header)));
+                          HexEncodeBytes(&evt_header, sizeof(evt_header)));
 
   if (evt_header.code != kDebugCode) {
     LOG(WARNING) << "Incorrect Intel devcoredump debug code";
@@ -184,7 +188,7 @@ bool ParseExceptionType(base::File& file, std::string* line) {
   }
 
   *line = CreateDumpEntry("Exception Type",
-                          base::HexEncode(&exc_type, sizeof(exc_type)));
+                          HexEncodeBytes(&exc_type, sizeof(exc_type)));
   return true;
 }
 
@@ -196,7 +200,7 @@ bool ParseLineNumber(base::File& file, std::string* line) {
   }
 
   *line = CreateDumpEntry("Line Number",
-                          base::HexEncode(&line_num, sizeof(line_num)));
+                          HexEncodeBytes(&line_num, sizeof(line_num)));
   return true;
 }
 
@@ -208,7 +212,7 @@ bool ParseModuleNumber(base::File& file, std::string* line) {
   }
 
   *line = CreateDumpEntry("Module Number",
-                          base::HexEncode(&module_num, sizeof(module_num)));
+                          HexEncodeBytes(&module_num, sizeof(module_num)));
   return true;
 }
 
@@ -220,7 +224,7 @@ bool ParseErrorId(base::File& file, std::string* line) {
   }
 
   *line =
-      CreateDumpEntry("Error Id", base::HexEncode(&error_id, sizeof(error_id)));
+      CreateDumpEntry("Error Id", HexEncodeBytes(&error_id, sizeof(error_id)));
   return true;
 }
 
@@ -233,7 +237,7 @@ bool ParseBacktrace(base::File& file, std::string* line) {
 
   std::string traces;
   for (auto& val : trace.val) {
-    base::StrAppend(&traces, {base::HexEncode(&val, kAddrLen), " "});
+    base::StrAppend(&traces, {HexEncodeBytes(&val, kAddrLen), " "});
   }
   traces.pop_back();  // remove trailing whitespace.
 
@@ -248,12 +252,12 @@ bool ParseAuxRegisters(base::File& file, std::string* pc, std::string* line) {
     return false;
   }
 
-  *pc = base::HexEncode(&reg.val[1], kAddrLen);
+  *pc = HexEncodeBytes(&reg.val[1], kAddrLen);
   *line = base::StrCat(
-      {CreateDumpEntry("CPSR", base::HexEncode(&reg.val[0], kAddrLen)),
-       CreateDumpEntry("PC", base::HexEncode(&reg.val[1], kAddrLen)),
-       CreateDumpEntry("SP", base::HexEncode(&reg.val[2], kAddrLen)),
-       CreateDumpEntry("BLINK", base::HexEncode(&reg.val[3], kAddrLen))});
+      {CreateDumpEntry("CPSR", HexEncodeBytes(&reg.val[0], kAddrLen)),
+       CreateDumpEntry("PC", HexEncodeBytes(&reg.val[1], kAddrLen)),
+       CreateDumpEntry("SP", HexEncodeBytes(&reg.val[2], kAddrLen)),
+       CreateDumpEntry("BLINK", HexEncodeBytes(&reg.val[3], kAddrLen))});
   return true;
 }
 
@@ -266,15 +270,15 @@ bool ParseAuxRegistersExtended(base::File& file,
     return false;
   }
 
-  *pc = base::HexEncode(&reg.val[1], kAddrLen);
+  *pc = HexEncodeBytes(&reg.val[1], kAddrLen);
   *line = base::StrCat(
-      {CreateDumpEntry("BLINK", base::HexEncode(&reg.val[0], kAddrLen)),
-       CreateDumpEntry("PC", base::HexEncode(&reg.val[1], kAddrLen)),
-       CreateDumpEntry("ERSTATUS", base::HexEncode(&reg.val[2], kAddrLen)),
-       CreateDumpEntry("ECR", base::HexEncode(&reg.val[3], kAddrLen)),
-       CreateDumpEntry("EFA", base::HexEncode(&reg.val[4], kAddrLen)),
-       CreateDumpEntry("IRQ", base::HexEncode(&reg.val[5], kAddrLen)),
-       CreateDumpEntry("ICAUSE", base::HexEncode(&reg.val[6], kAddrLen))});
+      {CreateDumpEntry("BLINK", HexEncodeBytes(&reg.val[0], kAddrLen)),
+       CreateDumpEntry("PC", HexEncodeBytes(&reg.val[1], kAddrLen)),
+       CreateDumpEntry("ERSTATUS", HexEncodeBytes(&reg.val[2], kAddrLen)),
+       CreateDumpEntry("ECR", HexEncodeBytes(&reg.val[3], kAddrLen)),
+       CreateDumpEntry("EFA", HexEncodeBytes(&reg.val[4], kAddrLen)),
+       CreateDumpEntry("IRQ", HexEncodeBytes(&reg.val[5], kAddrLen)),
+       CreateDumpEntry("ICAUSE", HexEncodeBytes(&reg.val[6], kAddrLen))});
   return true;
 }
 
@@ -286,7 +290,7 @@ bool ParseExceptionSubtype(base::File& file, std::string* line) {
   }
 
   *line = CreateDumpEntry("Exception Subtype",
-                          base::HexEncode(&sub_type, sizeof(sub_type)));
+                          HexEncodeBytes(&sub_type, sizeof(sub_type)));
   return true;
 }
 
@@ -481,10 +485,10 @@ bool ParseEventHeader(base::File& file, int& data_len, std::string& out) {
 
   out = base::StrCat(
       {CreateDumpEntry("Realtek Event Header",
-                       base::HexEncode(&evt_header, sizeof(evt_header))),
+                       HexEncodeBytes(&evt_header, sizeof(evt_header))),
        CreateDumpEntry("Devcoredump Code",
-                       base::HexEncode(&evt_header.devcd_code,
-                                       sizeof(evt_header.devcd_code)))});
+                       HexEncodeBytes(&evt_header.devcd_code,
+                                      sizeof(evt_header.devcd_code)))});
 
   if (evt_header.opcode_event_field != kOpCodeEventField) {
     LOG(WARNING) << "Incorrect Realtek OpCode Event Field";
@@ -503,70 +507,70 @@ bool ParseEventData(base::File& file, std::string* pc, std::string& out) {
     return false;
   }
 
-  *pc = base::HexEncode(&evt_data.last_epc, sizeof(evt_data.last_epc));
+  *pc = HexEncodeBytes(&evt_data.last_epc, sizeof(evt_data.last_epc));
 
   // Clang format inconsistently formats following lines. Disable clang format
   // to keep it as it is for better readability.
   // clang-format off
   out = base::StrCat(
       {CreateDumpEntry("Sub-event Code",
-                       base::HexEncode(&evt_data.sub_event_code,
+                       HexEncodeBytes(&evt_data.sub_event_code,
                                        sizeof(evt_data.sub_event_code))),
        CreateDumpEntry("ISR",
-                       base::HexEncode(&evt_data.isr, sizeof(evt_data.isr))),
+                       HexEncodeBytes(&evt_data.isr, sizeof(evt_data.isr))),
        CreateDumpEntry("Number of ISR",
-                       base::HexEncode(&evt_data.isr_number,
+                       HexEncodeBytes(&evt_data.isr_number,
                                        sizeof(evt_data.isr_number))),
        CreateDumpEntry("CPU Idle",
-                       base::HexEncode(&evt_data.cpu_idle,
+                       HexEncodeBytes(&evt_data.cpu_idle,
                                        sizeof(evt_data.cpu_idle))),
        CreateDumpEntry("Signal ID",
-                       base::HexEncode(&evt_data.signal_id,
+                       HexEncodeBytes(&evt_data.signal_id,
                                        sizeof(evt_data.signal_id))),
        CreateDumpEntry("ISR Cause",
-                       base::HexEncode(&evt_data.isr_cause,
+                       HexEncodeBytes(&evt_data.isr_cause,
                                        sizeof(evt_data.isr_cause))),
        CreateDumpEntry("ISR Cnts",
-                       base::HexEncode(&evt_data.isr_cnts,
+                       HexEncodeBytes(&evt_data.isr_cnts,
                                        sizeof(evt_data.isr_cnts))),
        CreateDumpEntry("PC",
-                       base::HexEncode(&evt_data.last_epc,
+                       HexEncodeBytes(&evt_data.last_epc,
                                        sizeof(evt_data.last_epc))),
        CreateDumpEntry("Timer Handle",
-                       base::HexEncode(&evt_data.timer_handle,
+                       HexEncodeBytes(&evt_data.timer_handle,
                                        sizeof(evt_data.timer_handle))),
        CreateDumpEntry("Calendar Table Index",
-                       base::HexEncode(&evt_data.calendar_table_index,
+                       HexEncodeBytes(&evt_data.calendar_table_index,
                                        sizeof(evt_data.calendar_table_index))),
        CreateDumpEntry("Timer Count",
-                       base::HexEncode(&evt_data.timer_count,
+                       HexEncodeBytes(&evt_data.timer_count,
                                        sizeof(evt_data.timer_count))),
        CreateDumpEntry("Timer Value",
-                       base::HexEncode(&evt_data.timer_value,
+                       HexEncodeBytes(&evt_data.timer_value,
                                        sizeof(evt_data.timer_value))),
        CreateDumpEntry("Timeout Function",
-                       base::HexEncode(&evt_data.timeout_function,
+                       HexEncodeBytes(&evt_data.timeout_function,
                                        sizeof(evt_data.timeout_function))),
        CreateDumpEntry("Timer Type",
-                       base::HexEncode(&evt_data.timer_type,
+                       HexEncodeBytes(&evt_data.timer_type,
                                        sizeof(evt_data.timer_type))),
        CreateDumpEntry("Timer Args",
-                       base::HexEncode(&evt_data.timer_args,
+                       HexEncodeBytes(&evt_data.timer_args,
                                        sizeof(evt_data.timer_args))),
        CreateDumpEntry("Next OS Timer",
-                       base::HexEncode(&evt_data.next_os_timer,
+                       HexEncodeBytes(&evt_data.next_os_timer,
                                        sizeof(evt_data.next_os_timer))),
        CreateDumpEntry("State of Timer",
-                       base::HexEncode(&evt_data.state_of_timer,
+                       HexEncodeBytes(&evt_data.state_of_timer,
                                        sizeof(evt_data.state_of_timer))),
        CreateDumpEntry("Sniff Tick Timer",
-                       base::HexEncode(&evt_data.sniff_tick_timer,
+                       HexEncodeBytes(&evt_data.sniff_tick_timer,
                                        sizeof(evt_data.sniff_tick_timer))),
        CreateDumpEntry("ISR Cause ori",
-                       base::HexEncode(&evt_data.isr_cause_ori,
+                       HexEncodeBytes(&evt_data.isr_cause_ori,
                                        sizeof(evt_data.isr_cause_ori))),
        CreateDumpEntry("Return Addr",
-                       base::HexEncode(&evt_data.return_addr,
+                       HexEncodeBytes(&evt_data.return_addr,
                                        sizeof(evt_data.return_addr)))});
   // clang-format on
 
@@ -892,8 +896,8 @@ bool ParsePC(base::File& file,
     return false;
   }
 
-  out = CreateDumpEntry("PC", base::HexEncode(&val, sizeof(val)));
-  *pc = base::HexEncode(&val, sizeof(val));
+  out = CreateDumpEntry("PC", HexEncodeBytes(&val, sizeof(val)));
+  *pc = HexEncodeBytes(&val, sizeof(val));
 
   return true;
 }
@@ -911,7 +915,7 @@ bool ParseReason(base::File& file, int64_t dump_start, std::string& out) {
     return false;
   }
 
-  out = CreateDumpEntry("Reason Code", base::HexEncode(&val, sizeof(val)));
+  out = CreateDumpEntry("Reason Code", HexEncodeBytes(&val, sizeof(val)));
 
   return true;
 }
