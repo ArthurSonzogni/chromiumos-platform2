@@ -6,6 +6,7 @@
 
 #include <inttypes.h>
 #include <keyutils.h>
+
 #include <string>
 
 #include <base/strings/string_number_conversions.h>
@@ -62,8 +63,8 @@ FileSystemKeyReference GenerateKeyringDescription(
   return {
       .fek_sig = brillo::SecureBlob::Combine(
           brillo::SecureBlob(kDmcryptKeyDescriptor),
-          brillo::SecureBlob(base::ToLowerASCII(
-              base::HexEncode(key_reference.data(), key_reference.size())))),
+          brillo::SecureBlob(
+              base::ToLowerASCII(base::HexEncode(key_reference)))),
   };
 }
 

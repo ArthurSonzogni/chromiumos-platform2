@@ -53,8 +53,7 @@ key_serial_t GetSessionKeyring() {
 
 key_serial_t KeyReferenceToKeySerial(const brillo::SecureBlob& key_reference) {
   std::string key_name =
-      kKeyNamePrefix + base::ToLowerASCII(base::HexEncode(
-                           key_reference.data(), key_reference.size()));
+      kKeyNamePrefix + base::ToLowerASCII(base::HexEncode(key_reference));
 
   key_serial_t key =
       keyctl_search(GetSessionKeyring(), "logon", key_name.c_str(), 0);
@@ -129,9 +128,9 @@ static bool AddKeyToSessionKeyring(const brillo::SecureBlob& key,
   fs_key.mode = FS_ENCRYPTION_MODE_AES_256_XTS;
   memcpy(fs_key.raw, key.char_data(), key.size());
   fs_key.size = key.size();
-  std::string key_name = kKeyNamePrefix + base::ToLowerASCII(base::HexEncode(
-                                              key_reference->reference.data(),
-                                              key_reference->reference.size()));
+  std::string key_name =
+      kKeyNamePrefix +
+      base::ToLowerASCII(base::HexEncode(key_reference->reference));
   key_serial_t key_serial = add_key(kKeyType, key_name.c_str(), &fs_key,
                                     sizeof(fscrypt_key), keyring);
   brillo::SecureClearObject(fs_key);

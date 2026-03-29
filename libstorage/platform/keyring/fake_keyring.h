@@ -5,8 +5,6 @@
 #ifndef LIBSTORAGE_PLATFORM_KEYRING_FAKE_KEYRING_H_
 #define LIBSTORAGE_PLATFORM_KEYRING_FAKE_KEYRING_H_
 
-#include "libstorage/platform/keyring/keyring.h"
-
 #include <algorithm>
 #include <string>
 #include <unordered_map>
@@ -14,6 +12,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 
+#include "libstorage/platform/keyring/keyring.h"
 #include "libstorage/storage_container/filesystem_key.h"
 
 namespace libstorage {
@@ -73,8 +72,7 @@ class FakeKeyring : public Keyring {
  private:
   static std::string MakeSignature(KeyType type,
                                    const brillo::SecureBlob& reference) {
-    std::string key_name =
-        base::ToLowerASCII(base::HexEncode(reference.data(), reference.size()));
+    std::string key_name = base::ToLowerASCII(base::HexEncode(reference));
     switch (type) {
       case Keyring::KeyType::kEcryptfsKey:
         return "ecryptfs-" + key_name;
