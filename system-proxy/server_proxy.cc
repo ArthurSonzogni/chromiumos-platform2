@@ -11,8 +11,6 @@
 #include <string>
 #include <utility>
 
-#include <curl/curl.h>
-
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
@@ -27,6 +25,7 @@
 #include <brillo/http/http_transport.h>
 #include <chromeos/net-base/socket.h>
 #include <chromeos/net-base/socket_forwarder.h>
+#include <curl/curl.h>
 
 #include "bindings/worker_common.pb.h"
 #include "system-proxy/protobuf_util.h"
@@ -217,8 +216,7 @@ void ServerProxy::HandleStdinReadable() {
     const auto& addr = config.listening_address().addr();
     listening_addr_ = net_base::IPv4Address::CreateFromBytes(addr);
     if (!listening_addr_) {
-      LOG(ERROR) << "Invalid listening address: "
-                 << base::HexEncode(addr.data(), addr.size());
+      LOG(ERROR) << "Invalid listening address: " << base::HexEncode(addr);
       return;
     }
     listening_port_ = config.listening_address().port();
@@ -230,7 +228,7 @@ void ServerProxy::HandleStdinReadable() {
     connect_ns_host_ipv4_addr_ = net_base::IPv4Address::CreateFromBytes(addr);
     if (!connect_ns_host_ipv4_addr_) {
       LOG(ERROR) << "Invalid ConnectNamespace address: "
-                 << base::HexEncode(addr.data(), addr.size());
+                 << base::HexEncode(addr);
       return;
     }
   }
