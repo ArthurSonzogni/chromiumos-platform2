@@ -142,11 +142,13 @@ std::string FpInfoCommand::ParseSensorInfo() {
   if (!images.empty()) {
     int i = 0;
     for (const auto& image : images) {
+      // Image parameters are parsed by tests. They MUST follow
+      // key<space>value format.
       ss << "Image [" << i << "]: size " << image.width << "x" << image.height
-         << " " << image.bpp << " bpp";
+         << " bpp " << image.bpp;
 
       if (image.image_data_offset_bytes) {
-        ss << ", offset " << *image.image_data_offset_bytes << " bytes";
+        ss << " offset " << *image.image_data_offset_bytes;
       }
 
       ss << std::endl;

@@ -189,7 +189,7 @@ TEST_F(FpInfoCommandTest, Parse_sensor_info_v1) {
       "Fingerprint sensor: vendor 1 product 2 model 3 version 4\n"
       "Error flags: INIT_FAIL \n"
       "Dead pixels: UNKNOWN\n"
-      "Image [0]: size 3x4 5 bpp\n"
+      "Image [0]: size 3x4 bpp 5\n"
       "Templates: version 1 size 1024 count 3/4 dirty bitmap 8\n";
 
   EXPECT_THAT(fp_info_command->ParseSensorInfo(), Eq(expected_output));
@@ -362,8 +362,8 @@ TEST_F(FpInfoCommandTest, Parse_sensor_info_v2) {
       "Fingerprint sensor: vendor 1 product 2 model 3 version 4\n"
       "Error flags: BAD_HWID \n"
       "Dead pixels: 0\n"
-      "Image [0]: size 64x80 8 bpp, offset 400 bytes\n"
-      "Image [1]: size 192x96 16 bpp, offset 172 bytes\n"
+      "Image [0]: size 64x80 bpp 8 offset 400\n"
+      "Image [1]: size 192x96 bpp 16 offset 172\n"
       "Templates: version 1 size 1024 count 3/4 dirty bitmap 8\n";
 
   EXPECT_THAT(fp_info_command->ParseSensorInfo(), Eq(expected_output));
