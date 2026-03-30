@@ -190,7 +190,7 @@ absl::StatusOr<std::string> Utils::GenerateRandHex(size_t size) {
                                     std::to_string(size));
   }
 
-  return base::HexEncode(random_bytes.data(), random_bytes.size());
+  return base::HexEncode(random_bytes);
 }
 
 absl::StatusOr<base::SystemMemoryInfo> Utils::GetSystemMemoryInfo() {
