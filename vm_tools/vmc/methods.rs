@@ -2421,11 +2421,14 @@ impl Methods {
             let mut parsed_type = image.vm_type.enum_value_or_default();
             if parsed_type == VmType::UNKNOWN {
                 // Attempt to divine the vm_type from chrome pref
-                let pref_vm_type = self.get_ash_vm_type(user_id_hash)?;
-                if pref_vm_type == VmType::UNKNOWN {
-                    return Err(MissingVmTypeOnDisk.into());
-                } else if pref_vm_type == VmType::TERMINA || pref_vm_type == VmType::BAGUETTE {
-                    parsed_type = pref_vm_type
+                let pref_vm_type = self.get_ash_vm_type(user_id_hash);
+                match pref_vm_type {
+                    Ok(VmType::TERMINA) => parsed_type = VmType::TERMINA,
+                    Ok(VmType::BAGUETTE) => parsed_type = VmType::BAGUETTE,
+                    // Most likely this is UNKNOWN, but ok to catch all and move on normally.
+                    Ok(_) => (),
+                    // Don't let failed calls stop attempt to start VM.
+                    Err(_) => println!("Error determining ash vm type: {:#?}", pref_vm_type),
                 }
             }
             vm_type = Some(parsed_type);
