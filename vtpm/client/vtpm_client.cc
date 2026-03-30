@@ -3,8 +3,9 @@
 // found in the LICENSE file.
 
 // vtpm_client is a command line tool that supports various vTPM operations.
-#include <memory>
 #include <stdio.h>
+
+#include <memory>
 #include <string>
 
 #include <base/command_line.h>
@@ -31,7 +32,7 @@ void PrintUsage() {
 }
 
 std::string HexEncode(const std::string& bytes) {
-  return base::HexEncode(bytes.data(), bytes.size());
+  return base::HexEncode(bytes);
 }
 
 int PrintIndexDataInHex(const TrunksFactory& factory, int index) {
