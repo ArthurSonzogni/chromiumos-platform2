@@ -88,7 +88,7 @@ bool MtpdServer::OpenStorage(brillo::ErrorPtr* error,
   uint32_t random_data[4];
   do {
     base::RandBytes(base::byte_span_from_ref(random_data));
-    new_id = base::HexEncode(random_data, sizeof(random_data));
+    new_id = base::HexEncode(base::as_byte_span(random_data));
   } while (handle_map_.contains(new_id));
 
   handle_map_.insert(
