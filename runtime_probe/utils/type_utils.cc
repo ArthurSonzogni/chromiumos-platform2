@@ -43,7 +43,7 @@ bool HexStringToInt64(std::string_view input, int64_t* output) {
 }
 
 std::string ByteToHexString(const uint8_t byte) {
-  return "0x" + base::HexEncode(&byte, 1);
+  return "0x" + base::HexEncode(base::byte_span_from_ref(byte));
 }
 
 }  // namespace runtime_probe

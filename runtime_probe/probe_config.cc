@@ -26,7 +26,7 @@ namespace {
 
 std::string HashProbeConfigSHA1(const std::string& content) {
   const auto& hash_val = base::SHA1HashString(content);
-  return base::HexEncode(hash_val.data(), hash_val.size());
+  return base::HexEncode(hash_val);
 }
 
 // Callback to handle a single result from |ComponentCategory::EvalAsync|.
