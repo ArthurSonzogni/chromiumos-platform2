@@ -515,7 +515,7 @@ Disk UdevDevice::ToDisk() {
   std::string uuid_hash = base::SHA1HashString(
       disk.vendor_id + disk.product_id + GetProperty(kPropertySerial) +
       GetPropertyFromBlkId(kPropertyBlkIdFilesystemUUID));
-  disk.uuid = base::HexEncode(uuid_hash.data(), uuid_hash.size());
+  disk.uuid = base::HexEncode(uuid_hash);
 
   const char* dev_file = dev_->GetDeviceNode();
   if (dev_file) {
