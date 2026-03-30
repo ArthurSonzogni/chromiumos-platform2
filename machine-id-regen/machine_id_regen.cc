@@ -6,6 +6,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/file.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -28,8 +30,6 @@
 #include <brillo/errors/error.h>
 #include <brillo/syslog_logging.h>
 #include <dbus/error.h>
-#include <sys/stat.h>
-#include <sys/file.h>
 
 #include "machine-id-regen/file_auto_lock.h"
 #include "machine-id-regen/timestamp.h"
@@ -93,7 +93,7 @@ std::string generate_machine_id() {
   uint8_t machine_id[16];
 
   base::RandBytes(machine_id);
-  return base::HexEncode(machine_id, sizeof(machine_id));
+  return base::HexEncode(machine_id);
 }
 
 }  // namespace
