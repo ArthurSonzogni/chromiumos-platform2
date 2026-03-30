@@ -55,8 +55,8 @@ std::optional<std::string> HexToBinary(const std::string& hex) {
 
 bool StageForPstore(const std::string& data,
                     const oobe_config::FileHandler& file_handler) {
-  std::string hex_data_with_header = base::StrCat(
-      {kRollbackDataKey, " ", base::HexEncode(data.data(), data.size())});
+  std::string hex_data_with_header =
+      base::StrCat({kRollbackDataKey, " ", base::HexEncode(data)});
 
   return file_handler.WritePstoreData(hex_data_with_header);
 }
