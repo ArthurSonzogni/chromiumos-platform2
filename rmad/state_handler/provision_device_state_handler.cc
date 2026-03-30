@@ -617,7 +617,7 @@ bool ProvisionDeviceStateHandler::GenerateStableDeviceSecret(
     return false;
   }
 
-  *stable_device_secret = base::HexEncode(buffer, kStableDeviceSecretSize);
+  *stable_device_secret = base::HexEncode(base::span(buffer));
   return true;
 }
 
