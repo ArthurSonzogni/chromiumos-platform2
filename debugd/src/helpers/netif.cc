@@ -61,6 +61,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/json/json_writer.h>
@@ -83,7 +84,7 @@ std::string getmac(int fd, const char* ifname) {
   if (ret < 0) {
     return "<can't fetch>";
   }
-  return base::HexEncode(ifr.ifr_hwaddr.sa_data, 6);
+  return base::HexEncode(std::string_view(ifr.ifr_hwaddr.sa_data, 6));
 }
 
 std::string sockaddr2str(struct sockaddr* sa) {

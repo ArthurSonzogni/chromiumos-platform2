@@ -32,7 +32,7 @@ bool ProcessWithId::Init() {
 
 void ProcessWithId::GenerateId() {
   std::string random_bytes = base::RandBytesAsString(kNumRandomBytesInId);
-  id_ = base::HexEncode(random_bytes.data(), random_bytes.size());
+  id_ = base::HexEncode(random_bytes);
 }
 
 }  // namespace debugd
