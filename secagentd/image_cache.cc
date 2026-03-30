@@ -173,7 +173,7 @@ absl::StatusOr<ImageCacheInterface::HashValue> ImageCache::GenerateImageHash(
 
   // Convert hash to a hexadecimal string and return.
   return ImageCacheInterface::HashValue{
-      .sha256 = base::HexEncode(final_hash.data(), SHA256_DIGEST_LENGTH),
+      .sha256 = base::HexEncode(base::span(final_hash)),
       .sha256_is_partial = is_partial,
       .file_size = static_cast<size_t>(file_size),
       .compute_time = base::TimeTicks::Now() - start};
