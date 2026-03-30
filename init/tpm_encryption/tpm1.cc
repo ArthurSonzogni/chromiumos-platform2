@@ -612,8 +612,7 @@ std::string Tpm1SystemKeyLoader::FormatVersionInfo() {
 
   return base::StringPrintf(
       "vendor %08x\nfirmware_version %016" PRIx64 "\nvendor_specific %s",
-      vendor, firmware_version,
-      base::HexEncode(vendor_specific.data(), vendor_specific.size()).c_str());
+      vendor, firmware_version, base::HexEncode(vendor_specific).c_str());
 }
 
 std::string Tpm1SystemKeyLoader::FormatIFXFieldUpgradeInfo() {
