@@ -58,7 +58,7 @@ base::FilePath MakePasswordFileName(const std::string& share_path,
   std::unique_ptr<unsigned char[]> raw_hash =
       std::make_unique<unsigned char[]>(hash_len);
   CHECK(hmac.Sign(raw_name, raw_hash.get(), hash_len));
-  return base::FilePath(base::HexEncode(raw_hash.get(), hash_len));
+  return base::FilePath(base::HexEncode(base::span(raw_hash.get(), hash_len)));
 }
 
 brillo::SecureVector ObfuscatePassword(
