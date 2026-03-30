@@ -689,8 +689,7 @@ std::string GenerateFakeSerialNumber(const std::string& chromeos_user,
                                      const std::string& salt) {
   constexpr size_t kMaxHardwareIdLen = 20;
   const std::string hash(crypto::SHA256HashString(chromeos_user + salt));
-  return base::HexEncode(hash.data(), hash.length())
-      .substr(0, kMaxHardwareIdLen);
+  return base::HexEncode(hash).substr(0, kMaxHardwareIdLen);
 }
 
 uint64_t GetArtCompilationOffsetSeed(const std::string& image_build_id,
