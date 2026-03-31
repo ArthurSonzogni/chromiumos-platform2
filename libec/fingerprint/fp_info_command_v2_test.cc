@@ -230,14 +230,12 @@ TEST_F(FpInfoCommand_v2_SensorImageTest, ValidSensorImage) {
 
   resp.info.sensor_info.num_capture_types = 2;
   resp.image_frame_params[0] = {.frame_size = 5120,
-                                .image_data_offset_bytes = 400,
                                 .pixel_format = 0x59455247,
                                 .width = 64,
                                 .height = 80,
                                 .bpp = 8,
                                 .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE};
   resp.image_frame_params[1] = {.frame_size = 36864,
-                                .image_data_offset_bytes = 172,
                                 .pixel_format = 0x59455247,
                                 .width = 192,
                                 .height = 96,
@@ -251,14 +249,12 @@ TEST_F(FpInfoCommand_v2_SensorImageTest, ValidSensorImage) {
       ElementsAre(SensorImage{.width = 64,
                               .height = 80,
                               .frame_size = 5120,
-                              .image_data_offset_bytes = 400,
                               .pixel_format = 0x59455247,
                               .bpp = 8,
                               .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE},
                   SensorImage{.width = 192,
                               .height = 96,
                               .frame_size = 36864,
-                              .image_data_offset_bytes = 172,
                               .pixel_format = 0x59455247,
                               .bpp = 16,
                               .fp_capture_type = FP_CAPTURE_PATTERN0}));
