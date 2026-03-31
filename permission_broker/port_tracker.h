@@ -15,7 +15,6 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/task/sequenced_task_runner.h>
-#include <base/types/cxx23_to_underlying.h>
 #include <chromeos/patchpanel/dbus/client.h>
 
 namespace permission_broker {
@@ -36,7 +35,7 @@ class PortTracker {
   // Helper for using PortRuleKey as key entries in std::unordered_maps.
   struct PortRuleKeyHasher {
     std::size_t operator()(const PortRuleKey& k) const {
-      return ((std::hash<int>()(base::to_underlying(k.proto)) ^
+      return ((std::hash<int>()(std::to_underlying(k.proto)) ^
                (std::hash<uint16_t>()(k.input_dst_port) << 1)) >>
               1) ^
              (std::hash<std::string>()(k.input_ifname) << 1);
