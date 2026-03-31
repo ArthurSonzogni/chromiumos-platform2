@@ -14,8 +14,25 @@ using testing::Return;
 namespace ec {
 namespace {
 
+TEST(FpInfoCommandFactory, Create_v3) {
+  ec::MockEcCommandVersionSupported mock_ec_cmd_ver_supported;
+  EXPECT_CALL(mock_ec_cmd_ver_supported,
+              EcCmdVersionSupported(EC_CMD_FP_INFO, 3))
+      .Times(1)
+      .WillOnce(Return(EcCmdVersionSupportStatus::SUPPORTED));
+
+  auto cmd = FpInfoCommandFactory::Create(&mock_ec_cmd_ver_supported);
+  EXPECT_TRUE(cmd);
+  EXPECT_EQ(cmd->Version(), 3);
+  EXPECT_EQ(cmd->Command(), EC_CMD_FP_INFO);
+}
+
 TEST(FpInfoCommandFactory, Create_v2) {
   ec::MockEcCommandVersionSupported mock_ec_cmd_ver_supported;
+  EXPECT_CALL(mock_ec_cmd_ver_supported,
+              EcCmdVersionSupported(EC_CMD_FP_INFO, 3))
+      .Times(1)
+      .WillOnce(Return(EcCmdVersionSupportStatus::UNSUPPORTED));
   EXPECT_CALL(mock_ec_cmd_ver_supported,
               EcCmdVersionSupported(EC_CMD_FP_INFO, 2))
       .Times(1)
@@ -30,6 +47,10 @@ TEST(FpInfoCommandFactory, Create_v2) {
 TEST(FpInfoCommandFactory, Create_v1) {
   ec::MockEcCommandVersionSupported mock_ec_cmd_ver_supported;
   EXPECT_CALL(mock_ec_cmd_ver_supported,
+              EcCmdVersionSupported(EC_CMD_FP_INFO, 3))
+      .Times(1)
+      .WillOnce(Return(EcCmdVersionSupportStatus::UNSUPPORTED));
+  EXPECT_CALL(mock_ec_cmd_ver_supported,
               EcCmdVersionSupported(EC_CMD_FP_INFO, 2))
       .Times(1)
       .WillOnce(Return(EcCmdVersionSupportStatus::UNSUPPORTED));
@@ -42,6 +63,10 @@ TEST(FpInfoCommandFactory, Create_v1) {
 
 TEST(FpInfoCommandFactory, Create_Version_Supported_Unknown) {
   ec::MockEcCommandVersionSupported mock_ec_cmd_ver_supported;
+  EXPECT_CALL(mock_ec_cmd_ver_supported,
+              EcCmdVersionSupported(EC_CMD_FP_INFO, 3))
+      .Times(1)
+      .WillOnce(Return(EcCmdVersionSupportStatus::UNKNOWN));
   EXPECT_CALL(mock_ec_cmd_ver_supported,
               EcCmdVersionSupported(EC_CMD_FP_INFO, 2))
       .Times(1)

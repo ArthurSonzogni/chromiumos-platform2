@@ -32,6 +32,11 @@ TEST(FpInfoCommand, FpInfoCommand) {
   EXPECT_EQ(cmd_v2.Version(), 2);
   EXPECT_EQ(cmd_v2.GetVersion(), 2);
   EXPECT_EQ(cmd_v2.Command(), EC_CMD_FP_INFO);
+
+  auto cmd_v3 = FpInfoCommand(/*version=*/3);
+  EXPECT_EQ(cmd_v3.Version(), 3);
+  EXPECT_EQ(cmd_v3.GetVersion(), 3);
+  EXPECT_EQ(cmd_v3.Command(), EC_CMD_FP_INFO);
 }
 
 class FpInfoCommandTest : public testing::Test {
@@ -39,6 +44,7 @@ class FpInfoCommandTest : public testing::Test {
   FpInfoCommandTest() {
     mock_fp_info_command_v1_ = std::make_unique<MockFpInfoCommand_v1>();
     mock_fp_info_command_v2_ = std::make_unique<MockFpInfoCommand_v2>();
+    mock_fp_info_command_v3_ = std::make_unique<MockFpInfoCommand_v3>();
   }
 
  protected:
@@ -56,8 +62,16 @@ class FpInfoCommandTest : public testing::Test {
     MOCK_METHOD(uint32_t, Result, (), (const, override));
   };
 
+  class MockFpInfoCommand_v3 : public FpInfoCommand_v3 {
+   public:
+    MOCK_METHOD(ec::fp_info::Params_v3*, Resp, (), (override));
+    MOCK_METHOD(bool, Run, (int fd), (override));
+    MOCK_METHOD(uint32_t, Result, (), (const, override));
+  };
+
   std::unique_ptr<MockFpInfoCommand_v1> mock_fp_info_command_v1_;
   std::unique_ptr<MockFpInfoCommand_v2> mock_fp_info_command_v2_;
+  std::unique_ptr<MockFpInfoCommand_v3> mock_fp_info_command_v3_;
 };
 
 TEST_F(FpInfoCommandTest, GetFpSensorErrors_v1) {
@@ -66,7 +80,7 @@ TEST_F(FpInfoCommandTest, GetFpSensorErrors_v1) {
 
   EXPECT_CALL(*mock_fp_info_command_v1_, Resp).WillRepeatedly(Return(&resp));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      1, std::move(mock_fp_info_command_v1_), nullptr);
+      1, std::move(mock_fp_info_command_v1_), nullptr, nullptr);
 
   EXPECT_EQ(fp_info_command->GetFpSensorErrors(),
             FpSensorErrors::kInitializationFailure);
@@ -78,7 +92,7 @@ TEST_F(FpInfoCommandTest, NumDeadPixels_v1) {
 
   EXPECT_CALL(*mock_fp_info_command_v1_, Resp).WillRepeatedly(Return(&resp));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      1, std::move(mock_fp_info_command_v1_), nullptr);
+      1, std::move(mock_fp_info_command_v1_), nullptr, nullptr);
 
   const auto expected = FpInfoCommand::kDeadPixelsUnknown;
   EXPECT_EQ(fp_info_command->NumDeadPixels(), expected);
@@ -90,7 +104,7 @@ TEST_F(FpInfoCommandTest, sensor_id_v1) {
 
   EXPECT_CALL(*mock_fp_info_command_v1_, Resp).WillRepeatedly(Return(&resp));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      1, std::move(mock_fp_info_command_v1_), nullptr);
+      1, std::move(mock_fp_info_command_v1_), nullptr, nullptr);
 
   EXPECT_THAT(fp_info_command->sensor_id().value(), Eq(SensorId{
                                                         .vendor_id = 1,
@@ -106,7 +120,7 @@ TEST_F(FpInfoCommandTest, sensor_image_valid_v1) {
 
   EXPECT_CALL(*mock_fp_info_command_v1_, Resp).WillRepeatedly(Return(&resp));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      1, std::move(mock_fp_info_command_v1_), nullptr);
+      1, std::move(mock_fp_info_command_v1_), nullptr, nullptr);
 
   EXPECT_THAT(fp_info_command->sensor_image(), ElementsAre(SensorImage{
                                                    .width = 3,
@@ -120,7 +134,7 @@ TEST_F(FpInfoCommandTest, sensor_image_valid_v1) {
 TEST_F(FpInfoCommandTest, sensor_image_empty_v1) {
   EXPECT_CALL(*mock_fp_info_command_v1_, Resp).WillRepeatedly(Return(nullptr));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      1, std::move(mock_fp_info_command_v1_), nullptr);
+      1, std::move(mock_fp_info_command_v1_), nullptr, nullptr);
 
   EXPECT_THAT(fp_info_command->sensor_image(), SizeIs(0));
 }
@@ -134,7 +148,7 @@ TEST_F(FpInfoCommandTest, template_info_v1) {
 
   EXPECT_CALL(*mock_fp_info_command_v1_, Resp).WillRepeatedly(Return(&resp));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      1, std::move(mock_fp_info_command_v1_), nullptr);
+      1, std::move(mock_fp_info_command_v1_), nullptr, nullptr);
 
   EXPECT_THAT(fp_info_command->template_info().value(),
               Eq(TemplateInfo{
@@ -149,7 +163,7 @@ TEST_F(FpInfoCommandTest, template_info_v1) {
 TEST_F(FpInfoCommandTest, Run_v1) {
   EXPECT_CALL(*mock_fp_info_command_v1_, Run).WillRepeatedly(Return(true));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      1, std::move(mock_fp_info_command_v1_), nullptr);
+      1, std::move(mock_fp_info_command_v1_), nullptr, nullptr);
 
   EXPECT_TRUE(fp_info_command->Run(kDummyFd));
 }
@@ -158,7 +172,7 @@ TEST_F(FpInfoCommandTest, Result_v1) {
   uint32_t result = EC_RES_ACCESS_DENIED;
   EXPECT_CALL(*mock_fp_info_command_v1_, Result).WillRepeatedly(Return(result));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      1, std::move(mock_fp_info_command_v1_), nullptr);
+      1, std::move(mock_fp_info_command_v1_), nullptr, nullptr);
 
   EXPECT_EQ(fp_info_command->Result(), result);
 }
@@ -183,7 +197,7 @@ TEST_F(FpInfoCommandTest, Parse_sensor_info_v1) {
 
   EXPECT_CALL(*mock_fp_info_command_v1_, Resp).WillRepeatedly(Return(&resp));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      1, std::move(mock_fp_info_command_v1_), nullptr);
+      1, std::move(mock_fp_info_command_v1_), nullptr, nullptr);
 
   std::string expected_output =
       "Fingerprint sensor: vendor 1 product 2 model 3 version 4\n"
@@ -202,7 +216,7 @@ TEST_F(FpInfoCommandTest, GetFpSensorErrors_v2) {
 
   EXPECT_CALL(*mock_fp_info_command_v2_, Resp).WillRepeatedly(Return(&resp));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      2, nullptr, std::move(mock_fp_info_command_v2_));
+      2, nullptr, std::move(mock_fp_info_command_v2_), nullptr);
 
   EXPECT_EQ(fp_info_command->GetFpSensorErrors(),
             FpSensorErrors::kInitializationFailure);
@@ -211,7 +225,7 @@ TEST_F(FpInfoCommandTest, GetFpSensorErrors_v2) {
 TEST_F(FpInfoCommandTest, NumDeadPixels_v2) {
   EXPECT_CALL(*mock_fp_info_command_v2_, Resp).WillRepeatedly(Return(nullptr));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      2, nullptr, std::move(mock_fp_info_command_v2_));
+      2, nullptr, std::move(mock_fp_info_command_v2_), nullptr);
 
   const auto expected = FpInfoCommand::kDeadPixelsUnknown;
   EXPECT_EQ(fp_info_command->NumDeadPixels(), expected);
@@ -225,7 +239,7 @@ TEST_F(FpInfoCommandTest, sensor_id_v2) {
 
   EXPECT_CALL(*mock_fp_info_command_v2_, Resp).WillRepeatedly(Return(&resp));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      2, nullptr, std::move(mock_fp_info_command_v2_));
+      2, nullptr, std::move(mock_fp_info_command_v2_), nullptr);
 
   EXPECT_THAT(fp_info_command->sensor_id().value(), Eq(SensorId{
                                                         .vendor_id = 1,
@@ -254,7 +268,7 @@ TEST_F(FpInfoCommandTest, sensor_image_valid_v2) {
 
   EXPECT_CALL(*mock_fp_info_command_v2_, Resp).WillRepeatedly(Return(&resp));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      2, nullptr, std::move(mock_fp_info_command_v2_));
+      2, nullptr, std::move(mock_fp_info_command_v2_), nullptr);
 
   EXPECT_THAT(
       fp_info_command->sensor_image(),
@@ -275,7 +289,7 @@ TEST_F(FpInfoCommandTest, sensor_image_valid_v2) {
 TEST_F(FpInfoCommandTest, sensor_image_empty_v2) {
   EXPECT_CALL(*mock_fp_info_command_v2_, Resp).WillRepeatedly(Return(nullptr));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      2, nullptr, std::move(mock_fp_info_command_v2_));
+      2, nullptr, std::move(mock_fp_info_command_v2_), nullptr);
 
   EXPECT_THAT(fp_info_command->sensor_image(), SizeIs(0));
 }
@@ -290,7 +304,7 @@ TEST_F(FpInfoCommandTest, template_info_v2) {
 
   EXPECT_CALL(*mock_fp_info_command_v2_, Resp).WillRepeatedly(Return(&resp));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      2, nullptr, std::move(mock_fp_info_command_v2_));
+      2, nullptr, std::move(mock_fp_info_command_v2_), nullptr);
 
   EXPECT_THAT(fp_info_command->template_info().value(),
               Eq(TemplateInfo{
@@ -305,7 +319,7 @@ TEST_F(FpInfoCommandTest, template_info_v2) {
 TEST_F(FpInfoCommandTest, Run_v2) {
   EXPECT_CALL(*mock_fp_info_command_v2_, Run).WillRepeatedly(Return(true));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      2, nullptr, std::move(mock_fp_info_command_v2_));
+      2, nullptr, std::move(mock_fp_info_command_v2_), nullptr);
 
   EXPECT_TRUE(fp_info_command->Run(kDummyFd));
 }
@@ -314,7 +328,7 @@ TEST_F(FpInfoCommandTest, Result_v2) {
   uint32_t result = EC_RES_ACCESS_DENIED;
   EXPECT_CALL(*mock_fp_info_command_v2_, Result).WillRepeatedly(Return(result));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      2, nullptr, std::move(mock_fp_info_command_v2_));
+      2, nullptr, std::move(mock_fp_info_command_v2_), nullptr);
 
   EXPECT_EQ(fp_info_command->Result(), result);
 }
@@ -350,7 +364,7 @@ TEST_F(FpInfoCommandTest, Parse_sensor_info_v2) {
 
   EXPECT_CALL(*mock_fp_info_command_v2_, Resp).WillRepeatedly(Return(&resp));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
-      2, nullptr, std::move(mock_fp_info_command_v2_));
+      2, nullptr, std::move(mock_fp_info_command_v2_), nullptr);
 
   std::string expected_output =
       "Fingerprint sensor: vendor 1 product 2 model 3 version 4\n"
@@ -358,6 +372,180 @@ TEST_F(FpInfoCommandTest, Parse_sensor_info_v2) {
       "Dead pixels: 0\n"
       "Image [0]: size 64x80 bpp 8\n"
       "Image [1]: size 192x96 bpp 16\n"
+      "Templates: version 1 size 1024 count 3/4 dirty bitmap 8\n";
+
+  EXPECT_THAT(fp_info_command->ParseSensorInfo(), Eq(expected_output));
+}
+
+TEST_F(FpInfoCommandTest, GetFpSensorErrors_v3) {
+  struct fp_info::Params_v3 resp = {
+      .info = {.sensor_info = {.errors = FP_ERROR_INIT_FAIL |
+                                         FP_ERROR_DEAD_PIXELS_UNKNOWN}}};
+
+  EXPECT_CALL(*mock_fp_info_command_v3_, Resp).WillRepeatedly(Return(&resp));
+  auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
+      3, nullptr, nullptr, std::move(mock_fp_info_command_v3_));
+
+  EXPECT_EQ(fp_info_command->GetFpSensorErrors(),
+            FpSensorErrors::kInitializationFailure);
+}
+
+TEST_F(FpInfoCommandTest, NumDeadPixels_v3) {
+  EXPECT_CALL(*mock_fp_info_command_v3_, Resp).WillRepeatedly(Return(nullptr));
+  auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
+      3, nullptr, nullptr, std::move(mock_fp_info_command_v3_));
+
+  const auto expected = FpInfoCommand::kDeadPixelsUnknown;
+  EXPECT_EQ(fp_info_command->NumDeadPixels(), expected);
+}
+
+TEST_F(FpInfoCommandTest, sensor_id_v3) {
+  struct fp_info::Params_v3 resp = {.info = {.sensor_info = {.vendor_id = 1,
+                                                             .product_id = 2,
+                                                             .model_id = 3,
+                                                             .version = 4}}};
+
+  EXPECT_CALL(*mock_fp_info_command_v3_, Resp).WillRepeatedly(Return(&resp));
+  auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
+      3, nullptr, nullptr, std::move(mock_fp_info_command_v3_));
+
+  EXPECT_THAT(fp_info_command->sensor_id().value(), Eq(SensorId{
+                                                        .vendor_id = 1,
+                                                        .product_id = 2,
+                                                        .model_id = 3,
+                                                        .version = 4,
+                                                    }));
+}
+
+TEST_F(FpInfoCommandTest, sensor_image_valid_v3) {
+  struct fp_info::Params_v3 resp;
+
+  resp.info.sensor_info.num_capture_types = 2;
+  resp.image_frame_params[0] = {.frame_size = 5120,
+                                .image_data_offset_bytes = 400,
+                                .pixel_format = 0x59455247,
+                                .width = 64,
+                                .height = 80,
+                                .bpp = 8,
+                                .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE};
+  resp.image_frame_params[1] = {.frame_size = 36864,
+                                .image_data_offset_bytes = 172,
+                                .pixel_format = 0x59455247,
+                                .width = 192,
+                                .height = 96,
+                                .bpp = 16,
+                                .fp_capture_type = FP_CAPTURE_PATTERN0};
+
+  EXPECT_CALL(*mock_fp_info_command_v3_, Resp).WillRepeatedly(Return(&resp));
+  auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
+      3, nullptr, nullptr, std::move(mock_fp_info_command_v3_));
+
+  EXPECT_THAT(
+      fp_info_command->sensor_image(),
+      ElementsAre(SensorImage{.width = 64,
+                              .height = 80,
+                              .frame_size = 5120,
+                              .image_data_offset_bytes = 400,
+                              .pixel_format = 0x59455247,
+                              .bpp = 8,
+                              .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE},
+                  SensorImage{.width = 192,
+                              .height = 96,
+                              .frame_size = 36864,
+                              .image_data_offset_bytes = 172,
+                              .pixel_format = 0x59455247,
+                              .bpp = 16,
+                              .fp_capture_type = FP_CAPTURE_PATTERN0}));
+}
+
+TEST_F(FpInfoCommandTest, sensor_image_empty_v3) {
+  EXPECT_CALL(*mock_fp_info_command_v3_, Resp).WillRepeatedly(Return(nullptr));
+  auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
+      3, nullptr, nullptr, std::move(mock_fp_info_command_v3_));
+
+  EXPECT_THAT(fp_info_command->sensor_image(), SizeIs(0));
+}
+
+TEST_F(FpInfoCommandTest, template_info_v3) {
+  struct fp_info::Params_v3 resp = {
+      .info = {.template_info = {.template_size = 1024,
+                                 .template_max = 4,
+                                 .template_valid = 3,
+                                 .template_dirty = 1 << 3,
+                                 .template_version = 1}}};
+
+  EXPECT_CALL(*mock_fp_info_command_v3_, Resp).WillRepeatedly(Return(&resp));
+  auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
+      3, nullptr, nullptr, std::move(mock_fp_info_command_v3_));
+
+  EXPECT_THAT(fp_info_command->template_info().value(),
+              Eq(TemplateInfo{
+                  .version = 1,
+                  .size = 1024,
+                  .max_templates = 4,
+                  .num_valid = 3,
+                  .dirty = std::bitset<32>(1 << 3),
+              }));
+}
+
+TEST_F(FpInfoCommandTest, Run_v3) {
+  EXPECT_CALL(*mock_fp_info_command_v3_, Run).WillRepeatedly(Return(true));
+  auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
+      3, nullptr, nullptr, std::move(mock_fp_info_command_v3_));
+
+  EXPECT_TRUE(fp_info_command->Run(kDummyFd));
+}
+
+TEST_F(FpInfoCommandTest, Result_v3) {
+  uint32_t result = EC_RES_ACCESS_DENIED;
+  EXPECT_CALL(*mock_fp_info_command_v3_, Result).WillRepeatedly(Return(result));
+  auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
+      3, nullptr, nullptr, std::move(mock_fp_info_command_v3_));
+
+  EXPECT_EQ(fp_info_command->Result(), result);
+}
+
+TEST_F(FpInfoCommandTest, Parse_sensor_info_v3) {
+  struct fp_info::Params_v3 resp = {
+      .info = {.sensor_info = {.vendor_id = 1,
+                               .product_id = 2,
+                               .model_id = 3,
+                               .version = 4,
+                               .errors = FP_ERROR_BAD_HWID},
+               .template_info = {.template_size = 1024,
+                                 .template_max = 4,
+                                 .template_valid = 3,
+                                 .template_dirty = 1 << 3,
+                                 .template_version = 1}}};
+
+  resp.info.sensor_info.num_capture_types = 2;
+  resp.image_frame_params[0] = {
+      .frame_size = 5120,
+      .image_data_offset_bytes = 400,
+      .pixel_format = 0x59455247,
+      .width = 64,
+      .height = 80,
+      .bpp = 8,
+  };
+  resp.image_frame_params[1] = {
+      .frame_size = 36864,
+      .image_data_offset_bytes = 172,
+      .pixel_format = 0x59455247,
+      .width = 192,
+      .height = 96,
+      .bpp = 16,
+  };
+
+  EXPECT_CALL(*mock_fp_info_command_v3_, Resp).WillRepeatedly(Return(&resp));
+  auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
+      3, nullptr, nullptr, std::move(mock_fp_info_command_v3_));
+
+  std::string expected_output =
+      "Fingerprint sensor: vendor 1 product 2 model 3 version 4\n"
+      "Error flags: BAD_HWID \n"
+      "Dead pixels: 0\n"
+      "Image [0]: size 64x80 bpp 8 offset 400\n"
+      "Image [1]: size 192x96 bpp 16 offset 172\n"
       "Templates: version 1 size 1024 count 3/4 dirty bitmap 8\n";
 
   EXPECT_THAT(fp_info_command->ParseSensorInfo(), Eq(expected_output));

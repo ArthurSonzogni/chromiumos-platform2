@@ -13,8 +13,11 @@ std::unique_ptr<FpInfoCommand> FpInfoCommandFactory::Create(
   CHECK(ec_cmd_ver_supported != nullptr);
 
   uint32_t version = 1;
-  if (ec_cmd_ver_supported->EcCmdVersionSupported(EC_CMD_FP_INFO, 2) ==
+  if (ec_cmd_ver_supported->EcCmdVersionSupported(EC_CMD_FP_INFO, 3) ==
       EcCmdVersionSupportStatus::SUPPORTED) {
+    version = 3;
+  } else if (ec_cmd_ver_supported->EcCmdVersionSupported(EC_CMD_FP_INFO, 2) ==
+             EcCmdVersionSupportStatus::SUPPORTED) {
     version = 2;
   }
   return std::make_unique<ec::FpInfoCommand>(version);

@@ -1,0 +1,306 @@
+/// Copyright 2026 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include <bitset>
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
+#include "libec/ec_command.h"
+#include "libec/fingerprint/fp_info_command.h"
+
+namespace ec {
+namespace {
+
+using ::testing::ElementsAre;
+using ::testing::Eq;
+using ::testing::Return;
+
+TEST(FpInfoCommand_v3, FpInfoCommand_v3) {
+  auto cmd = std::make_unique<FpInfoCommand_v3>();
+  EXPECT_TRUE(cmd);
+  EXPECT_EQ(cmd->Version(), 3);
+  EXPECT_EQ(cmd->Command(), EC_CMD_FP_INFO);
+  EXPECT_EQ(cmd->RespSize(),
+            sizeof(struct fp_info::Header_v2) +
+                FP_MAX_CAPTURE_TYPES * sizeof(struct fp_image_frame_params_v2));
+}
+
+/**
+ * Tests FpInfoCommand_v3's "errors()" method.
+ */
+class FpInfoCommand_v3_ErrorsTest : public testing::Test {
+ public:
+  class MockFpInfoCommand_v3 : public FpInfoCommand_v3 {
+   public:
+    MOCK_METHOD(fp_info::Params_v3*, Resp, (), (override));
+  };
+  MockFpInfoCommand_v3 mock_fp_info_command_;
+};
+
+TEST_F(FpInfoCommand_v3_ErrorsTest, Errors_None) {
+  EXPECT_CALL(mock_fp_info_command_, Resp).WillOnce(Return(nullptr));
+
+  EXPECT_EQ(mock_fp_info_command_.GetFpSensorErrors(), FpSensorErrors::kNone);
+}
+
+TEST_F(FpInfoCommand_v3_ErrorsTest, Errors_NoIrq) {
+  struct fp_info::Params_v3 resp = {
+      .info = {.sensor_info = {.errors = FP_ERROR_NO_IRQ |
+                                         FP_ERROR_DEAD_PIXELS_UNKNOWN}}};
+
+  EXPECT_CALL(mock_fp_info_command_, Resp).WillRepeatedly(Return(&resp));
+
+  EXPECT_EQ(mock_fp_info_command_.GetFpSensorErrors(), FpSensorErrors::kNoIrq);
+}
+
+TEST_F(FpInfoCommand_v3_ErrorsTest, Errors_SpiCommunication) {
+  struct fp_info::Params_v3 resp = {
+      .info = {.sensor_info = {.errors = FP_ERROR_SPI_COMM |
+                                         FP_ERROR_DEAD_PIXELS_UNKNOWN}}};
+
+  EXPECT_CALL(mock_fp_info_command_, Resp).WillRepeatedly(Return(&resp));
+
+  EXPECT_EQ(mock_fp_info_command_.GetFpSensorErrors(),
+            FpSensorErrors::kSpiCommunication);
+}
+
+TEST_F(FpInfoCommand_v3_ErrorsTest, Errors_BadHardwareID) {
+  struct fp_info::Params_v3 resp = {
+      .info = {.sensor_info = {.errors = FP_ERROR_BAD_HWID |
+                                         FP_ERROR_DEAD_PIXELS_UNKNOWN}}};
+
+  EXPECT_CALL(mock_fp_info_command_, Resp).WillRepeatedly(Return(&resp));
+
+  EXPECT_EQ(mock_fp_info_command_.GetFpSensorErrors(),
+            FpSensorErrors::kBadHardwareID);
+}
+
+TEST_F(FpInfoCommand_v3_ErrorsTest, Errors_InitializationFailure) {
+  struct fp_info::Params_v3 resp = {
+      .info = {.sensor_info = {.errors = FP_ERROR_INIT_FAIL |
+                                         FP_ERROR_DEAD_PIXELS_UNKNOWN}}};
+
+  EXPECT_CALL(mock_fp_info_command_, Resp).WillRepeatedly(Return(&resp));
+
+  EXPECT_EQ(mock_fp_info_command_.GetFpSensorErrors(),
+            FpSensorErrors::kInitializationFailure);
+}
+
+TEST_F(FpInfoCommand_v3_ErrorsTest, Errors_DeadPixels_0) {
+  struct fp_info::Params_v3 resp = {
+      .info = {.sensor_info = {.errors = FP_ERROR_DEAD_PIXELS(0)}}};
+
+  EXPECT_CALL(mock_fp_info_command_, Resp).WillRepeatedly(Return(&resp));
+
+  EXPECT_EQ(mock_fp_info_command_.GetFpSensorErrors(), FpSensorErrors::kNone);
+}
+
+TEST_F(FpInfoCommand_v3_ErrorsTest, Errors_DeadPixels_1) {
+  struct fp_info::Params_v3 resp = {
+      .info = {.sensor_info = {.errors = FP_ERROR_DEAD_PIXELS(1)}}};
+
+  EXPECT_CALL(mock_fp_info_command_, Resp).WillRepeatedly(Return(&resp));
+
+  EXPECT_EQ(mock_fp_info_command_.GetFpSensorErrors(),
+            FpSensorErrors::kDeadPixels);
+}
+
+TEST_F(FpInfoCommand_v3_ErrorsTest, Errors_Multiple) {
+  struct fp_info::Params_v3 resp = {
+      .info = {.sensor_info = {.errors = FP_ERROR_DEAD_PIXELS(1) |
+                                         FP_ERROR_BAD_HWID}}};
+
+  EXPECT_CALL(mock_fp_info_command_, Resp).WillRepeatedly(Return(&resp));
+
+  EXPECT_EQ(mock_fp_info_command_.GetFpSensorErrors(),
+            FpSensorErrors::kDeadPixels | FpSensorErrors::kBadHardwareID);
+}
+
+/** Tests FpInfoCommand_v3's "NumDeadPixels()" method. */
+class FpInfoCommand_v3_NumDeadPixelsTest : public testing::Test {
+ public:
+  class MockFpInfoCommand_v3 : public FpInfoCommand_v3 {
+   public:
+    MOCK_METHOD(fp_info::Params_v3*, Resp, (), (override));
+  };
+  MockFpInfoCommand_v3 mock_fp_info_command_;
+};
+
+TEST_F(FpInfoCommand_v3_NumDeadPixelsTest, NoResponse) {
+  EXPECT_CALL(mock_fp_info_command_, Resp).WillRepeatedly(Return(nullptr));
+
+  const auto expected = FpInfoCommand::kDeadPixelsUnknown;
+  EXPECT_EQ(mock_fp_info_command_.NumDeadPixels(), expected);
+}
+
+TEST_F(FpInfoCommand_v3_NumDeadPixelsTest, DeadPixelsUnknown) {
+  struct fp_info::Params_v3 resp = {
+      .info = {.sensor_info = {.errors = FP_ERROR_BAD_HWID |
+                                         FP_ERROR_DEAD_PIXELS_UNKNOWN}}};
+
+  EXPECT_CALL(mock_fp_info_command_, Resp).WillRepeatedly(Return(&resp));
+
+  const auto expected = FpInfoCommand::kDeadPixelsUnknown;
+  EXPECT_EQ(mock_fp_info_command_.NumDeadPixels(), expected);
+}
+
+TEST_F(FpInfoCommand_v3_NumDeadPixelsTest, ZeroDeadPixels) {
+  struct fp_info::Params_v3 resp = {
+      .info = {.sensor_info = {.errors = FP_ERROR_INIT_FAIL |
+                                         FP_ERROR_DEAD_PIXELS(0)}}};
+
+  EXPECT_CALL(mock_fp_info_command_, Resp).WillRepeatedly(Return(&resp));
+
+  EXPECT_EQ(mock_fp_info_command_.NumDeadPixels(), 0);
+}
+
+TEST_F(FpInfoCommand_v3_NumDeadPixelsTest, OneDeadPixel) {
+  struct fp_info::Params_v3 resp = {
+      .info = {.sensor_info = {.errors = FP_ERROR_SPI_COMM |
+                                         FP_ERROR_DEAD_PIXELS(1)}}};
+
+  EXPECT_CALL(mock_fp_info_command_, Resp).WillRepeatedly(Return(&resp));
+
+  EXPECT_EQ(mock_fp_info_command_.NumDeadPixels(), 1);
+}
+
+/**
+ * Tests FpInfoCommand_v3's "sensor_id" method.
+ */
+class FpInfoCommand_v3_SensorIdTest : public testing::Test {
+ public:
+  class MockFpInfoCommand_v3 : public FpInfoCommand_v3 {
+   public:
+    MOCK_METHOD(fp_info::Params_v3*, Resp, (), (override));
+  };
+  MockFpInfoCommand_v3 mock_fp_info_command;
+};
+
+TEST_F(FpInfoCommand_v3_SensorIdTest, NullResponse) {
+  EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(nullptr));
+
+  EXPECT_EQ(mock_fp_info_command.sensor_id(), std::nullopt);
+}
+
+TEST_F(FpInfoCommand_v3_SensorIdTest, ValidSensorId) {
+  struct fp_info::Params_v3 resp = {.info = {.sensor_info = {.vendor_id = 1,
+                                                             .product_id = 2,
+                                                             .model_id = 3,
+                                                             .version = 4}}};
+  EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
+
+  EXPECT_THAT(mock_fp_info_command.sensor_id().value(), Eq(SensorId{
+                                                            .vendor_id = 1,
+                                                            .product_id = 2,
+                                                            .model_id = 3,
+                                                            .version = 4,
+                                                        }));
+}
+
+/**
+ * Tests FpInfoCommand_v3's "sensor_image" method.
+ */
+class FpInfoCommand_v3_SensorImageTest : public testing::Test {
+ public:
+  class MockFpInfoCommand_v3 : public FpInfoCommand_v3 {
+   public:
+    MOCK_METHOD(fp_info::Params_v3*, Resp, (), (override));
+  };
+  MockFpInfoCommand_v3 mock_fp_info_command;
+};
+
+TEST_F(FpInfoCommand_v3_SensorImageTest, NullResponse) {
+  EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(nullptr));
+
+  EXPECT_TRUE(mock_fp_info_command.sensor_image().empty());
+}
+
+TEST_F(FpInfoCommand_v3_SensorImageTest, ZeroCaptureImages) {
+  struct fp_info::Params_v3 resp = {.info = {.sensor_info = {
+                                                 .num_capture_types = 0,
+                                             }}};
+  EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
+  EXPECT_TRUE(mock_fp_info_command.sensor_image().empty());
+}
+
+TEST_F(FpInfoCommand_v3_SensorImageTest, ValidSensorImage) {
+  struct fp_info::Params_v3 resp;
+
+  resp.info.sensor_info.num_capture_types = 2;
+  resp.image_frame_params[0] = {.frame_size = 5120,
+                                .image_data_offset_bytes = 400,
+                                .pixel_format = 0x59455247,
+                                .width = 64,
+                                .height = 80,
+                                .bpp = 8,
+                                .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE};
+  resp.image_frame_params[1] = {.frame_size = 36864,
+                                .image_data_offset_bytes = 172,
+                                .pixel_format = 0x59455247,
+                                .width = 192,
+                                .height = 96,
+                                .bpp = 16,
+                                .fp_capture_type = FP_CAPTURE_PATTERN0};
+
+  EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
+
+  EXPECT_THAT(
+      mock_fp_info_command.sensor_image(),
+      ElementsAre(SensorImage{.width = 64,
+                              .height = 80,
+                              .frame_size = 5120,
+                              .image_data_offset_bytes = 400,
+                              .pixel_format = 0x59455247,
+                              .bpp = 8,
+                              .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE},
+                  SensorImage{.width = 192,
+                              .height = 96,
+                              .frame_size = 36864,
+                              .image_data_offset_bytes = 172,
+                              .pixel_format = 0x59455247,
+                              .bpp = 16,
+                              .fp_capture_type = FP_CAPTURE_PATTERN0}));
+}
+
+/**
+ * Tests FpInfoCommand_v3's "template_info" method.
+ */
+class FpInfoCommand_v3_TemplateInfoTest : public testing::Test {
+ public:
+  class MockFpInfoCommand_v3 : public FpInfoCommand_v3 {
+   public:
+    MOCK_METHOD(fp_info::Params_v3*, Resp, (), (override));
+  };
+  MockFpInfoCommand_v3 mock_fp_info_command;
+};
+
+TEST_F(FpInfoCommand_v3_TemplateInfoTest, NullResponse) {
+  EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(nullptr));
+
+  EXPECT_EQ(mock_fp_info_command.template_info(), std::nullopt);
+}
+
+TEST_F(FpInfoCommand_v3_TemplateInfoTest, ValidTemplateInfo) {
+  struct fp_info::Params_v3 resp = {
+      .info = {.template_info = {.template_size = 1024,
+                                 .template_max = 4,
+                                 .template_valid = 3,
+                                 .template_dirty = 1 << 3,
+                                 .template_version = 1}}};
+
+  EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
+
+  EXPECT_THAT(mock_fp_info_command.template_info().value(),
+              Eq(TemplateInfo{
+                  .version = 1,
+                  .size = 1024,
+                  .max_templates = 4,
+                  .num_valid = 3,
+                  .dirty = std::bitset<32>(1 << 3),
+              }));
+}
+
+}  // namespace
+}  // namespace ec

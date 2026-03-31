@@ -13,6 +13,9 @@ uint32_t FpInfoCommand::GetVersion() const {
 }
 
 std::optional<SensorId> FpInfoCommand::sensor_id() {
+  if (GetVersion() == 3) {
+    return fp_info_command_v3_->sensor_id();
+  }
   if (GetVersion() == 2) {
     return fp_info_command_v2_->sensor_id();
   }
@@ -20,6 +23,9 @@ std::optional<SensorId> FpInfoCommand::sensor_id() {
 }
 
 std::vector<SensorImage> FpInfoCommand::sensor_image() {
+  if (GetVersion() == 3) {
+    return fp_info_command_v3_->sensor_image();
+  }
   if (GetVersion() == 2) {
     return fp_info_command_v2_->sensor_image();
   }
@@ -33,6 +39,9 @@ std::vector<SensorImage> FpInfoCommand::sensor_image() {
 }
 
 std::optional<TemplateInfo> FpInfoCommand::template_info() {
+  if (GetVersion() == 3) {
+    return fp_info_command_v3_->template_info();
+  }
   if (GetVersion() == 2) {
     return fp_info_command_v2_->template_info();
   }
@@ -40,6 +49,9 @@ std::optional<TemplateInfo> FpInfoCommand::template_info() {
 }
 
 int FpInfoCommand::NumDeadPixels() {
+  if (GetVersion() == 3) {
+    return fp_info_command_v3_->NumDeadPixels();
+  }
   if (GetVersion() == 2) {
     return fp_info_command_v2_->NumDeadPixels();
   }
@@ -47,6 +59,9 @@ int FpInfoCommand::NumDeadPixels() {
 }
 
 FpSensorErrors FpInfoCommand::GetFpSensorErrors() {
+  if (GetVersion() == 3) {
+    return fp_info_command_v3_->GetFpSensorErrors();
+  }
   if (GetVersion() == 2) {
     return fp_info_command_v2_->GetFpSensorErrors();
   }
@@ -54,6 +69,9 @@ FpSensorErrors FpInfoCommand::GetFpSensorErrors() {
 }
 
 bool FpInfoCommand::Run(int ec_fd) {
+  if (GetVersion() == 3) {
+    return fp_info_command_v3_->Run(ec_fd);
+  }
   if (GetVersion() == 2) {
     return fp_info_command_v2_->Run(ec_fd);
   }
@@ -61,6 +79,9 @@ bool FpInfoCommand::Run(int ec_fd) {
 }
 
 bool FpInfoCommand::Run(ec::EcUsbEndpointInterface& uep) {
+  if (GetVersion() == 3) {
+    return fp_info_command_v3_->Run(uep);
+  }
   if (GetVersion() == 2) {
     return fp_info_command_v2_->Run(uep);
   }
@@ -68,6 +89,9 @@ bool FpInfoCommand::Run(ec::EcUsbEndpointInterface& uep) {
 }
 
 bool FpInfoCommand::RunWithMultipleAttempts(int fd, int num_attempts) {
+  if (GetVersion() == 3) {
+    return fp_info_command_v3_->RunWithMultipleAttempts(fd, num_attempts);
+  }
   if (GetVersion() == 2) {
     return fp_info_command_v2_->RunWithMultipleAttempts(fd, num_attempts);
   }
@@ -75,6 +99,9 @@ bool FpInfoCommand::RunWithMultipleAttempts(int fd, int num_attempts) {
 }
 
 uint32_t FpInfoCommand::Version() const {
+  if (GetVersion() == 3) {
+    return fp_info_command_v3_->Version();
+  }
   if (GetVersion() == 2) {
     return fp_info_command_v2_->Version();
   }
@@ -82,6 +109,9 @@ uint32_t FpInfoCommand::Version() const {
 }
 
 uint32_t FpInfoCommand::Command() const {
+  if (GetVersion() == 3) {
+    return fp_info_command_v3_->Command();
+  }
   if (GetVersion() == 2) {
     return fp_info_command_v2_->Command();
   }
@@ -89,6 +119,9 @@ uint32_t FpInfoCommand::Command() const {
 }
 
 uint32_t FpInfoCommand::Result() const {
+  if (GetVersion() == 3) {
+    return fp_info_command_v3_->Result();
+  }
   if (GetVersion() == 2) {
     return fp_info_command_v2_->Result();
   }
