@@ -28,7 +28,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
-#include <base/types/cxx23_to_underlying.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
@@ -92,7 +91,7 @@ constexpr base::TimeDelta kMaxAutoConnectCooldownTime = base::Minutes(1);
 
 // This is the mapping of ONC enum values and their textual representation.
 static constexpr std::
-    array<const char*, base::to_underlying(Service::ONCSource::kONCSourcesNum)>
+    array<const char*, std::to_underlying(Service::ONCSource::kONCSourcesNum)>
         kONCSourceMapping = {kONCSourceUnknown, kONCSourceNone,
                              kONCSourceUserImport, kONCSourceDevicePolicy,
                              kONCSourceUserPolicy};
@@ -2627,17 +2626,17 @@ void Service::ClearMeteredProperty(Error* /*error*/) {
 }
 
 std::string Service::GetONCSource(Error* error) {
-  if (base::to_underlying(source_) >= kONCSourceMapping.size()) {
+  if (std::to_underlying(source_) >= kONCSourceMapping.size()) {
     LOG(WARNING) << *this << " " << __func__
-                 << ": Bad source value: " << base::to_underlying(source_);
+                 << ": Bad source value: " << std::to_underlying(source_);
     return kONCSourceUnknown;
   }
 
-  return kONCSourceMapping[base::to_underlying(source_)];
+  return kONCSourceMapping[std::to_underlying(source_)];
 }
 
 bool Service::SetONCSource(const std::string& source, Error* error) {
-  if (kONCSourceMapping[base::to_underlying(source_)] == source) {
+  if (kONCSourceMapping[std::to_underlying(source_)] == source) {
     return false;
   }
   auto it =
@@ -2652,13 +2651,13 @@ bool Service::SetONCSource(const std::string& source, Error* error) {
   source_ =
       static_cast<ONCSource>(std::distance(kONCSourceMapping.begin(), it));
   adaptor_->EmitStringChanged(kONCSourceProperty,
-                              kONCSourceMapping[base::to_underlying(source_)]);
+                              kONCSourceMapping[std::to_underlying(source_)]);
   return true;
 }
 
 int Service::SourcePriority() {
   static constexpr std::array<Service::ONCSource,
-                              base::to_underlying(
+                              std::to_underlying(
                                   Service::ONCSource::kONCSourcesNum)>
       priorities = {Service::ONCSource::kONCSourceUnknown,
                     Service::ONCSource::kONCSourceNone,

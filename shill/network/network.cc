@@ -22,7 +22,6 @@
 #include <base/observer_list.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/types/cxx23_to_underlying.h>
 #include <brillo/http/http_request.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/net-base/ip_address.h>
@@ -105,7 +104,7 @@ std::string Network::StartOptions::ToString() const {
       << (probing_configuration == PortalDetector::DefaultProbingConfiguration()
               ? "default, "
               : "customized, ");
-  oss << "validation_mode=" << base::to_underlying(validation_mode) << ", ";
+  oss << "validation_mode=" << std::to_underlying(validation_mode) << ", ";
   if (link_protocol_network_config) {
     oss << "link_protocol_network_config=" << *link_protocol_network_config;
   }

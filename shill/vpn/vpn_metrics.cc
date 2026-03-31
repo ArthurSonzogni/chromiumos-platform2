@@ -10,7 +10,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/time/time.h>
-#include <base/types/cxx23_to_underlying.h>
+#include <utility>
 #include <chromeos/net-base/network_config.h>
 
 #include "shill/metrics.h"
@@ -254,7 +254,7 @@ void VPNDriverMetrics::ReportNetworkConfig(
 void VPNDriverMetrics::ReportConnecting() {
   if (connection_state_ != ConnectionState::kIdle) {
     LOG(ERROR) << __func__ << ": unexpected connection state "
-               << base::to_underlying(connection_state_);
+               << std::to_underlying(connection_state_);
     return;
   }
 
@@ -277,7 +277,7 @@ void VPNDriverMetrics::ReportConnected() {
     case ConnectionState::kConnected:
     case ConnectionState::kIdle:
       LOG(ERROR) << __func__ << ": unexpected connection state "
-                 << base::to_underlying(connection_state_);
+                 << std::to_underlying(connection_state_);
       return;
   }
 
@@ -288,7 +288,7 @@ void VPNDriverMetrics::ReportConnected() {
 void VPNDriverMetrics::ReportReconnecting() {
   if (connection_state_ != ConnectionState::kConnected) {
     LOG(ERROR) << __func__ << ": unexpected connection state "
-               << base::to_underlying(connection_state_);
+               << std::to_underlying(connection_state_);
     return;
   }
 
@@ -316,7 +316,7 @@ void VPNDriverMetrics::ReportDisconnected(VPNEndReason reason) {
       break;
     case ConnectionState::kIdle:
       LOG(ERROR) << __func__ << ": unexpected connection state "
-                 << base::to_underlying(connection_state_);
+                 << std::to_underlying(connection_state_);
       return;
   }
 
