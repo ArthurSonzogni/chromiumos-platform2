@@ -27,7 +27,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/types/cxx23_to_underlying.h>
+#include <utility>
+#include <vector>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <dbus/cryptohome/dbus-constants.h>
@@ -1315,7 +1316,7 @@ StorageStatus Mounter::PerformMount(MountType mount_type,
       return StorageStatus::Make(
           FROM_HERE,
           base::StringPrintf("Invalid mount type: %d",
-                             base::to_underlying(mount_type)),
+                             std::to_underlying(mount_type)),
           MOUNT_ERROR_INVALID_ARGS);
   }
 
