@@ -17,6 +17,7 @@
 #include <ostream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <base/files/scoped_file.h>
@@ -24,7 +25,6 @@
 #include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/stringprintf.h>
-#include <base/types/cxx23_to_underlying.h>
 
 #include "patchpanel/lifeline_fd_service.h"
 #include "patchpanel/system.h"
@@ -243,7 +243,7 @@ union Fwmark {
 
   static constexpr Fwmark FromQoSCategory(QoSCategory category) {
     return {.legacy = 0,
-            .qos_category = base::to_underlying(category),
+            .qos_category = std::to_underlying(category),
             .policy = 0,
             .rt_table_id = 0};
   }

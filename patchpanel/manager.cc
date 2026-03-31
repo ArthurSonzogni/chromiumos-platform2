@@ -15,7 +15,6 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/single_thread_task_runner.h>
-#include <base/types/cxx23_to_underlying.h>
 #include <chromeos/net-base/mac_address.h>
 #include <chromeos/net-base/process_manager.h>
 #include <chromeos/net-base/technology.h>
@@ -1098,7 +1097,7 @@ void Manager::ConfigureNetwork(int ifindex,
   LOG(INFO) << __func__ << " on " << ifname << "(" << ifindex
             << ", sid=" << session_id << "): " << network_config
             << ", priority " << priority << ", area 0x" << std::hex
-            << base::to_underlying(area);
+            << std::to_underlying(area);
 
   NetworkApplier::GetInstance()->ApplyNetworkConfig(
       ifindex, ifname, area, network_config, priority, technology);

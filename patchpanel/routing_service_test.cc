@@ -16,7 +16,6 @@
 #include <base/files/scoped_file.h>
 #include <base/functional/callback_helpers.h>
 #include <base/strings/stringprintf.h>
-#include <base/types/cxx23_to_underlying.h>
 #include <gtest/gtest.h>
 
 #include "patchpanel/mock_lifeline_fd_service.h"
@@ -212,7 +211,7 @@ TEST_F(RoutingServiceTest, FwmarkQoSCategories) {
   constexpr auto kOffset = 5;
 
   for (const auto category : kAllCategories) {
-    uint32_t category_int = base::to_underlying(category);
+    uint32_t category_int = std::to_underlying(category);
     EXPECT_EQ(category_int, Fwmark::FromQoSCategory(category).qos_category);
     EXPECT_EQ(category_int << kOffset,
               Fwmark::FromQoSCategory(category).Value());

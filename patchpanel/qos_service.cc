@@ -12,7 +12,6 @@
 #include <base/containers/flat_map.h>
 #include <base/containers/flat_set.h>
 #include <base/strings/string_split.h>
-#include <base/types/cxx23_to_underlying.h>
 #include <chromeos/net-base/dns_client.h>
 #include <chromeos/net-base/technology.h>
 
@@ -155,7 +154,7 @@ class QoSService::DoHUpdater {
       // which is expected.
       if (result.error() != DNSClient::Error::kNoData) {
         LOG(ERROR) << "Failed to resolve " << hostname << " with " << family
-                   << ", error_code=" << base::to_underlying(result.error());
+                   << ", error_code=" << std::to_underlying(result.error());
       }
     }
 
