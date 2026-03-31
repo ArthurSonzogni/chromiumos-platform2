@@ -14,7 +14,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <base/types/cxx23_to_underlying.h>
 #include <base/types/expected.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
@@ -335,7 +334,7 @@ TEST_F(FirmwareSelectorTest, NonblankStatusMessages) {
     // when we ask for the human readable string
     std::string msg = FirmwareSelector::FindFirmwareFileStatusToString(status);
     // expect it to not be "".
-    EXPECT_FALSE(msg.empty()) << "Status " << base::to_underlying(status)
+    EXPECT_FALSE(msg.empty()) << "Status " << std::to_underlying(status)
                               << " converts to a blank status string.";
   }
 }

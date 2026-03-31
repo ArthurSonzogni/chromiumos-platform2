@@ -4,7 +4,8 @@
 
 #include "biod/biod_metrics.h"
 
-#include <base/types/cxx23_to_underlying.h>
+#include <utility>
+
 #include <chromeos/ec/ec_commands.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -57,7 +58,7 @@ TEST_F(BiodMetricsTest, SendEnrollResult) {
   const auto result = BiodMetricsInterface::EnrollSessionResult::kErrorUnknown;
   EXPECT_CALL(*GetMetricsLibraryMock(),
               SendEnumToUMA(metrics::kFpEnrollmentSessionResult,
-                            base::to_underlying(result), 6))
+                            std::to_underlying(result), 6))
       .Times(1);
   biod_metrics_.SendEnrollResult(result);
   testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
@@ -142,8 +143,8 @@ TEST_F(BiodMetricsTest, SendFwUpdaterStatusOnNoUpdate) {
   // rather than kMaxValue for 'exclusive_max'.
   EXPECT_CALL(*GetMetricsLibraryMock(),
               SendEnumToUMA(
-                  metrics::kUpdaterStatus, base::to_underlying(status),
-                  base::to_underlying(BiodMetrics::FwUpdaterStatus::kMaxValue)))
+                  metrics::kUpdaterStatus, std::to_underlying(status),
+                  std::to_underlying(BiodMetrics::FwUpdaterStatus::kMaxValue)))
       .Times(1);
 
   EXPECT_CALL(*GetMetricsLibraryMock(),
@@ -157,8 +158,8 @@ TEST_F(BiodMetricsTest, SendFwUpdaterStatusOnNoUpdate) {
 
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
-      SendEnumToUMA(metrics::kUpdaterReason, base::to_underlying(reason),
-                    base::to_underlying(updater::UpdateReason::kMaxValue) + 1))
+      SendEnumToUMA(metrics::kUpdaterReason, std::to_underlying(reason),
+                    std::to_underlying(updater::UpdateReason::kMaxValue) + 1))
       .Times(1);
   biod_metrics_.SendFwUpdaterStatus(status, reason, overall_ms);
 }
@@ -171,8 +172,8 @@ TEST_F(BiodMetricsTest, SendFwUpdaterStatusOnUpdate) {
 
   EXPECT_CALL(*GetMetricsLibraryMock(),
               SendEnumToUMA(
-                  metrics::kUpdaterStatus, base::to_underlying(status),
-                  base::to_underlying(BiodMetrics::FwUpdaterStatus::kMaxValue)))
+                  metrics::kUpdaterStatus, std::to_underlying(status),
+                  std::to_underlying(BiodMetrics::FwUpdaterStatus::kMaxValue)))
       .Times(1);
 
   EXPECT_CALL(*GetMetricsLibraryMock(),
@@ -186,8 +187,8 @@ TEST_F(BiodMetricsTest, SendFwUpdaterStatusOnUpdate) {
 
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
-      SendEnumToUMA(metrics::kUpdaterReason, base::to_underlying(reason),
-                    base::to_underlying(updater::UpdateReason::kMaxValue) + 1))
+      SendEnumToUMA(metrics::kUpdaterReason, std::to_underlying(reason),
+                    std::to_underlying(updater::UpdateReason::kMaxValue) + 1))
       .Times(1);
   biod_metrics_.SendFwUpdaterStatus(status, reason, overall_ms);
 }
@@ -221,7 +222,7 @@ TEST_F(BiodMetricsTest, SendPositiveMatchSecretCorrect) {
 TEST_F(BiodMetricsTest, SendResetContextMode) {
   constexpr int kExpectedResetSensorEnum = 10;
   constexpr int kExpectedMaxEnum =
-      base::to_underlying(ec::FpMode::Mode::kMaxValue);
+      std::to_underlying(ec::FpMode::Mode::kMaxValue);
 
   EXPECT_CALL(*GetMetricsLibraryMock(),
               SendEnumToUMA(metrics::kResetContextMode,
@@ -344,7 +345,7 @@ TEST_F(BiodMetricsTest, SendSessionRetirevePrimarySessionResult) {
 
   EXPECT_CALL(*GetMetricsLibraryMock(),
               SendEnumToUMA(metrics::kSessionRetrievePrimarySessionResult,
-                            base::to_underlying(result), 7))
+                            std::to_underlying(result), 7))
       .Times(1);
 
   biod_metrics_.SendSessionRetrievePrimarySessionResult(result);

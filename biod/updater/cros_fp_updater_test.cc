@@ -14,7 +14,8 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/types/cxx23_to_underlying.h>
+#include <utility>
+
 #include <chromeos/ec/ec_commands.h>
 #include <cros_config/fake_cros_config.h>
 #include <gmock/gmock.h>
@@ -153,7 +154,7 @@ TEST(CrosFpDeviceUpdateTest, NonblankEcCurrentImageString) {
     // when we ask for the human readable string
     std::string msg = CrosFpDeviceUpdate::EcCurrentImageToString(image);
     // expect it to not be "".
-    EXPECT_FALSE(msg.empty()) << "Status " << base::to_underlying(image)
+    EXPECT_FALSE(msg.empty()) << "Status " << std::to_underlying(image)
                               << " converts to a blank status string.";
   }
 }

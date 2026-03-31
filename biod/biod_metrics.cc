@@ -4,7 +4,8 @@
 
 #include "biod/biod_metrics.h"
 
-#include <base/types/cxx23_to_underlying.h>
+#include <utility>
+
 #include <libec/fingerprint/fp_sensor_errors.h>
 #include <metrics/metrics_library.h>
 
@@ -92,8 +93,8 @@ bool BiodMetrics::SendFwUpdaterStatus(FwUpdaterStatus status,
   // for FWUpdaterStatus are added to avoid data discontinuity, then use
   // kMaxValue+1 rather than kMaxValue (or templated SendEnumToUMA()).
   if (!metrics_lib_->SendEnumToUMA(
-          metrics::kUpdaterStatus, base::to_underlying(status),
-          base::to_underlying(FwUpdaterStatus::kMaxValue))) {
+          metrics::kUpdaterStatus, std::to_underlying(status),
+          std::to_underlying(FwUpdaterStatus::kMaxValue))) {
     rc = false;
   }
 

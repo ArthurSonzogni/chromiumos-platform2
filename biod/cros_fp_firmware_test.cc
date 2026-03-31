@@ -22,7 +22,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
-#include <base/types/cxx23_to_underlying.h>
+#include <utility>
 #include <gtest/gtest.h>
 
 #include "biod/utils.h"
@@ -424,7 +424,7 @@ TEST_F(CrosFpFirmwareTest, NonblankStatusMessages) {
     // when we ask for the human readable string
     std::string msg = TestStatusToString(status);
     // expect it to not be "".
-    EXPECT_FALSE(msg.empty()) << "Status " << base::to_underlying(status)
+    EXPECT_FALSE(msg.empty()) << "Status " << std::to_underlying(status)
                               << " converts to a blank status string.";
   }
 }
