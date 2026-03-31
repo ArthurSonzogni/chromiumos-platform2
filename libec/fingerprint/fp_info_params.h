@@ -31,9 +31,19 @@ struct Params_v2 {
       image_frame_params{};
 };
 
+// Allocates space for the flash bank response.
+struct Params_v3 {
+  struct Header_v2 info{};
+  ArrayData<struct fp_image_frame_params_v2, struct Header_v2>
+      image_frame_params{};
+};
+
 }  // namespace ec::fp_info
 
 bool operator==(const struct fp_image_frame_params& lhs,
                 const struct fp_image_frame_params& rhs);
+
+bool operator==(const struct fp_image_frame_params_v2& lhs,
+                const struct fp_image_frame_params_v2& rhs);
 
 #endif  // LIBEC_FINGERPRINT_FP_INFO_PARAMS_H_
