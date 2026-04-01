@@ -92,15 +92,17 @@ struct DecryptResponsePayloadRequest {
 // in a successful recovery `destination_dh` should be equal to `publisher_dh`.
 class RecoveryCrypto {
  public:
-  // Generate the value of the hkdf_info for mediator share.
-  //
-  // The standard version that should be used for all new enrollments is the one
-  // that accepts a user identifier, which will be bound into the info. However,
-  // an overload that does not do this binding is also provided which is useful
-  // for testing and for decrypting old mediator shares.
+  // Generate the value of the hkdf_info for mediator share using the HSM
+  // associated data. The info should be provided as the raw CBOR-encoded bytes
+  // use in the recovery request/response messages.
   static brillo::Blob GenerateMediatorShareHkdfInfo(
+      const brillo::Blob& hsm_associated_data_cbor);
+
+  // Legacy version of GenerateMediatorShareHkdfInfo that are useful for testing
+  // the info format used on older mediator shares.
+  static brillo::Blob GenerateLegacyMediatorShareHkdfInfo(
       const UserIdentifier& user_id);
-  static brillo::Blob GenerateMediatorShareHkdfInfo();
+  static brillo::Blob GenerateLegacyMediatorShareHkdfInfo();
 
   // Constant value of hkdf_info for request payload plaintext. Must be kept in
   // sync with the server.

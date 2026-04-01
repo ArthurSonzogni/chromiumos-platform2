@@ -713,9 +713,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   }
 
   brillo::Blob hkdf_info = RecoveryCrypto::GenerateMediatorShareHkdfInfo(
-      UserIdentifier{.type = request.onboarding_metadata.cryptohome_user_type,
-                     .value = brillo::BlobFromString(
-                         request.onboarding_metadata.cryptohome_user)});
+      response->hsm_payload.associated_data);
 
   if (!EncryptHsmPlainText(
           HsmPlainText{
@@ -1071,7 +1069,7 @@ bool RecoveryCryptoImpl::GenerateOnboardingMetadata(
   onboarding_metadata->rlz_code = GetRlzCode();
   onboarding_metadata->recovery_id = recovery_id;
   onboarding_metadata->info_format =
-      OnboardingMetadata::InfoFormat::kIncludesUserId;
+      OnboardingMetadata::InfoFormat::kIncludesRecoveryId;
   return true;
 }
 

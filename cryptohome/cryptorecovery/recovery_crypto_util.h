@@ -91,6 +91,7 @@ struct OnboardingMetadata {
     // Avoid using 0 as a value for the enum, to catch uninitialized values.
     kFixed = 1,
     kIncludesUserId = 2,
+    kIncludesRecoveryId = 3,
   };
   InfoFormat info_format;
 };

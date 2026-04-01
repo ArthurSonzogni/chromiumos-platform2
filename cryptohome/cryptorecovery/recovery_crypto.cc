@@ -4,9 +4,7 @@
 
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
 
-#include <algorithm>
 #include <utility>
-#include <vector>
 
 #include <base/logging.h>
 #include <base/stl_util.h>
@@ -20,18 +18,29 @@ using ::hwsec_foundation::Hkdf;
 using ::hwsec_foundation::HkdfHash;
 
 namespace cryptohome::cryptorecovery {
+namespace {
+
+// Value must be kept in sync with the server.
+constexpr char kMediatorShareHkdfInfoPrefix[] = "HSM-Payload Key";
+
+}  // namespace
 
 brillo::Blob RecoveryCrypto::GenerateMediatorShareHkdfInfo(
-    const UserIdentifier& user_id) {
-  return brillo::CombineBlobs({GenerateMediatorShareHkdfInfo(),
-                               brillo::Blob({std::to_underlying(user_id.type)}),
-                               user_id.value});
+    const brillo::Blob& hsm_associated_data_cbor) {
+  return brillo::CombineBlobs(
+      {brillo::BlobFromString(kMediatorShareHkdfInfoPrefix),
+       hsm_associated_data_cbor});
 }
 
-brillo::Blob RecoveryCrypto::GenerateMediatorShareHkdfInfo() {
-  // Value must be kept in sync with the server.
-  static constexpr char kHkdfInfoPrefix[] = "HSM-Payload Key";
-  return brillo::BlobFromString(kHkdfInfoPrefix);
+brillo::Blob RecoveryCrypto::GenerateLegacyMediatorShareHkdfInfo(
+    const UserIdentifier& user_id) {
+  return brillo::CombineBlobs(
+      {brillo::BlobFromString(kMediatorShareHkdfInfoPrefix),
+       brillo::Blob({std::to_underlying(user_id.type)}), user_id.value});
+}
+
+brillo::Blob RecoveryCrypto::GenerateLegacyMediatorShareHkdfInfo() {
+  return brillo::BlobFromString(kMediatorShareHkdfInfoPrefix);
 }
 
 const char RecoveryCrypto::kRequestPayloadPlainTextHkdfInfoValue[] =

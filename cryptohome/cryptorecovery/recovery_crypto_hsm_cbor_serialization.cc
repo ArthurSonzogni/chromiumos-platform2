@@ -248,6 +248,10 @@ bool ConvertCborMapToOnboardingMetadata(
     case kOnboardingMetaDataSchemaVersionUserIdInfo:
       metadata->info_format = OnboardingMetadata::InfoFormat::kIncludesUserId;
       break;
+    case kOnboardingMetaDataSchemaVersionRecoveryIdInfo:
+      metadata->info_format =
+          OnboardingMetadata::InfoFormat::kIncludesRecoveryId;
+      break;
     default:
       LOG(ERROR) << "Unrecognized schema version in the onboarding metadata.";
       return false;
@@ -608,6 +612,10 @@ cbor::Value::MapValue ConvertOnboardingMetadataToCborMap(
       break;
     case OnboardingMetadata::InfoFormat::kIncludesUserId:
       map.emplace(kSchemaVersion, kOnboardingMetaDataSchemaVersionUserIdInfo);
+      break;
+    case OnboardingMetadata::InfoFormat::kIncludesRecoveryId:
+      map.emplace(kSchemaVersion,
+                  kOnboardingMetaDataSchemaVersionRecoveryIdInfo);
       break;
   }
   map.emplace(kCryptohomeUser, args.cryptohome_user);

@@ -66,6 +66,7 @@ extern const char kEpochMetaData[];
 extern const int kHsmAssociatedDataSchemaVersion;
 inline constexpr int kOnboardingMetaDataSchemaVersionFixedInfo = 1;
 inline constexpr int kOnboardingMetaDataSchemaVersionUserIdInfo = 2;
+inline constexpr int kOnboardingMetaDataSchemaVersionRecoveryIdInfo = 3;
 extern const int kRequestMetaDataSchemaVersion;
 extern const int kHsmMetaDataSchemaVersion;
 extern const int kLoggedRecordSchemaVersion;

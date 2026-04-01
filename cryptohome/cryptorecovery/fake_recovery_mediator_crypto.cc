@@ -657,13 +657,19 @@ bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
   brillo::Blob hkdf_info;
   switch (hsm_associated_data.onboarding_meta_data.info_format) {
     case OnboardingMetadata::InfoFormat::kFixed:
-      hkdf_info = RecoveryCrypto::GenerateMediatorShareHkdfInfo();
+      hkdf_info = RecoveryCrypto::GenerateLegacyMediatorShareHkdfInfo();
       break;
     case OnboardingMetadata::InfoFormat::kIncludesUserId:
-      hkdf_info = RecoveryCrypto::GenerateMediatorShareHkdfInfo(UserIdentifier{
-          .type = hsm_associated_data.onboarding_meta_data.cryptohome_user_type,
-          .value = brillo::BlobFromString(
-              hsm_associated_data.onboarding_meta_data.cryptohome_user)});
+      hkdf_info =
+          RecoveryCrypto::GenerateLegacyMediatorShareHkdfInfo(UserIdentifier{
+              .type =
+                  hsm_associated_data.onboarding_meta_data.cryptohome_user_type,
+              .value = brillo::BlobFromString(
+                  hsm_associated_data.onboarding_meta_data.cryptohome_user)});
+      break;
+    case OnboardingMetadata::InfoFormat::kIncludesRecoveryId:
+      hkdf_info = RecoveryCrypto::GenerateMediatorShareHkdfInfo(
+          hsm_payload.associated_data);
       break;
   }
 

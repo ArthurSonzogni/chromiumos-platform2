@@ -132,7 +132,7 @@ class RecoveryCryptoTest : public testing::Test {
     onboarding_metadata_.rlz_code = "Rlz Code";
     onboarding_metadata_.recovery_id = "Recovery ID";
     onboarding_metadata_.info_format =
-        OnboardingMetadata::InfoFormat::kIncludesUserId;
+        OnboardingMetadata::InfoFormat::kIncludesRecoveryId;
 
     AuthClaim auth_claim;
     auth_claim.gaia_access_token = kFakeGaiaAccessToken;
