@@ -120,7 +120,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
 
   // Add a TaskRunner where we can control time.
-  base::CurrentIOThread::Get()->SetTaskRunner(task_runner);
+  base::TestMockTimeTaskRunner::ScopedContext scoped_context(task_runner);
 
   // Initialize brillo::BaseMessageLoop
   brillo::BaseMessageLoop brillo_loop(task_runner);
