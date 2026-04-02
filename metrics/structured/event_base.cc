@@ -100,9 +100,7 @@ std::string EventBase::GetHmacMetricForTest(uint64_t name_hash) const {
       return metric.hmac_value;
     }
   }
-  NOTREACHED_IN_MIGRATION()
-      << "Failed to get metric value. Invalid name hash " << name_hash;
-  return "";
+  NOTREACHED() << "Failed to get metric value. Invalid name hash " << name_hash;
 }
 
 int64_t EventBase::GetIntMetricForTest(uint64_t name_hash) const {
@@ -111,9 +109,7 @@ int64_t EventBase::GetIntMetricForTest(uint64_t name_hash) const {
       return metric.int_value;
     }
   }
-  NOTREACHED_IN_MIGRATION()
-      << "Failed to get metric value. Invalid name hash " << name_hash;
-  return 0;
+  NOTREACHED() << "Failed to get metric value. Invalid name hash " << name_hash;
 }
 
 std::string EventBase::GetRawStringMetricForTest(uint64_t name_hash) const {
@@ -122,9 +118,7 @@ std::string EventBase::GetRawStringMetricForTest(uint64_t name_hash) const {
       return metric.string_value;
     }
   }
-  NOTREACHED_IN_MIGRATION()
-      << "Failed to get metric value. Invalid name hash " << name_hash;
-  return "";
+  NOTREACHED() << "Failed to get metric value. Invalid name hash " << name_hash;
 }
 
 double EventBase::GetDoubleMetricForTest(uint64_t name_hash) const {
@@ -133,9 +127,7 @@ double EventBase::GetDoubleMetricForTest(uint64_t name_hash) const {
       return metric.double_value;
     }
   }
-  NOTREACHED_IN_MIGRATION()
-      << "Failed to get metric value. Invalid name hash " << name_hash;
-  return 0.0;
+  NOTREACHED() << "Failed to get metric value. Invalid name hash " << name_hash;
 }
 
 std::vector<int64_t> EventBase::GetIntArrayMetricForTest(
@@ -145,9 +137,7 @@ std::vector<int64_t> EventBase::GetIntArrayMetricForTest(
       return metric.int_array_value;
     }
   }
-  NOTREACHED_IN_MIGRATION()
-      << "Failed to get metric value. Invalid name hash " << name_hash;
-  return {};
+  NOTREACHED() << "Failed to get metric value. Invalid name hash " << name_hash;
 }
 
 bool EventBase::operator==(const EventBase& other) const = default;

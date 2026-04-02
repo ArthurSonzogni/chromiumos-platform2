@@ -7,13 +7,13 @@
 #include <string>
 #include <vector>
 
+#include <base/check_op.h>
+
 #include "base/logging.h"
 #include "base/notreached.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/stringprintf.h"
-
-#include <base/check_op.h>
 
 namespace metrics {
 
@@ -85,8 +85,7 @@ std::string MetricSample::ToString() const {
     return base::StringPrintf("useraction%c%s%s%c", '\0', name().c_str(),
                               samples.c_str(), '\0');
   }
-  NOTREACHED_IN_MIGRATION() << "Invalid sample type" << type_;
-  return std::string();
+  NOTREACHED() << "Invalid sample type" << type_;
 }
 
 int MetricSample::sample() const {

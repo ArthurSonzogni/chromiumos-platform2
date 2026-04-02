@@ -101,8 +101,7 @@ uint64_t KeyData::Id(const uint64_t project_name_hash) {
   // Retrieve the key for |project_name_hash|.
   const std::optional<std::string> key = ValidateAndGetKey(project_name_hash);
   if (!key) {
-    NOTREACHED_IN_MIGRATION();
-    return 0u;
+    NOTREACHED();
   }
 
   // Compute and return the hash.
@@ -117,8 +116,7 @@ uint64_t KeyData::HmacMetric(const uint64_t project_name_hash,
   // Retrieve the key for |project_name_hash|.
   const std::optional<std::string> key = ValidateAndGetKey(project_name_hash);
   if (!key) {
-    NOTREACHED_IN_MIGRATION();
-    return 0u;
+    NOTREACHED();
   }
 
   // Initialize the HMAC.
