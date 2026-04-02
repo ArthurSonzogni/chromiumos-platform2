@@ -17,6 +17,7 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/raw_ref.h>
+#include <base/notreached.h>
 #include <base/types/expected.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/dbus_object.h>
@@ -307,8 +308,8 @@ bool ArcManager::StartArcMiniContainer(brillo::ErrorPtr* error,
       env_vars.emplace_back("PLAY_STORE_AUTO_UPDATE=0");
       break;
     default:
-      NOTREACHED_IN_MIGRATION() << "Unhandled play store auto-update mode: "
-                                << request.play_store_auto_update() << ".";
+      NOTREACHED() << "Unhandled play store auto-update mode: "
+                   << request.play_store_auto_update() << ".";
   }
 
   switch (request.dalvik_memory_profile()) {
@@ -325,8 +326,8 @@ bool ArcManager::StartArcMiniContainer(brillo::ErrorPtr* error,
       env_vars.emplace_back("DALVIK_MEMORY_PROFILE=16G");
       break;
     default:
-      NOTREACHED_IN_MIGRATION() << "Unhandled dalvik_memory_profle: "
-                                << request.dalvik_memory_profile() << ".";
+      NOTREACHED() << "Unhandled dalvik_memory_profle: "
+                   << request.dalvik_memory_profile() << ".";
   }
 
   switch (request.host_ureadahead_mode()) {
@@ -340,8 +341,8 @@ bool ArcManager::StartArcMiniContainer(brillo::ErrorPtr* error,
       env_vars.emplace_back("HOST_UREADAHEAD_MODE=DISABLED");
       break;
     default:
-      NOTREACHED_IN_MIGRATION() << "Unhandled host_ureadahead_mode: "
-                                << request.host_ureadahead_mode() << ".";
+      NOTREACHED() << "Unhandled host_ureadahead_mode: "
+                   << request.host_ureadahead_mode() << ".";
   }
 
   if (!StartArcContainer(env_vars, error)) {
@@ -639,9 +640,8 @@ std::vector<std::string> ArcManager::CreateUpgradeArcEnvVars(
       env_vars.emplace_back("COPY_PACKAGES_CACHE=0");
       break;
     default:
-      NOTREACHED_IN_MIGRATION()
-          << "Wrong packages cache mode: " << request.packages_cache_mode()
-          << ".";
+      NOTREACHED() << "Wrong packages cache mode: "
+                   << request.packages_cache_mode() << ".";
   }
 
   if (request.skip_gms_core_cache()) {

@@ -16,6 +16,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/memory/raw_ptr.h>
 #include <base/memory/ref_counted.h>
+#include <base/notreached.h>
 #include <base/strings/stringprintf.h>
 #include <base/types/expected.h>
 #include <brillo/errors/error.h>
@@ -201,7 +202,7 @@ class StartArcInstanceExpectationsBuilder {
         result.emplace_back("PLAY_STORE_AUTO_UPDATE=0");
         break;
       default:
-        NOTREACHED_IN_MIGRATION();
+        NOTREACHED();
     }
 
     switch (dalvik_memory_profile_) {
@@ -217,7 +218,7 @@ class StartArcInstanceExpectationsBuilder {
         result.emplace_back("DALVIK_MEMORY_PROFILE=16G");
         break;
       default:
-        NOTREACHED_IN_MIGRATION();
+        NOTREACHED();
     }
 
     switch (host_ureadahead_mode_) {
@@ -231,7 +232,7 @@ class StartArcInstanceExpectationsBuilder {
         result.emplace_back("HOST_UREADAHEAD_MODE=DISABLED");
         break;
       default:
-        NOTREACHED_IN_MIGRATION();
+        NOTREACHED();
     }
 
     return result;
@@ -897,7 +898,7 @@ TEST_P(ArcManagerPackagesCacheTest, PackagesCache) {
     case arc::UpgradeArcContainerRequest_PackageCacheMode_DEFAULT:
       break;
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 
   // Then, upgrade it to a fully functional one.

@@ -121,8 +121,7 @@ const char* ExitCodeToString(SessionManagerService::ExitCode code) {
     case SessionManagerService::DEVICE_SHUTTING_DOWN:
       return "device shutting down";
   }
-  NOTREACHED_IN_MIGRATION() << "Invalid exit code " << code;
-  return "unknown";
+  NOTREACHED() << "Invalid exit code " << code;
 }
 
 }  // anonymous namespace

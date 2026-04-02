@@ -51,8 +51,7 @@ bool IsComponentDomain(PolicyDomain domain) {
     case POLICY_DOMAIN_SIGNIN_EXTENSIONS:
       return true;
   }
-  NOTREACHED_IN_MIGRATION();
-  return false;
+  NOTREACHED();
 }
 
 constexpr char PolicyService::kChromePolicyFileName[] = "policy";

@@ -1177,8 +1177,7 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
 
     RestartDevice("tpm_firmware_update " + update_mode);
   } else {
-    NOTREACHED_IN_MIGRATION();
-    return false;
+    NOTREACHED();
   }
 
   return true;
