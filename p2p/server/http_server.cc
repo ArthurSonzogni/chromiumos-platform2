@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "p2p/server/http_server.h"
-#include "p2p/server/http_server_external_process.h"
 
 #include <glib.h>
 #include <signal.h>
@@ -21,6 +20,7 @@
 #include "p2p/common/constants.h"
 #include "p2p/common/server_message.h"
 #include "p2p/common/struct_serializer.h"
+#include "p2p/server/http_server_external_process.h"
 
 using std::string;
 using std::vector;
@@ -192,7 +192,7 @@ void HttpServerExternalProcess::OnMessageReceived(const P2PServerMessage& msg,
 
     // ParseP2PServerMessageType ensures this case is not reached.
     case p2p::util::kNumP2PServerMessageTypes:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 }
 

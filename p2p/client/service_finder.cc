@@ -4,10 +4,6 @@
 
 #include "p2p/client/service_finder.h"
 
-#include <avahi-client/client.h>
-#include <avahi-client/lookup.h>
-#include <avahi-common/error.h>
-#include <avahi-glib/glib-watch.h>
 #include <fcntl.h>
 #include <glib.h>
 #include <unistd.h>
@@ -15,6 +11,10 @@
 #include <set>
 #include <stdexcept>
 
+#include <avahi-client/client.h>
+#include <avahi-client/lookup.h>
+#include <avahi-common/error.h>
+#include <avahi-glib/glib-watch.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
@@ -286,7 +286,7 @@ void ServiceFinderAvahi::service_resolve_cb(AvahiServiceResolver* r,
   }
 
   if (finder->lookup_pending_resolvers_.erase(r) != 1) {
-    NOTREACHED_IN_MIGRATION();
+    NOTREACHED();
   }
   avahi_service_resolver_free(r);
 
