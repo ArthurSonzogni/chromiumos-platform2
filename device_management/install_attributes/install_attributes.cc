@@ -13,7 +13,6 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/notreached.h>
 #include <base/time/time.h>
 
 #include "device_management/install_attributes/lockbox.h"
@@ -158,8 +157,7 @@ bool InstallAttributes::Init() {
         status_ = Status::kInvalid;
         return false;
       case LockboxError::kTpmUnavailable:
-        NOTREACHED_IN_MIGRATION()
-            << "Should never call lockbox when TPM is unavailable.";
+        LOG(ERROR) << "Should never call lockbox when TPM is unavailable.";
         status_ = Status::kInvalid;
         return false;
       case LockboxError::kTpmError:
@@ -267,7 +265,7 @@ bool InstallAttributes::Finalize() {
     case Status::kFirstInstall:
       break;
     default:
-      NOTREACHED_IN_MIGRATION();
+      LOG(ERROR) << "Unexpected status in InstallAttributes::Finalize()";
   }
 
   // Restamp the version.

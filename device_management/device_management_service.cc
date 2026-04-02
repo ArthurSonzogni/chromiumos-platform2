@@ -3,8 +3,6 @@
 // found in the LICENSE file.
 
 #include "device_management/device_management_service.h"
-#include "device_management/proto_bindings/device_management_interface.pb.h"
-#include "fwmp/firmware_management_parameters.h"
 
 #include <memory>
 #include <unordered_map>
@@ -14,6 +12,9 @@
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/structures/threading_mode.h>
 #include <libstorage/platform/platform.h>
+
+#include "device_management/proto_bindings/device_management_interface.pb.h"
+#include "fwmp/firmware_management_parameters.h"
 
 namespace device_management {
 
@@ -155,8 +156,6 @@ DeviceManagementService::InstallAttributesStatusToProtoEnum(
     return state_map.at(status);
   }
 
-  NOTREACHED_IN_MIGRATION();
-  // Return is added so compiler doesn't complain.
   return device_management::InstallAttributesState::INVALID;
 }
 
