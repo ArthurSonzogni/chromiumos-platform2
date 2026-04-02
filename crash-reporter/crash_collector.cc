@@ -655,7 +655,7 @@ base::ScopedFD CrashCollector::GetNewFileHandle(
       }
       break;
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
   return base::ScopedFD(fd);
 }
@@ -909,8 +909,7 @@ bool CrashCollector::RemoveNewFile(const base::FilePath& file_name) {
       return true;
     }
     default:
-      NOTREACHED_IN_MIGRATION();
-      return false;
+      NOTREACHED();
   }
 }
 

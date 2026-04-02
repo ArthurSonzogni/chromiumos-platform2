@@ -97,7 +97,7 @@ void Serializer::PickCrashFiles(const base::FilePath& crash_dir,
         to_send->push_back(std::make_pair(meta_file, std::move(info)));
         break;
       default:
-        NOTREACHED_IN_MIGRATION();
+        NOTREACHED();
     }
   }
 }
