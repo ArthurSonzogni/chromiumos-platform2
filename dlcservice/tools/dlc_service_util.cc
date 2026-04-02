@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <libminijail.h>
+#include <scoped_minijail.h>
 #include <sysexits.h>
 #include <unistd.h>
 
@@ -30,8 +32,6 @@
 #include <dbus/dlcservice/dbus-constants.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <libimageloader/manifest.h>
-#include <libminijail.h>
-#include <scoped_minijail.h>
 
 #include "dlcservice/dbus-proxies.h"
 #include "dlcservice/proto_utils.h"
@@ -365,7 +365,7 @@ class DlcServiceUtil : public brillo::Daemon {
         QuitWithExitCode(EX_SOFTWARE);
         break;
       default:
-        NOTREACHED_IN_MIGRATION();
+        NOTREACHED();
     }
   }
 

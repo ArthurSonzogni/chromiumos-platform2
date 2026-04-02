@@ -707,8 +707,7 @@ bool DlcBase::Install(ErrorPtr* err) {
       // gets mounted in case it has been unmounted externally.
       break;
     default:
-      NOTREACHED_IN_MIGRATION();
-      return false;
+      NOTREACHED();
   }
 
   // Let's try to finish the installation.
@@ -779,8 +778,7 @@ bool DlcBase::FinishInstall(bool installed_by_ue, ErrorPtr* err) {
     case DlcState::NOT_INSTALLED:
       // Should not try to finish install on a not-installed DLC.
     default:
-      NOTREACHED_IN_MIGRATION();
-      return false;
+      NOTREACHED();
   }
 
   // Now that we are sure the image is installed, we can go ahead and set it as
@@ -990,8 +988,7 @@ bool DlcBase::Uninstall(ErrorPtr* err) {
                              sanitized_id_.c_str()));
       return false;
     default:
-      NOTREACHED_IN_MIGRATION();
-      return false;
+      NOTREACHED();
   }
 
   if (!IsUserTied()) {
@@ -1043,7 +1040,7 @@ void DlcBase::ChangeState(DlcState::State state) {
       break;
 
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 
   LOG(INFO) << "Changing DLC=" << sanitized_id_ << " state to "
