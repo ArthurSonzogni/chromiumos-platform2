@@ -2347,7 +2347,7 @@ void AttestationService::VerifyTask(
       }
       break;
     default:
-      NOTREACHED_IN_MIGRATION() << "Unexpected TPM version.";
+      NOTREACHED() << "Unexpected TPM version.";
   }
 
   // Note: Do not use any openssl functions that attempt to decode the public
