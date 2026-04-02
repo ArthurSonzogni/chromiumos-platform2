@@ -24,8 +24,7 @@ const char* UsbDirectionToString(UsbDirection direction) {
     case kUsbDirectionOut:
       return "Out";
   }
-  NOTREACHED_IN_MIGRATION();
-  return nullptr;
+  NOTREACHED();
 }
 
 const char* UsbSpeedToString(UsbSpeed speed) {
@@ -41,8 +40,7 @@ const char* UsbSpeedToString(UsbSpeed speed) {
     case kUsbSpeedSuper:
       return "Super";
   }
-  NOTREACHED_IN_MIGRATION();
-  return nullptr;
+  NOTREACHED();
 }
 
 const char* UsbTransferTypeToString(UsbTransferType transfer_type) {
@@ -58,8 +56,7 @@ const char* UsbTransferTypeToString(UsbTransferType transfer_type) {
     case kUsbTransferTypeUnknown:
       return "Unknown";
   }
-  NOTREACHED_IN_MIGRATION();
-  return nullptr;
+  NOTREACHED();
 }
 
 const char* UsbTransferStatusToString(UsbTransferStatus transfer_status) {
@@ -81,8 +78,7 @@ const char* UsbTransferStatusToString(UsbTransferStatus transfer_status) {
     case kUsbTransferStatusUnknown:
       return "Unknown";
   }
-  NOTREACHED_IN_MIGRATION();
-  return nullptr;
+  NOTREACHED();
 }
 
 }  // namespace brillo

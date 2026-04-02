@@ -76,8 +76,7 @@ Blob FuzzedProtoGenerator::GenerateMessageOrBlob(int nesting_depth) {
       return byte_breadcrumbs_[selected_index];
     }
   }
-  NOTREACHED_IN_MIGRATION();
-  return Blob();
+  NOTREACHED();
 }
 
 bool FuzzedProtoGenerator::GenerateAndAddField(
@@ -121,8 +120,7 @@ bool FuzzedProtoGenerator::GenerateAndAddField(
       return true;
     }
   }
-  NOTREACHED_IN_MIGRATION();
-  return false;
+  NOTREACHED();
 }
 
 }  // namespace brillo
