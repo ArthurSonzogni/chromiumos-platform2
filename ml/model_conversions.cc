@@ -22,8 +22,7 @@ GpuDelegateApi GpuDelegateApiFromProto(TfliteGpuDelegateApi gpu_delegate_api) {
     default:
       LOG(FATAL) << "Unknown GPU delegate API";
   }
-  NOTREACHED_IN_MIGRATION();
-  return GpuDelegateApi::UNKNOWN;
+  NOTREACHED();
 }
 
 GpuDelegateApi GpuDelegateApiFromString(const std::string& string) {

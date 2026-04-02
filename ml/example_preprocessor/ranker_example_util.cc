@@ -7,8 +7,9 @@
 
 #include "ml/example_preprocessor/ranker_example_util.h"
 
-#include <limits>
 #include <math.h>
+
+#include <limits>
 
 #include <base/bit_cast.h>
 #include <base/format_macros.h>
@@ -119,14 +120,12 @@ bool FeatureToInt64(const Feature& feature,
         value = StringToIntBits(feature.string_list().string_value(index));
       } else {
         DVLOG(3) << "Invalid index for string list: " << index;
-        NOTREACHED_IN_MIGRATION();
-        return false;
+        NOTREACHED();
       }
       break;
     default:
       DVLOG(3) << "Feature type is supported for logging: " << type;
-      NOTREACHED_IN_MIGRATION();
-      return false;
+      NOTREACHED();
   }
   *res = PairInt(type, value, index);
   return true;

@@ -519,7 +519,7 @@ void MachineLearningServiceImpl::LoadHandwritingModel(
     return;
   }
 
-  NOTREACHED_IN_MIGRATION();
+  NOTREACHED();
 }
 
 void MachineLearningServiceImpl::REMOVED_4(
@@ -760,7 +760,7 @@ void MachineLearningServiceImpl::LoadWebPlatformHandwritingModel(
     return;
   }
 
-  NOTREACHED_IN_MIGRATION();
+  NOTREACHED();
 }
 
 void MachineLearningServiceImpl::LoadDocumentScanner(
