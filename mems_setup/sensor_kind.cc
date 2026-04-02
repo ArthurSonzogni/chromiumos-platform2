@@ -55,7 +55,7 @@ std::string SensorKindToString(SensorKind kind) {
       return kOthersName;  // Shouldn't be used
   }
 
-  NOTREACHED_IN_MIGRATION();
+  NOTREACHED();
 }
 
 SensorKind SensorKindFromString(const std::string& name) {
