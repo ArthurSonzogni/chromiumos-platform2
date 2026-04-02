@@ -148,9 +148,7 @@ void ReportQueueImpl::Flush(Priority priority, FlushCallback callback) {
 
 base::OnceCallback<void(StatusOr<std::unique_ptr<ReportQueue>>)>
 ReportQueueImpl::PrepareToAttachActualQueue() const {
-  NOTREACHED_IN_MIGRATION();
-  return base::BindOnce(
-      [](StatusOr<std::unique_ptr<ReportQueue>>) { NOTREACHED_IN_MIGRATION(); });
+  NOTREACHED();
 }
 
 // Implementation of SpeculativeReportQueueImpl::PendingRecordProducer
