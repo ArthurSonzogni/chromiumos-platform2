@@ -27,17 +27,17 @@
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <dbus/chaps/dbus-constants.h>
-#include <libhwsec/frontend/chaps/frontend.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
+#include <libhwsec/frontend/chaps/frontend.h>
 #include <openssl/bio.h>
 #include <openssl/des.h>
+#include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/params.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
-#include <openssl/params.h>
-#include <openssl/ec.h>
 
 #include "chaps/chaps.h"
 #include "chaps/chaps_factory.h"
@@ -340,8 +340,7 @@ CK_OBJECT_CLASS GetExpectedObjectClass(chaps::OperationType operation,
 
     default:
       // Never used
-      NOTREACHED_IN_MIGRATION();
-      return -1;
+      NOTREACHED();
   }
 }
 
@@ -1155,8 +1154,7 @@ CK_RV SessionImpl::OperationInitRaw(OperationType operation,
     }
     context->is_valid_ = true;
   } else {
-    NOTREACHED_IN_MIGRATION();
-    return CKR_FUNCTION_FAILED;
+    NOTREACHED();
   }
 
   UpdateObjectCount(context);
