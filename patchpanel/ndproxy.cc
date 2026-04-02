@@ -32,6 +32,7 @@
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <chromeos/net-base/byte_utils.h>
@@ -167,7 +168,7 @@ std::optional<net_base::IPv6CIDR> NDOptPrefixInfoToCIDR(
       break;
     }
     default: {
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
     }
   }
   return ss.str();
@@ -926,7 +927,7 @@ void NDProxyDaemon::OnControlMessage(const SubprocessMessage& root_msg) {
     }
     case NDProxyControlMessage::UNKNOWN:
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 }
 

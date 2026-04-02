@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include <base/notreached.h>
 #include <base/posix/eintr_wrapper.h>
 #include <chromeos/dbus/patchpanel/dbus-constants.h>
 #include <chromeos/net-base/process_manager.h>
@@ -497,7 +498,7 @@ void PatchpanelAdaptor::OnNeighborReachabilityEvent(
       signal.set_role(NeighborReachabilityEventSignal::GATEWAY_AND_DNS_SERVER);
       break;
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
   SendNeighborReachabilityEventSignal(signal);
 }

@@ -93,10 +93,9 @@ std::string NeighborLinkMonitor::NeighborRoleToString(
     case NeighborLinkMonitor::NeighborRole::kGatewayAndDNSServer:
       return "gateway and dns_server";
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 }
-
 std::string NeighborLinkMonitor::WatchingEntry::ToString() const {
   return base::StrCat({"{ addr: ", addr.ToString(),
                        ", role: ", NeighborRoleToString(role),
@@ -155,7 +154,7 @@ void NeighborLinkMonitor::UpdateWatchingEntry(const net_base::IPAddress& addr,
       it->second.role = NeighborRole::kGatewayAndDNSServer;
       break;
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 }
 
