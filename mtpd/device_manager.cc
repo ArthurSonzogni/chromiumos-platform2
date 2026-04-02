@@ -909,11 +909,7 @@ void DeviceManager::RemoveDevices(bool remove_all) {
   for (const auto& device : devices_set) {
     LOG(INFO) << "Removed " << device;
     MtpDeviceMap::iterator device_it = device_map_.find(device);
-    if (device_it == device_map_.end()) {
-      NOTREACHED_IN_MIGRATION();
-      continue;
-    }
-
+    CHECK(device_it != device_map_.end());
     // Remove all the storages on that device.
     const std::string& usb_bus_str = device_it->first;
     const MtpStorageMap& storage_map = device_it->second.storage_map;
