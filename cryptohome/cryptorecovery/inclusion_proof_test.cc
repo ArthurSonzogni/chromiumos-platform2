@@ -119,6 +119,7 @@ const OnboardingMetadata kFakeMetadata{
     .rlz_code = "fake_rlz_code",
     .recovery_id =
         "50aac70f6240d40132f6c53b3fd067532c62313e7bab1a6251eba69dd428bf55",
+    .info_format = OnboardingMetadata::InfoFormat::kFixed,
 };
 // 01 Jan 2020 13:00:41 GMT+0000.
 constexpr base::Time kFakeTimestamp = base::Time::FromTimeT(1577883641);

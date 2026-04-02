@@ -83,14 +83,16 @@ struct OnboardingMetadata {
   brillo::Blob hsm_pub_key_hash;
 
   // The format used for the HKDF info on the payload encryption key.
+  //
+  // The values associated with each enum are arbitrary and have no intrinsic
+  // meaning, but they are used in error logging and so should not be changed
+  // so that error logs remain consistent over time.
   enum class InfoFormat {
-    kFixed,
-    kIncludesUserId,
+    // Avoid using 0 as a value for the enum, to catch uninitialized values.
+    kFixed = 1,
+    kIncludesUserId = 2,
   };
   InfoFormat info_format;
-
-  friend bool operator==(const OnboardingMetadata& lhs,
-                         const OnboardingMetadata& rhs) = default;
 };
 
 // PublicLedgerEntry is the structure of the ledger messages logging the

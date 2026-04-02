@@ -24,6 +24,7 @@
 #include <brillo/strings/string_utils.h>
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec-foundation/crypto/error_util.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <openssl/ec.h>
 #include <openssl/x509.h>
@@ -382,6 +383,18 @@ std::string GetOnboardingMetadataDiff(const OnboardingMetadata& expected,
         "recovery_id: expected '%s' but got '%s'", expected.recovery_id.c_str(),
         actual.recovery_id.c_str()));
   }
+  if (expected.hsm_pub_key_hash != actual.hsm_pub_key_hash) {
+    messages.push_back(base::StringPrintf(
+        "hsm_pub_key_hash: expected '%s' but got '%s'",
+        hwsec_foundation::BlobToHex(expected.hsm_pub_key_hash).c_str(),
+        hwsec_foundation::BlobToHex(actual.hsm_pub_key_hash).c_str()));
+  }
+  if (expected.info_format != actual.info_format) {
+    messages.push_back(
+        base::StringPrintf("info_format: expected '%d' but got '%d'",
+                           static_cast<int>(expected.info_format),
+                           static_cast<int>(actual.info_format)));
+  }
   return base::JoinString(messages, "; ");
 }
 
@@ -392,11 +405,11 @@ bool VerifyMetadata(const LoggedRecord& logged_record,
     return false;
   }
 
-  if (metadata != logged_record.private_log_entry.onboarding_meta_data) {
+  std::string metadata_diff = GetOnboardingMetadataDiff(
+      metadata, logged_record.private_log_entry.onboarding_meta_data);
+  if (!metadata_diff.empty()) {
     LOG(ERROR) << "Onboarding metadata in private log entry doesn't match: "
-               << GetOnboardingMetadataDiff(
-                      metadata,
-                      logged_record.private_log_entry.onboarding_meta_data);
+               << metadata_diff;
     return false;
   }
 

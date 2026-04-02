@@ -70,7 +70,10 @@ class CryptohomeRecoveryAuthBlockServiceTest : public BaseTestFixture {
     brillo::SecureBlob recovery_key;
     cryptorecovery::GenerateHsmPayloadRequest generate_hsm_payload_request(
         {.mediator_pub_key = mediator_pub_key,
-         .onboarding_metadata = cryptorecovery::OnboardingMetadata{},
+         .onboarding_metadata =
+             cryptorecovery::OnboardingMetadata{
+                 .info_format =
+                     cryptorecovery::OnboardingMetadata::InfoFormat::kFixed},
          .obfuscated_username = kObfuscatedUsername});
     cryptorecovery::GenerateHsmPayloadResponse generate_hsm_payload_response;
     EXPECT_THAT(recovery->GenerateHsmPayload(generate_hsm_payload_request,

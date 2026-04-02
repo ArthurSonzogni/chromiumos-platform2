@@ -198,6 +198,7 @@ const OnboardingMetadata kFakeMetadata{
     .rlz_code = "fake_rlz_code",
     .recovery_id =
         "50aac70f6240d40132f6c53b3fd067532c62313e7bab1a6251eba69dd428bf55",
+    .info_format = OnboardingMetadata::InfoFormat::kFixed,
 };
 
 bool HexStringToBlob(const std::string& hex, brillo::Blob* blob) {
@@ -1143,8 +1144,32 @@ TEST_F(ResponsePayloadCborHelperTest, DeserializeAssociatedData) {
                 .public_timestamp,
             kFakePublicTimestamp);
   EXPECT_EQ(response_ad.ledger_signed_proof.logged_record.private_log_entry
-                .onboarding_meta_data,
-            kFakeMetadata);
+                .onboarding_meta_data.cryptohome_user_type,
+            kFakeMetadata.cryptohome_user_type);
+  EXPECT_EQ(response_ad.ledger_signed_proof.logged_record.private_log_entry
+                .onboarding_meta_data.cryptohome_user,
+            kFakeMetadata.cryptohome_user);
+  EXPECT_EQ(response_ad.ledger_signed_proof.logged_record.private_log_entry
+                .onboarding_meta_data.device_user_id,
+            kFakeMetadata.device_user_id);
+  EXPECT_EQ(response_ad.ledger_signed_proof.logged_record.private_log_entry
+                .onboarding_meta_data.board_name,
+            kFakeMetadata.board_name);
+  EXPECT_EQ(response_ad.ledger_signed_proof.logged_record.private_log_entry
+                .onboarding_meta_data.form_factor,
+            kFakeMetadata.form_factor);
+  EXPECT_EQ(response_ad.ledger_signed_proof.logged_record.private_log_entry
+                .onboarding_meta_data.rlz_code,
+            kFakeMetadata.rlz_code);
+  EXPECT_EQ(response_ad.ledger_signed_proof.logged_record.private_log_entry
+                .onboarding_meta_data.recovery_id,
+            kFakeMetadata.recovery_id);
+  EXPECT_EQ(response_ad.ledger_signed_proof.logged_record.private_log_entry
+                .onboarding_meta_data.hsm_pub_key_hash,
+            kFakeMetadata.hsm_pub_key_hash);
+  EXPECT_EQ(response_ad.ledger_signed_proof.logged_record.private_log_entry
+                .onboarding_meta_data.info_format,
+            kFakeMetadata.info_format);
   EXPECT_EQ(response_ad.ledger_signed_proof.logged_record.public_ledger_entry
                 .recovery_id,
             kFakeMetadata.recovery_id);
