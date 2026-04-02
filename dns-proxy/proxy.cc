@@ -16,6 +16,7 @@
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
@@ -58,7 +59,7 @@ Metrics::ProcessType ProcessTypeOf(Proxy::Type t) {
     case Proxy::Type::kARC:
       return Metrics::ProcessType::kProxyARC;
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 }
 
@@ -92,7 +93,7 @@ const char* Proxy::TypeToString(Type t) {
     case Type::kARC:
       return kARCProxyType;
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 }
 
@@ -647,7 +648,7 @@ void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
       break;
 
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 }
 
@@ -1152,7 +1153,7 @@ void Proxy::OnVirtualDeviceChanged(
       }
       break;
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
 }
 
