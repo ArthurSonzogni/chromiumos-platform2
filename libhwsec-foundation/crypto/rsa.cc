@@ -6,12 +6,11 @@
 
 #include <iterator>
 #include <utility>
-#include <openssl/err.h>
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/notreached.h>
 #include <crypto/scoped_openssl_types.h>
+#include <openssl/err.h>
 
 #include "libhwsec-foundation/crypto/aes.h"
 #include "libhwsec-foundation/crypto/big_num_util.h"
@@ -217,7 +216,7 @@ bool RsaOaepEncrypt(const brillo::SecureBlob& plaintext,
     return false;
   }
   if (encryption_result != ciphertext->size()) {
-    NOTREACHED_IN_MIGRATION()
+    LOG(ERROR)
         << "RSAES-OAEP MGF1 encryption returned unexpected amount of data";
     return false;
   }

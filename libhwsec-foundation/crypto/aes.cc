@@ -7,13 +7,12 @@
 #include <limits>
 #include <optional>
 
-#include "libhwsec-foundation/crypto/secure_blob_util.h"
-
 #include <base/logging.h>
-#include <base/notreached.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+
+#include "libhwsec-foundation/crypto/secure_blob_util.h"
 
 namespace hwsec_foundation {
 
@@ -86,13 +85,12 @@ bool AesGcmDecrypt(const brillo::Blob& ciphertext,
                    const brillo::Blob& iv,
                    brillo::SecureBlob* plaintext) {
   if (ciphertext.empty()) {
-    NOTREACHED_IN_MIGRATION() << "Empty ciphertext passed to AesGcmDecrypt.";
+    LOG(ERROR) << "Empty ciphertext passed to AesGcmDecrypt.";
     return false;
   }
   if (tag.size() != kAesGcmTagSize) {
-    NOTREACHED_IN_MIGRATION()
-        << "Wrong tag size passed to AesGcmDecrypt: " << tag.size()
-        << ", expected " << kAesGcmTagSize << ".";
+    LOG(ERROR) << "Wrong tag size passed to AesGcmDecrypt: " << tag.size()
+               << ", expected " << kAesGcmTagSize << ".";
     return false;
   }
 
@@ -111,9 +109,8 @@ bool AesGcmDecrypt(const brillo::Blob& ciphertext,
   }
 
   if (iv.size() != kAesGcmIVSize) {
-    NOTREACHED_IN_MIGRATION()
-        << "Wrong iv size passed to AesGcmDecrypt: " << iv.size()
-        << ", expected " << kAesGcmIVSize << ".";
+    LOG(ERROR) << "Wrong iv size passed to AesGcmDecrypt: " << iv.size()
+               << ", expected " << kAesGcmIVSize << ".";
     return false;
   }
 
@@ -142,8 +139,7 @@ bool AesGcmDecrypt(const brillo::Blob& ciphertext,
 
   if (ad.has_value()) {
     if (ad.value().empty()) {
-      NOTREACHED_IN_MIGRATION()
-          << "Empty associated data passed to AesGcmDecrypt.";
+      LOG(ERROR) << "Empty associated data passed to AesGcmDecrypt.";
       return false;
     }
     int out_size = 0;
@@ -194,7 +190,7 @@ bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
                    brillo::Blob* tag,
                    brillo::Blob* ciphertext) {
   if (plaintext.empty()) {
-    NOTREACHED_IN_MIGRATION() << "Empty plaintext passed to AesGcmEncrypt.";
+    LOG(ERROR) << "Empty plaintext passed to AesGcmEncrypt.";
     return false;
   }
 
@@ -240,8 +236,7 @@ bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
 
   if (ad.has_value()) {
     if (ad.value().empty()) {
-      NOTREACHED_IN_MIGRATION()
-          << "Empty associated data passed to AesGcmEncrypt.";
+      LOG(ERROR) << "Empty associated data passed to AesGcmEncrypt.";
       return false;
     }
     int out_size = 0;

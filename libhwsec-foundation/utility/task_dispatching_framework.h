@@ -11,7 +11,6 @@
 
 #include <base/functional/bind.h>
 #include <base/location.h>
-#include <base/notreached.h>
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/dbus/dbus_method_response.h>
 
@@ -36,7 +35,8 @@ class ThreadSafeDBusMethodResponse
   explicit ThreadSafeDBusMethodResponse(BaseClass&& original_callback)
       : BaseClass::DBusMethodResponse(
             nullptr, base::BindOnce([](std::unique_ptr<dbus::Response>) {
-              NOTREACHED_IN_MIGRATION();
+              LOG(ERROR) << "Should never reach callback in "
+                            "ThreadSafeDBusMethodResponse";
             })),
         origin_task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()),
         origin_thread_id_(base::PlatformThread::CurrentId()),

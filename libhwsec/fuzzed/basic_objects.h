@@ -17,7 +17,6 @@
 
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/flat_hash_set.h>
-#include <base/notreached.h>
 #include <base/time/time.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
@@ -198,8 +197,7 @@ struct FuzzedObject<std::variant<VariantArgs...>> {
   Variant operator()(FuzzedDataProvider& provider,
                      size_t idx,
                      std::index_sequence<> int_seq) const {
-    NOTREACHED_IN_MIGRATION() << "Should not reach here.";
-    // We should not reach here.
+    LOG(ERROR) << "Should not reach here.";
     return FuzzedObject<Variant>()(provider);
   }
 
