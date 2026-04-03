@@ -100,7 +100,7 @@ void BuildFscryptKeySpec(const KeyReference& key_reference,
       key_spec->type = FSCRYPT_KEY_SPEC_TYPE_IDENTIFIER;
       break;
     default:
-      NOTREACHED_IN_MIGRATION() << "Invalid policy version";
+      NOTREACHED() << "Invalid policy version";
   }
 }
 
@@ -294,7 +294,7 @@ bool SetDirectoryKey(const base::FilePath& dir,
              key_reference.reference.data(), key_reference.reference.size());
       break;
     default:
-      NOTREACHED_IN_MIGRATION() << "Invalid encryption policy version";
+      NOTREACHED() << "Invalid encryption policy version";
   }
 
   if (ioctl(fd.get(), FS_IOC_SET_ENCRYPTION_POLICY, &policy) < 0) {
@@ -466,9 +466,8 @@ bool RemoveDirectoryKey(const KeyReference& key_reference,
         ref.policy_version = FSCRYPT_POLICY_V2;
         break;
       default:
-        NOTREACHED_IN_MIGRATION()
-            << "Invalid encryption policy version: " << arg.policy.version;
-        return false;
+        NOTREACHED() << "Invalid encryption policy version: "
+                     << arg.policy.version;
     }
   } else {
     ref = key_reference;
