@@ -1281,7 +1281,6 @@ HELP_gesture_prop='
       (https://dbus.freedesktop.org/doc/dbus-send.1.html#description), and
       should either be arrays or strings. For example:
       $ gesture_prop set 12 "Mouse CPI" array:double:500
-      $ gesture_prop set 12 "Log Path" string:/tmp/foo.txt
 '
 cmd_gesture_prop() (
   local subcommand="$1"
