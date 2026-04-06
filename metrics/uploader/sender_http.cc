@@ -16,8 +16,7 @@ HttpSender::HttpSender(const std::string server_url)
 
 bool HttpSender::Send(const std::string& content,
                       const std::string& content_hash) {
-  const std::string hash =
-      base::HexEncode(content_hash.data(), content_hash.size());
+  const std::string hash = base::HexEncode(content_hash);
 
   brillo::http::HeaderList headers = {{"X-Chrome-UMA-Log-SHA1", hash}};
   brillo::ErrorPtr error;
