@@ -25,6 +25,7 @@
 #include "rmad/logs/logs_constants.h"
 #include "rmad/logs/logs_utils.h"
 #include "rmad/system/power_manager_client_impl.h"
+#include "rmad/system/tpm_manager_client_impl.h"
 #include "rmad/udev/udev_device.h"
 #include "rmad/udev/udev_utils.h"
 #include "rmad/utils/cmd_utils_impl.h"
@@ -63,6 +64,7 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
   power_manager_client_ = std::make_unique<PowerManagerClientImpl>();
   rmad_config_utils_ = std::make_unique<RmadConfigUtilsImpl>();
+  tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>();
 }
 
 UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
@@ -73,7 +75,8 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     std::unique_ptr<CmdUtils> cmd_utils,
     std::unique_ptr<WriteProtectUtils> write_protect_utils,
     std::unique_ptr<PowerManagerClient> power_manager_client,
-    std::unique_ptr<RmadConfigUtils> rmad_config_utils)
+    std::unique_ptr<RmadConfigUtils> rmad_config_utils,
+    std::unique_ptr<TpmManagerClient> tpm_manager_client)
     : BaseStateHandler(json_store, daemon_callback),
       is_mocked_(true),
       mock_update_success_(update_success),
@@ -81,7 +84,8 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
       cmd_utils_(std::move(cmd_utils)),
       write_protect_utils_(std::move(write_protect_utils)),
       power_manager_client_(std::move(power_manager_client)),
-      rmad_config_utils_(std::move(rmad_config_utils)) {
+      rmad_config_utils_(std::move(rmad_config_utils)),
+      tpm_manager_client_(std::move(tpm_manager_client)) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
 }
 
@@ -212,6 +216,11 @@ bool UpdateRoFirmwareStateHandler::CanSkipUpdate() const {
   }
   if (bool ro_verified;
       json_store_->GetValue(kRoFirmwareVerified, &ro_verified) && ro_verified) {
+    return true;
+  }
+  if (RoVerificationStatus ro_status;
+      tpm_manager_client_->GetRoVerificationStatus(&ro_status) &&
+      ro_status == RMAD_RO_VERIFICATION_V2_SUCCESS) {
     return true;
   }
   return false;

@@ -184,7 +184,7 @@ TEST_F(TpmManagerClientTest, RoVerification_V2Success) {
   RoVerificationStatus ro_verification_status;
   EXPECT_TRUE(
       tpm_manager_client->GetRoVerificationStatus(&ro_verification_status));
-  EXPECT_EQ(ro_verification_status, RMAD_RO_VERIFICATION_UNSUPPORTED);
+  EXPECT_EQ(ro_verification_status, RMAD_RO_VERIFICATION_V2_SUCCESS);
 }
 
 TEST_F(TpmManagerClientTest, RoVerification_V2BoardIdMismatch) {

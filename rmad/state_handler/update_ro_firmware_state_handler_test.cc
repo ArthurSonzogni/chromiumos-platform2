@@ -20,6 +20,7 @@
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/system/mock_power_manager_client.h"
+#include "rmad/system/mock_tpm_manager_client.h"
 #include "rmad/udev/mock_udev_utils.h"
 #include "rmad/udev/udev_device.h"
 #include "rmad/utils/json_store.h"
@@ -48,6 +49,7 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
 
   struct StateHandlerArgs {
     bool ro_verified = true;
+    RoVerificationStatus ro_verification_status = RMAD_RO_VERIFICATION_PASS;
     bool hwwp_enabled = false;
     std::string rmad_config_text = "";
     bool copy_success = true;
@@ -109,11 +111,19 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
     auto rmad_config_utils = std::make_unique<RmadConfigUtilsImpl>(
         GetTempDirPath(), std::move(mock_cros_config_utils));
 
+    // Mock |TpmManagerClient|.
+    auto mock_tpm_manager_client =
+        std::make_unique<NiceMock<MockTpmManagerClient>>();
+    ON_CALL(*mock_tpm_manager_client, GetRoVerificationStatus(_))
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(args.ro_verification_status), Return(true)));
+
     return base::MakeRefCounted<UpdateRoFirmwareStateHandler>(
         json_store_, daemon_callback_, args.update_success,
         std::move(mock_udev_utils), std::move(mock_cmd_utils),
         std::move(mock_write_protect_utils),
-        std::move(mock_power_manager_client), std::move(rmad_config_utils));
+        std::move(mock_power_manager_client), std::move(rmad_config_utils),
+        std::move(mock_tpm_manager_client));
   }
 
   void ExpectSignal(UpdateRoFirmwareStatus expected_status) {
@@ -166,6 +176,17 @@ TEST_F(UpdateRoFirmwareStateHandlerTest,
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   UpdateRoFirmwareState state = handler->GetState().update_ro_firmware();
   EXPECT_EQ(state.skip_update_ro_firmware_from_rootfs(), true);
+}
+
+TEST_F(UpdateRoFirmwareStateHandlerTest,
+       InitializeState_Success_RoVerificationV2Success) {
+  auto handler = CreateStateHandler(
+      {.ro_verified = false,
+       .ro_verification_status = RMAD_RO_VERIFICATION_V2_SUCCESS});
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  UpdateRoFirmwareState state = handler->GetState().update_ro_firmware();
+  EXPECT_EQ(state.optional(), true);
+  EXPECT_EQ(state.skip_update_ro_firmware_from_rootfs(), false);
 }
 
 TEST_F(UpdateRoFirmwareStateHandlerTest, InitializeState_HwwpEnabled_Failed) {

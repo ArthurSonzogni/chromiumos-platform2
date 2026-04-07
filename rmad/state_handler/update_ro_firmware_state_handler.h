@@ -16,6 +16,7 @@
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/base_state_handler.h"
 #include "rmad/system/power_manager_client.h"
+#include "rmad/system/tpm_manager_client.h"
 #include "rmad/udev/udev_utils.h"
 #include "rmad/utils/cmd_utils.h"
 #include "rmad/utils/rmad_config_utils.h"
@@ -38,7 +39,8 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject mock |udev_utils_|, |cmd_utils_|, |write_protect_utils|,
-  // |power_manager_client_|, |rmad_config_utils_| for testing.
+  // |power_manager_client_|, |rmad_config_utils_|, |tpm_manager_client_| for
+  // testing.
   explicit UpdateRoFirmwareStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
@@ -47,7 +49,8 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
       std::unique_ptr<CmdUtils> cmd_utils,
       std::unique_ptr<WriteProtectUtils> write_protect_utils,
       std::unique_ptr<PowerManagerClient> power_manager_client,
-      std::unique_ptr<RmadConfigUtils> rmad_config_utils);
+      std::unique_ptr<RmadConfigUtils> rmad_config_utils,
+      std::unique_ptr<TpmManagerClient> tpm_manager_client);
 
   ASSIGN_STATE(RmadState::StateCase::kUpdateRoFirmware);
   SET_REPEATABLE;
@@ -100,6 +103,7 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   std::unique_ptr<WriteProtectUtils> write_protect_utils_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
   std::unique_ptr<RmadConfigUtils> rmad_config_utils_;
+  std::unique_ptr<TpmManagerClient> tpm_manager_client_;
 
   // Sequence runner for thread-safe read/write of |status_| and
   // |usb_detected_|.

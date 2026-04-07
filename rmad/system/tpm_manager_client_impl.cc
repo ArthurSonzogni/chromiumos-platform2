@@ -38,6 +38,10 @@ RoVerificationStatus TpmManagerRoStatusToRmadRoStatus(
       return RMAD_RO_VERIFICATION_UNSUPPORTED_NOT_TRIGGERED;
     case tpm_manager::RO_STATUS_UNSUPPORTED_TRIGGERED:
       return RMAD_RO_VERIFICATION_UNSUPPORTED_TRIGGERED;
+    // The following are RO verification V2 status.
+    case tpm_manager::RO_STATUS_V2_SUCCESS:
+      return RMAD_RO_VERIFICATION_V2_SUCCESS;
+
     default:
       break;
   }
