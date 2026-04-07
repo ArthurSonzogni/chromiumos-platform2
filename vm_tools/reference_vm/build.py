@@ -197,7 +197,8 @@ def setup_loop(loop_file: pathlib.Path, vg_name: str, update: bool = False):
             subprocess.run(["vgchange", "-ay", vg_name], check=True)
         yield loop_device
     finally:
-        subprocess.run(["vgchange", "-an", vg_name], check=True)
+        if vg_name in list_volume_groups():
+            subprocess.run(["vgchange", "-an", vg_name], check=True)
         subprocess.run(["losetup", "-d", loop_device], check=True)
 
 
@@ -241,7 +242,7 @@ def setup_storage(
     subprocess.run(
         setup_storage_args,
         check=True,
-        env={"SS_IGNORE_VG": ",".join(ignored_vgs), **os.environ},
+        env={"SS_IGNORE_VG": " ".join(ignored_vgs), **os.environ},
         input=disk_config,
         text=True,
     )
@@ -263,8 +264,9 @@ def list_volume_groups() -> List[str]:
     )
     data = json.loads(res.stdout)
     vg_names = []
-    for vg in data["report"][0]["vg"]:
-        vg_names.append(vg["vg_name"])
+    for report in data.get("report", []):
+        for vg in report.get("vg", []):
+            vg_names.append(vg["vg_name"])
 
     return vg_names
 
