@@ -5,13 +5,15 @@
 #include <atomic>
 #include <csignal>
 
+#include <base/command_line.h>
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
 
 #include "iioservice/daemon/daemon.h"
 #include "iioservice/include/common.h"
 
-int main() {
+int main(int argc, char** argv) {
+  base::CommandLine::Init(argc, argv);
   brillo::OpenLog("iioservice", true /*log_pid*/);
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader);
