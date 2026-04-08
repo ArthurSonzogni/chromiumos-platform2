@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/check_op.h>
+#include <base/command_line.h>
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
 #include <mojo/core/embedder/embedder.h>
@@ -18,6 +19,7 @@
 #include "printscanmgr/minijail/minijail_configuration.h"
 
 int main(int arg, char** argv) {
+  base::CommandLine::Init(arg, argv);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
   // The parent and child processes will each keep one end of this message pipe
