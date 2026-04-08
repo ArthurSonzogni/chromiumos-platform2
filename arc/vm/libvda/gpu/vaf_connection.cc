@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
@@ -75,6 +76,7 @@ void RunTaskOnThread(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
 VafConnection::VafConnection() : ipc_thread_("VafConnectionIpcThread") {
   DETACH_FROM_THREAD(ipc_thread_checker_);
 
+  base::CommandLine::Init(0, nullptr);
   mojo::core::Init();
   CHECK(ipc_thread_.StartWithOptions(
       base::Thread::Options(base::MessagePumpType::IO, 0)));
