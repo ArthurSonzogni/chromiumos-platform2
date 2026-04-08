@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include <base/command_line.h>
 #include <base/functional/bind.h>
 #include <base/memory/weak_ptr.h>
 #include <base/task/single_thread_task_runner.h>
@@ -79,6 +80,7 @@ ShillMojoServiceManagerImpl::ShillMojoServiceManagerImpl(Manager* manager)
   // Note: this must be called only once per process. It works because
   // ShillMojoServiceManager is only created once by DaemonTask on Shill
   // startup.
+  base::CommandLine::Init(0, nullptr);
   mojo::core::Init();
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       ipc_thread_.task_runner(),
