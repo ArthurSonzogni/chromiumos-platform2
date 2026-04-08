@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "midis/client.h"
+
+#include <base/command_line.h>
 #include <base/run_loop.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <gtest/gtest.h>
@@ -9,14 +12,13 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
-#include "midis/client.h"
 #include "midis/device_tracker.h"
 #include "mojo/midis.mojom.h"
 
 // Local implementation of the mojo MidisClient interface.
 class ClientImpl : public arc::mojom::MidisClient {
  public:
-  ~ClientImpl() override{};
+  ~ClientImpl() override {};
   void OnDeviceAdded(arc::mojom::MidisDeviceInfoPtr device) override {}
 
   void OnDeviceRemoved(arc::mojom::MidisDeviceInfoPtr device) override {}
@@ -41,6 +43,7 @@ class ClientTest : public ::testing::Test {
 
  protected:
   void SetUp() override {
+    base::CommandLine::Init(0, nullptr);
     message_loop_.SetAsCurrent();
     mojo::core::Init();
   }
