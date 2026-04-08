@@ -66,7 +66,7 @@ meson build && cd build && ninja
 
 Additional commands to compile with GTK4 support (from bookworm onwards):
 ```bash
-sudo apt install -y libgtk-4-dev libgtkmm-4.0.dev
+sudo apt install -y libgtk-4-dev libgtkmm-4.0-dev
 meson configure -Dbuild_gtk4=true && ninja
 ```
 
