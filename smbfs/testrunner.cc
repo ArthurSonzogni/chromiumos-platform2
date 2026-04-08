@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/at_exit.h>
+#include <base/command_line.h>
 #include <base/test/test_timeouts.h>
 #include <brillo/test_helpers.h>
 #include <mojo/core/embedder/embedder.h>
@@ -12,6 +13,7 @@ int main(int argc, char** argv) {
   SetUpTests(&argc, argv, true);
   TestTimeouts::Initialize();
 
+  base::CommandLine::Init(argc, argv);
   mojo::core::Init();
   return RUN_ALL_TESTS();
 }

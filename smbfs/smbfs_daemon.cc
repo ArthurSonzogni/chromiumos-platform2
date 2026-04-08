@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -165,6 +166,7 @@ bool SmbFsDaemon::SetupSmbConf() {
 bool SmbFsDaemon::InitMojo() {
   LOG(INFO) << "Boostrapping connection using Mojo";
 
+  base::CommandLine::Init(0, nullptr);
   mojo::core::Init();
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       base::SingleThreadTaskRunner::GetCurrentDefault(),
