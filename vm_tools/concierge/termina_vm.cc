@@ -64,7 +64,7 @@ constexpr int64_t kShutdownTimeoutSeconds = 30;
 constexpr int64_t kStartTerminaTimeoutSeconds = 150;
 
 // How long to wait before timing out on regular RPCs.
-constexpr int64_t kDefaultTimeoutSeconds = 10;
+constexpr int64_t kDefaultTimeoutSeconds = 20;
 
 // How long to wait before timing out on child process exits.
 constexpr base::TimeDelta kChildExitTimeout = base::Seconds(10);
