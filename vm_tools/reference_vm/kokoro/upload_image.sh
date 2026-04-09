@@ -18,7 +18,7 @@ main() {
   prefix="$(dirname "${image}")"
   dest_name="$(basename "${image}" .br)"
   gs_path="gs://refvm-images/${prefix}/${dest_name}"
-  gsutil -h "Content-Encoding:br" cp "${image}" "${gs_path}"
+  gcloud storage cp --content-encoding=br "${image}" "${gs_path}"
 
   # TODO(b/286339260): Update tast-tests with new image path and SHA256.
 }

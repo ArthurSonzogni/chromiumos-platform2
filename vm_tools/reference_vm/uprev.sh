@@ -14,11 +14,11 @@ repodir="$(repo list -pf chromiumos/platform/tast-tests)"
 datadir="${repodir}/src/go.chromium.org/tast-tests/cros/local/bruschetta/data"
 
 echo "Finding latest refvm image..."
-dir="$(gsutil ls -d 'gs://refvm-images/????-??' | tail -n 1)"
-obj="$(gsutil ls "${dir}" | tail -n  1)"
+pattern='gs://refvm-images/[0-9][0-9][0-9][0-9]-[0-9][0-9]/refvm-*.qcow2'
+obj="$(gcloud storage ls "${pattern}" | tail -n 1)"
 
 echo "Downloading ${obj} to temporary file..."
-gsutil -q cp "${obj}" "${tmpfile}"
+gcloud storage cp "${obj}" "${tmpfile}"
 
 echo "Updating refvm.qcow2.external..."
 sum="$(sha256sum "${tmpfile}" | cut -d ' ' -f 1)"
