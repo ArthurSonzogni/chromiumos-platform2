@@ -4,6 +4,8 @@
 
 #include "libec/flash_protect_command.h"
 
+#include <utility>
+
 #include <base/stl_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -22,8 +24,8 @@ TEST(FlashProtectCommand_v1, FlashProtectCommand_v1) {
   FlashProtectCommand_v1 cmd(flags, mask);
   EXPECT_EQ(cmd.Version(), EC_VER_FLASH_PROTECT);
   EXPECT_EQ(cmd.Command(), EC_CMD_FLASH_PROTECT);
-  EXPECT_EQ(cmd.Req()->flags, base::to_underlying(flags));
-  EXPECT_EQ(cmd.Req()->mask, base::to_underlying(mask));
+  EXPECT_EQ(cmd.Req()->flags, std::to_underlying(flags));
+  EXPECT_EQ(cmd.Req()->mask, std::to_underlying(mask));
 }
 
 TEST(FlashProtectCommand, ParseFlags) {
@@ -90,18 +92,18 @@ TEST(FlashProtectCommand, ParseFlags) {
 }
 
 TEST(FlashProtectCommand_v1, Enum) {
-  EXPECT_EQ(base::to_underlying(flash_protect::Flags::kNone), 0);
-  EXPECT_EQ(base::to_underlying(flash_protect::Flags::kRoAtBoot), 1);
-  EXPECT_EQ(base::to_underlying(flash_protect::Flags::kRoNow), 2);
-  EXPECT_EQ(base::to_underlying(flash_protect::Flags::kAllNow), 4);
-  EXPECT_EQ(base::to_underlying(flash_protect::Flags::kGpioAsserted), 8);
-  EXPECT_EQ(base::to_underlying(flash_protect::Flags::kErrorStuck), 16);
-  EXPECT_EQ(base::to_underlying(flash_protect::Flags::kErrorInconsistent), 32);
-  EXPECT_EQ(base::to_underlying(flash_protect::Flags::kAllAtBoot), 64);
-  EXPECT_EQ(base::to_underlying(flash_protect::Flags::kRwAtBoot), 128);
-  EXPECT_EQ(base::to_underlying(flash_protect::Flags::kRwNow), 256);
-  EXPECT_EQ(base::to_underlying(flash_protect::Flags::kRollbackAtBoot), 512);
-  EXPECT_EQ(base::to_underlying(flash_protect::Flags::kRollbackNow), 1024);
+  EXPECT_EQ(std::to_underlying(flash_protect::Flags::kNone), 0);
+  EXPECT_EQ(std::to_underlying(flash_protect::Flags::kRoAtBoot), 1);
+  EXPECT_EQ(std::to_underlying(flash_protect::Flags::kRoNow), 2);
+  EXPECT_EQ(std::to_underlying(flash_protect::Flags::kAllNow), 4);
+  EXPECT_EQ(std::to_underlying(flash_protect::Flags::kGpioAsserted), 8);
+  EXPECT_EQ(std::to_underlying(flash_protect::Flags::kErrorStuck), 16);
+  EXPECT_EQ(std::to_underlying(flash_protect::Flags::kErrorInconsistent), 32);
+  EXPECT_EQ(std::to_underlying(flash_protect::Flags::kAllAtBoot), 64);
+  EXPECT_EQ(std::to_underlying(flash_protect::Flags::kRwAtBoot), 128);
+  EXPECT_EQ(std::to_underlying(flash_protect::Flags::kRwNow), 256);
+  EXPECT_EQ(std::to_underlying(flash_protect::Flags::kRollbackAtBoot), 512);
+  EXPECT_EQ(std::to_underlying(flash_protect::Flags::kRollbackNow), 1024);
 }
 
 TEST(FlashProtect, OverloadedStreamOperator) {

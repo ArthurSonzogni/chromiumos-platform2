@@ -4,6 +4,8 @@
 
 #include "libec/flash_protect_command.h"
 
+#include <utility>
+
 #include <base/stl_util.h>
 #include <chromeos/ec/ec_commands.h>
 
@@ -13,7 +15,7 @@ namespace ec {
 
 namespace flash_protect {
 std::ostream& operator<<(std::ostream& os, flash_protect::Flags r) {
-  os << base::to_underlying(r);
+  os << std::to_underlying(r);
   return os;
 }
 }  // namespace flash_protect
@@ -21,8 +23,8 @@ std::ostream& operator<<(std::ostream& os, flash_protect::Flags r) {
 FlashProtectCommand_v1::FlashProtectCommand_v1(flash_protect::Flags flags,
                                                flash_protect::Flags mask)
     : EcCommand(EC_CMD_FLASH_PROTECT, EC_VER_FLASH_PROTECT) {
-  Req()->flags = base::to_underlying(flags);
-  Req()->mask = base::to_underlying(mask);
+  Req()->flags = std::to_underlying(flags);
+  Req()->mask = std::to_underlying(mask);
 }
 
 /**
@@ -104,8 +106,8 @@ FlashProtectCommand_v2::FlashProtectCommand_v2(flash_protect::Flags flags,
                       .validate_poll_result = true},
                      2) {
   Req()->action = FLASH_PROTECT_ASYNC;
-  Req()->flags = base::to_underlying(flags);
-  Req()->mask = base::to_underlying(mask);
+  Req()->flags = std::to_underlying(flags);
+  Req()->mask = std::to_underlying(mask);
 }
 
 flash_protect::Flags FlashProtectCommand_v2::GetValidFlags() const {

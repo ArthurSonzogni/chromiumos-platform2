@@ -6,10 +6,9 @@
 #define LIBEC_FINGERPRINT_FP_MODE_H_
 
 #include <ostream>
+#include <utility>
 
 #include <brillo/brillo_export.h>
-
-#include "base/types/cxx23_to_underlying.h"
 
 namespace ec {
 
@@ -63,8 +62,8 @@ class BRILLO_EXPORT FpMode {
 
   uint32_t RawVal() const { return EnumToRawVal(mode_); }
 
-  int EnumVal() const { return base::to_underlying(mode_); }
-  int MaxEnumVal() const { return base::to_underlying(Mode::kMaxValue); }
+  int EnumVal() const { return std::to_underlying(mode_); }
+  int MaxEnumVal() const { return std::to_underlying(Mode::kMaxValue); }
 
  private:
   Mode RawValToEnum(uint32_t mode) const;
