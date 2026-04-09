@@ -48,8 +48,9 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
   };
 
   struct StateHandlerArgs {
-    bool ro_verified = true;
-    RoVerificationStatus ro_verification_status = RMAD_RO_VERIFICATION_PASS;
+    bool ro_verified = false;
+    RoVerificationStatus ro_verification_status =
+        RMAD_RO_VERIFICATION_NOT_TRIGGERED;
     bool hwwp_enabled = false;
     std::string rmad_config_text = "";
     bool copy_success = true;
@@ -143,7 +144,7 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(UpdateRoFirmwareStateHandlerTest, InitializeState_Success_RoVerified) {
-  auto handler = CreateStateHandler({});
+  auto handler = CreateStateHandler({.ro_verified = true});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   UpdateRoFirmwareState state = handler->GetState().update_ro_firmware();
   EXPECT_EQ(state.optional(), true);
@@ -252,7 +253,7 @@ TEST_F(UpdateRoFirmwareStateHandlerTest, RunState_Rootfs_UpdateFailed) {
 }
 
 TEST_F(UpdateRoFirmwareStateHandlerTest, GetNextStateCase_Success_Skip) {
-  auto handler = CreateStateHandler({});
+  auto handler = CreateStateHandler({.ro_verified = true});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto update_ro_firmware = std::make_unique<UpdateRoFirmwareState>();

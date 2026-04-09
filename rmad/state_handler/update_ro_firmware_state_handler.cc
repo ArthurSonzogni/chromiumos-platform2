@@ -110,10 +110,7 @@ RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
     updater_task_runner_ = base::ThreadPool::CreateTaskRunner(
         {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
   }
-
-  if (bool firmware_updated;
-      json_store_->GetValue(kFirmwareUpdated, &firmware_updated) &&
-      firmware_updated) {
+  if (CanSkipUpdate()) {
     status_ = RMAD_UPDATE_RO_FIRMWARE_COMPLETE;
     RecordFirmwareUpdateStatusToLogs(json_store_,
                                      FirmwareUpdateStatus::kFirmwareComplete);
@@ -221,6 +218,7 @@ bool UpdateRoFirmwareStateHandler::CanSkipUpdate() const {
   if (RoVerificationStatus ro_status;
       tpm_manager_client_->GetRoVerificationStatus(&ro_status) &&
       ro_status == RMAD_RO_VERIFICATION_V2_SUCCESS) {
+    LOG(INFO) << "Skipping FW update with passed AP RO verification.";
     return true;
   }
   return false;

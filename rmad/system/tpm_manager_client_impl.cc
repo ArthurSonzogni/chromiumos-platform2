@@ -99,7 +99,8 @@ bool TpmManagerClientImpl::GetRoVerificationStatus(
     return false;
   }
 
-  VLOG(1) << "Get RO verification status: " << reply.ro_verification_status();
+  LOG(INFO) << "Get TPM RO verification status: "
+            << reply.ro_verification_status();
   if (ro_verification_status) {
     *ro_verification_status =
         TpmManagerRoStatusToRmadRoStatus(reply.ro_verification_status());
