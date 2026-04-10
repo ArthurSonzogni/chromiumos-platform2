@@ -47,6 +47,7 @@ namespace {
 
 constexpr char kPolicyValue1[] = "fake_policy1";
 constexpr char kPolicyValue2[] = "fake_policy2";
+constexpr char kPolicyValue3[] = "fake_policy3";
 
 }  // namespace
 
@@ -494,10 +495,13 @@ class PolicyServiceNamespaceTest : public testing::Test {
     const std::string kExtensionId1 = "abcdefghijklmnopabcdefghijklmnop";
     ns1_ = PolicyNamespace(POLICY_DOMAIN_CHROME, "");
     ns2_ = PolicyNamespace(POLICY_DOMAIN_EXTENSIONS, kExtensionId1);
+    ns3_ = PolicyNamespace(POLICY_DOMAIN_EXTENSION_INSTALL, "");
 
     policy_path1_ = temp_dir.Append(PolicyService::kChromePolicyFileName);
     policy_path2_ = temp_dir.Append(
         PolicyService::kExtensionsPolicyFileNamePrefix + kExtensionId1);
+    policy_path3_ =
+        temp_dir.Append(PolicyService::kExtensionInstallPolicyFileName);
   }
 
  protected:
@@ -561,8 +565,10 @@ class PolicyServiceNamespaceTest : public testing::Test {
   StrictMock<MockPolicyKey> key_;
   PolicyNamespace ns1_;
   PolicyNamespace ns2_;
+  PolicyNamespace ns3_;
   base::FilePath policy_path1_;
   base::FilePath policy_path2_;
+  base::FilePath policy_path3_;
 };
 
 TEST_F(PolicyServiceNamespaceTest, Store) {
@@ -586,38 +592,55 @@ TEST_F(PolicyServiceNamespaceTest, StoreMultiple) {
   fake_loop_.Run();
   EXPECT_TRUE(system_utils_.Exists(policy_path2_));
 
+  EXPECT_FALSE(system_utils_.Exists(policy_path3_));
+  StorePolicy(kPolicyValue3, ns3_);
+  fake_loop_.Run();
+  EXPECT_TRUE(system_utils_.Exists(policy_path3_));
+
   std::string actual_value1 = LoadPolicyFromFile(policy_path1_);
   std::string actual_value2 = LoadPolicyFromFile(policy_path2_);
+  std::string actual_value3 = LoadPolicyFromFile(policy_path3_);
 
   EXPECT_EQ(kPolicyValue1, actual_value1);
   EXPECT_EQ(kPolicyValue2, actual_value2);
+  EXPECT_EQ(kPolicyValue3, actual_value3);
 }
 
 TEST_F(PolicyServiceNamespaceTest, StoreRetrieveMultiple) {
   EXPECT_FALSE(system_utils_.Exists(policy_path1_));
   EXPECT_FALSE(system_utils_.Exists(policy_path2_));
+  EXPECT_FALSE(system_utils_.Exists(policy_path3_));
 
   StorePolicy(kPolicyValue1, ns1_);
   StorePolicy(kPolicyValue2, ns2_);
+  StorePolicy(kPolicyValue3, ns3_);
 
   std::string actual_value1 = RetrievePolicy(ns1_);
   std::string actual_value2 = RetrievePolicy(ns2_);
+  std::string actual_value3 = RetrievePolicy(ns3_);
 
   EXPECT_EQ(kPolicyValue1, actual_value1);
   EXPECT_EQ(kPolicyValue2, actual_value2);
+  EXPECT_EQ(kPolicyValue3, actual_value3);
 
   // The files are stored in a "background" task.
   fake_loop_.Run();
 
   EXPECT_TRUE(system_utils_.Exists(policy_path1_));
   EXPECT_TRUE(system_utils_.Exists(policy_path2_));
+  EXPECT_TRUE(system_utils_.Exists(policy_path3_));
 }
 
 TEST_F(PolicyServiceNamespaceTest, LoadPolicyFromDisk) {
   // Makes sure that policy is loaded from disk on first access.
   SavePolicyToFile(policy_path1_, kPolicyValue1);
-  const std::string actual_value = RetrievePolicy(ns1_);
-  EXPECT_EQ(kPolicyValue1, actual_value);
+  const std::string actual_value_1 = RetrievePolicy(ns1_);
+  EXPECT_EQ(kPolicyValue1, actual_value_1);
+
+  // Makes sure that policy is loaded from disk on first access.
+  SavePolicyToFile(policy_path3_, kPolicyValue3);
+  const std::string actual_value_3 = RetrievePolicy(ns3_);
+  EXPECT_EQ(kPolicyValue3, actual_value_3);
 }
 
 }  // namespace login_manager
