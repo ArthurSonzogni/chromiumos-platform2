@@ -1,9 +1,10 @@
-// Copyright 2024 The Chromium Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "odml/mojom/read_only_file_mojom_traits.h"
 
+#include <base/check.h>
 #include <base/files/file.h>
 #include <build/build_config.h>
 
@@ -39,8 +40,7 @@ bool IsReadOnlyFile(base::File& file) {
   is_readonly = !(flags.value() &
                   (FILE_APPEND_DATA | FILE_WRITE_ATTRIBUTES | FILE_WRITE_DATA |
                    FILE_WRITE_EA | WRITE_DAC | WRITE_OWNER | DELETE));
-#elif BUILDFLAG(IS_FUCHSIA) || \
-    (BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_AIX))
+#elif BUILDFLAG(IS_FUCHSIA) || (BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_AIX))
   is_readonly =
       (fcntl(file.GetPlatformFile(), F_GETFL) & O_ACCMODE) == O_RDONLY;
 #endif

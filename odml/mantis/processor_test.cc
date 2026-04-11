@@ -4,6 +4,7 @@
 
 #include "odml/mantis/processor.h"
 
+#include <base/check.h>
 #include <base/memory/raw_ref.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/test/bind.h>

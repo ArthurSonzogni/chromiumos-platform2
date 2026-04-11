@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/functional/callback.h>
+#include <base/logging.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>

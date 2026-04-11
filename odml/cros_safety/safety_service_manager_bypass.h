@@ -8,6 +8,8 @@
 #include <string>
 #include <utility>
 
+#include <base/logging.h>
+
 #include "odml/cros_safety/safety_service_manager.h"
 
 namespace cros_safety {

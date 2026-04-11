@@ -9,7 +9,10 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/functional/callback.h>
+#include <base/logging.h>
 #include <base/types/expected.h>
 #include <base/types/expected_macros.h>
 

@@ -6,6 +6,8 @@
 
 #include <string>
 
+#include <base/logging.h>
+
 #include "odml/mojom/cros_safety.mojom-shared.h"
 #include "odml/mojom/cros_safety_service.mojom-shared.h"
 

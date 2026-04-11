@@ -14,6 +14,7 @@
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/hash/hash.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/types/expected.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>

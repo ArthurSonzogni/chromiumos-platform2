@@ -26,6 +26,7 @@ mantis_console --image=/usr/local/tmp/image.jpg \
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
+#include <base/logging.h>
 #include <base/memory/raw_ref.h>
 #include <base/notimplemented.h>
 #include <base/run_loop.h>

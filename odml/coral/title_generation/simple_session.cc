@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/functional/callback.h>
+#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>

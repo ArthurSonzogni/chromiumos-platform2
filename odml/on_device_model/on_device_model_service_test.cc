@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <base/check.h>
 #include <base/files/scoped_temp_file.h>
 #include <base/memory/raw_ref.h>
 #include <base/run_loop.h>

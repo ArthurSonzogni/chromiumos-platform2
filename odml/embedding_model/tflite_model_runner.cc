@@ -10,6 +10,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
+#include <base/logging.h>
 #include <tensorflow/lite/context.h>
 #include <tensorflow/lite/delegates/gpu/delegate.h>
 #include <tensorflow/lite/delegates/utils/experimental/stable_delegate/delegate_loader.h>

@@ -9,6 +9,8 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
+
 #include "odml/embedding_model/model_holder.h"
 
 namespace embedding_model {

@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check_op.h>
 #include <base/types/pass_key.h>
 
 namespace embedding_model {

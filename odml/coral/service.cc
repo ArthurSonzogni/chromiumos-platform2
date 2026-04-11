@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <base/logging.h>
 #include <metrics/metrics_library.h>
 
 #include "odml/coral/clustering/engine.h"

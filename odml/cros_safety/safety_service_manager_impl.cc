@@ -9,6 +9,7 @@
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
+#include <base/logging.h>
 #include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 #include <mojo/public/cpp/bindings/remote.h>

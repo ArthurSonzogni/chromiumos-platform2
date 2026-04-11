@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/compiler_specific.h>
 
 #include "odml/on_device_model/ml/chrome_ml.h"

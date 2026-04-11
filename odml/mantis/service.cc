@@ -14,6 +14,7 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
+#include <base/logging.h>
 #include <base/memory/raw_ref.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_traits.h>
