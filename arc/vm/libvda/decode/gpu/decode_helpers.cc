@@ -4,6 +4,9 @@
 
 #include "arc/vm/libvda/decode/gpu/decode_helpers.h"
 
+#include <base/logging.h>
+#include <base/notreached.h>
+
 namespace arc {
 
 arc::mojom::HalPixelFormat ConvertPixelFormatToHalPixelFormat(

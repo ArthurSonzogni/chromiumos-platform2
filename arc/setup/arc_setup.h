@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/component_export.h>
 
 #include "arc/setup/android_sdk_version.h"
