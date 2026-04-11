@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/functional/bind.h>
+#include <base/logging.h>
 #include <base/no_destructor.h>
 #include <base/values.h>
 #include <diagnostics/mojom/public/cros_healthd.mojom.h>
