@@ -9,6 +9,7 @@
 
 #include <base/check.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <brillo/files/safe_fd.h>
 
 namespace printscanmgr {

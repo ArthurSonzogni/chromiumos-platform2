@@ -2,24 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "printscanmgr/daemon/cups_tool.h"
+
 #include <algorithm>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
-
-#include <base/files/scoped_temp_dir.h>
-#include <base/files/file_util.h>
+#include <base/check.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
 #include <chromeos/dbus/printscanmgr/dbus-constants.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
 
-#include "printscanmgr/daemon/cups_tool.h"
 #include "printscanmgr/executor/mock_executor.h"
 #include "printscanmgr/mojom/executor.mojom.h"
 
