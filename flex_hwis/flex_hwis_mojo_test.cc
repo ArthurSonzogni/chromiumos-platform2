@@ -7,6 +7,7 @@
 #include <optional>
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/scoped_temp_dir.h>
 #include <diagnostics/mojom/public/cros_healthd.mojom.h>
 #include <diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h>
