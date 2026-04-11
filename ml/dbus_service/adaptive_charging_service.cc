@@ -6,6 +6,10 @@
 
 #include <utility>
 
+#include <base/check.h>
+#include <base/check_op.h>
+#include <base/logging.h>
+
 #include "ml/tensor_view.h"
 
 namespace ml {

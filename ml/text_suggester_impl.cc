@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
+
 #include "ml/request_metrics.h"
 #include "ml/text_suggester_proto_mojom_conversion.h"
 

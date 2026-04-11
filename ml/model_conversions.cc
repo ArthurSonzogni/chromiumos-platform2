@@ -5,6 +5,7 @@
 #include "ml/model_conversions.h"
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/notreached.h>
 
 using chromeos::machine_learning::mojom::GpuDelegateApi;

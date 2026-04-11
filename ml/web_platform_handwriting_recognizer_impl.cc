@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <brillo/message_loops/message_loop.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>

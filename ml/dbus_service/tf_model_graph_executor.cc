@@ -8,8 +8,10 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <tensorflow/lite/model.h>
 
 #include "chrome/knowledge/assist_ranker/ranker_example.pb.h"
