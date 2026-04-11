@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/functional/bind.h>
+#include <base/logging.h>
 #include <base/task/single_thread_task_runner.h>
 
 #include "mojo_service_manager/daemon/mojo_error_util.h"

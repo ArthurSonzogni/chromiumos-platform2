@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include <base/check.h>
+
 namespace chromeos::mojo_service_manager {
 
 SimpleFakeMojoServiceManager::SimpleFakeMojoServiceManager() = default;
