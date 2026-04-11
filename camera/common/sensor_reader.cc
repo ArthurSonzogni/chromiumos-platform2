@@ -11,6 +11,7 @@
 #include <optional>
 #include <utility>
 
+#include <base/check.h>
 #include <base/notreached.h>
 #include <base/strings/stringprintf.h>
 

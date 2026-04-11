@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
 #include <base/sequence_checker.h>
 #include <base/task/sequenced_task_runner.h>
 #include <chromeos/mojo/service_constants.h>

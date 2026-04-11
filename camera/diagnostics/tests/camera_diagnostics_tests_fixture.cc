@@ -8,8 +8,10 @@
 #include <optional>
 #include <utility>
 
+#include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/location.h>
+#include <base/notreached.h>
 #include <base/synchronization/lock.h>
 #include <base/time/time.h>
 #include <chromeos/mojo/service_constants.h>

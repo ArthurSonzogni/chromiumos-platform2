@@ -15,9 +15,11 @@
 #include <vector>
 
 #include <base/bits.h>
+#include <base/check.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
+#include <base/notreached.h>
 #include <base/strings/string_util.h>
 #include <base/system/sys_info.h>
 #include <sync/sync.h>

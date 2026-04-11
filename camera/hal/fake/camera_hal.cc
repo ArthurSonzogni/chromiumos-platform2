@@ -9,6 +9,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
 #include <base/no_destructor.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/sequenced_task_runner.h>

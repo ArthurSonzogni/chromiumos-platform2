@@ -4,16 +4,18 @@
  * found in the LICENSE file.
  */
 
+#include <libyuv.h>
+
 #include <base/at_exit.h>
 #include <base/check.h>
 #include <base/command_line.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/memory/unsafe_shared_memory_region.h>
 #include <base/memory/writable_shared_memory_region.h>
 #include <base/threading/thread.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <gtest/gtest.h>
-#include <libyuv.h>
 
 #include "common/jpeg/jpeg_decode_accelerator_impl.h"
 #include "cros-camera/future.h"

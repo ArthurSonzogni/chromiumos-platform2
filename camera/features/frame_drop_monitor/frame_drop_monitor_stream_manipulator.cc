@@ -9,6 +9,8 @@
 #include <optional>
 #include <utility>
 
+#include <base/check.h>
+
 namespace cros {
 
 namespace {

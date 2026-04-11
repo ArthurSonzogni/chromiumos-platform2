@@ -6,13 +6,15 @@
 
 #include "common/sw_privacy_switch_stream_manipulator.h"
 
+#include <drm_fourcc.h>
+#include <linux/videodev2.h>
+
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <drm_fourcc.h>
-#include <linux/videodev2.h>
+#include <base/check.h>
 #include <sync/sync.h>
 
 #include "common/camera_hal3_helpers.h"

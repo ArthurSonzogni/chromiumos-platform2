@@ -4,6 +4,7 @@
 
 #include <cstdint>
 
+#include <base/logging.h>
 #include <base/test/test_timeouts.h>
 #include <base/timer/elapsed_timer.h>
 #include <brillo/flag_helper.h>

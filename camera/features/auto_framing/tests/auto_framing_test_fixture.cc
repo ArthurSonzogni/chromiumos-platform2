@@ -8,6 +8,7 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <base/functional/callback_helpers.h>
 #include <sync/sync.h>
 

@@ -9,6 +9,7 @@
 #include <optional>
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/synchronization/lock.h>
 #include <base/system/sys_info.h>

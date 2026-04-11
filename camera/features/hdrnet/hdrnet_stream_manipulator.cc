@@ -11,10 +11,12 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/containers/lru_cache.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
+#include <base/notreached.h>
 #include <hardware/camera3.h>
 #include <sync/sync.h>
 #include <system/camera_metadata.h>
