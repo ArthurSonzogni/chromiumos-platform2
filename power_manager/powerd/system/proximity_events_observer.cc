@@ -6,7 +6,9 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <base/functional/bind.h>
+#include <base/logging.h>
 
 namespace power_manager {
 namespace system {
