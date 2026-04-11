@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/cancelable_callback.h>
+#include <base/check.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/hash/hash.h>

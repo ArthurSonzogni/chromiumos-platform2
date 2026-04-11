@@ -6,7 +6,9 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <base/functional/callback.h>
+#include <base/logging.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/types/expected.h>
 

@@ -10,8 +10,10 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/functional/callback.h>
 #include <base/notimplemented.h>
+#include <base/notreached.h>
 #include <iioservice/mojo/sensor.mojom.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 

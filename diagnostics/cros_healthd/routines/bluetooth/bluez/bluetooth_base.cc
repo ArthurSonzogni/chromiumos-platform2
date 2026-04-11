@@ -8,8 +8,10 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
+#include <base/logging.h>
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/bluez_controller.h"

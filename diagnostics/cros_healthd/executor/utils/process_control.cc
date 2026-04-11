@@ -4,12 +4,13 @@
 
 #include "diagnostics/cros_healthd/executor/utils/process_control.h"
 
-#include <bits/types/siginfo_t.h>
-
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
+#include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <bits/types/siginfo_t.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
 namespace diagnostics {

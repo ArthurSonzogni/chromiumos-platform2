@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/functional/callback_helpers.h>
 
 namespace diagnostics {

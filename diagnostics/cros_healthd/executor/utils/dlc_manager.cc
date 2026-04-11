@@ -8,9 +8,11 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
+#include <base/logging.h>
 #include <base/task/sequenced_task_runner.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 // NOLINTNEXTLINE(build/include_alpha) dbus-proxies.h needs dlcservice.pb.h

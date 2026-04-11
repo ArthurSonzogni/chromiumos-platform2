@@ -12,6 +12,7 @@
 
 #include <base/files/file_util.h>
 #include <base/functional/callback_helpers.h>
+#include <base/logging.h>
 #include <chromeos/ec/ec_commands.h>
 #include <iioservice/mojo/sensor.mojom.h>
 

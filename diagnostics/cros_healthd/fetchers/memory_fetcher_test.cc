@@ -10,6 +10,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>

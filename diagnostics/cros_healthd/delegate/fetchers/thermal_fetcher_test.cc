@@ -9,6 +9,7 @@
 #include <memory>
 #include <string_view>
 
+#include <base/check.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libec/ec_command.h>

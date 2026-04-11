@@ -9,9 +9,11 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/hash/hash.h>
+#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/single_thread_task_runner.h>

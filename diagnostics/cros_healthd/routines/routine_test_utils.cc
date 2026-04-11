@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/mojo_utils.h"

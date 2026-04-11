@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
 #include <cras/dbus-proxies.h>

@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/notreached.h>
 #include <base/values.h>

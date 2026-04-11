@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/logging.h>
 #include <base/notimplemented.h>
 #include <metrics/metrics_library.h>
 

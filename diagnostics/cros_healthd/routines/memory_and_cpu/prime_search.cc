@@ -9,6 +9,7 @@
 
 #include <base/check.h>
 #include <base/functional/callback_helpers.h>
+#include <base/logging.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 

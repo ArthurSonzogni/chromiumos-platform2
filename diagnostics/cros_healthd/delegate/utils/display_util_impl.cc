@@ -12,6 +12,7 @@
 
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
+#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 
 #include "diagnostics/cros_healthd/delegate/utils/edid.h"

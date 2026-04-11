@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/task/single_thread_task_runner.h>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 

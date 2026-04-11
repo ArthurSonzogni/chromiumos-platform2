@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/command_line.h>
+#include <base/logging.h>
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>

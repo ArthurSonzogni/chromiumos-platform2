@@ -9,6 +9,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/logging.h>
+
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/mojo_service.h"

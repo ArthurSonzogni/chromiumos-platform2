@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/containers/flat_map.h>
 #include <base/files/file_util.h>
 #include <base/functional/callback_helpers.h>
