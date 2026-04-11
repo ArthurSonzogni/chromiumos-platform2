@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <utility>
 
+#include <base/check.h>
+#include <base/logging.h>
 #include <base/time/time.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 

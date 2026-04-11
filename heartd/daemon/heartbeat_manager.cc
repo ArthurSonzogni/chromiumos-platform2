@@ -8,6 +8,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <base/time/time.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>

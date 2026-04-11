@@ -4,6 +4,7 @@
 
 #include <fcntl.h>
 
+#include <base/logging.h>
 #include <brillo/syslog_logging.h>
 #include <mojo/core/embedder/embedder.h>
 
