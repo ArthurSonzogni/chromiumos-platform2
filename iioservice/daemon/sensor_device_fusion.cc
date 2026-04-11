@@ -7,6 +7,8 @@
 #include <optional>
 #include <utility>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/strings/stringprintf.h>
 #include <libmems/common_types.h>
 

@@ -10,14 +10,14 @@
 #include <set>
 #include <utility>
 
+#include <base/check.h>
 #include <base/functional/callback.h>
 #include <base/run_loop.h>
 #include <base/sequence_checker.h>
 #include <base/task/single_thread_task_runner.h>
-#include <mojo/public/cpp/bindings/receiver.h>
-
 #include <libmems/iio_device.h>
 #include <libmems/test_fakes.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "iioservice/daemon/samples_handler.h"
 #include "iioservice/mojo/sensor.mojom.h"

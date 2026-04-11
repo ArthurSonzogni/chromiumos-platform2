@@ -8,6 +8,8 @@
 
 #include <aosp/frameworks/native/services/sensorservice/mat.h>
 #include <aosp/frameworks/native/services/sensorservice/vec.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/notreached.h>
 
 #include "iioservice/include/common.h"

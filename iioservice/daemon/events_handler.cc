@@ -8,6 +8,7 @@
 #include <optional>
 #include <utility>
 
+#include <base/check.h>
 #include <base/functional/bind.h>
 
 #include "iioservice/daemon/common_types.h"

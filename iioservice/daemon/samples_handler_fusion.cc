@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <libmems/common_types.h>
 
 #include "iioservice/daemon/sensor_metrics.h"
