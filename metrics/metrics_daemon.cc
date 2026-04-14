@@ -97,7 +97,10 @@ const char kKernelCrashDetectedFile[] =
     "/run/metrics/external/crash-reporter/kernel-crash-detected";
 const char kUncleanShutdownDetectedFile[] =
     "/run/metrics/external/crash-reporter/unclean-shutdown-detected";
-
+const char kKernelPanicInEventlogDetectedFile[] =
+    "/run/metrics/external/crash-reporter/kernel-panic-in-eventlog-detected";
+const char kKernelWatchdogInEventlogDetectedFile[] =
+    "/run/metrics/external/crash-reporter/kernel-watchdog-in-eventlog-detected";
 // Path of flag created by crouton when it starts.
 const char kCroutonStartedFile[] =
     "/run/metrics/external/crouton/crouton-started";
@@ -139,6 +142,10 @@ constexpr char kKernelCrashesSinceUpdateName[] =
 constexpr char kUncleanShutdownsDailyName[] = "Platform.UncleanShutdownsDaily";
 constexpr char kUncleanShutdownsWeeklyName[] =
     "Platform.UncleanShutdownsWeekly";
+constexpr char kKernelWatchdogInEventlogDailyName[] =
+    "Platform.KernelWatchdogEventsDaily";
+constexpr char kKernelPanicInEventlogDailyName[] =
+    "Platform.KernelPanicEventsDaily";
 constexpr char kMmcStatsName[] = "Platform.Storage.Mmc.Internal.";
 constexpr char kFileDescriptorsCountName[] = "Platform.FileDescriptors.Count";
 
@@ -274,6 +281,12 @@ int MetricsDaemon::Run() {
   if (CheckSystemCrash(kUncleanShutdownDetectedFile)) {
     ProcessUncleanShutdown();
   }
+  if (CheckSystemCrash(kKernelPanicInEventlogDetectedFile)) {
+    ProcessKernelPanicInEventlog();
+  }
+  if (CheckSystemCrash(kKernelWatchdogInEventlogDetectedFile)) {
+    ProcessKernelWatchdogInEventlog();
+  }
 
   // On OS version change, clear version stats (which are reported daily).
   int32_t version = GetOsVersionHash();
@@ -373,6 +386,10 @@ void MetricsDaemon::Init(bool testing,
       new PersistentInteger(backing_dir_.Append(kUserCrashesWeeklyName)));
   kernel_crashes_daily_count_.reset(
       new PersistentInteger(backing_dir_.Append(kKernelCrashesDailyName)));
+  kernel_panic_in_eventlog_daily_count_.reset(new PersistentInteger(
+      backing_dir_.Append(kKernelPanicInEventlogDailyName)));
+  kernel_watchdog_in_eventlog_daily_count_.reset(new PersistentInteger(
+      backing_dir_.Append(kKernelWatchdogInEventlogDailyName)));
   kernel_crashes_weekly_count_.reset(
       new PersistentInteger(backing_dir_.Append(kKernelCrashesWeeklyName)));
   kernel_crashes_version_count_.reset(new PersistentInteger(
@@ -682,6 +699,14 @@ void MetricsDaemon::ProcessUncleanShutdown() {
   unclean_shutdowns_weekly_count_->Add(1);
   any_crashes_daily_count_->Add(1);
   any_crashes_weekly_count_->Add(1);
+}
+
+void MetricsDaemon::ProcessKernelPanicInEventlog() {
+  kernel_panic_in_eventlog_daily_count_->Add(1);
+}
+
+void MetricsDaemon::ProcessKernelWatchdogInEventlog() {
+  kernel_watchdog_in_eventlog_daily_count_->Add(1);
 }
 
 bool MetricsDaemon::CheckSystemCrash(const string& crash_file) {
@@ -1581,6 +1606,10 @@ void MetricsDaemon::UpdateStats(TimeTicks now_ticks, Time now_wall_time) {
                                      kKernelCrashesDailyName);
     SendAndResetCrashFrequencySample(unclean_shutdowns_daily_count_,
                                      kUncleanShutdownsDailyName);
+    SendAndResetCrashFrequencySample(kernel_panic_in_eventlog_daily_count_,
+                                     kKernelPanicInEventlogDailyName);
+    SendAndResetCrashFrequencySample(kernel_watchdog_in_eventlog_daily_count_,
+                                     kKernelWatchdogInEventlogDailyName);
     SendKernelCrashesCumulativeCountStats();
     SendAndResetDailyVmstats();
     SendFdCount();

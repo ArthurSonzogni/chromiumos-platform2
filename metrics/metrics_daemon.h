@@ -205,6 +205,11 @@ class MetricsDaemon : public brillo::DBusDaemon {
   // Updates the active use time and logs time between kernel crashes.
   void ProcessKernelCrash();
 
+  // Updates/Increments the UMA histogram metric that a kernel panic
+  // or watchdog had happened
+  void ProcessKernelPanicInEventlog();
+  void ProcessKernelWatchdogInEventlog();
+
   // Updates the active use time and logs time between unclean shutdowns.
   void ProcessUncleanShutdown();
 
@@ -442,6 +447,8 @@ class MetricsDaemon : public brillo::DBusDaemon {
   std::unique_ptr<PersistentInteger> user_crashes_weekly_count_;
   std::unique_ptr<PersistentInteger> kernel_crashes_daily_count_;
   std::unique_ptr<PersistentInteger> kernel_crashes_weekly_count_;
+  std::unique_ptr<PersistentInteger> kernel_panic_in_eventlog_daily_count_;
+  std::unique_ptr<PersistentInteger> kernel_watchdog_in_eventlog_daily_count_;
   std::unique_ptr<PersistentInteger> kernel_crashes_version_count_;
   std::unique_ptr<PersistentInteger> unclean_shutdowns_daily_count_;
   std::unique_ptr<PersistentInteger> unclean_shutdowns_weekly_count_;

@@ -82,6 +82,14 @@ class KernelCollector : public CrashCollector {
   void set_arch(kernel_util::ArchKind arch) { arch_ = arch; }
   kernel_util::ArchKind arch() const { return arch_; }
 
+  // Returns true if the BIOS event log indicates that the last reboot was
+  // caused by a kernel panic.
+  base::expected<bool, CrashCollectionStatus> LastRebootWasKernelPanicEvent();
+
+  // Returns true if the BIOS event log indicates that the last reboot was
+  // caused by a hardware watchdog reset.
+  base::expected<bool, CrashCollectionStatus> LastRebootWasWatchdogEvent();
+
   // Returns the severity level and product group of the crash.
   CrashCollector::ComputedCrashSeverity ComputeSeverity(
       const std::string& exec_name) override;

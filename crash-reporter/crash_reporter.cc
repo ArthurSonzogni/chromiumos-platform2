@@ -63,6 +63,10 @@ namespace {
 
 const char kKernelCrashDetected[] =
     "/run/metrics/external/crash-reporter/kernel-crash-detected";
+const char kKernelPanicInEventlogDetected[] =
+    "/run/metrics/external/crash-reporter/kernel-panic-in-eventlog-detected";
+const char kKernelWatchdogInEventlogDetected[] =
+    "/run/metrics/external/crash-reporter/kernel-watchdog-in-eventlog-detected";
 const char kUncleanShutdownDetected[] =
     "/run/metrics/external/crash-reporter/unclean-shutdown-detected";
 const char kBootCollectorDone[] = "/run/crash_reporter/boot-collector-done";
@@ -183,6 +187,20 @@ int BootCollect(
       // an associated kernel crash.
       TouchFile(FilePath(kUncleanShutdownDetected));
     }
+
+    // Look at the BIOS eventlog to find out if the reboot was due to a
+    // Kernel Panic or Hardware watchdog. If yes, touch a file to notify
+    // the metrics daemon.
+    auto panic_result = kernel_collector->LastRebootWasKernelPanicEvent();
+    if (panic_result.value_or(false)) {
+      TouchFile(base::FilePath(kKernelPanicInEventlogDetected));
+    }
+
+    auto watchdog_result = kernel_collector->LastRebootWasWatchdogEvent();
+    if (watchdog_result.value_or(false)) {
+      TouchFile(base::FilePath(kKernelWatchdogInEventlogDetected));
+    }
+
     ephemeral_crash_collector->Collect();
   } else if (ephemeral_crash_collector->SkipConsent()) {
     ephemeral_crash_collector->Collect();

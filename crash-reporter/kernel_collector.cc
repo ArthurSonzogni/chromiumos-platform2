@@ -69,6 +69,7 @@ constexpr char kCorruptDumpExtension[] = ".enc.z";
 const FilePath kEventLogPath("/var/log/eventlog.txt");
 constexpr char kEventNameBoot[] = "System boot";
 constexpr char kEventNameWatchdog[] = "Hardware watchdog reset";
+constexpr char kEventNameKernelPanic[] = "Kernel Event | Panic";
 constexpr pid_t kKernelPid = 0;
 constexpr char kKernelSignatureKey[] = "sig";
 
@@ -973,4 +974,72 @@ bool KernelCollector::WasKernelCrash(
     return true;
   }
   return false;
+}
+
+base::expected<bool, CrashCollectionStatus>
+KernelCollector::LastRebootWasKernelPanicEvent() {
+  if (!base::PathExists(eventlog_path_)) {
+    LOG(INFO) << "Cannot find " << eventlog_path_.value()
+              << ", skipping kernel panic event check.";
+    return false;
+  }
+
+  std::string eventlog;
+  if (!base::ReadFileToString(eventlog_path_, &eventlog)) {
+    PLOG(ERROR) << "Unable to read " << eventlog_path_.value();
+    return false;
+  }
+
+  std::string_view piece = std::string_view(eventlog);
+  size_t last_boot = piece.rfind(kEventNameBoot);
+  if (last_boot == std::string_view::npos) {
+    return false;
+  }
+
+  // Search for Kernel Panics should be done from the logs after previous
+  // boot(penultimate_boot) to logs just before the last boot happened
+  size_t start_pos = 0;
+  if (last_boot > 0) {
+    size_t penultimate_boot = piece.rfind(kEventNameBoot, last_boot - 1);
+    if (penultimate_boot != std::string_view::npos) {
+      start_pos = penultimate_boot;
+    }
+  }
+
+  return piece.substr(start_pos, last_boot - start_pos)
+             .find(kEventNameKernelPanic) != std::string_view::npos;
+}
+
+base::expected<bool, CrashCollectionStatus>
+KernelCollector::LastRebootWasWatchdogEvent() {
+  if (!base::PathExists(eventlog_path_)) {
+    LOG(INFO) << "Cannot find " << eventlog_path_.value()
+              << ", skipping watchdog event check.";
+    return false;
+  }
+
+  std::string eventlog;
+  if (!base::ReadFileToString(eventlog_path_, &eventlog)) {
+    PLOG(ERROR) << "Unable to read " << eventlog_path_.value();
+    return false;
+  }
+
+  std::string_view piece = std::string_view(eventlog);
+  size_t last_boot = piece.rfind(kEventNameBoot);
+  if (last_boot == std::string_view::npos) {
+    return false;
+  }
+
+  // Search for Watchdog should be done from the logs after previous
+  // boot(penultimate_boot) to logs just before the last boot happened
+  size_t start_pos = 0;
+  if (last_boot > 0) {
+    size_t penultimate_boot = piece.rfind(kEventNameBoot, last_boot - 1);
+    if (penultimate_boot != std::string_view::npos) {
+      start_pos = penultimate_boot;
+    }
+  }
+
+  return piece.substr(start_pos, last_boot - start_pos)
+             .find(kEventNameWatchdog) != std::string_view::npos;
 }
