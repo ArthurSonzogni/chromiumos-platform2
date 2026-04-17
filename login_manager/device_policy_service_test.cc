@@ -433,8 +433,8 @@ TEST_F(DevicePolicyServiceTest, SetBlockDevModeInNvram) {
   EXPECT_FALSE(system_utils_.Exists(chromad_migration_file_path_));
 }
 
-// Ensure block devmode is unset properly in NVRAM.
-TEST_F(DevicePolicyServiceTest, UnsetBlockDevModeInNvram) {
+// Ensure block devmode is NOT unset in NVRAM.
+TEST_F(DevicePolicyServiceTest, NotUnsetBlockDevModeInNvram) {
   MockNssUtil nss;
   InitService(&nss, true);
 
@@ -447,19 +447,19 @@ TEST_F(DevicePolicyServiceTest, UnsetBlockDevModeInNvram) {
   proto->mutable_system_settings()->set_block_devmode(false);
   SetSettings(service_.get(), std::move(proto));
 
-  EXPECT_CALL(vpd_process_, RunInBackground(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(vpd_process_, RunInBackground(_, _)).Times(0);
 
-  // This file should be removed, because the device is cloud managed.
+  // This file should NOT be removed, because we return early.
   ASSERT_TRUE(system_utils_.EnsureFile(chromad_migration_file_path_, ""));
 
   SetDataInInstallAttributes("enterprise");
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
 
-  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(
+  EXPECT_EQ(1, crossystem_.VbGetSystemPropertyInt(
                    crossystem::Crossystem::kNvramCleared));
-  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(
+  EXPECT_EQ(1, crossystem_.VbGetSystemPropertyInt(
                    crossystem::Crossystem::kBlockDevmode));
-  EXPECT_FALSE(system_utils_.Exists(chromad_migration_file_path_));
+  EXPECT_TRUE(system_utils_.Exists(chromad_migration_file_path_));
 }
 
 // Ensure non-enrolled and non-blockdevmode device will call VPD update

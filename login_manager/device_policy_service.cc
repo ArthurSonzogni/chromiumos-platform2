@@ -360,6 +360,25 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
     LOG(ERROR) << "Failed to read block_devmode flag!";
   }
 
+  // We clear block_devmode for consumers during state determination.
+  // We must not clear it otherwise.
+  // Rationale: It is possible to interrupt the enrollment process such that the
+  // owner key is present, but policies aren't. In this case,
+  // `block_devmode_setting` would default to false, but we do not actually know
+  // the administrator's intent. To prevent enrollment escapes, we have to leave
+  // the setting in VPD untouched if it is currently set to block_devmode=1.
+  // See crbug.com/483169442
+  //
+  // TODO(crbug.com/505603926): It might be cleaner to copy the FWMP parameter
+  // instead.
+  if (block_devmode_value == 1 && !block_devmode_setting) {
+    LOG(WARNING) << "Ignoring policy to clear block_devmode in VPD.";
+    if (!completion.is_null()) {
+      std::move(completion).Run(brillo::ErrorPtr());
+    }
+    return true;
+  }
+
   // Set crossystem block_devmode flag.
   if (block_devmode_value != block_devmode_setting) {
     if (!crossystem_->VbSetSystemPropertyInt(
