@@ -8,6 +8,8 @@
 #include <string>
 #include <utility>
 
+#include <base/notreached.h>
+
 namespace mojo {
 
 // static
@@ -27,23 +29,19 @@ EnumTraits<on_device_model::mojom::Token, ml::Token>::ToMojom(ml::Token input) {
 }
 
 // static
-bool EnumTraits<on_device_model::mojom::Token, ml::Token>::FromMojom(
-    on_device_model::mojom::Token input, ml::Token* output) {
+ml::Token EnumTraits<on_device_model::mojom::Token, ml::Token>::FromMojom(
+    on_device_model::mojom::Token input) {
   switch (input) {
     case on_device_model::mojom::Token::kSystem:
-      *output = ml::Token::kSystem;
-      return true;
+      return ml::Token::kSystem;
     case on_device_model::mojom::Token::kModel:
-      *output = ml::Token::kModel;
-      return true;
+      return ml::Token::kModel;
     case on_device_model::mojom::Token::kUser:
-      *output = ml::Token::kUser;
-      return true;
+      return ml::Token::kUser;
     case on_device_model::mojom::Token::kEnd:
-      *output = ml::Token::kEnd;
-      return true;
+      return ml::Token::kEnd;
   }
-  return false;
+  NOTREACHED();
 }
 
 // static
@@ -117,22 +115,18 @@ EnumTraits<on_device_model::mojom::ModelBackendType,
 }
 
 // static
-bool EnumTraits<on_device_model::mojom::ModelBackendType,
-                ml::ModelBackendType>::
-    FromMojom(on_device_model::mojom::ModelBackendType input,
-              ml::ModelBackendType* output) {
+ml::ModelBackendType
+EnumTraits<on_device_model::mojom::ModelBackendType, ml::ModelBackendType>::
+    FromMojom(on_device_model::mojom::ModelBackendType input) {
   switch (input) {
     case on_device_model::mojom::ModelBackendType::kGpu:
-      *output = ml::ModelBackendType::kGpuBackend;
-      return true;
+      return ml::ModelBackendType::kGpuBackend;
     case on_device_model::mojom::ModelBackendType::kApu:
-      *output = ml::ModelBackendType::kApuBackend;
-      return true;
+      return ml::ModelBackendType::kApuBackend;
     case on_device_model::mojom::ModelBackendType::kCpu:
-      *output = ml::ModelBackendType::kCpuBackend;
-      return true;
+      return ml::ModelBackendType::kCpuBackend;
   }
-  return false;
+  NOTREACHED();
 }
 
 // static
@@ -149,19 +143,17 @@ EnumTraits<on_device_model::mojom::ModelPerformanceHint,
 }
 
 // static
-bool EnumTraits<on_device_model::mojom::ModelPerformanceHint,
-                ml::ModelPerformanceHint>::
-    FromMojom(on_device_model::mojom::ModelPerformanceHint input,
-              ml::ModelPerformanceHint* output) {
+ml::ModelPerformanceHint
+EnumTraits<on_device_model::mojom::ModelPerformanceHint,
+           ml::ModelPerformanceHint>::
+    FromMojom(on_device_model::mojom::ModelPerformanceHint input) {
   switch (input) {
     case on_device_model::mojom::ModelPerformanceHint::kHighestQuality:
-      *output = ml::ModelPerformanceHint::kHighestQuality;
-      return true;
+      return ml::ModelPerformanceHint::kHighestQuality;
     case on_device_model::mojom::ModelPerformanceHint::kFastestInference:
-      *output = ml::ModelPerformanceHint::kFastestInference;
-      return true;
+      return ml::ModelPerformanceHint::kFastestInference;
   }
-  return false;
+  NOTREACHED();
 }
 
 bool StructTraits<on_device_model::mojom::AudioDataDataView, ml::AudioBuffer>::
