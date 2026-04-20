@@ -783,8 +783,8 @@ bool MobileOperatorMapper::FilterMatches(
     re2::RE2 filter_regex = {filter.regex()};
     if (!RE2::FullMatch(to_match, filter_regex)) {
       SLOG(2) << GetLogPrefix(__func__) << "Skipping because string '"
-              << to_match << "' is not a " << "match of regexp '"
-              << filter.regex();
+              << to_match << "' is not a match of regexp '" << filter.regex()
+              << "'.";
       return false;
     }
 
@@ -796,8 +796,8 @@ bool MobileOperatorMapper::FilterMatches(
     re2::RE2 filter_regex = {filter.exclude_regex()};
     if (RE2::FullMatch(to_match, filter_regex)) {
       SLOG(2) << GetLogPrefix(__func__) << "Skipping because string '"
-              << to_match << "' is a " << "match of exclude_regex '"
-              << filter.exclude_regex();
+              << to_match << "' is a match of exclude_regex '"
+              << filter.exclude_regex() << "'.";
       return false;
     }
 
