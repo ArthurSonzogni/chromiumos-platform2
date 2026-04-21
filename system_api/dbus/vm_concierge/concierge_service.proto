@@ -321,7 +321,7 @@ message StartPluginVmRequest {
 
 // Information that must be included with every StartArcVm request.
 message StartArcVmRequest {
-  reserved 10;
+  reserved 10, 18;
 
   // The VM that should be started.
   VirtualMachineSpec vm = 1;
@@ -379,10 +379,6 @@ message StartArcVmRequest {
   // 'ro.surface_flinger.primary_display_orientation' property to tell the
   // orientation to surfaceflinger.
   DisplayOrientation panel_orientation = 17;
-
-  // Whether to lock guest memory (for the purpose of disabling host swap).
-  // TODO(b/356233968): Remove.
-  bool lock_guest_memory = 18 [deprecated = true];
 
   // Whether virtio blk data is enabled
   bool enable_virtio_blk_data = 27;
