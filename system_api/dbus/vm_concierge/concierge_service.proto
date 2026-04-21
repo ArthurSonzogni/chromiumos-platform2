@@ -383,7 +383,8 @@ message StartArcVmRequest {
   DisplayOrientation panel_orientation = 17;
 
   // Whether to lock guest memory (for the purpose of disabling host swap).
-  bool lock_guest_memory = 18;
+  // TODO(b/356233968): Remove.
+  bool lock_guest_memory = 18 [deprecated = true];
 
   // Whether virtio blk data is enabled
   bool enable_virtio_blk_data = 27;

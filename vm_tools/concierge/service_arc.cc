@@ -625,10 +625,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     }
   }
 
-  if (request.lock_guest_memory()) {
-    vm_builder.AppendCustomParam("--lock-guest-memory", "");
-  }
-
   if (request.use_hugepages()) {
     vm_builder.AppendCustomParam("--hugepages", "");
   }
