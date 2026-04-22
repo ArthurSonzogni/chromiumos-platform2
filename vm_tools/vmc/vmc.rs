@@ -802,13 +802,15 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     }
 
     fn logs(&mut self) -> VmcResult {
-        if self.args.len() != 1 {
-            return Err(ExpectedName.into());
-        }
+        let (vm_name, log_output) = match self.args.len() {
+            1 => (self.args[0], None),
+            2 => (self.args[0], Some(self.args[1])),
+            _ => return Err(ExpectedVmAndMaybeFileName.into()),
+        };
 
-        let vm_name = self.args[0];
-
-        let logs = try_command!(self.methods.get_vm_logs(vm_name, self.user_id_hash));
+        let logs = try_command!(self
+            .methods
+            .get_vm_logs(vm_name, self.user_id_hash, log_output));
         print!("{}", logs);
 
         Ok(())
@@ -1141,7 +1143,7 @@ const USAGE: &str = " [
   |  inspect-backup <file name> [<removable storage name>]
   |  resize <vm name> <size>
   |  list
-  |  logs <vm name>
+  |  logs <vm name> [<output file name>]
   |  set-crostini-vm-type <vm type>
   |  share <vm name> <path>
   |  unshare <vm name> <path>
@@ -1532,6 +1534,7 @@ mod tests {
             &["vmc", "import", "termina", "file name", "removable media"],
             &["vmc", "list"],
             &["vmc", "logs", "cowcat"],
+            &["vmc", "logs", "cowcat", "problem_logs.txt"],
             &["vmc", "share", "termina", "my-folder"],
             &["vmc", "unshare", "termina", "my-folder"],
             &["vmc", "usb-attach", "termina", "1:2"],
@@ -1630,7 +1633,6 @@ mod tests {
             &["vmc", "import", "termina", "too", "many", "args"],
             &["vmc", "list", "extra args"],
             &["vmc", "logs"],
-            &["vmc", "logs", "too", "many args"],
             &["vmc", "share"],
             &["vmc", "share", "too", "many", "args"],
             &["vmc", "unshare"],

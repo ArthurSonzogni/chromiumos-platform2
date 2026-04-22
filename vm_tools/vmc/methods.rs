@@ -7,7 +7,7 @@ use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 use std::fmt;
 use std::fs::File;
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::iter::FromIterator;
 use std::os::fd::OwnedFd;
 use std::os::unix::io::AsRawFd;
@@ -2691,6 +2691,7 @@ impl Methods {
         &mut self,
         vm_name: &str,
         user_id_hash: &str,
+        file_name: Option<&str>,
     ) -> Result<String, Box<dyn Error>> {
         let mut request = GetVmLogsRequest::new();
         request.owner_id = user_id_hash.to_owned();
@@ -2701,6 +2702,17 @@ impl Methods {
                 .concierge_client()?
                 .get_vm_logs(request.write_to_bytes()?)?,
         )?;
+
+        if let Some(file_name) = file_name {
+            let file_path = Path::new(CRYPTOHOME_USER)
+                .join(user_id_hash)
+                .join(MY_FILES_DIR)
+                .join(DOWNLOADS_DIR)
+                .join(file_name);
+            let mut file = File::create(&file_path)?;
+            file.write_all(response.log.as_bytes())?;
+            return Ok(String::new());
+        }
 
         Ok(response.log)
     }
