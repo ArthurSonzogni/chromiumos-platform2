@@ -129,8 +129,9 @@ enum DocumentScanSaneBackend {
   kR40 = 117,
   kR50 = 118,
   kPfufs = 119,
+  kBrother5 = 120,
 
-  kMaxValue = kPfufs,
+  kMaxValue = kBrother5,
 };
 
 // Gets the UMA enum corresponding to the SANE backend with the given
