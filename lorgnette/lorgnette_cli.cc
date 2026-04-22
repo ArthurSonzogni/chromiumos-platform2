@@ -295,15 +295,6 @@ bool ScanRunner::RunScanner(const std::string& scanner,
   }
   PrintScannerCapabilities(capabilities.value());
 
-  if (!std::ranges::contains(capabilities->resolutions(), resolution_)) {
-    // Many scanners will round the requested resolution to the nearest
-    // supported resolution. We will attempt to scan with the given resolution
-    // since it may still work.
-    LOG(WARNING) << "Requested scan resolution " << resolution_
-                 << " is not supported by the selected scanner. "
-                    "Attempting to request it anyways.";
-  }
-
   // If the user hasn't requested a specific scan source, choose the platen if
   // it's available or the ADF if it isn't.  Otherwise, require exactly what the
   // user has requested.
@@ -356,7 +347,16 @@ bool ScanRunner::RunScanner(const std::string& scanner,
     }
   }
 
-  if (!std::ranges::contains(capabilities->color_modes(), color_mode_)) {
+  if (!std::ranges::contains(scan_source->resolutions(), resolution_)) {
+    // Many scanners will round the requested resolution to the nearest
+    // supported resolution. We will attempt to scan with the given resolution
+    // since it may still work.
+    LOG(WARNING) << "Requested scan resolution " << resolution_
+                 << " is not supported by the selected scan source. "
+                    "Attempting to request it anyways.";
+  }
+
+  if (!std::ranges::contains(scan_source->color_modes(), color_mode_)) {
     LOG(ERROR) << "Requested scan source does not support color mode "
                << ColorMode_Name(color_mode_);
     return false;
