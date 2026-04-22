@@ -18,11 +18,13 @@ lorgnette::SourceType GuessSourceType(const std::string& name) {
   // case of "platen simplex" or "platen duplex".
   if (lowercase == "adf" || lowercase == "adf front" ||
       lowercase == "adf simplex" || lowercase == "automatic document feeder" ||
-      lowercase == "simplex") {
+      lowercase == "simplex" ||
+      lowercase == "automatic document feeder(center aligned)") {
     return lorgnette::SOURCE_ADF_SIMPLEX;
   }
 
-  if (lowercase == "adf duplex" || lowercase == "duplex") {
+  if (lowercase == "adf duplex" || lowercase == "duplex" ||
+      lowercase == "automatic document feeder(center aligned,duplex)") {
     return lorgnette::SOURCE_ADF_DUPLEX;
   }
 
