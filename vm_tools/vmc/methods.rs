@@ -29,7 +29,6 @@ use libchromeos::OpenSafelyOptions;
 use protobuf::Message as ProtoMessage;
 use protobuf::{Enum, EnumOrUnknown};
 use system_api::cicerone_service::*;
-use system_api::client::OrgChromiumDebugd;
 use system_api::client::OrgChromiumDlcServiceInterface;
 use system_api::client::OrgChromiumPermissionBroker;
 use system_api::client::OrgChromiumSessionManagerInterface;
@@ -42,8 +41,6 @@ use system_api::dlcservice::dlc_state;
 use system_api::dlcservice::DlcState;
 use system_api::launch::*;
 use system_api::seneschal_service::*;
-use system_api::vm_plugin_dispatcher;
-use system_api::vm_plugin_dispatcher::VmErrorCode;
 
 use crate::disk::{DiskInfo, DiskOpType, VmDiskImageType, VmState, VmType as DiskVmType};
 use crate::proto::system_api::*;
@@ -638,7 +635,6 @@ pub struct Methods {
     connection: ConnectionProxy,
     bruschetta_enabled: Option<VmTypeStatus>,
     crostini_enabled: Option<VmTypeStatus>,
-    plugin_vm_enabled: Option<VmTypeStatus>,
 }
 
 impl Methods {
@@ -649,7 +645,6 @@ impl Methods {
             connection: connection.into(),
             bruschetta_enabled: None,
             crostini_enabled: None,
-            plugin_vm_enabled: None,
         })
     }
 
@@ -674,7 +669,6 @@ impl Methods {
             connection: ConnectionProxy::dummy(),
             bruschetta_enabled: Some(VmTypeStatus::Enabled),
             crostini_enabled: Some(VmTypeStatus::Enabled),
-            plugin_vm_enabled: Some(VmTypeStatus::Enabled),
         }
     }
 
@@ -887,42 +881,6 @@ impl Methods {
         }
     }
 
-    fn check_plugin_vm_status(
-        &mut self,
-        user_id_hash: &str,
-    ) -> Result<VmTypeStatus, Box<dyn Error>> {
-        let status = match &self.plugin_vm_enabled {
-            Some(value) => value.clone(),
-            None => {
-                let value = self.check_vm_type_status(
-                    user_id_hash,
-                    CHROME_FEATURES_SERVICE_IS_PLUGIN_VM_ENABLED_METHOD,
-                )?;
-                self.plugin_vm_enabled = Some(value.clone());
-                value
-            }
-        };
-        Ok(status)
-    }
-
-    fn is_plugin_vm_enabled(&mut self, user_id_hash: &str) -> Result<bool, Box<dyn Error>> {
-        match self.check_plugin_vm_status(user_id_hash)? {
-            VmTypeStatus::Enabled => Ok(true),
-            _ => Ok(false),
-        }
-    }
-
-    // Checks if Parallels is enabled, and starts the dispatcher.
-    fn ensure_plugin_vm_available(&mut self, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
-        match self.check_plugin_vm_status(user_id_hash)? {
-            VmTypeStatus::Enabled => self.start_vm_plugin_dispatcher(user_id_hash),
-            VmTypeStatus::Disabled(reason) => match reason {
-                Some(r) => Err(PluginVmDisabledReason(r).into()),
-                None => Err(PluginVmDisabled.into()),
-            },
-        }
-    }
-
     fn notify_vm_starting(&mut self) -> Result<(), Box<dyn Error>> {
         let method = Message::new_method_call(
             LOCK_TO_SINGLE_USER_SERVICE_NAME,
@@ -936,33 +894,9 @@ impl Methods {
 
         Ok(())
     }
-
-    /// Request debugd to start vmplugin_dispatcher.
-    fn start_vm_plugin_dispatcher(&mut self, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
-        // Download and install pita component. If this fails we won't be able to start
-        // the dispatcher service below.
-        self.install_dlc("pita")?;
-
-        let proxy: blocking::Proxy<'_, _> = Connection::with_proxy(
-            self.connection.get_real_connection_or_fail()?,
-            DEBUGD_SERVICE_NAME,
-            DEBUGD_SERVICE_PATH,
-            DEFAULT_TIMEOUT,
-        );
-        match OrgChromiumDebugd::start_vm_plugin_dispatcher(&proxy, user_id_hash, "en-US") {
-            Ok(true) => Ok(()),
-            _ => Err(BadVmPluginDispatcherStatus.into()),
-        }
-    }
-
     /// Starts all necessary VM services (currently just the Parallels dispatcher).
     fn start_vm_infrastructure(&mut self, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
-        if self.is_plugin_vm_enabled(user_id_hash)? {
-            // Starting the dispatcher will also start concierge.
-            self.start_vm_plugin_dispatcher(user_id_hash)
-        } else if self.is_crostini_enabled(user_id_hash)?
-            || self.is_bruschetta_enabled(user_id_hash)?
-        {
+        if self.is_crostini_enabled(user_id_hash)? || self.is_bruschetta_enabled(user_id_hash)? {
             Ok(())
         } else {
             Err(NoVmTechnologyEnabled.into())
@@ -1675,85 +1609,6 @@ impl Methods {
         Ok(())
     }
 
-    fn parse_plugin_vm_response(
-        &mut self,
-        error: EnumOrUnknown<VmErrorCode>,
-        result_code: i32,
-    ) -> Result<(), Box<dyn Error>> {
-        const PRL_ERR_SUCCESS: u32 = 0;
-        const PRL_ERR_DISP_SHUTDOWN_IN_PROCESS: u32 = 0x80000404;
-        const PRL_ERR_NOT_ENOUGH_DISK_SPACE_TO_START_VM: u32 = 0x80000456;
-        const PRL_ERR_LICENSE_NOT_VALID: u32 = 0x80011000;
-        const PRL_ERR_LICENSE_EXPIRED: u32 = 0x80011001;
-        const PRL_ERR_LICENSE_WRONG_VERSION: u32 = 0x80011002;
-        const PRL_ERR_LICENSE_WRONG_PLATFORM: u32 = 0x80011004;
-        const PRL_ERR_LICENSE_BETA_KEY_RELEASE_PRODUCT: u32 = 0x80011011;
-        const PRL_ERR_LICENSE_RELEASE_KEY_BETA_PRODUCT: u32 = 0x80011013;
-        const PRL_ERR_LICENSE_SUBSCR_EXPIRED: u32 = 0x80011074;
-        const PRL_ERR_JLIC_WRONG_HWID: u32 = 0x80057005;
-        const PRL_ERR_JLIC_LICENSE_DISABLED: u32 = 0x80057010;
-        const PRL_ERR_JLIC_WEB_PORTAL_ACCESS_REQUIRED: u32 = 0x80057012;
-
-        match error.enum_value() {
-            Ok(VmErrorCode::VM_SUCCESS) => Ok(()),
-            Ok(VmErrorCode::VM_ERR_NATIVE_RESULT_CODE) | Err(_) => match result_code as u32 {
-                PRL_ERR_SUCCESS => Ok(()),
-                PRL_ERR_DISP_SHUTDOWN_IN_PROCESS => Err(PluginVmGenericError(result_code).into()),
-                PRL_ERR_NOT_ENOUGH_DISK_SPACE_TO_START_VM => Err(PluginVmNotEnoughDisk.into()),
-                PRL_ERR_LICENSE_NOT_VALID
-                | PRL_ERR_LICENSE_WRONG_VERSION
-                | PRL_ERR_LICENSE_WRONG_PLATFORM
-                | PRL_ERR_LICENSE_BETA_KEY_RELEASE_PRODUCT
-                | PRL_ERR_LICENSE_RELEASE_KEY_BETA_PRODUCT
-                | PRL_ERR_JLIC_WRONG_HWID
-                | PRL_ERR_JLIC_LICENSE_DISABLED => Err(PluginVmLicenseInvalid(result_code).into()),
-                PRL_ERR_LICENSE_EXPIRED | PRL_ERR_LICENSE_SUBSCR_EXPIRED => {
-                    Err(PluginVmLicenseExpired(result_code).into())
-                }
-                PRL_ERR_JLIC_WEB_PORTAL_ACCESS_REQUIRED => Err(PluginVmNoPortalAccess.into()),
-                _ => Err(PluginVmGenericError(result_code).into()),
-            },
-        }
-    }
-
-    /// Request that dispatcher start given Parallels VM.
-    fn start_plugin_vm(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
-        let mut request = vm_plugin_dispatcher::StartVmRequest::new();
-        request.owner_id = user_id_hash.to_owned();
-        request.vm_name_uuid = vm_name.to_owned();
-
-        let response: vm_plugin_dispatcher::StartVmResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_PLUGIN_DISPATCHER_SERVICE_NAME,
-                VM_PLUGIN_DISPATCHER_SERVICE_PATH,
-                VM_PLUGIN_DISPATCHER_INTERFACE,
-                START_VM_METHOD,
-            )?,
-            &request,
-        )?;
-
-        self.parse_plugin_vm_response(response.error, response.result_code)
-    }
-
-    /// Request that dispatcher starts application responsible for rendering Parallels VM window.
-    fn show_plugin_vm(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
-        let mut request = vm_plugin_dispatcher::ShowVmRequest::new();
-        request.owner_id = user_id_hash.to_owned();
-        request.vm_name_uuid = vm_name.to_owned();
-
-        let response: vm_plugin_dispatcher::ShowVmResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_PLUGIN_DISPATCHER_SERVICE_NAME,
-                VM_PLUGIN_DISPATCHER_SERVICE_PATH,
-                VM_PLUGIN_DISPATCHER_INTERFACE,
-                SHOW_VM_METHOD,
-            )?,
-            &request,
-        )?;
-
-        self.parse_plugin_vm_response(response.error, response.result_code)
-    }
-
     /// Request that `concierge` stop a vm with the given disk image.
     fn stop_vm(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
         let mut request = StopVmRequest::new();
@@ -2255,58 +2110,6 @@ impl Methods {
         Ok(())
     }
 
-    fn send_problem_report_for_plugin_vm(
-        &mut self,
-        vm_name: Option<String>,
-        user_id_hash: &str,
-        email: Option<String>,
-        text: Option<String>,
-    ) -> Result<String, Box<dyn Error>> {
-        let mut request = vm_plugin_dispatcher::SendProblemReportRequest::new();
-        request.owner_id = user_id_hash.to_owned();
-
-        if let Some(name) = vm_name {
-            let (images, _) = self.list_disk_images(user_id_hash, None, Some(&name))?;
-            if images.is_empty() {
-                return Err(NoSuchVm.into());
-            }
-            if images[0].image_type != DiskImageType::DISK_IMAGE_PLUGINVM.into() {
-                return Err(NotPluginVm.into());
-            }
-            request.vm_name_uuid = name;
-        }
-
-        if !self.is_plugin_vm_enabled(user_id_hash)? {
-            return Err(PluginVmDisabled.into());
-        }
-
-        request.detailed = true;
-
-        if let Some(email_str) = email {
-            request.email = email_str;
-        }
-
-        if let Some(text_str) = text {
-            request.description = text_str;
-        }
-
-        let response: vm_plugin_dispatcher::SendProblemReportResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_PLUGIN_DISPATCHER_SERVICE_NAME,
-                VM_PLUGIN_DISPATCHER_SERVICE_PATH,
-                VM_PLUGIN_DISPATCHER_INTERFACE,
-                SEND_PROBLEM_REPORT_METHOD,
-            )?,
-            &request,
-        )?;
-
-        if response.success {
-            Ok(response.report_id)
-        } else {
-            Err(FailedSendProblemReport(response.error_message, response.result_code).into())
-        }
-    }
-
     pub fn metrics_send_sample(&mut self, name: &str) -> Result<(), Box<dyn Error>> {
         #![allow(unreachable_code)]
         let _ = name;
@@ -2592,7 +2395,7 @@ impl Methods {
     pub fn vsh_exec(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         if self.is_plugin_vm(vm_name, user_id_hash)? {
-            self.show_plugin_vm(vm_name, user_id_hash)
+            Err(PluginVmDisabledReason("Plugin VM support is deprecated.".into()).into())
         } else {
             Command::new("vsh")
                 .arg(format!("--vm_name={}", vm_name))
@@ -2882,17 +2685,6 @@ impl Methods {
             })
             .collect();
         Ok(device_list)
-    }
-
-    pub fn pvm_send_problem_report(
-        &mut self,
-        vm_name: Option<String>,
-        user_id_hash: &str,
-        email: Option<String>,
-        text: Option<String>,
-    ) -> Result<String, Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
-        self.send_problem_report_for_plugin_vm(vm_name, user_id_hash, email, text)
     }
 
     pub fn get_vm_logs(

@@ -27,7 +27,6 @@ pub type EnvMap<'a> = BTreeMap<&'a str, &'a str>;
 
 enum VmcError {
     Command(&'static str, Box<dyn Error>),
-    BadProblemReportArguments(getopts::Fail),
     DiskOperation(String, Box<dyn Error>),
     ExpectedCrosUserIdHash,
     ExpectedUIntSize,
@@ -62,10 +61,6 @@ use self::VmcError::*;
 // Optional flag used with "vmc container" command. Use this with the getopts crate API.
 static PRIVILEGED_FLAG: &str = "privileged";
 
-// Option names for pvm.send-porblem-report command. Use this with the getopts crate API.
-static EMAIL_OPTION: &str = "email";
-static VM_NAME_OPTION: &str = "vm-name";
-
 // Remove useless expression items that the `try_command!()` macro captures and stringifies when
 // generating a `VmcError::Command`.
 fn trim_routine(s: &str) -> String {
@@ -91,7 +86,6 @@ fn parse_disk_size(s: &str) -> Result<u64, VmcError> {
 impl fmt::Display for VmcError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            BadProblemReportArguments(e) => write!(f, "failed to parse arguments: {:?}", e),
             Command(routine, e) => {
                 write!(f, "operation `{}` failed: {}", trim_routine(routine), e)
             }
@@ -1107,41 +1101,6 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         Ok(())
     }
 
-    fn pvm_send_problem_report(&mut self) -> VmcResult {
-        let mut opts = Options::new();
-        opts.optopt(
-            "e",
-            EMAIL_OPTION,
-            "email to associate with the problem report",
-            "EMAIL",
-        );
-        opts.optopt(
-            "n",
-            VM_NAME_OPTION,
-            "name of the VM for which problem report is generated",
-            "NAME",
-        );
-        let matches = opts.parse(self.args).map_err(BadProblemReportArguments)?;
-
-        let vm_name = matches.opt_str(VM_NAME_OPTION);
-        let email = matches.opt_str(EMAIL_OPTION);
-        let text = if matches.free.is_empty() {
-            None
-        } else {
-            Some(matches.free.join(" "))
-        };
-
-        let report_id = try_command!(self.methods.pvm_send_problem_report(
-            vm_name,
-            self.user_id_hash,
-            email,
-            text
-        ));
-
-        println!("Problem report has been sent. Report ID: {}", report_id);
-        Ok(())
-    }
-
     fn inspect_backup(&mut self) -> VmcResult {
         let (file_path, removable_media) = match self.args.len() {
             1 => (self.args[0], None),
@@ -1193,8 +1152,7 @@ const USAGE: &str = " [
   |  usb-attach <vm name> <bus>:<device> [<container name>]
   |  usb-detach <vm name> <port>
   |  usb-list <vm name>
-  |  key-attach <vm name> <hidraw path>
-  |  pvm.send-problem-report [-n <vm name>] [-e <reporter's email>] <description of the problem>";
+  |  key-attach <vm name> <hidraw path>";
 const USAGE_ON_CHROMEBOX: &str = "
   |  allow-all-io-devices [on chromeboxes, allow all keyboards/mice to connect]
   |  list-primary-io-devices
@@ -1274,7 +1232,6 @@ impl Vmc<'_> {
             "usb-detach" => command.usb_detach(),
             "usb-list" => command.usb_list(),
             "key-attach" => command.key_attach(),
-            "pvm.send-problem-report" => command.pvm_send_problem_report(),
             "inspect-backup" => command.inspect_backup(),
             "allow-all-io-devices" => {
                 self.try_chromebox_command(|| command.allow_all_io_devices(), command_name)
@@ -1348,10 +1305,6 @@ mod tests {
                     let msg_return = msg
                         .method_return()
                         .append1(dlc_state.write_to_bytes().unwrap());
-                    return Err(Ok(msg_return));
-                }
-                b"StartVmPluginDispatcher" => {
-                    let msg_return = msg.method_return().append1(true);
                     return Err(Ok(msg_return));
                 }
                 b"DestroyDiskImage" => {
@@ -1586,35 +1539,6 @@ mod tests {
             &["vmc", "usb-detach", "termina", "5"],
             &["vmc", "usb-detach", "termina", "5"],
             &["vmc", "usb-list", "termina"],
-            &["vmc", "pvm.send-problem-report"],
-            &["vmc", "pvm.send-problem-report", "text"],
-            &["vmc", "pvm.send-problem-report", "text", "text2"],
-            &[
-                "vmc",
-                "pvm.send-problem-report",
-                "-n",
-                "termina",
-                "text",
-                "text2",
-            ],
-            &[
-                "vmc",
-                "pvm.send-problem-report",
-                "-e",
-                "someone@somewhere.com",
-                "text",
-                "text2",
-            ],
-            &[
-                "vmc",
-                "pvm.send-problem-report",
-                "-n",
-                "termina",
-                "-e",
-                "someone@somewhere.com",
-                "text",
-                "text2",
-            ],
             &["vmc", "--help"],
             &["vmc", "-h"],
         ];
@@ -1721,8 +1645,6 @@ mod tests {
             &["vmc", "usb-detach", "not-a-number"],
             &["vmc", "usb-list"],
             &["vmc", "usb-list", "termina", "args"],
-            &["vmc", "pvm.send-problem-report", "-e"],
-            &["vmc", "pvm.send-problem-report", "-n"],
         ];
 
         let mut methods = mocked_methods();
