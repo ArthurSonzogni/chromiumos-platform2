@@ -1171,7 +1171,7 @@ void UserDataAuthAdaptor::MigrateLegacyFingerprints(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&UserDataAuthAdaptor::DoMigrateLegacyFingerprints,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::MigrateLegacyFingerprintsReply>::
                          MakeThreadSafe(std::move(response)),
