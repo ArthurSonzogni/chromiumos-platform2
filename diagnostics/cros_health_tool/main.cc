@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/at_exit.h>
+#include <base/command_line.h>
 #include <base/message_loop/message_pump_type.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/task/single_thread_task_runner.h>
@@ -30,6 +31,8 @@ void PrintHelp() {
 }  // namespace
 
 int main(int argc, char* argv[]) {
+  base::CommandLine::Init(argc, argv);
+
   if (argc < 2) {
     PrintHelp();
     return EXIT_FAILURE;
