@@ -3,7 +3,7 @@
  * found in the LICENSE file.
  */
 
-#include "cros-camera/cros_camera_hal.h"
+#include "hal/ip/camera_hal.h"
 
 #include <stdlib.h>
 #include <sys/types.h>
@@ -11,18 +11,19 @@
 
 #include <utility>
 
-#include <base/functional/bind.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/platform/platform_channel.h>
+#include <mojo/public/cpp/system/invitation.h>
 
 #include "cros-camera/common.h"
+#include "cros-camera/cros_camera_hal.h"
 #include "cros-camera/export.h"
 #include "dbus_proxies/dbus-proxies.h"
-#include "hal/ip/camera_hal.h"
 #include "hal/ip/metadata_handler.h"
 
 namespace cros {
@@ -165,9 +166,17 @@ void CameraHal::InitOnIpcThread(scoped_refptr<Future<int>> return_val) {
     return;
   }
 
-  isolated_connection_ = std::make_unique<mojo::IsolatedConnection>();
-  mojo::ScopedMessagePipeHandle pipe =
-      isolated_connection_->Connect(channel.TakeLocalEndpoint());
+  mojo::OutgoingInvitation invitation;
+  mojo::ScopedMessagePipeHandle pipe = invitation.AttachMessagePipe(0);
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+  // IPCz requires an application to explicitly opt in to broker sharing
+  // and inheritance when establishing a direct connection between two
+  // non-broker nodes.
+  invitation.set_extra_flags(MOJO_SEND_INVITATION_FLAG_SHARE_BROKER);
+#endif
+  mojo::OutgoingInvitation::Send(std::move(invitation),
+                                 base::kNullProcessHandle,
+                                 channel.TakeLocalEndpoint());
 
   detector_.Bind(
       mojo::PendingRemote<mojom::IpCameraDetector>(std::move(pipe), 0u));
@@ -192,7 +201,6 @@ void CameraHal::DestroyOnIpcThread(scoped_refptr<Future<void>> return_val) {
     cameras_.clear();
   }
 
-  isolated_connection_ = nullptr;
   return_val->Set();
 }
 
@@ -209,8 +217,6 @@ void CameraHal::OnConnectionError() {
       OnDeviceDisconnected(ip);
     }
   }
-
-  isolated_connection_ = nullptr;
 
   LOGF(FATAL) << "Lost connection to IP peripheral server";
 }

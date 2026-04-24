@@ -6,19 +6,19 @@
 #ifndef CAMERA_HAL_IP_CAMERA_HAL_H_
 #define CAMERA_HAL_IP_CAMERA_HAL_H_
 
+#include <sys/types.h>
+
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include <base/synchronization/atomic_flag.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
-#include <mojo/public/cpp/system/isolated_connection.h>
-
-#include <map>
-#include <memory>
-#include <string>
-#include <sys/types.h>
-#include <vector>
 
 #include "camera/camera_metadata.h"
 #include "camera/mojo/ip/ip_camera.mojom.h"
@@ -67,7 +67,6 @@ class CameraHal : public mojom::IpCameraConnectionListener {
   void OnConnectionError();
 
   base::AtomicFlag initialized_;
-  std::unique_ptr<mojo::IsolatedConnection> isolated_connection_;
   mojo::Remote<mojom::IpCameraDetector> detector_;
   mojo::Receiver<IpCameraConnectionListener> receiver_;
 
