@@ -579,12 +579,7 @@ DecryptedUss::FailedDecryptOrDecryptedUss DecryptedUss::FromEncryptedUss(
       std::move(*file_system_keyset), std::move(reset_secrets),
       std::move(rate_limiter_reset_secrets), std::move(key_derivation_seed));
   if (needs_commit) {
-    // Note that we don't need to use Transaction to keep in-memory and storage
-    // state consistent because we can make sure the DecryptedUss object is
-    // constructed successfully if and only if the `ToStorage` call below is
-    // successful, as long as it is the last possible error branch in this
-    // function.
-    CryptohomeStatus store_status = decrypted.encrypted().ToStorage(storage);
+    CryptohomeStatus store_status = decrypted.StartTransaction().Commit();
     if (!store_status.ok()) {
       return FailedDecrypt{
           .status = std::move(store_status),

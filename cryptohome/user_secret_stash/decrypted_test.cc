@@ -744,6 +744,15 @@ TEST_F(DecryptedUssTest, KeyDerivationSeedBackfilled) {
       DecryptedUss::FromStorageUsingMainKey(user_uss_storage_, main_key);
   ASSERT_THAT(decrypted_uss, IsOk());
   EXPECT_FALSE(decrypted_uss->key_derivation_seed().empty());
+
+  // Re-read the payload from storage. We should get back the same seed if the
+  // backfill is actually being persisted.
+  auto redecrypted_uss =
+      DecryptedUss::FromStorageUsingMainKey(user_uss_storage_, main_key);
+  ASSERT_THAT(redecrypted_uss, IsOk());
+  EXPECT_FALSE(redecrypted_uss->key_derivation_seed().empty());
+  EXPECT_EQ(decrypted_uss->key_derivation_seed().to_string(),
+            redecrypted_uss->key_derivation_seed().to_string());
 }
 
 TEST_F(DecryptedUssTest, GetSecurityDomainKeys) {
