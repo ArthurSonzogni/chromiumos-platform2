@@ -13,6 +13,7 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <base/timer/timer.h>
 #include <brillo/daemons/daemon.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
@@ -94,6 +95,18 @@ class Daemon : public brillo::Daemon {
   // Implements mojom::ServiceManager. It will be initialized after policy files
   // are loaded.
   std::unique_ptr<ServiceManager> service_manager_;
+
+  // A dedicated function to crash, guaranteeing local variables are kept in the
+  // stack frame.
+  [[noreturn]] NOINLINE void CrashWithCulpritData(bool culprit_found,
+                                                  uid_t culprit_uid,
+                                                  pid_t culprit_pid,
+                                                  int queued_bytes,
+                                                  int fd_count);
+
+  void CheckFileDescriptorUsage();
+
+  base::RepeatingTimer fd_check_timer_;
 
   // Exported for testing.
   friend mojom::ProcessIdentityPtr GetProcessIdentityFromPeerSocketForTest(

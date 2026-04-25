@@ -5,12 +5,15 @@
 #include "mojo_service_manager/daemon/daemon.h"
 
 #include <linux/limits.h>
+#include <linux/sockios.h>
 #include <pwd.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <sysexits.h>
+#include <unistd.h>
 
 #include <memory>
 #include <optional>
@@ -18,10 +21,14 @@
 #include <utility>
 
 #include <base/check_op.h>
+#include <base/compiler_specific.h>
+#include <base/debug/alias.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/task/single_thread_task_runner.h>
 #include <chromeos/constants/mojo_service_manager.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
@@ -39,6 +46,18 @@ namespace {
 constexpr mode_t kSocketMode =
     S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
 
+// The interval to check the FD usage. 10 seconds is chosen to balance the
+// overhead of the check and the risk of missing a rapid FD accumulation before
+// hitting the hard limit of 1024.
+constexpr base::TimeDelta kFdCheckInterval = base::Seconds(10);
+
+// The high-watermark for FD usage before we trigger a diagnostic crash.
+// 800 is chosen because a normal reading would be in the range of ~100, if the
+// usage is approaching 800, it is very likely that something is wrong and a
+// crash is imminent. We want to trigger a crash to capture the state before we
+// hit the hard limit of 1024.
+constexpr int kFdExhaustionWatermark = 800;
+
 base::ScopedFD CreateUnixDomainSocket(const base::FilePath& socket_path) {
   base::ScopedFD socket_fd{
       socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0)};
@@ -47,8 +66,8 @@ base::ScopedFD CreateUnixDomainSocket(const base::FilePath& socket_path) {
     return base::ScopedFD{};
   }
 
-  struct sockaddr_un unix_addr {
-    .sun_family = AF_UNIX,
+  struct sockaddr_un unix_addr{
+      .sun_family = AF_UNIX,
   };
   constexpr size_t kMaxSize =
       sizeof(unix_addr.sun_path) - /*NULL-terminator*/ 1;
@@ -161,6 +180,9 @@ int Daemon::OnInit() {
       base::BindRepeating(&Daemon::SendMojoInvitationAndBindReceiver,
                           base::Unretained(this)));
 
+  fd_check_timer_.Start(FROM_HERE, kFdCheckInterval, this,
+                        &Daemon::CheckFileDescriptorUsage);
+
   LOG(INFO) << "mojo_service_manager started.";
   return EX_OK;
 }
@@ -218,7 +240,7 @@ std::optional<std::string> Daemon::GetUsernameByUid(uint32_t uid) const {
 mojom::ProcessIdentityPtr Daemon::GetProcessIdentityFromPeerSocket(
     const base::ScopedFD& peer) const {
   auto identity = mojom::ProcessIdentity::New();
-  struct ucred ucred_data {};
+  struct ucred ucred_data{};
   socklen_t len = sizeof(ucred_data);
   if (delegate_->GetSockOpt(peer, SOL_SOCKET, SO_PEERCRED, &ucred_data, &len) <
       0) {
@@ -246,6 +268,89 @@ mojom::ProcessIdentityPtr Daemon::GetProcessIdentityFromPeerSocket(
     return nullptr;
   }
   return identity;
+}
+
+[[noreturn]] NOINLINE void Daemon::CrashWithCulpritData(bool culprit_found,
+                                                        uid_t culprit_uid,
+                                                        pid_t culprit_pid,
+                                                        int queued_bytes,
+                                                        int fd_count) {
+  int culprit_found_value = culprit_found ? 1 : 0;
+
+  // base::debug::Alias forces the compiler to keep these variables alive
+  // in the local stack memory. When the process crashes, these values
+  // are guaranteed to be captured in the resulting minidump.
+  base::debug::Alias(&culprit_found_value);
+  base::debug::Alias(&culprit_uid);
+  base::debug::Alias(&culprit_pid);
+  base::debug::Alias(&queued_bytes);
+  base::debug::Alias(&fd_count);
+
+  LOG(FATAL)
+      << "Intentional crash to capture Mojo FD exhaustion culprit in minidump";
+}
+
+void Daemon::CheckFileDescriptorUsage() {
+  int fd_count = 0;
+  base::FileEnumerator count_enum(
+      base::FilePath("/proc/self/fd"), false,
+      base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS);
+  for (base::FilePath name = count_enum.Next(); !name.empty();
+       name = count_enum.Next()) {
+    fd_count++;
+  }
+
+  if (fd_count < kFdExhaustionWatermark) {
+    return;
+  }
+
+  // At this point, we are in the failing state. Find the culprit.
+  bool culprit_found = false;
+  int max_queued_bytes = -1;
+  struct ucred culprit_ucred = {};
+
+  base::FileEnumerator fd_enum(
+      base::FilePath("/proc/self/fd"), false,
+      base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS);
+  for (base::FilePath name = fd_enum.Next(); !name.empty();
+       name = fd_enum.Next()) {
+    int fd = -1;
+    if (!base::StringToInt(name.BaseName().value(), &fd) || fd < 0) {
+      continue;
+    }
+
+    // Keep the descriptor stable while collecting the socket diagnostics.
+    // If the process is too close to the FD limit to duplicate it, skip this
+    // descriptor instead of racing on an unowned fd number.
+    base::ScopedFD probe_fd(HANDLE_EINTR(dup(fd)));
+    if (!probe_fd.is_valid()) {
+      continue;
+    }
+
+    int queued_bytes = 0;
+    // SIOCOUTQ succeeds only on sockets.
+    if (ioctl(probe_fd.get(), SIOCOUTQ, &queued_bytes) == 0) {
+      if (queued_bytes <= 0) {
+        continue;
+      }
+
+      if (!culprit_found || queued_bytes > max_queued_bytes) {
+        struct ucred ucred_data = {};
+        socklen_t len = sizeof(ucred_data);
+        // Extract credentials of the slow reader.
+        if (getsockopt(probe_fd.get(), SOL_SOCKET, SO_PEERCRED, &ucred_data,
+                       &len) == 0) {
+          culprit_found = true;
+          max_queued_bytes = queued_bytes;
+          culprit_ucred = ucred_data;
+        }
+      }
+    }
+  }
+
+  // Transfer the collected data to the crash frame.
+  CrashWithCulpritData(culprit_found, culprit_ucred.uid, culprit_ucred.pid,
+                       max_queued_bytes, fd_count);
 }
 
 }  // namespace chromeos::mojo_service_manager

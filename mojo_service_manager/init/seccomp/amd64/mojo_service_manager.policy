@@ -78,6 +78,9 @@ sigaltstack: 1
 signalfd4: 1
 socket: arg0 == 0x1
 socketpair: 1
+# Used by the diagnostic check to inspect socket unread outbound buffer sizes.
+# (SIOCOUTQ)
+ioctl: arg1 == SIOCOUTQ
 tgkill: 1
 time: 1
 uname: 1
