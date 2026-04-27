@@ -96,17 +96,12 @@ bool CoolingDevice::InitSysfsFile() {
   static const re2::RE2 kChargerRegex("(?i)charge|chg");
 
   if (re2::RE2::PartialMatch(type, kFanRegex)) {
-    LOG(INFO) << "Found fan cooling device: " << device_path_;
     type_ = ThermalDeviceType::kFanCooling;
   } else if (re2::RE2::PartialMatch(type, kProcessorRegex)) {
-    LOG(INFO) << "Found processor cooling device: " << device_path_;
     type_ = ThermalDeviceType::kProcessorCooling;
   } else if (re2::RE2::PartialMatch(type, kChargerRegex)) {
-    LOG(INFO) << "Found charger cooling device: " << device_path_;
     type_ = ThermalDeviceType::kChargerCooling;
   } else {
-    LOG(INFO) << "Found other (" << type
-              << ") cooling device: " << device_path_;
     type_ = ThermalDeviceType::kOtherCooling;
   }
   threshold_fair_ =
@@ -115,6 +110,12 @@ bool CoolingDevice::InitSysfsFile() {
       ceil(static_cast<double>(max_state) * kScale.at(type_).serious);
   threshold_critical_ =
       ceil(static_cast<double>(max_state) * kScale.at(type_).critical);
+
+  LOG(INFO) << "Cooling device " << device_path_ << " type=" << type
+            << " initialized with max_state=" << max_state_
+            << ", thresholds: fair=" << threshold_fair_
+            << ", serious=" << threshold_serious_
+            << ", critical=" << threshold_critical_;
 
   polling_file_.Init(polling_path_);
   return true;
@@ -128,16 +129,16 @@ DeviceThermalState CoolingDevice::CalculateThermalState(int sysfs_data) {
   if (max_state_ == 0) {
     return DeviceThermalState::kUnknown;
   }
+  DeviceThermalState new_state = DeviceThermalState::kNominal;
   if (sysfs_data >= threshold_critical_) {
-    return DeviceThermalState::kCritical;
+    new_state = DeviceThermalState::kCritical;
+  } else if (sysfs_data >= threshold_serious_) {
+    new_state = DeviceThermalState::kSerious;
+  } else if (sysfs_data >= threshold_fair_) {
+    new_state = DeviceThermalState::kFair;
   }
-  if (sysfs_data >= threshold_serious_) {
-    return DeviceThermalState::kSerious;
-  }
-  if (sysfs_data >= threshold_fair_) {
-    return DeviceThermalState::kFair;
-  }
-  return DeviceThermalState::kNominal;
+
+  return new_state;
 }
 
 }  // namespace power_manager::system
