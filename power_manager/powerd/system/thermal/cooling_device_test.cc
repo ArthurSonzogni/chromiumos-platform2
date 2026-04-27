@@ -102,6 +102,20 @@ class CoolingDeviceTest : public TestEnvironment {
     CHECK(brillo::WriteStringToFile(type_file_, type));
   }
 
+  void WriteMaxStateTo(const base::FilePath& file, int num) {
+    std::string num_string = base::NumberToString(num);
+    CHECK(brillo::WriteStringToFile(file, num_string));
+  }
+
+  void WriteCurStateTo(const base::FilePath& file, int num) {
+    std::string num_string = base::NumberToString(num);
+    CHECK(brillo::WriteStringToFile(file, num_string));
+  }
+
+  void WriteTypeTo(const base::FilePath& file, const std::string& type) {
+    CHECK(brillo::WriteStringToFile(file, type));
+  }
+
   // Temporary directory mimicking a /sys/class/thermal directory.
   base::ScopedTempDir temp_dir_;
   base::FilePath device_dir_;
@@ -217,6 +231,44 @@ TEST_F(CoolingDeviceTest, ZeroMaxState) {
   cooling_device_->Init(true /* read_immedieatly */);
   EXPECT_FALSE(observer_.RunUntilThermalChanged());
   EXPECT_EQ(DeviceThermalState::kUnknown, cooling_device_->GetThermalState());
+}
+
+TEST_F(CoolingDeviceTest, TypeClassification) {
+  std::pair<std::string, ThermalDeviceType> test_data[] = {
+      {"tfn0", ThermalDeviceType::kFanCooling},
+      {"Processor", ThermalDeviceType::kProcessorCooling},
+      {"other", ThermalDeviceType::kOtherCooling},
+      {"fan2", ThermalDeviceType::kFanCooling},
+      {"TCHG", ThermalDeviceType::kChargerCooling},
+      {"temp", ThermalDeviceType::kOtherCooling},
+      {"fn2", ThermalDeviceType::kFanCooling},
+      {"unknown", ThermalDeviceType::kOtherCooling},
+      {"Fan", ThermalDeviceType::kFanCooling},
+      {"cpu0", ThermalDeviceType::kProcessorCooling},
+      {"FAN", ThermalDeviceType::kFanCooling},
+      {"TFN1", ThermalDeviceType::kFanCooling},
+      {"rear_fan", ThermalDeviceType::kFanCooling},
+      {"cpu_freq", ThermalDeviceType::kProcessorCooling},
+      {"wifi_freq", ThermalDeviceType::kOtherCooling},
+      {"cpu_fan", ThermalDeviceType::kFanCooling},
+      {"fn", ThermalDeviceType::kFanCooling},
+  };
+
+  for (size_t i = 0; i < std::size(test_data); ++i) {
+    std::string dir_name = "cooling_device" + std::to_string(i + 2);
+    base::FilePath dev_dir = temp_dir_.GetPath().Append(dir_name);
+    CHECK(base::CreateDirectory(dev_dir));
+
+    WriteTypeTo(dev_dir.Append("type"), test_data[i].first);
+    WriteMaxStateTo(dev_dir.Append("max_state"), 100);
+    WriteCurStateTo(dev_dir.Append("cur_state"), 0);
+
+    auto device = std::make_unique<CoolingDevice>(dev_dir);
+    device->set_poll_interval_for_testing(kPollInterval);
+    device->Init(true /* read_immediately */);
+
+    EXPECT_EQ(test_data[i].second, device->GetType());
+  }
 }
 
 }  // namespace power_manager::system

@@ -6,7 +6,6 @@
 
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
@@ -16,6 +15,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <re2/re2.h>
 
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/thermal/device_thermal_state.h"
@@ -54,14 +54,6 @@ const std::unordered_map<ThermalDeviceType, CoolingStateScale> kScale = {
      {.fair = 0.5, .serious = 0.8, .critical = 1.0}},
 };
 
-// List of strings in |kTypeFileName| for each cooling device type.
-const std::unordered_set<std::string> kProcessorTypes = {
-    "Processor",
-    "thermal-cpu-freq",
-};
-const std::unordered_set<std::string> kFanTypes = {"TFN1"};
-const std::unordered_set<std::string> kChargerTypes = {"TCHG"};
-
 }  // namespace
 
 bool CoolingDevice::InitSysfsFile() {
@@ -86,6 +78,7 @@ bool CoolingDevice::InitSysfsFile() {
   if (!util::ReadStringFile(type_path, &type)) {
     type = "Unknown";
   }
+  type = base::TrimWhitespaceASCII(type, base::TRIM_ALL);
 
   base::FilePath cur_state_path = device_path_.Append(kCurStateFileName);
   int64_t cur_state;
@@ -98,13 +91,17 @@ bool CoolingDevice::InitSysfsFile() {
 
   max_state_ = max_state;
   polling_path_ = cur_state_path;
-  if (kProcessorTypes.find(type) != kProcessorTypes.end()) {
-    LOG(INFO) << "Found processor cooling device: " << device_path_;
-    type_ = ThermalDeviceType::kProcessorCooling;
-  } else if (kFanTypes.find(type) != kFanTypes.end()) {
+  static const re2::RE2 kFanRegex("(?i)tfn|fan|fn");
+  static const re2::RE2 kProcessorRegex("(?i)processor|cpu");
+  static const re2::RE2 kChargerRegex("(?i)charge|chg");
+
+  if (re2::RE2::PartialMatch(type, kFanRegex)) {
     LOG(INFO) << "Found fan cooling device: " << device_path_;
     type_ = ThermalDeviceType::kFanCooling;
-  } else if (kChargerTypes.find(type) != kChargerTypes.end()) {
+  } else if (re2::RE2::PartialMatch(type, kProcessorRegex)) {
+    LOG(INFO) << "Found processor cooling device: " << device_path_;
+    type_ = ThermalDeviceType::kProcessorCooling;
+  } else if (re2::RE2::PartialMatch(type, kChargerRegex)) {
     LOG(INFO) << "Found charger cooling device: " << device_path_;
     type_ = ThermalDeviceType::kChargerCooling;
   } else {
