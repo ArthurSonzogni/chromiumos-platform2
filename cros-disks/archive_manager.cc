@@ -131,8 +131,9 @@ bool ArchiveManager::Initialize() {
     // Don't use fuse-archive in cached mode, since we're not sure to have
     // enough disk space in /tmp.
     std::vector<std::string> opts = {
-        "-o", base::StrCat({"nocache,nospecials,nosymlinks,",
-                            LOG_IS_ON(INFO) ? "verbose"sv : "redact"sv})};
+        "-o",
+        base::StrCat({"nocache,noholes,nospecials,nosymlinks,notrim,noxattrs,",
+                      LOG_IS_ON(INFO) ? "verbose"sv : "redact"sv})};
 
     mounters_.push_back(std::make_unique<ArchiveMounter>(
         platform(), process_reaper(), "archive", ext, metrics(),
