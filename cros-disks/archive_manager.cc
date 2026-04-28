@@ -53,7 +53,7 @@ bool ArchiveManager::Initialize() {
         37};  // ZIP_ER_BASE + ZIP_ER_WRONGPASSWD
 
     std::vector<std::string> opts = {
-        "-o", base::StrCat({"nospecials,nosymlinks,",
+        "-o", base::StrCat({"nospecials,nosymlinks,notrim,",
                             LOG_IS_ON(INFO) ? "verbose"sv : "redact"sv})};
 
     mounters_.push_back(std::make_unique<ArchiveMounter>(
