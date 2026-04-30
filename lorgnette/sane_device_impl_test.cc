@@ -89,6 +89,22 @@ void CheckPngFooter(FILE* file) {
 
 }  // namespace
 
+TEST(GetSaneColorModeForBackend, MapsCorrectly) {
+  EXPECT_EQ("Black & White",
+            test::GetSaneColorModeForBackendForTest(kBrother5, MODE_LINEART));
+  EXPECT_EQ("True Gray",
+            test::GetSaneColorModeForBackendForTest(kBrother5, MODE_GRAYSCALE));
+  EXPECT_EQ("24bit Color[Fast]",
+            test::GetSaneColorModeForBackendForTest(kBrother5, MODE_COLOR));
+
+  EXPECT_EQ(std::nullopt,
+            test::GetSaneColorModeForBackendForTest(kAirscanHp, MODE_LINEART));
+  EXPECT_EQ(std::nullopt, test::GetSaneColorModeForBackendForTest(
+                              kAirscanHp, MODE_GRAYSCALE));
+  EXPECT_EQ(std::nullopt,
+            test::GetSaneColorModeForBackendForTest(kAirscanHp, MODE_COLOR));
+}
+
 class SaneDeviceImplTest : public testing::Test {
  protected:
   void SetUp() override {

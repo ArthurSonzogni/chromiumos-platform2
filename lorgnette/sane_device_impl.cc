@@ -5,6 +5,7 @@
 #include "lorgnette/sane_device_impl.h"
 
 #include <optional>
+#include <string_view>
 
 #include <base/check.h>
 #include <base/containers/flat_map.h>
@@ -16,6 +17,7 @@
 
 #include "lorgnette/constants.h"
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
+#include "lorgnette/enums.h"
 #include "lorgnette/guess_source.h"
 
 static const char* kRightJustification = "right";
@@ -24,6 +26,36 @@ static const char* kCenterJustification = "center";
 namespace lorgnette {
 
 namespace {
+
+// Backend-specific SANE color mode strings for the brother5 backend.
+constexpr std::string_view kBrother5SaneColorModeLineart = "Black & White";
+constexpr std::string_view kBrother5SaneColorModeGrayscale = "True Gray";
+constexpr std::string_view kBrother5SaneColorModeColor = "24bit Color[Fast]";
+
+std::optional<std::string_view> GetSaneColorModeForBackend(
+    DocumentScanSaneBackend backend, ColorMode color_mode) {
+  static const base::flat_map<ColorMode, std::string_view>
+      kBrother5SaneColorModes = {
+          {MODE_LINEART, kBrother5SaneColorModeLineart},
+          {MODE_GRAYSCALE, kBrother5SaneColorModeGrayscale},
+          {MODE_COLOR, kBrother5SaneColorModeColor}};
+
+  static const base::flat_map<DocumentScanSaneBackend,
+                              base::flat_map<ColorMode, std::string_view>>
+      kBackendSaneColorModes = {{kBrother5, kBrother5SaneColorModes}};
+
+  auto backend_it = kBackendSaneColorModes.find(backend);
+  if (backend_it == kBackendSaneColorModes.end()) {
+    return std::nullopt;
+  }
+
+  auto sane_color_it = backend_it->second.find(color_mode);
+  if (sane_color_it == backend_it->second.end()) {
+    return std::nullopt;
+  }
+
+  return sane_color_it->second;
+}
 
 DocumentSource CreateDocumentSource(const std::string& name) {
   DocumentSource source;
@@ -36,17 +68,27 @@ DocumentSource CreateDocumentSource(const std::string& name) {
 }
 
 ColorMode ColorModeFromSaneString(const std::string& mode) {
-  if (mode == kScanPropertyModeLineart) {
+  if (mode == kScanPropertyModeLineart ||
+      mode == kBrother5SaneColorModeLineart) {
     return MODE_LINEART;
-  } else if (mode == kScanPropertyModeGray) {
+  } else if (mode == kScanPropertyModeGray ||
+             mode == kBrother5SaneColorModeGrayscale) {
     return MODE_GRAYSCALE;
-  } else if (mode == kScanPropertyModeColor) {
+  } else if (mode == kScanPropertyModeColor ||
+             mode == kBrother5SaneColorModeColor) {
     return MODE_COLOR;
   }
   return MODE_UNSPECIFIED;
 }
 
 }  // namespace
+
+namespace test {
+std::optional<std::string_view> GetSaneColorModeForBackendForTest(
+    DocumentScanSaneBackend backend, ColorMode color_mode) {
+  return GetSaneColorModeForBackend(backend, color_mode);
+}
+}  // namespace test
 
 SaneDeviceImpl::~SaneDeviceImpl() {
   if (handle_) {
@@ -235,6 +277,13 @@ std::optional<ColorMode> SaneDeviceImpl::GetColorMode(brillo::ErrorPtr* error) {
 
 bool SaneDeviceImpl::SetColorMode(brillo::ErrorPtr* error,
                                   ColorMode color_mode) {
+  DocumentScanSaneBackend backend = BackendFromDeviceName(name_);
+  std::optional<std::string_view> maybe_sane_string =
+      GetSaneColorModeForBackend(backend, color_mode);
+  if (maybe_sane_string.has_value()) {
+    return SetOption(error, kScanMode, std::string{maybe_sane_string.value()});
+  }
+
   std::string mode_string = "";
   switch (color_mode) {
     case MODE_LINEART:

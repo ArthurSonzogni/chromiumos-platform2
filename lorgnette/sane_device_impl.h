@@ -19,12 +19,19 @@
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 #include <sane/sane.h>
 
+#include "lorgnette/enums.h"
 #include "lorgnette/libsane_wrapper.h"
 #include "lorgnette/sane_constraint.h"
 #include "lorgnette/sane_device.h"
 #include "lorgnette/sane_option.h"
 
 namespace lorgnette {
+
+// Test-only methods.
+namespace test {
+std::optional<std::string_view> GetSaneColorModeForBackendForTest(
+    DocumentScanSaneBackend backend, ColorMode color_mode);
+}  // namespace test
 
 using DeviceSet = std::pair<base::Lock, std::unordered_set<std::string>>;
 
