@@ -121,13 +121,19 @@ EOF
     'opt-google-cros\x2dcontainers.mount'
   systemctl daemon-reload
 
+  for svc in cloud-config cloud-final cloud-init-local \
+      cloud-init-main cloud-init-network cloud-init; do
+    install -D -m 0644 -t "/etc/systemd/system/${svc}.service.d" \
+      "${DATA_ROOT}/etc/systemd/system/${svc}.service.d/10-mode.conf"
+  done
+
   for svc in cros-garcon sommelier@ sommelier-x@; do
     install -D -m 0644 -t "/etc/systemd/user/${svc}.service.d" \
       "${DATA_ROOT}/etc/systemd/user/${svc}.service.d/10-mode.conf"
   done
 
-  install -D -m 0644 -t /etc/systemd/user/cros-garcon.service.d \
-    "${DATA_ROOT}/etc/systemd/user/cros-garcon.service.d/10-mode.conf"
+  install -D -m 0644 -t /etc/systemd/system/cros-garcon.service.d \
+    "${DATA_ROOT}/etc/systemd/system/cros-garcon.service.d/10-mode.conf"
 
   install -D -m 0644 -t /usr/src/virtio-tpm-1 \
     "${DATA_ROOT}/usr/src/virtio-tpm-1/dkms.conf" \
