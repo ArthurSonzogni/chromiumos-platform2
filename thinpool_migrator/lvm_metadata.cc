@@ -131,7 +131,8 @@ std::string GenerateRandomAlphanumString(int size) {
   std::string random_string(size, '0');
 
   for (int i = 0; i < size; ++i) {
-    random_string[i] = kCharset[base::RandInt(0, strlen(kCharset) - 1)];
+    random_string[i] =
+        kCharset[base::RandIntInclusive(0, strlen(kCharset) - 1)];
   }
   return random_string;
 }
