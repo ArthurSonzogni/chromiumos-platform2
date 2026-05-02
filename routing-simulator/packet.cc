@@ -163,7 +163,7 @@ int ParsePort(DstOrSrc dst_or_src,
         base::TrimWhitespaceASCII(port_str, base::TrimPositions::TRIM_ALL);
     int port = 0;
     if (port_str.empty()) {
-      int random_port = base::RandInt(1024, 65535);
+      int random_port = base::RandIntInclusive(1024, 65535);
       std_output << "No input: " << dst_or_src
                  << " port is set to a randomly generated number "
                  << random_port << std::endl;
