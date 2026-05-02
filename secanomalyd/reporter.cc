@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -79,7 +80,7 @@ std::optional<std::string> GenerateProcSignature(const ProcEntries& procs) {
     return std::nullopt;
   }
   std::string signature;
-  int signature_proc = base::RandInt(0, procs.size() - 1);
+  int signature_proc = base::RandIntInclusive(0, procs.size() - 1);
   signature = procs[base::checked_cast<size_t>(signature_proc)].comm();
   return std::optional<std::string>(signature);
 }

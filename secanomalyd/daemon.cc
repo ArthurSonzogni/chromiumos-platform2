@@ -396,9 +396,9 @@ void Daemon::DoAnomalousSystemReporting() {
     range = kProcAnomalySampleFrequency;
   }
 
-  // |base::RandInt(min, max)| returns a random int between [min, max], which in
-  // this case gives the report one in |range| chance of being sent.
-  if (range < 1 || base::RandInt(1, range) > 1) {
+  // |base::RandIntInclusive(min, max)| returns a random int between [min, max],
+  // which in this case gives the report one in |range| chance of being sent.
+  if (range < 1 || base::RandIntInclusive(1, range) > 1) {
     return;
   }
 
