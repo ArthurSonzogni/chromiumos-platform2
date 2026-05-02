@@ -100,7 +100,7 @@ string PeerSelector::PickUrlForId(const string& id, size_t minimum_size) {
   int victim_number = 0;
   int num_possible_victims = peers.size() / 3 - 1;
   if (num_possible_victims > 1) {
-    victim_number = base::RandInt(0, num_possible_victims - 1);
+    victim_number = base::RandIntInclusive(0, num_possible_victims - 1);
   }
   const Peer* victim = peers[victim_number];
   // Record the number of current connection the victim has.
