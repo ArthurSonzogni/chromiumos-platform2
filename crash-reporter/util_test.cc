@@ -132,8 +132,8 @@ std::string CreateSemiRandomString(size_t size) {
     if (rem > sizeof(kSemiRandomData) - 1) {
       rem = sizeof(kSemiRandomData) - 1;
     }
-    int rand_start = base::RandInt(0, rem - 1);
-    int rand_end = base::RandInt(rand_start + 1, rem);
+    int rand_start = base::RandIntInclusive(0, rem - 1);
+    int rand_end = base::RandIntInclusive(rand_start + 1, rem);
     result.append(&kSemiRandomData[rand_start], rand_end - rand_start);
   }
   return result;
@@ -431,7 +431,7 @@ TEST_F(CrashCommonUtilTest, GetUserCrashDirectories) {
 
 TEST_F(CrashCommonUtilTest, GzipStream) {
   std::string content = CreateSemiRandomString(
-      base::RandInt(kRandomDataMinLength, kRandomDataMaxLength));
+      base::RandIntInclusive(kRandomDataMinLength, kRandomDataMaxLength));
   std::vector<unsigned char> compressed_content =
       util::GzipStream(brillo::MemoryStream::OpenCopyOf(
           content.c_str(), content.length(), nullptr));

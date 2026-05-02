@@ -206,9 +206,10 @@ bool GetSleepTime(const base::FilePath& meta_file,
       std::max(info.last_modified + hold_off_time - base::Time::Now(),
                base::TimeDelta());
 
-  const int seconds = (max_spread_time.InSeconds() <= 0
-                           ? 0
-                           : base::RandInt(0, max_spread_time.InSeconds()));
+  const int seconds =
+      (max_spread_time.InSeconds() <= 0
+           ? 0
+           : base::RandIntInclusive(0, max_spread_time.InSeconds()));
   const base::TimeDelta spread_time = base::Seconds(seconds);
 
   *sleep_time = std::max(spread_time, hold_off_time_remaining);
