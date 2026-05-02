@@ -41,7 +41,7 @@ bool CopyIPv4Configuration(const IPv4Configuration& ipv4_config,
   } else {
     // Randomly pick a /24 subnet from 172.16.0.0/16 prefix, which is a subnet
     // of the Class B private prefix 172.16.0.0/12.
-    const uint8_t x = static_cast<uint8_t>(base::RandInt(0, 255));
+    const uint8_t x = static_cast<uint8_t>(base::RandIntInclusive(0, 255));
     info->ipv4_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
         net_base::IPv4Address(172, 16, x, 1), 24);
     info->ipv4_dhcp_start_addr = net_base::IPv4Address(172, 16, x, 50);
