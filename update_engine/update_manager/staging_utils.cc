@@ -72,12 +72,13 @@ int GetStagingSchedule(const DevicePolicy* device_policy,
 base::TimeDelta CalculateWaitTimeFromSchedule(
     const StagingSchedule& staging_schedule) {
   int prev_days = 0;
-  int percentage_position = base::RandInt(1, 100);
+  int percentage_position = base::RandIntInclusive(1, 100);
   for (const auto& staging_pair : staging_schedule) {
     int days = staging_pair.days;
     if (percentage_position <= staging_pair.percentage) {
       // Scatter between the start of the range and the end.
-      return base::Days(prev_days + base::RandInt(1, days - prev_days));
+      return base::Days(prev_days +
+                        base::RandIntInclusive(1, days - prev_days));
     }
     prev_days = days;
   }

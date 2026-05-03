@@ -1092,8 +1092,8 @@ bool OmahaRequestAction::IsUpdateCheckCountBasedWaitingSatisfied() {
     // This file does not exist. This means we haven't started our update
     // check count down yet, so this is the right time to start the count down.
     update_check_count_value =
-        base::RandInt(params->min_update_checks_needed(),
-                      params->max_update_checks_allowed());
+        base::RandIntInclusive(params->min_update_checks_needed(),
+                               params->max_update_checks_allowed());
 
     LOG(INFO) << "Randomly picked update check count value = "
               << update_check_count_value;

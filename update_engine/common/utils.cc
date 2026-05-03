@@ -4,13 +4,12 @@
 
 #include "update_engine/common/utils.h"
 
-#include <stdint.h>
-
 #include <dirent.h>
 #include <elf.h>
 #include <endian.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -703,7 +702,7 @@ string GetFileFormat(const string& path) {
 int FuzzInt(int value, unsigned int range) {
   int min = value - range / 2;
   int max = value + range - range / 2;
-  return base::RandInt(min, max);
+  return base::RandIntInclusive(min, max);
 }
 
 string FormatSecs(unsigned secs) {

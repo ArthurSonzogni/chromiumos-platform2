@@ -629,7 +629,7 @@ bool UpdateAttempter::CalculateUpdateParams(const UpdateCheckParams& params) {
       proxy_manual_checks_ = 0;
       obeying_proxies_ = false;
     }
-  } else if (base::RandInt(0, 4) == 0) {
+  } else if (base::RandIntInclusive(0, 4) == 0) {
     obeying_proxies_ = false;
   }
   LOG_IF(INFO, !obeying_proxies_)
@@ -754,7 +754,7 @@ void UpdateAttempter::CalculateScatteringParams(bool interactive) {
 
 void UpdateAttempter::GenerateNewWaitingPeriod() {
   omaha_request_params_->set_waiting_period(
-      base::Seconds(base::RandInt(1, scatter_factor_.InSeconds())));
+      base::Seconds(base::RandIntInclusive(1, scatter_factor_.InSeconds())));
 
   LOG(INFO) << "Generated new wall-clock waiting period: "
             << utils::FormatSecs(
