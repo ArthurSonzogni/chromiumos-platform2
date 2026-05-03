@@ -342,8 +342,8 @@ TEST_F(ProcessManagerTest, StartProcessWithMinijailWithStdout) {
   // forward the dispatcher.
   const auto write_to_pipe = [&process_side_stdout_fd, &expected_stdout,
                               this]() {
-    const char c = static_cast<char>(base::RandInt('a', 'z'));
-    const size_t length = static_cast<size_t>(base::RandInt(0, 2048));
+    const char c = static_cast<char>(base::RandIntInclusive('a', 'z'));
+    const size_t length = static_cast<size_t>(base::RandIntInclusive(0, 2048));
     const std::string str = std::string(length, c);
     CHECK(base::WriteFileDescriptor(process_side_stdout_fd.get(), str));
     expected_stdout.append(str);
