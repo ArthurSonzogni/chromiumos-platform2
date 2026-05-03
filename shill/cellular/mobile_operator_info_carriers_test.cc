@@ -160,7 +160,7 @@ class MobileOperatorInfoCarriersTest : public Test {
 
   std::string CreateRandomGid1NotInSet(std::set<std::string> gid1s) {
     while (true) {
-      int gid1 = base::RandInt(0, 0xFFFF);
+      int gid1 = base::RandIntInclusive(0, 0xFFFF);
       std::string gid1_s =
           base::HexEncode(base::byte_span_from_ref(gid1).first<2>());
       if (gid1s.count(gid1_s) == 0) {
@@ -174,8 +174,8 @@ class MobileOperatorInfoCarriersTest : public Test {
     // number is padded on the left. Then add the prefix, and remove any extra
     // digits on the right.
     std::string value = base::StrCat(
-        {prefix,
-         base::NumberToString(base::RandInt(1000000, 1999999)).substr(1, 6)});
+        {prefix, base::NumberToString(base::RandIntInclusive(1000000, 1999999))
+                     .substr(1, 6)});
     return value.substr(0, len);
   }
 

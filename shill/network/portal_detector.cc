@@ -124,7 +124,7 @@ const net_base::HttpUrl& PortalDetector::PickProbeUrl(
   // random makes it harder for evasive portals to count probes.
   // TODO(b/309175584): Reavaluate if this behavior is really needed after m121
   // with the Network.Shill.PortalDetector.AttemptsToRedirectFound metric.
-  int index = base::RandInt(0, fallback_urls.size());
+  int index = base::RandIntInclusive(0, fallback_urls.size());
   return static_cast<size_t>(index) < fallback_urls.size()
              ? fallback_urls[index]
              : default_url;

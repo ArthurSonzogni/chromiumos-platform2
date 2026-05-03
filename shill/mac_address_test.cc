@@ -94,7 +94,7 @@ TEST_F(MACAddressTest, LoadSave_Expiring) {
   // Verification for an expiring value.
   MACAddress mac_addr = MACAddress::CreateRandom();
   mac_addr.set_expiration_time(base::Time::Now() +
-                               base::Seconds(base::RandInt(0, 1000)));
+                               base::Seconds(base::RandIntInclusive(0, 1000)));
   EXPECT_TRUE(mac_addr.Save(&storage, storage_id_));
   EXPECT_TRUE(addr.Load(&storage, storage_id_));
   EXPECT_TRUE(addr.address().has_value());

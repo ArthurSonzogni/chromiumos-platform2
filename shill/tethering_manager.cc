@@ -191,7 +191,7 @@ void TetheringManager::ResetConfiguration() {
   std::string passphrase;
 
   do {
-    uint64_t rand = base::RandInt(pow(10, kSSIDSuffixLength), INT_MAX);
+    uint64_t rand = base::RandIntInclusive(pow(10, kSSIDSuffixLength), INT_MAX);
     std::string suffix = std::to_string(rand);
     std::string ssid =
         kSSIDPrefix + suffix.substr(suffix.size() - kSSIDSuffixLength);

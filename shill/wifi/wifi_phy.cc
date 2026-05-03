@@ -458,7 +458,7 @@ std::optional<int> WiFiPhy::SelectFrequency(WiFiBand band) const {
     // We are moving now to a less preferred band, so if we have valid frequency
     // let's just keep it.
     if (!freqs.empty()) {
-      selected = freqs[base::RandInt(0, freqs.size() - 1)];
+      selected = freqs[base::RandIntInclusive(0, freqs.size() - 1)];
       break;
     }
   }
