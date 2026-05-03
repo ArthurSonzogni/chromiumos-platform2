@@ -18,6 +18,8 @@
 #include <base/time/time.h>
 #include <base/types/expected.h>
 #include <base/types/expected_macros.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "missive/encryption/decryption.h"
 #include "missive/encryption/primitives.h"
@@ -27,8 +29,6 @@
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 using ::testing::Eq;
 using ::testing::Ne;
@@ -514,7 +514,8 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
       kTestStrings.size());
   for (size_t i = 0; i < kTestStrings.size(); ++i) {
     // Choose random key pair.
-    size_t i_key_pair = base::RandInt(0, public_value_strings.size() - 1);
+    size_t i_key_pair =
+        base::RandIntInclusive(0, public_value_strings.size() - 1);
     (new SingleEncryptionContext(
          kTestStrings[i], public_value_strings[i_key_pair],
          public_value_ids[i_key_pair], encryptor_, results[i].cb()))
