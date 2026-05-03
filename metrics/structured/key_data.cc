@@ -65,7 +65,8 @@ std::optional<std::string> KeyData::ValidateAndGetKey(
     // If the key is empty, generate a new one. Set the last rotation to a
     // uniformly selected day between today and |kDefaultRotationPeriod| days
     // ago, to uniformly distribute users amongst rotation cohorts.
-    const int rotation_seed = base::RandInt(0, kDefaultRotationPeriod - 1);
+    const int rotation_seed =
+        base::RandIntInclusive(0, kDefaultRotationPeriod - 1);
     UpdateKey(&key, now - rotation_seed, kDefaultRotationPeriod);
   } else if (now - last_rotation > kDefaultRotationPeriod) {
     // If the key is outdated, generate a new one. Update the last rotation such
