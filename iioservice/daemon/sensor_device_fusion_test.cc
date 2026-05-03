@@ -268,7 +268,8 @@ TEST_F(IioDeviceHandlerTest, GetAttributes) {
 TEST_F(IioDeviceHandlerTest, SetFrequencyAndReadSamples) {
   std::multiset<std::pair<int, cros::mojom::ObserverErrorType>> failures;
   for (int i = 0; i < kNumFailures; ++i) {
-    int k = base::RandInt(0, std::size(libmems::fakes::kFakeAccelSamples) - 1);
+    int k = base::RandIntInclusive(
+        0, std::size(libmems::fakes::kFakeAccelSamples) - 1);
 
     device_->AddFailedReadAtKthSample(k);
     failures.insert(

@@ -501,7 +501,8 @@ TEST_P(SamplesHandlerTestWithParam, ReadSamplesWithFrequency) {
 
   std::multiset<std::pair<int, cros::mojom::ObserverErrorType>> rf_failures;
   for (int i = 0; i < kNumFailures; ++i) {
-    int k = base::RandInt(0, std::size(libmems::fakes::kFakeAccelSamples) - 1);
+    int k = base::RandIntInclusive(
+        0, std::size(libmems::fakes::kFakeAccelSamples) - 1);
 
     device_->AddFailedReadAtKthSample(k);
     rf_failures.insert(

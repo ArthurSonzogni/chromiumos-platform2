@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
+#include "iioservice/daemon/events_handler.h"
 
 #include <memory>
 #include <utility>
@@ -11,10 +11,10 @@
 #include <base/notreached.h>
 #include <base/rand_util.h>
 #include <base/test/task_environment.h>
+#include <gtest/gtest.h>
 #include <libmems/test_fakes.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
-#include "iioservice/daemon/events_handler.h"
 #include "iioservice/daemon/test_fakes.h"
 
 namespace iioservice {
@@ -97,7 +97,7 @@ TEST_F(EventsHandlerTest, ReadEventsWithEnabledFakeIioEvents) {
 
   std::multiset<std::pair<int, cros::mojom::ObserverErrorType>> failures;
   for (int i = 0; i < kNumFailures; ++i) {
-    int k = base::RandInt(0, libmems::fakes::kEventNumber - 1);
+    int k = base::RandIntInclusive(0, libmems::fakes::kEventNumber - 1);
 
     device_->AddFailedReadAtKthEvent(k);
     failures.insert(

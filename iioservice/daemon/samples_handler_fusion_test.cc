@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
+#include "iioservice/daemon/samples_handler_fusion.h"
 
 #include <algorithm>
 #include <iterator>
@@ -18,12 +18,12 @@
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
+#include <gtest/gtest.h>
 #include <libmems/common_types.h>
 #include <libmems/test_fakes.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "iioservice/daemon/common_types.h"
-#include "iioservice/daemon/samples_handler_fusion.h"
 #include "iioservice/daemon/sensor_metrics_mock.h"
 #include "iioservice/daemon/test_fakes.h"
 #include "iioservice/mojo/sensor.mojom.h"
@@ -312,7 +312,8 @@ TEST_P(SamplesHandlerFusionTestWithParam, ReadSamplesWithFrequency) {
 
   std::multiset<std::pair<int, cros::mojom::ObserverErrorType>> rf_failures;
   for (int i = 0; i < kNumFailures; ++i) {
-    int k = base::RandInt(0, std::size(libmems::fakes::kFakeAccelSamples) - 1);
+    int k = base::RandIntInclusive(
+        0, std::size(libmems::fakes::kFakeAccelSamples) - 1);
 
     accel_->AddFailedReadAtKthSample(k);
     rf_failures.insert(
