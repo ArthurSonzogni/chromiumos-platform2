@@ -132,7 +132,6 @@ where
     CgptAddParamsWrapper {
         params: vboot_host::CgptAddParams {
             // Use the default value.
-            drive_size: 0,
             unique_guid: empty_guid(),
             error_counter: 0,
             successful: 0,
