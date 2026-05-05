@@ -69,8 +69,8 @@ const char* InstallOperationTypeName(InstallOperation::Type op_type) {
     case InstallOperation::MOVE:
       NOTREACHED_IN_MIGRATION();
 #endif
+    default:
+      return "<unknown_op>";
   }
-  return "<unknown_op>";
 }
-
 };  // namespace chromeos_update_engine

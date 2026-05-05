@@ -263,8 +263,9 @@ bool PayloadVersion::OperationAllowed(InstallOperation::Type operation) const {
     case InstallOperation::BSDIFF:
       NOTREACHED_IN_MIGRATION();
 #endif
+    default:
+      return false;
   }
-  return false;
 }
 
 bool PayloadVersion::IsDeltaOrPartial() const {
