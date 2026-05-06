@@ -28,6 +28,14 @@ class BRILLO_EXPORT LvmCommandRunner {
   // would be run on the command line but saves the step of creating and
   // launching an extra process.
   virtual bool RunCommand(const std::vector<std::string>& cmd);
+
+  // Joins the given command into an lvm2 command string. The RunCommand
+  // operation uses this internally. Does not support the use of quotations
+  // or spaces in commands as these cannot be safely and escaped. If passed
+  // such an invalid command it will return nullopt.
+  static std::optional<std::string> JoinCommand(
+      const std::vector<std::string>& cmd);
+
   // thin-provisioning tools are not packaged as a part of lvm2cmd. Use a
   // process runner instead. Additionally, instead of overloading the
   // lvm2_log_fn to access the output of a command, we prefer to use a process.

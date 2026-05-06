@@ -2,14 +2,66 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "brillo/blkdev_utils/mock_lvm.h"
-
 #include <base/files/file_util.h>
 #include <gtest/gtest.h>
 
-using testing::DoAll;
+#include "brillo/blkdev_utils/mock_lvm.h"
+
+using ::testing::DoAll;
+using ::testing::Eq;
+using ::testing::Optional;
 
 namespace brillo {
+
+TEST(LvmCommandRunner, RunCommandNormal) {
+  auto cmd = LvmCommandRunner::JoinCommand({"abc", "def", "ghi"});
+  EXPECT_THAT(cmd, Optional(Eq("abc def ghi")));
+}
+
+TEST(LvmCommandRunner, RunCommandFailsOnComment) {
+  auto cmd = LvmCommandRunner::JoinCommand({"abc", "def", "#", "comment"});
+  EXPECT_THAT(cmd, Eq(std::nullopt));
+}
+
+TEST(LvmCommandRunner, RunCommandFullyQuoted) {
+  auto cmd = LvmCommandRunner::JoinCommand({"abc", "'def'", "ghi"});
+  EXPECT_THAT(cmd, Optional(Eq("abc 'def' ghi")));
+}
+
+TEST(LvmCommandRunner, RunCommandFullyQuotedWithSpecials) {
+  auto cmd = LvmCommandRunner::JoinCommand({"abc", "'d e \"f\"'", "ghi"});
+  EXPECT_THAT(cmd, Optional(Eq("abc 'd e \"f\"' ghi")));
+}
+
+TEST(LvmCommandRunner, RunCommandFailsOnNestedQuote) {
+  auto cmd = LvmCommandRunner::JoinCommand({"abc", "'d'e'f'", "ghi"});
+  EXPECT_THAT(cmd, Eq(std::nullopt));
+}
+
+TEST(LvmCommandRunner, RunCommandFullyDoubleQuoted) {
+  auto cmd = LvmCommandRunner::JoinCommand({"abc", "\"def\"", "ghi"});
+  EXPECT_THAT(cmd, Optional(Eq("abc \"def\" ghi")));
+}
+
+TEST(LvmCommandRunner, RunCommandFullyDoubleQuotedWithSpecials) {
+  auto cmd = LvmCommandRunner::JoinCommand({"abc", "\"d e 'f'\"", "ghi"});
+  EXPECT_THAT(cmd, Optional(Eq("abc \"d e 'f'\" ghi")));
+}
+
+TEST(LvmCommandRunner, RunCommandFailsOnDoubleQuote) {
+  auto cmd = LvmCommandRunner::JoinCommand({"abc", "\"d\"e\"f\"", "ghi"});
+  EXPECT_THAT(cmd, Eq(std::nullopt));
+}
+
+TEST(LvmCommandRunner, RunCommandFailsOnSpace) {
+  auto cmd = LvmCommandRunner::JoinCommand({"abc def ghi"});
+  EXPECT_THAT(cmd, Eq(std::nullopt));
+}
+
+TEST(LvmCommandRunner, RunCommandFailsOnTab) {
+  auto cmd = LvmCommandRunner::JoinCommand({"abc\tdef\tghi"});
+  EXPECT_THAT(cmd, Eq(std::nullopt));
+}
 
 TEST(PhysicalVolumeTest, InvalidPhysicalVolumeTest) {
   auto lvm = std::make_shared<MockLvmCommandRunner>();

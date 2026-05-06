@@ -455,19 +455,72 @@ LvmCommandRunner::LvmCommandRunner() {}
 LvmCommandRunner::~LvmCommandRunner() {}
 
 bool LvmCommandRunner::RunCommand(const std::vector<std::string>& cmd) {
-  // lvm2_run() does not exec/fork a separate process, instead it parses the
-  // command line and calls the relevant functions within liblvm2cmd directly.
-  std::string lvm_cmd = base::JoinString(cmd, " ");
+  std::optional<std::string> lvm_cmd = JoinCommand(cmd);
+  if (!lvm_cmd) {
+    return false;
+  }
 
   // liblvm2cmd sets a global umask() but doesn't reset it.
   // Instead add a scoped umask here to reset the umask once we are done
   // executing.
   brillo::ScopedUmask lvm_umask(0);
 
-  int rc = lvm2_run(nullptr, lvm_cmd.c_str());
-  LogLvmError(rc, lvm_cmd);
+  int rc = lvm2_run(nullptr, lvm_cmd->c_str());
+  LogLvmError(rc, *lvm_cmd);
 
   return rc == LVM2_COMMAND_SUCCEEDED;
+}
+
+std::optional<std::string> LvmCommandRunner::JoinCommand(
+    const std::vector<std::string>& cmd) {
+  // lvm2_run() does not exec/fork a separate process, instead it parses the
+  // command line and calls the relevant functions within liblvm2cmd directly.
+  //
+  // Normally when joining command arguments into a string you would escape
+  // the arguments so that they could cleanly round-trip. However, the splitting
+  // that lvm2_run() doesn't support escaping quotations marks and so you can't
+  // safely escape arbitrary strings.
+  //
+  // Instead we take a verify approach: only allow command arguments which
+  // safely round trip, either because they don't use any whitespace or special
+  // characters, or because they're already quoted in a safe way.
+  for (const std::string& cmd_part : cmd) {
+    std::optional<char> quote;
+    // Check to see if the entire string is wrapped in quotes.
+    if (cmd_part.size() >= 2 && cmd_part.front() == '\'' &&
+        cmd_part.back() == '\'') {
+      quote = '\'';
+    } else if (cmd_part.size() >= 2 && cmd_part.front() == '"' &&
+               cmd_part.back() == '"') {
+      quote = '"';
+    }
+    // If the string is quoted, make sure it doesn't also contain the same quote
+    // internally. If it's not quoted, make sure it doesn't contain any
+    // whitespace or whitespace manipulators.
+    if (quote) {
+      for (char c :
+           std::string_view(cmd_part.begin() + 1, cmd_part.end() - 1)) {
+        if (c == *quote) {
+          LOG(ERROR) << "Invalid LVM command argument (nested quotes): "
+                     << cmd_part;
+          return std::nullopt;
+        }
+      }
+    } else {
+      for (char c : cmd_part) {
+        if (c == '\'' || c == '"' || c == '#' || std::isspace(c)) {
+          LOG(ERROR) << "Invalid LVM command argument (multi-part): "
+                     << cmd_part;
+          return std::nullopt;
+        }
+      }
+    }
+  }
+
+  // In general assembling an executable command by joining together strings
+  // this way is bad, but the preprocessing we did should now have filtered
+  // out any arguments that will not safely round-trip through parsing.
+  return base::JoinString(cmd, " ");
 }
 
 bool LvmCommandRunner::RunProcess(const std::vector<std::string>& cmd,
