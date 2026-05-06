@@ -27,6 +27,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/location.h>
 #include <base/logging.h>
+#include <base/logging/logging_settings.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>

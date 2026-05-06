@@ -9,6 +9,7 @@
 #include <memory>
 
 #include <base/logging.h>
+#include <base/logging/logging_settings.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 #include <bpf/libbpf.h>
