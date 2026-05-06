@@ -6,6 +6,7 @@
 
 #include "camera/features/auto_framing/tests/auto_framing_test_fixture.h"
 
+#include <base/logging/logging_settings.h>
 #include <base/test/test_timeouts.h>
 #include <base/timer/elapsed_timer.h>
 #include <brillo/flag_helper.h>

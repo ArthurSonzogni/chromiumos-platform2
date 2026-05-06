@@ -15,6 +15,7 @@
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/logging/logging_settings.h>
 #include <base/memory/unsafe_shared_memory_region.h>
 #include <base/memory/writable_shared_memory_region.h>
 #include <base/strings/string_number_conversions.h>

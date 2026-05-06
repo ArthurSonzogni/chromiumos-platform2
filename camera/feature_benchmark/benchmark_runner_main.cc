@@ -7,6 +7,7 @@
 
 #include <base/command_line.h>
 #include <base/files/file_path.h>
+#include <base/logging/logging_settings.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_timeouts.h>
 #include "base/threading/platform_thread.h"

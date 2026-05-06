@@ -18,6 +18,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/logging/logging_settings.h>
 #include <base/message_loop/message_pump_epoll.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
