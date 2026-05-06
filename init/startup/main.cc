@@ -9,6 +9,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/logging/logging_settings.h>
 #include <base/values.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process/process.h>

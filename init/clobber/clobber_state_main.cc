@@ -9,6 +9,7 @@
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/logging/logging_settings.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <cros_config/cros_config.h>
 #include <libcrossystem/crossystem.h>
