@@ -26,6 +26,7 @@ const int kSyslogCritical = LOG_CRIT;
 }  // namespace
 
 #include <base/logging.h>
+#include <base/logging/logging_settings.h>
 
 static std::string s_ident;        // NOLINT(runtime/string)
 static std::string s_accumulated;  // NOLINT(runtime/string)

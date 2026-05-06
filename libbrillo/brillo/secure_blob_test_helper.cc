@@ -12,6 +12,7 @@
 #include <cstdio>
 
 #include <base/logging.h>
+#include <base/logging/logging_settings.h>
 #include <base/files/scoped_file.h>
 #include <brillo/secure_blob.h>
 
