@@ -13,6 +13,7 @@
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/logging/logging_settings.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
