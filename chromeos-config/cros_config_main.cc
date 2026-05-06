@@ -13,6 +13,7 @@
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/logging/logging_settings.h>
 #include <brillo/flag_helper.h>
 
 #include "chromeos-config/libcros_config/cros_config.h"

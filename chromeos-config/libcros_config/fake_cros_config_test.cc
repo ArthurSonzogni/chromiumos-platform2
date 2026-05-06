@@ -5,6 +5,7 @@
 #include "chromeos-config/libcros_config/fake_cros_config.h"
 
 #include <base/logging.h>
+#include <base/logging/logging_settings.h>
 #include <gtest/gtest.h>
 
 class FakeCrosConfigTest : public testing::Test {
