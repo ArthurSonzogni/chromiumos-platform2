@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include <base/logging.h>
+#include <base/logging/logging_settings.h>
 
 #include "arc/setup/xml/android_xml_util.h"
 

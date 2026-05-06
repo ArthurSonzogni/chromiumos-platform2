@@ -18,6 +18,7 @@
 #include <base/command_line.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/logging/logging_settings.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/rand_util.h>
 #include <gtest/gtest.h>

@@ -9,6 +9,7 @@
 #undef LOG_WARNING
 
 #include <base/logging.h>
+#include <base/logging/logging_settings.h>
 
 namespace arc {
 namespace {

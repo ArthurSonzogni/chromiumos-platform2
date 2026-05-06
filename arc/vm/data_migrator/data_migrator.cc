@@ -12,6 +12,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/logging/logging_settings.h>
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
