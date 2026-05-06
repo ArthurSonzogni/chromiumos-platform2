@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/logging.h>
+#include <base/logging/logging_settings.h>
 
 #include "minios/daemon.h"
 #include "minios/utils.h"
