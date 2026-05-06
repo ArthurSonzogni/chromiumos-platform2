@@ -18,6 +18,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/logging/logging_settings.h>
 #include <base/memory/ptr_util.h>
 #include <base/message_loop/message_pump_epoll.h>
 #include <base/message_loop/message_pump_type.h>
