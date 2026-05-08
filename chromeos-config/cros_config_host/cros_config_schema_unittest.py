@@ -149,6 +149,107 @@ chromeos:
                 ],
             )
 
+    def testMergeConfigs_nameMatchWithIdentity(self):
+        base_yaml_content = """
+chromeos:
+  devices:
+    - $name: 'base_device'
+      skus:
+        - $sku-id: 0
+          config:
+            name: 'model_A'
+            identity:
+              sku-id: "{{$sku-id}}"
+              platform-name: "PlatformBase"
+            wallpaper: "base_wallpaper"
+"""
+
+        overlay_yaml_content = """
+chromeos:
+  devices:
+    - $name: 'overlay_device'
+      skus:
+        - config:
+            name: 'model_A'
+            wallpaper: "overlay_wallpaper"
+"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir_path = pathlib.Path(temp_dir)
+            base_file_path = temp_dir_path / "base.yaml"
+            overlay_file_path = temp_dir_path / "overlay.yaml"
+
+            base_file_path.write_text(base_yaml_content, encoding="utf-8")
+            overlay_file_path.write_text(overlay_yaml_content, encoding="utf-8")
+
+            merged_result = cros_config_schema.MergeConfigs(
+                [str(base_file_path), str(overlay_file_path)]
+            )
+            final_configs_list = merged_result["chromeos"]["configs"]
+
+            self.assertListEqual(
+                final_configs_list,
+                [
+                    {
+                        "identity": {
+                            "platform-name": "PlatformBase",
+                            "sku-id": 0,
+                        },
+                        "name": "model_A",
+                        "wallpaper": "overlay_wallpaper",
+                    },
+                ],
+            )
+
+    def testMergeConfigs_emptyIdentityMerge(self):
+        base_yaml_content = """
+chromeos:
+  devices:
+    - $name: 'base_device'
+      skus:
+        - config:
+            name: 'model_A'
+            identity:
+              platform-name: "Generic"
+            wallpaper: "base_wallpaper"
+"""
+
+        overlay_yaml_content = """
+chromeos:
+  devices:
+    - $name: 'overlay_device'
+      skus:
+        - config:
+            name: 'model_A'
+            identity:
+              platform-name: "Generic"
+            wallpaper: "overlay_wallpaper"
+"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir_path = pathlib.Path(temp_dir)
+            base_file_path = temp_dir_path / "base.yaml"
+            overlay_file_path = temp_dir_path / "overlay.yaml"
+
+            base_file_path.write_text(base_yaml_content, encoding="utf-8")
+            overlay_file_path.write_text(overlay_yaml_content, encoding="utf-8")
+
+            merged_result = cros_config_schema.MergeConfigs(
+                [str(base_file_path), str(overlay_file_path)]
+            )
+            final_configs_list = merged_result["chromeos"]["configs"]
+
+            self.assertListEqual(
+                final_configs_list,
+                [
+                    {
+                        "identity": {
+                            "platform-name": "Generic",
+                        },
+                        "name": "model_A",
+                        "wallpaper": "overlay_wallpaper",
+                    },
+                ],
+            )
+
 
 class ParseArgsTests(unittest.TestCase):
     def testParseArgs(self):

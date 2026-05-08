@@ -9,6 +9,7 @@ import argparse
 import collections
 import copy
 import functools
+import itertools
 import json
 from pathlib import Path
 import re
@@ -551,7 +552,8 @@ def GenerateFridMatches(json_config):
         identity = config.get("identity", {})
         model_frid_matches[name].add(identity.get("frid"))
     sorted_model_frid_matches = {
-        k: sorted(v) for k, v in model_frid_matches.items()
+        k: sorted(v, key=lambda x: (x is not None, x))
+        for k, v in model_frid_matches.items()
     }
 
     new_configs = []
@@ -967,49 +969,51 @@ def MergeConfigs(configs):
         json_files.append(json_transformed_file)
 
     result_json = json_files[0]
+    # Build index for result_json for fast lookup.
+    # identity_index maps a subset of identity projection to a list of configs.
+    # name_index maps a name to a list of configs.
+    identity_index = collections.defaultdict(list)
+    name_index = collections.defaultdict(list)
+
+    def add_to_index(config):
+        identity = config.get("identity", {})
+        if identity:
+            proj = _IdentityProjection(identity)
+            if not proj:
+                identity_index[()].append(config)
+            # Index by all subsets of the projection to support subset matching.
+            for r in range(1, len(proj) + 1):
+                for subset in itertools.combinations(proj, r):
+                    identity_index[subset].append(config)
+        if config.get("name"):
+            name_index[config["name"]].append(config)
+
+    for c in result_json["chromeos"]["configs"]:
+        add_to_index(c)
+
     for overlay_json in json_files[1:]:
-        # Collect new configs from the current overlay separately. This ensures
-        # that configs within the same overlay file only attempt to merge with
-        # configs from previous files (already in result_json), not with other
-        # new configs from the current overlay that haven't yet been fully
-        # processed.
         new_configs = []
         for to_merge_config in overlay_json["chromeos"]["configs"]:
             to_merge_identity = to_merge_config.get("identity", {})
             to_merge_name = to_merge_config.get("name", "")
-            matched = False
-            # Find all existing configs where there is a full/partial identity
-            # match or name match and merge that config into the source.
-            # If there are no matches, then append the config.
-            for source_config in result_json["chromeos"]["configs"]:
-                identity_match = False
-                if to_merge_identity:
-                    source_identity = source_config["identity"]
 
-                    # If we are missing anything from the source identity, copy
-                    # it into to_merge_identity before doing the comparison, as
-                    # missing attributes in the to_merge_identity should be
-                    # treated as matched.
-                    to_merge_identity_extended = to_merge_identity.copy()
-                    for key, value in source_identity.items():
-                        if key not in to_merge_identity_extended:
-                            to_merge_identity_extended[key] = value
+            matched_configs = []
+            if to_merge_identity:
+                key = _IdentityProjection(to_merge_identity)
+                matched_configs = identity_index.get(key, [])
+            elif to_merge_name:
+                matched_configs = name_index.get(to_merge_name, [])
 
-                    identity_match = _IdentityEq(
-                        source_identity, to_merge_identity_extended
-                    )
-                elif to_merge_name:
-                    identity_match = to_merge_name == source_config.get(
-                        "name", ""
-                    )
-
-                if identity_match:
+            if matched_configs:
+                for source_config in matched_configs:
                     MergeDictionaries(source_config, to_merge_config)
-                    matched = True
-
-            if not matched:
+            else:
                 new_configs.append(to_merge_config)
+
+        # Add new configs to result and index
         result_json["chromeos"]["configs"].extend(new_configs)
+        for c in new_configs:
+            add_to_index(c)
 
     return GenerateFridMatches(result_json)
 
