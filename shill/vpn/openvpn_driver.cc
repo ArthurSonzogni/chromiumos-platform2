@@ -319,7 +319,8 @@ void OpenVPNDriver::OnOpenVPNDied(int exit_status) {
 }
 
 void OpenVPNDriver::GetLogin(std::string* /*user*/, std::string* /*password*/) {
-  NOTREACHED();
+  // b/510489275
+  LOG(WARNING) << __func__ << ": Called unexpectedly";
 }
 
 void OpenVPNDriver::Notify(const std::string& reason,
