@@ -727,14 +727,12 @@ def _ValidateFileCollision(json_config):
 
     keys = ["audio.main.files", "thermal.files"]
 
-    total_list = sum(
-        [
-            safe_get_from_key(config, key)
-            for key in keys
-            for config in json_config["chromeos"]["configs"]
-        ],
-        [],
-    )
+    total_list = [
+        file
+        for key in keys
+        for config in json_config["chromeos"]["configs"]
+        for file in safe_get_from_key(config, key)
+    ]
 
     install_paths = {}
 
