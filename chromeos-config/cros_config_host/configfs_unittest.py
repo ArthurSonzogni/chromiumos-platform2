@@ -63,7 +63,9 @@ class ConfigFSTests(unittest.TestCase):
         self.assertEqual(configfs.Serialize(True), b"true")
         self.assertEqual(configfs.Serialize(False), b"false")
         self.assertEqual(configfs.Serialize(10), b"10")
-        self.assertEqual(configfs.Serialize("hello💩"), b"hello\xf0\x9f\x92\xa9")
+        self.assertEqual(
+            configfs.Serialize("hello💩"), b"hello\xf0\x9f\x92\xa9"
+        )
         self.assertEqual(configfs.Serialize(b"\xff\xff\xff"), b"\xff\xff\xff")
 
     @TestConfigs("test.json", "test_arm.json")

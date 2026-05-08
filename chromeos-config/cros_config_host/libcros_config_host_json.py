@@ -339,20 +339,20 @@ class CrosConfigJson(CrosConfigBaseImpl):
                             # process will generate one firmware entry for
                             # this model.
                             if wl_sig_id == firmware_name:
-                                wl_config.firmware_info[
-                                    wl_sig_id
-                                ] = wl_fw_info._replace(
-                                    brand_code=wl_brand_code
+                                wl_config.firmware_info[wl_sig_id] = (
+                                    wl_fw_info._replace(
+                                        brand_code=wl_brand_code
+                                    )
                                 )
                             else:
-                                wl_config.firmware_info[
-                                    wl_sig_id
-                                ] = wl_fw_info._replace(
-                                    model=wl_sig_id,
-                                    key_id=wl_key_id,
-                                    have_image=False,
-                                    sig_id=wl_sig_id,
-                                    brand_code=wl_brand_code,
+                                wl_config.firmware_info[wl_sig_id] = (
+                                    wl_fw_info._replace(
+                                        model=wl_sig_id,
+                                        key_id=wl_key_id,
+                                        have_image=False,
+                                        sig_id=wl_sig_id,
+                                        brand_code=wl_brand_code,
+                                    )
                                 )
 
     def GetDeviceConfigs(self):

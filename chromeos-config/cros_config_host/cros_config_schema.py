@@ -9,7 +9,6 @@ import argparse
 import collections
 import copy
 import functools
-import itertools
 import json
 from pathlib import Path
 import re
@@ -683,14 +682,15 @@ def _ValidateUniqueIdentities(json_config):
                 "Missing identity for config: %s" % str(config)
             )
 
-    for config_a, config_b in itertools.combinations(
-        json_config["chromeos"]["configs"], 2
-    ):
-        if _IdentityEq(config_a["identity"], config_b["identity"]):
+    seen_identities = set()
+    for config in json_config["chromeos"]["configs"]:
+        identity = config.get("identity", {})
+        proj = _IdentityProjection(identity)
+        if proj in seen_identities:
             raise ValidationError(
-                "Identities are not unique: %s and %s"
-                % (config_a["identity"], config_b["identity"])
+                "Identities are not unique for config: %s" % str(identity)
             )
+        seen_identities.add(proj)
 
 
 def _ValidateFileCollision(json_config):
