@@ -774,40 +774,45 @@ def _ValidateCustomLabelBrandChangesOnly(json_config):
             )
             config_list = custom_labels.get(name, [])
 
-            config_minus_brand = copy.deepcopy(config)
-            config_minus_brand["identity"]["custom-label-tag"] = ""
+            config_minus_brand = {
+                k: v for k, v in config.items() if k not in BRAND_ELEMENTS
+            }
 
-            for brand_element in BRAND_ELEMENTS:
-                config_minus_brand[brand_element] = ""
+            identity = config.get("identity", {})
+            new_identity = dict(identity)
+            new_identity.pop("custom-label-tag", None)
+            new_identity.pop("frid", None)
+            config_minus_brand["identity"] = new_identity
 
-            hw_props = config_minus_brand.get("hardware-properties", None)
+            hw_props = config.get("hardware-properties", {})
             if hw_props:
-                stylus = hw_props.get("stylus-category", "none")
+                new_hw = dict(hw_props)
+                stylus = new_hw.get("stylus-category", "none")
                 if stylus in ("none", EXTERNAL_STYLUS):
-                    hw_props.pop("stylus-category", None)
+                    new_hw.pop("stylus-category", None)
+                config_minus_brand["hardware-properties"] = new_hw
 
-            # Remove /ui:help-content-id
-            if "ui" not in config_minus_brand:
-                config_minus_brand["ui"] = {}
-            config_minus_brand["ui"]["help-content-id"] = ""
+            ui = config.get("ui", {})
+            new_ui = dict(ui)
+            new_ui["help-content-id"] = ""
 
-            # Trim allowed feature flags from /ui:ash-enabled-features
-            if "ash-enabled-features" in config_minus_brand["ui"]:
-                config_minus_brand["ui"]["ash-enabled-features"] = sorted(
+            if "ash-enabled-features" in new_ui:
+                new_ui["ash-enabled-features"] = sorted(
                     feature
-                    for feature in set(
-                        config_minus_brand["ui"]["ash-enabled-features"]
-                    )
+                    for feature in set(new_ui["ash-enabled-features"])
                     if feature and feature not in ALLOWED_CUSTOM_LABEL_FEATURES
                 )
+            config_minus_brand["ui"] = new_ui
 
-            config_minus_brand.get("arc", {}).get("build-properties", {}).pop(
-                "marketing-name", None
-            )
-            config_minus_brand.get("arc", {}).get("build-properties", {}).pop(
-                "oem", None
-            )
-            config_minus_brand.get("identity", {}).pop("frid", None)
+            arc = config.get("arc", {})
+            if arc:
+                new_arc = dict(arc)
+                if "build-properties" in new_arc:
+                    new_props = dict(new_arc["build-properties"])
+                    new_props.pop("marketing-name", None)
+                    new_props.pop("oem", None)
+                    new_arc["build-properties"] = new_props
+                config_minus_brand["arc"] = new_arc
 
             config_list.append(config_minus_brand)
             custom_labels[name] = config_list
