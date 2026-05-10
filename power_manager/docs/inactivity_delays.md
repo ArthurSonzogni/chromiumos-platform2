@@ -76,6 +76,6 @@ accessible via `chrome://system` or by browsing to `file://var/log`.
     `StateController` class in power manager; responsible for managing delays
 
 [issue 190499]: https://crbug.com/190499
-[enterprise policies]: https://cloud.google.com/docs/chrome-enterprise/policies
+[enterprise policies]: https://chromeenterprise.google/policies/
 [chrome.power extension API]: https://developer.chrome.com/extensions/power.html
 [Smart Dim]: https://chromium.googlesource.com/chromium/src/+/HEAD/chrome/browser/ash/power/ml/smart_dim

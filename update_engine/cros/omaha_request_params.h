@@ -469,7 +469,7 @@ class OmahaRequestParams {
 
   // Token used when making an update request for a specific build.
   // For example: Token for a Quick Fix Build:
-  // https://cloud.google.com/docs/chrome-enterprise/policies/?policy=DeviceQuickFixBuildToken
+  // https://chromeenterprise.google/policies/?policy=DeviceQuickFixBuildToken
   // Normally is set by |OmahaRequestParamsPolicy|.
   std::string quick_fix_build_token_;
 
