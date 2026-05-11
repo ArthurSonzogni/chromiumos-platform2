@@ -42,14 +42,6 @@ class SystemUtils;
 // storing owner properties etc.
 class DevicePolicyService : public PolicyService {
  public:
-  // Legacy flag file, used prior to M114 to indicate that some OOBE screens
-  // should be skipped after the device was powerwashed - during the Chromad
-  // migration to cloud management. See comment of the ".cc" file for details
-  // about deleting this variable in the future.
-  static inline constexpr char kChromadMigrationSkipOobePreservePath[] =
-      "/mnt/stateful_partition/unencrypted/preserve/"
-      "chromad_migration_skip_oobe";
-
   ~DevicePolicyService() override;
 
   // Instantiates a regular (non-testing) device policy service instance.

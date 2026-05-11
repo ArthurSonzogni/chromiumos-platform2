@@ -424,15 +424,6 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
     return true;
   }
 
-  // If the install attributes are finalized (OOBE completed), try to delete the
-  // Chromad migration skip OOBE flag. This insures that the file gets deleted
-  // when it's no longer needed.
-  //
-  // TODO(b/263367348): Delete this `RemoveFile()` call, when all supported
-  // devices are guaranteed to not have this file persisted.
-  system_utils_->RemoveFile(
-      base::FilePath(kChromadMigrationSkipOobePreservePath));
-
   bool is_enrolled =
       GetEnterpriseMode() == InstallAttributesReader::kDeviceModeEnterprise;
 
