@@ -407,11 +407,6 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
     }
   }
 
-  // Used to keep the update key-value pairs for the VPD updater script.
-  std::vector<std::pair<std::string, std::string>> updates;
-  updates.push_back(std::make_pair(crossystem::Crossystem::kBlockDevmode,
-                                   std::to_string(block_devmode_setting)));
-
   // Check if device is enrolled. The flag for enrolled device is written to VPD
   // but will never get deleted. Existence of the flag is one of the triggers
   // for FRE check during OOBE.
@@ -442,14 +437,13 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
     return true;
   }
 
-  updates.push_back(std::make_pair(crossystem::Crossystem::kCheckEnrollment,
-                                   std::to_string(is_enrolled)));
-
   // Note that VPD update errors will be ignored if the device is not enrolled.
   bool ignore_errors = !is_enrolled;
   return vpd_process_->RunInBackground(
-      updates, base::BindOnce(&HandleVpdUpdateCompletion, ignore_errors,
-                              std::move(completion)));
+      {{crossystem::Crossystem::kBlockDevmode,
+        std::to_string(block_devmode_setting)}},
+      base::BindOnce(&HandleVpdUpdateCompletion, ignore_errors,
+                     std::move(completion)));
 }
 
 void DevicePolicyService::ClearBlockDevmode(Completion completion) {

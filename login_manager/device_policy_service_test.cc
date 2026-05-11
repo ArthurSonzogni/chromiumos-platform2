@@ -482,7 +482,6 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
 
   VpdProcess::KeyValuePairs updates{
       {crossystem::Crossystem::kBlockDevmode, "0"},
-      {crossystem::Crossystem::kCheckEnrollment, "0"},
   };
   EXPECT_CALL(vpd_process_, RunInBackground(updates, _)).WillOnce(Return(true));
 
@@ -519,7 +518,6 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
 
   VpdProcess::KeyValuePairs updates{
       {crossystem::Crossystem::kBlockDevmode, "0"},
-      {crossystem::Crossystem::kCheckEnrollment, "1"},
   };
   EXPECT_CALL(vpd_process_, RunInBackground(updates, _)).WillOnce(Return(true));
 
@@ -550,7 +548,6 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
   SetDataInInstallAttributes("enterprise");
   VpdProcess::KeyValuePairs updates{
       {crossystem::Crossystem::kBlockDevmode, "0"},
-      {crossystem::Crossystem::kCheckEnrollment, "1"},
   };
   EXPECT_CALL(vpd_process_, RunInBackground(updates, _))
       .WillOnce(Return(false));
