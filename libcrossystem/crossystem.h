@@ -109,9 +109,6 @@ class BRILLO_EXPORT Crossystem {
   // Name of property that contains the recovery reason.
   BRILLO_PRIVATE static constexpr char kRecoveryReason[] = "recovery_reason";
 
-  // Name of property that indicates if nvram has been cleared.
-  BRILLO_PRIVATE static constexpr char kNvramCleared[] = "nvram_cleared";
-
   // Name of property that indicates if dev mode is blocked.
   BRILLO_PRIVATE static constexpr char kBlockDevmode[] = "block_devmode";
 

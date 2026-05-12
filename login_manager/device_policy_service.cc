@@ -380,30 +380,12 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
   }
 
   // Set crossystem block_devmode flag.
+  // Note, we also used to clear nvram_cleared here, reusing it would need
+  // extra care.
   if (block_devmode_value != block_devmode_setting) {
     if (!crossystem_->VbSetSystemPropertyInt(
             crossystem::Crossystem::kBlockDevmode, block_devmode_setting)) {
       LOG(ERROR) << "Failed to write block_devmode flag!";
-    } else {
-      block_devmode_value.emplace(block_devmode_setting);
-    }
-  }
-
-  // Clear nvram_cleared if block_devmode has the correct state now. (This is
-  // OK as long as block_devmode is the only consumer of nvram_cleared. Once
-  // other use cases crop up, clearing has to be done in cooperation.)
-  if (block_devmode_value == block_devmode_setting) {
-    std::optional<int> nvram_cleared_value =
-        crossystem_->VbGetSystemPropertyInt(
-            crossystem::Crossystem::kNvramCleared);
-    if (!nvram_cleared_value) {
-      LOG(ERROR) << "Failed to read nvram_cleared flag!";
-    }
-    if (nvram_cleared_value != 0) {
-      if (!crossystem_->VbSetSystemPropertyInt(
-              crossystem::Crossystem::kNvramCleared, 0)) {
-        LOG(ERROR) << "Failed to clear nvram_cleared flag!";
-      }
     }
   }
 
