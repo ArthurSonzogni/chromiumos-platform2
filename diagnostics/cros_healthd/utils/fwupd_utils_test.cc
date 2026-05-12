@@ -132,14 +132,12 @@ TEST(FwupdUtilsTest, ParseVersionFormat) {
             mojom::FwupdVersionFormat::kDellBios);
   EXPECT_EQ(parse_helper(FWUPD_VERSION_FORMAT_HEX),
             mojom::FwupdVersionFormat::kHex);
-  EXPECT_EQ(parse_helper(FWUPD_VERSION_FORMAT_LAST),
-            mojom::FwupdVersionFormat::kUnknown);
   EXPECT_EQ(parse_helper(FWUPD_VERSION_FORMAT_UNKNOWN),
             mojom::FwupdVersionFormat::kUnknown);
   // Test for unexpected values since the values are from external D-Bus
   // services.
   EXPECT_EQ(parse_helper(
-                static_cast<FwupdVersionFormat>(FWUPD_VERSION_FORMAT_LAST + 1)),
+                static_cast<FwupdVersionFormat>(FWUPD_VERSION_FORMAT_HEX + 1)),
             mojom::FwupdVersionFormat::kUnknown);
 }
 
