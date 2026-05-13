@@ -352,26 +352,15 @@ bool DevicePolicyService::MayUpdateSystemSettings() {
 }
 
 bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
-  const int block_devmode_setting =
-      GetSettings().system_settings().block_devmode();
-  std::optional<int> block_devmode_value = crossystem_->VbGetSystemPropertyInt(
-      crossystem::Crossystem::kBlockDevmode);
-  if (!block_devmode_value) {
-    LOG(ERROR) << "Failed to read block_devmode flag!";
-  }
-
-  // We clear block_devmode for consumers during state determination.
+  // We clear block_devmode for consumers during state determination using
+  // `ClearBlockDevmode`.
   // We must not clear it otherwise.
   // Rationale: It is possible to interrupt the enrollment process such that the
-  // owner key is present, but policies aren't. In this case,
-  // `block_devmode_setting` would default to false, but we do not actually know
-  // the administrator's intent. To prevent enrollment escapes, we have to leave
-  // the setting in VPD untouched if it is currently set to block_devmode=1.
-  // See crbug.com/483169442
-  //
-  // TODO(crbug.com/505603926): It might be cleaner to copy the FWMP parameter
-  // instead.
-  if (block_devmode_value == 1 && !block_devmode_setting) {
+  // owner key is present, but policies aren't. In this case, the block_devmodei
+  // policy would default to false, but we do not actually know the
+  // administrator's intent. To prevent enrollment escapes, we have to leave the
+  // setting in VPD untouched. See crbug.com/483169442
+  if (!GetSettings().system_settings().block_devmode()) {
     LOG(WARNING) << "Ignoring policy to clear block_devmode in VPD.";
     if (!completion.is_null()) {
       std::move(completion).Run(brillo::ErrorPtr());
@@ -379,51 +368,24 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
     return true;
   }
 
-  // Set crossystem block_devmode flag.
+  // Set crossystem block_devmode flag in NVRAM.
   // Note, we also used to clear nvram_cleared here, reusing it would need
   // extra care.
-  if (block_devmode_value != block_devmode_setting) {
-    if (!crossystem_->VbSetSystemPropertyInt(
-            crossystem::Crossystem::kBlockDevmode, block_devmode_setting)) {
+  if (crossystem_->VbGetSystemPropertyInt(
+          crossystem::Crossystem::kBlockDevmode) != 1) {
+    const bool success = crossystem_->VbSetSystemPropertyInt(
+        crossystem::Crossystem::kBlockDevmode, 1);
+    if (!success) {
       LOG(ERROR) << "Failed to write block_devmode flag!";
     }
   }
 
-  // Check if device is enrolled. The flag for enrolled device is written to VPD
-  // but will never get deleted. Existence of the flag is one of the triggers
-  // for FRE check during OOBE.
-  if (!install_attributes_reader_->IsLocked()) {
-    // Probably the first sign in, install attributes file is not created yet.
-    if (!completion.is_null()) {
-      std::move(completion).Run(brillo::ErrorPtr());
-    }
-
-    return true;
-  }
-
-  bool is_enrolled =
-      GetEnterpriseMode() == InstallAttributesReader::kDeviceModeEnterprise;
-
-  // It's impossible for block_devmode to be true and the device to not be
-  // enrolled. If we end up in this situation, log the error and don't update
-  // anything in VPD. The exception is if the device is in devmode, but we are
-  // fine with this limitation, since user can update VPD in devmode manually.
-  if (block_devmode_setting && !is_enrolled) {
-    LOG(ERROR) << "Can't store contradictory values in VPD";
-    // Return true to be on the safe side here since not allowing to continue
-    // would make the device unusable.
-    if (!completion.is_null()) {
-      std::move(completion).Run(brillo::ErrorPtr());
-    }
-
-    return true;
-  }
-
+  // Set block devmode in VPD.
   // Note that VPD update errors will be ignored if the device is not enrolled.
-  bool ignore_errors = !is_enrolled;
+  bool ignore_errors =
+      GetEnterpriseMode() != InstallAttributesReader::kDeviceModeEnterprise;
   return vpd_process_->RunInBackground(
-      {{crossystem::Crossystem::kBlockDevmode,
-        std::to_string(block_devmode_setting)}},
+      {{crossystem::Crossystem::kBlockDevmode, "1"}},
       base::BindOnce(&HandleVpdUpdateCompletion, ignore_errors,
                      std::move(completion)));
 }

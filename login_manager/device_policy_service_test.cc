@@ -413,7 +413,10 @@ TEST_F(DevicePolicyServiceTest, SetBlockDevModeInNvram) {
   proto->mutable_system_settings()->set_block_devmode(true);
   SetSettings(service_.get(), std::move(proto));
 
-  EXPECT_CALL(vpd_process_, RunInBackground(_, _)).WillOnce(Return(true));
+  VpdProcess::KeyValuePairs updates{
+      {crossystem::Crossystem::kBlockDevmode, "1"},
+  };
+  EXPECT_CALL(vpd_process_, RunInBackground(updates, _)).WillOnce(Return(true));
 
   SetDataInInstallAttributes("enterprise");
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
@@ -444,8 +447,7 @@ TEST_F(DevicePolicyServiceTest, NotUnsetBlockDevModeInNvram) {
                    crossystem::Crossystem::kBlockDevmode));
 }
 
-// Ensure non-enrolled and non-blockdevmode device will call VPD update
-// process to clean block_devmode only.
+// Ensure non-enrolled and non-blockdevmode device does not get VPD updated.
 TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
   MockNssUtil nss;
   InitService(&nss, true);
@@ -472,16 +474,13 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
   EXPECT_CALL(*store, Persist()).WillRepeatedly(Return(true));
   SetDataInInstallAttributes("consumer");
 
-  VpdProcess::KeyValuePairs updates{
-      {crossystem::Crossystem::kBlockDevmode, "0"},
-  };
-  EXPECT_CALL(vpd_process_, RunInBackground(updates, _)).WillOnce(Return(true));
+  EXPECT_CALL(vpd_process_, RunInBackground(_, _)).Times(0);
 
   PersistPolicy(&service);
 }
 
-// Ensure enrolled device gets VPD updated. A MockDevicePolicyService object is
-// used.
+// Ensure enrolled device gets VPD does not get updated if the block devmode
+// policy is `false`.
 TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
   MockNssUtil nss;
   InitService(&nss, true);
@@ -508,10 +507,7 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
   EXPECT_CALL(*store, Persist()).WillRepeatedly(Return(true));
   SetDataInInstallAttributes("enterprise");
 
-  VpdProcess::KeyValuePairs updates{
-      {crossystem::Crossystem::kBlockDevmode, "0"},
-  };
-  EXPECT_CALL(vpd_process_, RunInBackground(updates, _)).WillOnce(Return(true));
+  EXPECT_CALL(vpd_process_, RunInBackground(_, _)).Times(0);
 
   PersistPolicy(&service);
 }
@@ -532,59 +528,19 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
       crossystem::Crossystem::kMainFirmwareType, "normal");
 
   auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
-  proto->mutable_system_settings()->set_block_devmode(false);
+  proto->mutable_system_settings()->set_block_devmode(true);
   SetSettings(&service, std::move(proto));
   SetPolicyKey(&service, &key);
 
   EXPECT_CALL(key, IsPopulated()).WillRepeatedly(Return(true));
   SetDataInInstallAttributes("enterprise");
   VpdProcess::KeyValuePairs updates{
-      {crossystem::Crossystem::kBlockDevmode, "0"},
+      {crossystem::Crossystem::kBlockDevmode, "1"},
   };
   EXPECT_CALL(vpd_process_, RunInBackground(updates, _))
       .WillOnce(Return(false));
 
   EXPECT_FALSE(UpdateSystemSettings(&service));
-}
-
-// Check the behavior when install attributes file is missing.
-TEST_F(DevicePolicyServiceTest, CheckMissingInstallAttributes) {
-  MockNssUtil nss;
-  InitService(&nss, true);
-
-  crossystem_.VbSetSystemPropertyString(
-      crossystem::Crossystem::kMainFirmwareType, "normal");
-  crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kBlockDevmode, 0);
-
-  auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
-  proto->mutable_system_settings()->set_block_devmode(true);
-  SetSettings(service_.get(), std::move(proto));
-
-  SetInstallAttributesMissing();
-
-  EXPECT_CALL(vpd_process_, RunInBackground(_, _)).Times(0);
-
-  EXPECT_TRUE(UpdateSystemSettings(service_.get()));
-}
-
-// Check the behavior when devmode is blocked for consumer owned device.
-TEST_F(DevicePolicyServiceTest, CheckWeirdInstallAttributes) {
-  MockNssUtil nss;
-  InitService(&nss, true);
-
-  crossystem_.VbSetSystemPropertyString(
-      crossystem::Crossystem::kMainFirmwareType, "normal");
-  crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kBlockDevmode, 0);
-
-  auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
-  proto->mutable_system_settings()->set_block_devmode(true);
-  SetSettings(service_.get(), std::move(proto));
-
-  SetDataInInstallAttributes(std::string());
-
-  EXPECT_CALL(vpd_process_, RunInBackground(_, _)).Times(0);
-
-  EXPECT_TRUE(UpdateSystemSettings(service_.get()));
 }
 
 TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {
