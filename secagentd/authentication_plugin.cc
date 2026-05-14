@@ -306,6 +306,13 @@ void AuthenticationPlugin::OnAuthenticateAuthFactorCompleted(
         last_auth_was_password_ = false;
       }
     }
+
+    if (auth_factor_type_ !=
+        AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN) {
+      LOG(INFO) << "Overwriting the previous auth_factor_type_type "
+                << auth_factor_type_ << " with new value " << it->second << " ("
+                << user_data_auth::AuthFactorType_Name(it->first) << ").";
+    }
     auth_factor_type_ = it->second;
   }
 
@@ -351,6 +358,9 @@ void AuthenticationPlugin::DelayedCheckForAuthSignal(
     // Clear auth factor after it has been set.
     auth_factor_type_ =
         AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
+  } else {
+    LOG(INFO) << "Failed to retrieve auth factor in " << kWaitForAuthFactorS
+              << " seconds.";
   }
   device_user_->GetDeviceUserAsync(
       base::BindOnce(&AuthenticationPlugin::OnDeviceUserRetrieved,
