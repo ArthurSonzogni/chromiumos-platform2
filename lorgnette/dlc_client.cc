@@ -4,12 +4,12 @@
 
 #include "lorgnette/dlc_client.h"
 
+#include <string>
+
 #include <base/functional/bind.h>
 #include <brillo/errors/error.h>
 #include <chromeos/constants/lorgnette_dlc.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
-
-#include <string>
 
 #include "base/files/file_path.h"
 #include "base/strings/strcat.h"
@@ -18,8 +18,9 @@
 namespace lorgnette {
 
 DlcClient::DlcClient()
-    : supported_dlc_ids_(std::set<std::string>(
-          {kSaneBackendsPfuDlcId, kSaneBackendsCanonDlcId})) {}
+    : supported_dlc_ids_(
+          std::set<std::string>({kSaneBackendsPfuDlcId, kSaneBackendsCanonDlcId,
+                                 kSaneBackendsBrother5DlcId})) {}
 
 void DlcClient::Init(
     std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>

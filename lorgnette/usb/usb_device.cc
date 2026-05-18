@@ -24,6 +24,10 @@ namespace {
 
 const char kScannerTypeMFP[] = "multi-function peripheral";  // Matches SANE.
 
+// Scanners requiring the sane-backends-brother5 DLC.
+std::set<VidPid> kScannersRequiringSaneBackendsBrother5Dlc = {{0x04f9, 0x0706},
+                                                              {0x04f9, 0x0459}};
+
 // Scanners requiring the sane-backends-pfu DLC.
 std::set<VidPid> kScannersRequiringSaneBackendsPfuDlc = {
     {0x04c5, 0x132e}, {0x04c5, 0x15fc}, {0x04c5, 0x15ff},
@@ -53,6 +57,8 @@ UsbDevice::UsbDevice() {
                 &default_dlc_backend_scanners_);
   SetScannerIds(kScannerRequiringSaneBackendsCanonDlc, kSaneBackendsCanonDlcId,
                 &default_dlc_backend_scanners_);
+  SetScannerIds(kScannersRequiringSaneBackendsBrother5Dlc,
+                kSaneBackendsBrother5DlcId, &default_dlc_backend_scanners_);
   dlc_backend_scanners_ = &default_dlc_backend_scanners_;
 }
 
