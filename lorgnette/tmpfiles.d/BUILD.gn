@@ -9,4 +9,5 @@ group("tmpfiles.d") {
 install_config("install_tmpfiles_config") {
   sources = [ "lorgnette.conf" ]
   install_path = "tmpfilesd"
+  outputs = [ "50-lorgnette.conf" ]
 }
