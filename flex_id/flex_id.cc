@@ -35,8 +35,9 @@ constexpr char kNetworkInterfacesPath[] = "sys/class/net";
 constexpr int kMinSerialLength = 2;
 // Case of these values doesn't matter as they are compared case-insensitively.
 const char* kBadSerials[] = {
-    "91.WTx00.xPxx",   // This is a device model number.
-    "123490EN400015",  // Common serial used by Samsung Kiosk KM24a devices.
+    "91.WTx00.xPxx",    // This is a device model number.
+    "123490EN400015",   // Common serial used by Samsung Kiosk KM24a devices.
+    "Type1-123456789",  // Common serial used by Uniguest Reserva Edge devices.
     "to be filled by o.e.m.",
     "to be filled by o.e.m",
     "123456789",
