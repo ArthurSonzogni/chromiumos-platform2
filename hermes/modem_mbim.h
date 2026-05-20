@@ -13,11 +13,13 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include <base/strings/string_number_conversions.h>
 #include <glib-bridge/glib_bridge.h>
 #include <glib-bridge/glib_logger.h>
 #include <glib-bridge/glib_scopers.h>
 #include <google-lpa/lpa/card/euicc_card.h>
+
 #include "hermes/euicc_interface.h"
 #include "hermes/executor.h"
 #include "hermes/libmbim_interface.h"
@@ -227,7 +229,7 @@ class ModemMbim : public Modem<MbimCmd> {
     guint32 map_count_;  // number of executors/ radio. 1 for DSSA
     guint32 slot_count_;
     int cached_active_slot_;
-    // cached_active_slot is updated when Hermes reads the slot mapping or when
+    // cached_active_slot_ is updated when Hermes reads the slot mapping or when
     // Hermes switches slots. It may be outdated if another daemon switches
     // slots when Hermes is idle.
     std::optional<int> get_slot_mapping_result_;

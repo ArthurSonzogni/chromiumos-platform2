@@ -871,6 +871,12 @@ void ModemMbim::DeviceSlotStatusInfoRspCb(MbimDevice* device,
       modem_mbim->libmbim_
           ->MbimMessageMsBasicConnectExtensionsSlotInfoStatusResponseParse(
               response, &slot_index, &slot_status, &error)) {
+    if (slot_index >= modem_mbim->slot_info_.slot_state_.size()) {
+      LOG(ERROR) << __func__ << ": modem returned out-of-range slot index "
+                 << slot_index;
+      modem_mbim->ProcessMbimResult(kModemMessageProcessingError);
+      return;
+    }
     modem_mbim->slot_info_.slot_state_[slot_index] = slot_status;
     VLOG(2) << "Response received with slot_index:" << slot_index
             << " & status:" << slot_status;
@@ -923,6 +929,13 @@ void ModemMbim::DeviceSlotStatusMappingRspCb(MbimDevice* device,
           ->MbimMessageMsBasicConnectExtensionsDeviceSlotMappingsResponseParse(
               response, &map_count, &slot_mappings, &error)) {
     CHECK_EQ(map_count, 1) << "Unexpected multi radio modem";
+    if (slot_mappings[kExecutorIndex]->slot >=
+        modem_mbim->slot_info_.slot_count_) {
+      LOG(ERROR) << __func__ << ": modem returned out-of-range slot mapping "
+                 << slot_mappings[kExecutorIndex]->slot;
+      modem_mbim->ProcessMbimResult(kModemMessageProcessingError);
+      return;
+    }
     modem_mbim->slot_info_.map_count_ = map_count;
     modem_mbim->slot_info_.cached_active_slot_ =
         slot_mappings[kExecutorIndex]->slot;
@@ -1419,8 +1432,9 @@ bool ModemMbim::SlotInfo::IsEuiccPresentOnAnySlot() const {
 }
 
 bool ModemMbim::SlotInfo::IsEuicc(int slot) const {
-  return (slot_state_[slot] == MBIM_UICC_SLOT_STATE_ACTIVE_ESIM) ||
-         (slot_state_[slot] == MBIM_UICC_SLOT_STATE_ACTIVE_ESIM_NO_PROFILES);
+  return slot >= 0 && static_cast<size_t>(slot) < slot_state_.size() &&
+         (slot_state_[slot] == MBIM_UICC_SLOT_STATE_ACTIVE_ESIM ||
+          slot_state_[slot] == MBIM_UICC_SLOT_STATE_ACTIVE_ESIM_NO_PROFILES);
 }
 
 void ModemMbim::SlotInfo::InitSlotInfo(guint32 slot_count, guint32 map_count) {
@@ -1435,10 +1449,20 @@ void ModemMbim::SlotInfo::InitSlotInfo(guint32 slot_count, guint32 map_count) {
 }
 
 void ModemMbim::SlotInfo::SetEidActiveSlot(std::string eid) {
+  if (cached_active_slot_ < 0 ||
+      static_cast<size_t>(cached_active_slot_) >= eid_.size()) {
+    LOG(ERROR) << __func__ << ": active slot out of range";
+    return;
+  }
   eid_[cached_active_slot_] = std::move(eid);
 }
 
 void ModemMbim::SlotInfo::SetSlotStateActiveSlot(MbimUiccSlotState state) {
+  if (cached_active_slot_ < 0 ||
+      static_cast<size_t>(cached_active_slot_) >= slot_state_.size()) {
+    LOG(ERROR) << __func__ << ": active slot out of range";
+    return;
+  }
   slot_state_[cached_active_slot_] = state;
 }
 
