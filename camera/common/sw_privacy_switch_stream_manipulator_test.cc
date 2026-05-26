@@ -9,7 +9,9 @@
 #include <utility>
 #include <vector>
 
+#include <base/at_exit.h>
 #include <base/check.h>
+#include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/functional/callback_helpers.h>
 #include <base/test/task_environment.h>
@@ -281,6 +283,9 @@ TEST_F(SWPrivacySwitchTest, PrivacyOnJpegOutput) {
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
+  base::CommandLine::Init(argc, argv);
+  base::AtExitManager exit_manager;
+
   cros::tests::g_env =
       reinterpret_cast<cros::tests::SWPrivacySwitchTestEnvironment*>(
           testing::AddGlobalTestEnvironment(
