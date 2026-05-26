@@ -50,7 +50,7 @@ using AuthFactorType = cros_xdr::reporting::Authentication_AuthenticationType;
 
 // If the auth factor is not yet filled wait to see
 // if dbus signal is late.
-static constexpr base::TimeDelta kWaitForAuthFactorS = base::Seconds(1);
+static constexpr base::TimeDelta kWaitForAuthFactorS = base::Seconds(3);
 static constexpr uint64_t kMaxDelayForLockscreenAttemptsS = 3;
 
 // File path types (from your original code)
@@ -609,6 +609,12 @@ class AuthenticationPlugin : public PluginInterface {
                            cros_xdr::reporting::XdrUserEvent,
                            cros_xdr::reporting::UserEventAtomicVariant>;
 
+  struct PendingAuthEvent {
+    std::unique_ptr<cros_xdr::reporting::UserEventAtomicVariant> xdr_proto;
+    cros_xdr::reporting::Authentication* authentication;
+    std::unique_ptr<base::OneShotTimer> timeout_timer;
+  };
+
   // Creates and sends a screen Lock event.
   void OnScreenLock();
   // Creates and sends a screen Unlock event.
@@ -626,11 +632,20 @@ class AuthenticationPlugin : public PluginInterface {
   // Fills the proto's auth factor if auth_factor_ is known.
   // Returns if auth factor was filled.
   bool FillAuthFactor(cros_xdr::reporting::Authentication* proto);
-  // If there is an entry event but auth factor is not filled, wait and
-  // then check again for auth factor. If still not found send message anyway.
-  void DelayedCheckForAuthSignal(
+
+  // Enqueues a pending auth event and posts a timeout task.
+  void EnqueuePendingAuthEvent(
       std::unique_ptr<cros_xdr::reporting::UserEventAtomicVariant> xdr_proto,
       cros_xdr::reporting::Authentication* authentication);
+  // Processes the first pending auth event in the queue.
+  void ProcessFirstPendingAuthEvent();
+  // Called when we timeout waiting for the auth factor signal.
+  void OnAuthFactorTimeout();
+  // Helper to send the auth event.
+  void SendAuthEvent(
+      std::unique_ptr<cros_xdr::reporting::UserEventAtomicVariant> xdr_proto,
+      cros_xdr::reporting::Authentication* authentication);
+
   // Callback function that is ran when the device user is ready.
   void OnDeviceUserRetrieved(
       std::unique_ptr<cros_xdr::reporting::UserEventAtomicVariant> atomic_event,
@@ -678,6 +693,7 @@ class AuthenticationPlugin : public PluginInterface {
   uint64_t latest_pin_failure_{0};
   bool is_active_{false};
   bool last_auth_was_password_{false};
+  std::vector<std::unique_ptr<PendingAuthEvent>> pending_auth_events_;
 };
 
 class AgentPlugin : public PluginInterface {

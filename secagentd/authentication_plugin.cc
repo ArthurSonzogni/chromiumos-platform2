@@ -191,12 +191,7 @@ void AuthenticationPlugin::OnScreenUnlock() {
       screen_unlock->mutable_unlock()->mutable_authentication();
   if (!FillAuthFactor(authentication)) {
     authentication->clear_auth_factor();
-    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE,
-        base::BindOnce(&AuthenticationPlugin::DelayedCheckForAuthSignal,
-                       weak_ptr_factory_.GetWeakPtr(), std::move(screen_unlock),
-                       authentication),
-        kWaitForAuthFactorS);
+    EnqueuePendingAuthEvent(std::move(screen_unlock), authentication);
     return;
   }
 
@@ -219,12 +214,7 @@ void AuthenticationPlugin::OnSessionStateChange(const std::string& state) {
     auto* authentication = log_event->mutable_logon()->mutable_authentication();
     if (!FillAuthFactor(authentication)) {
       authentication->clear_auth_factor();
-      base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
-          FROM_HERE,
-          base::BindOnce(&AuthenticationPlugin::DelayedCheckForAuthSignal,
-                         weak_ptr_factory_.GetWeakPtr(), std::move(log_event),
-                         authentication),
-          kWaitForAuthFactorS);
+      EnqueuePendingAuthEvent(std::move(log_event), authentication);
       return;
     }
     auth_factor_type_ =
@@ -269,6 +259,7 @@ void AuthenticationPlugin::OnAuthenticateAuthFactorCompleted(
     }
     auth_factor_type_ =
         AuthFactorType::Authentication_AuthenticationType_AUTH_NEW_USER;
+    ProcessFirstPendingAuthEvent();
     return;
   }
 
@@ -341,6 +332,8 @@ void AuthenticationPlugin::OnAuthenticateAuthFactorCompleted(
               completed.username(), completed.sanitized_username()),
           completed.sanitized_username());
     }
+  } else {
+    ProcessFirstPendingAuthEvent();
   }
 }
 
@@ -351,16 +344,66 @@ bool AuthenticationPlugin::FillAuthFactor(pb::Authentication* proto) {
          AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
 }
 
-void AuthenticationPlugin::DelayedCheckForAuthSignal(
+void AuthenticationPlugin::EnqueuePendingAuthEvent(
     std::unique_ptr<cros_xdr::reporting::UserEventAtomicVariant> xdr_proto,
     cros_xdr::reporting::Authentication* authentication) {
+  auto event = std::make_unique<PendingAuthEvent>();
+  event->xdr_proto = std::move(xdr_proto);
+  event->authentication = authentication;
+  event->timeout_timer = std::make_unique<base::OneShotTimer>();
+
+  event->timeout_timer->Start(
+      FROM_HERE, kWaitForAuthFactorS,
+      base::BindOnce(&AuthenticationPlugin::OnAuthFactorTimeout,
+                     weak_ptr_factory_.GetWeakPtr()));
+
+  pending_auth_events_.push_back(std::move(event));
+}
+
+void AuthenticationPlugin::ProcessFirstPendingAuthEvent() {
+  if (pending_auth_events_.empty()) {
+    LOG(INFO) << "Auth factor completed signal received, but no pending "
+                 "events to process. The auth event may be delayed and is "
+                 "expected to arrive soon.";
+    return;
+  }
+
+  LOG(INFO) << "Auth factor completed signal received late. Processing "
+               "pending auth event immediately.";
+
+  auto& event = pending_auth_events_.front();
+  std::unique_ptr<pb::UserEventAtomicVariant> xdr_proto =
+      std::move(event->xdr_proto);
+  auto* authentication = event->authentication;
+
+  // Erasing the struct automatically cancels the timer.
+  pending_auth_events_.erase(pending_auth_events_.begin());
+
+  SendAuthEvent(std::move(xdr_proto), authentication);
+}
+
+void AuthenticationPlugin::OnAuthFactorTimeout() {
+  LOG(INFO) << "Failed to retrieve auth factor in " << kWaitForAuthFactorS
+            << " seconds.";
+
+  CHECK(!pending_auth_events_.empty());
+  auto& event = pending_auth_events_.front();
+
+  std::unique_ptr<pb::UserEventAtomicVariant> xdr_proto =
+      std::move(event->xdr_proto);
+  auto* authentication = event->authentication;
+
+  pending_auth_events_.erase(pending_auth_events_.begin());
+
+  SendAuthEvent(std::move(xdr_proto), authentication);
+}
+
+void AuthenticationPlugin::SendAuthEvent(
+    std::unique_ptr<pb::UserEventAtomicVariant> xdr_proto,
+    cros_xdr::reporting::Authentication* authentication) {
   if (FillAuthFactor(authentication)) {
-    // Clear auth factor after it has been set.
     auth_factor_type_ =
         AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
-  } else {
-    LOG(INFO) << "Failed to retrieve auth factor in " << kWaitForAuthFactorS
-              << " seconds.";
   }
   device_user_->GetDeviceUserAsync(
       base::BindOnce(&AuthenticationPlugin::OnDeviceUserRetrieved,
