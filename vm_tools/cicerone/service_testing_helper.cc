@@ -385,6 +385,34 @@ void ServiceTestingHelper::CreateContainerWithTokenForTesting(
   event.Wait();
 }
 
+void ServiceTestingHelper::SetContainerHomedirForTesting(
+    uint32_t cid,
+    const std::string& container_token,
+    const std::string& homedir) {
+  CHECK(!dbus_task_runner_->RunsTasksInCurrentSequence());
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  CHECK(dbus_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](Service* service, uint32_t cid, const std::string& container_token,
+             const std::string& homedir, base::WaitableEvent* event) {
+            VirtualMachine* vm = nullptr;
+            std::string owner_id;
+            std::string vm_name;
+            bool found = service->GetVirtualMachineForCidOrToken(
+                cid, "", &vm, &owner_id, &vm_name);
+            CHECK(found);
+            Container* container =
+                vm->GetPendingContainerForToken(container_token);
+            CHECK(container);
+            container->set_homedir(homedir);
+            event->Signal();
+          },
+          service_.get(), cid, container_token, homedir, &event)));
+  event.Wait();
+}
+
 void ServiceTestingHelper::PretendDefaultContainerStarted() {
   CreateContainerWithTokenForTesting(kDefaultOwnerId, kDefaultVmName,
                                      kDefaultContainerName,

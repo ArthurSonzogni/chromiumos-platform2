@@ -1118,6 +1118,79 @@ TEST(ContainerListenerImplTest, ReportMetricsCallsShouldBeRateLimited) {
   EXPECT_NE(response.error(), 0);
 }
 
+TEST(ContainerListenerImplTest, OpenUrlShouldTranslatePathForBaguetteVm) {
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
+
+  // Manually set up a Baguette VM
+  NotifyVmStartedRequest request;
+  request.set_vm_name(ServiceTestingHelper::kDefaultVmName);
+  request.set_owner_id(ServiceTestingHelper::kDefaultOwnerId);
+  request.set_cid(ServiceTestingHelper::kDefaultCid);
+  request.set_vm_type(vm_tools::apps::BAGUETTE);
+  EmptyMessage response;
+
+  test_framework.CallDBus(ServiceTestingHelper::kNotifyVmStarted, request,
+                          &response);
+
+  // Create a container for it
+  test_framework.CreateContainerWithTokenForTesting(
+      ServiceTestingHelper::kDefaultOwnerId,
+      ServiceTestingHelper::kDefaultVmName,
+      ServiceTestingHelper::kDefaultContainerName,
+      ServiceTestingHelper::kDefaultContainerToken);
+
+  // Set homedir directly on the container since Garcon is not mocked and will
+  // fail.
+  test_framework.SetContainerHomedirForTesting(
+      ServiceTestingHelper::kDefaultCid,
+      ServiceTestingHelper::kDefaultContainerToken, "/home/chronos");
+
+  vm_tools::container::ContainerStartupInfo ready_request;
+  ready_request.set_token(ServiceTestingHelper::kDefaultContainerToken);
+  ready_request.set_garcon_port(5555);
+  EmptyMessage ready_response;
+  grpc::ServerContext ctx2;
+
+  test_framework.get_service()
+      .GetContainerListenerImpl()
+      ->OverridePeerAddressForTesting(
+          ServiceTestingHelper::kDefaultPeerAddress);
+
+  grpc::Status status =
+      test_framework.get_service().GetContainerListenerImpl()->ContainerReady(
+          &ctx2, &ready_request, &ready_response);
+  ASSERT_TRUE(status.ok()) << status.error_message();
+
+  vm_tools::container::OpenUrlRequest open_url_request;
+  vm_tools::EmptyMessage open_url_response;
+
+  const std::string kUrl = "file:///home/chronos/test.pdf";
+  open_url_request.set_token(ServiceTestingHelper::kDefaultContainerToken);
+  open_url_request.set_url(kUrl);
+
+  std::string resulting_url;
+  EXPECT_CALL(test_framework.get_mock_url_handler_service_proxy(),
+              CallMethodAndBlock(
+                  testing::AllOf(
+                      HasInterfaceName(chromeos::kUrlHandlerServiceInterface),
+                      HasMethodName(chromeos::kUrlHandlerServiceOpenUrlMethod)),
+                  _))
+      .WillOnce(testing::Invoke(
+          [&resulting_url](dbus::MethodCall* method_call, Unused) {
+            return StringMethodCallHelper(method_call, &resulting_url);
+          }));
+
+  grpc::ServerContext ctx;
+  status = test_framework.get_service().GetContainerListenerImpl()->OpenUrl(
+      &ctx, &open_url_request, &open_url_response);
+  ASSERT_TRUE(status.ok()) << status.error_message();
+
+  std::string expected_url =
+      "file:///media/fuse/crostini_default_user_default_vm_default_container/"
+      "test.pdf";
+  EXPECT_EQ(resulting_url, expected_url);
+}
+
 }  // namespace
 
 }  // namespace cicerone

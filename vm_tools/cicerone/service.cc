@@ -760,7 +760,28 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
 
   std::string username;
   std::string homedir;
-  if (owner_id == primary_owner_id_ && string_ip != "0.0.0.0") {
+  // For containerless VMs (like Baguette), tremplin (the container manager)
+  // is not running because there are no containers to manage. Therefore, we
+  // cannot query it for the user's home directory and must query Garcon
+  // directly.
+  if (vm->IsContainerless()) {
+    std::string failure_reason;
+    uint32_t dummy_sftp_port;
+    std::string g_username;
+    std::string g_homedir;
+    if (container->GetGarconSessionInfo(&failure_reason, &g_username,
+                                        &g_homedir, &dummy_sftp_port)) {
+      username = g_username;
+      homedir = g_homedir;
+    } else {
+      LOG(ERROR) << "Failed to get Garcon session info for containerless VM: "
+                 << failure_reason;
+      if (!container->homedir().empty()) {
+        homedir = container->homedir();
+        username = "chronos";
+      }
+    }
+  } else if (owner_id == primary_owner_id_ && string_ip != "0.0.0.0") {
     // Register the IP address with the hostname resolver if it isn't 0.
     RegisterHostname(
         base::StringPrintf("%s.%s.linux.test", container_name.c_str(),
@@ -1117,7 +1138,11 @@ void Service::OpenUrl(const std::string& container_token,
     event->Signal();
     return;
   }
-  if (vm->GetType() == VirtualMachine::VmType::TERMINA) {
+
+  // URL translation is required for both Termina (standard Crostini) and
+  // Baguette (containerless) VMs to map internal VM paths to host FUSE paths.
+  if (vm->GetType() == VirtualMachine::VmType::TERMINA ||
+      vm->GetType() == VirtualMachine::VmType::BAGUETTE) {
     Container* container = vm->GetContainerForToken(container_token);
     if (!container) {
       LOG(ERROR) << "No container found matching token: " << container_token;
@@ -1128,8 +1153,9 @@ void Service::OpenUrl(const std::string& container_token,
     if (container_ip_str == linuxhost_ip_) {
       container_ip_str = kDefaultContainerHostname;
     }
-    writer.AppendString(TranslateUrlForHost(url, container_ip_str, owner_id,
-                                            vm_name, *container));
+    std::string translated_url = TranslateUrlForHost(
+        url, container_ip_str, owner_id, vm_name, *container);
+    writer.AppendString(translated_url);
   } else {
     writer.AppendString(url);
   }

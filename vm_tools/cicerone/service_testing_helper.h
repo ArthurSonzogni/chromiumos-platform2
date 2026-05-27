@@ -197,6 +197,18 @@ class ServiceTestingHelper {
   // Access to the object being tested.
   Service& get_service() { return *service_; }
 
+  // Tells Service to create a container in the given VM with security token
+  // |container_token|. VM must already exist.
+  void CreateContainerWithTokenForTesting(const std::string& owner_id,
+                                          const std::string& vm_name,
+                                          const std::string& container_name,
+                                          const std::string& container_token);
+
+  // Sets the homedir of a container.
+  void SetContainerHomedirForTesting(uint32_t cid,
+                                     const std::string& container_token,
+                                     const std::string& homedir);
+
  private:
   struct DbusCallback {
     DbusCallback();
@@ -243,13 +255,6 @@ class ServiceTestingHelper {
       const std::string& container_name,
       const std::string& container_token,
       base::WaitableEvent* event);
-
-  // Tells Service to create a container in the given VM with security token
-  // |container_token|. VM must already exist.
-  void CreateContainerWithTokenForTesting(const std::string& owner_id,
-                                          const std::string& vm_name,
-                                          const std::string& container_name,
-                                          const std::string& container_token);
 
   // Helper for SetUpDefaultVmAndContainer. Handles telling the default VM
   // to set up the test container.
