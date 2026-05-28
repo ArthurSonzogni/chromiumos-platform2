@@ -14,6 +14,7 @@
 #include "base/files/file_util.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/notreached.h"
 #include "base/process/process_iterator.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
@@ -946,10 +947,9 @@ absl::Status FilePlugin::PopulateProcessBlocklistMap() {
         GetFStat(root_path_.Append(binary_path));
     if (!file_stat_result.ok()) {
       // We always expect to find dlp/secagentd binary in stored location
-      NOTREACHED_IN_MIGRATION()
-          << "FilePlugin::PopulateProcessBlocklistMap "
-             "Failed to retrieve file stat for "
-          << binary_path << ": " << file_stat_result.status();
+      NOTREACHED() << "FilePlugin::PopulateProcessBlocklistMap "
+                      "Failed to retrieve file stat for "
+                   << binary_path << ": " << file_stat_result.status();
     }
     const base::stat_wrapper_t fileStat = file_stat_result.value();
 
