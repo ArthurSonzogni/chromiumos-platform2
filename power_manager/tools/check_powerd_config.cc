@@ -141,7 +141,6 @@ int main(int argc, char* argv[]) {
                    &dark_resume_disabled);
     exit(dark_resume_disabled);
   } else {
-    NOTREACHED_IN_MIGRATION();
-    exit(1);
+    NOTREACHED();
   }
 }

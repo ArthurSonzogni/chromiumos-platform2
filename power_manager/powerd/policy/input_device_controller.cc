@@ -4,10 +4,11 @@
 
 #include "power_manager/powerd/policy/input_device_controller.h"
 
+#include <vector>
+
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <vector>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -35,8 +36,7 @@ const char* ModeToString(InputDeviceController::Mode mode) {
     case InputDeviceController::Mode::TABLET:
       return "tablet";
   }
-  NOTREACHED_IN_MIGRATION() << "Invalid mode " << static_cast<int>(mode);
-  return "unknown";
+  NOTREACHED() << "Invalid mode " << static_cast<int>(mode);
 }
 
 // Returns true if |device| has a "usable_when_[mode]" tag corresponding to
@@ -55,8 +55,7 @@ bool IsUsableInMode(const system::TaggedDevice& device,
     case InputDeviceController::Mode::TABLET:
       return device.HasTag(InputDeviceController::kTagUsableWhenTablet);
   }
-  NOTREACHED_IN_MIGRATION() << "Invalid mode " << static_cast<int>(mode);
-  return false;
+  NOTREACHED() << "Invalid mode " << static_cast<int>(mode);
 }
 
 // Returns true if |device| has any "wakeup_when_[mode]" tags.
@@ -83,8 +82,7 @@ bool IsWakeupEnabledInMode(const system::TaggedDevice& device,
     case InputDeviceController::Mode::TABLET:
       return device.HasTag(InputDeviceController::kTagWakeupWhenTablet);
   }
-  NOTREACHED_IN_MIGRATION() << "Invalid mode " << static_cast<int>(mode);
-  return false;
+  NOTREACHED() << "Invalid mode " << static_cast<int>(mode);
 }
 
 }  // namespace

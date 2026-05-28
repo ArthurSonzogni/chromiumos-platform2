@@ -54,8 +54,7 @@ const char* GetTabletModeAction(TabletMode mode) {
     case TabletMode::UNSUPPORTED:
       return kTabletUnsupported;
   }
-  NOTREACHED_IN_MIGRATION() << "Invalid tablet mode " << static_cast<int>(mode);
-  return "tablet_invalid";
+  NOTREACHED() << "Invalid tablet mode " << static_cast<int>(mode);
 }
 
 const char* GetPowerButtonAction(ButtonState state) {
@@ -67,9 +66,7 @@ const char* GetPowerButtonAction(ButtonState state) {
     case ButtonState::REPEAT:
       return kPowerButtonRepeat;
   }
-  NOTREACHED_IN_MIGRATION()
-      << "Invalid power button state " << static_cast<int>(state);
-  return "power_invalid";
+  NOTREACHED() << "Invalid power button state " << static_cast<int>(state);
 }
 
 std::string GetAcknowledgmentDelayAction(base::TimeDelta delay) {

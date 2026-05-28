@@ -58,9 +58,7 @@ base::TimeDelta GetTransitionDuration(
     case BacklightController::Transition::SLOW:
       return kSlowBacklightTransition;
   }
-  NOTREACHED_IN_MIGRATION()
-      << "Unhandled transition style " << static_cast<int>(transition);
-  return base::TimeDelta();
+  NOTREACHED() << "Unhandled transition style " << static_cast<int>(transition);
 }
 
 // Map a |SetBacklightBrightnessRequest_Cause| to an equivalent
@@ -740,7 +738,8 @@ void KeyboardBacklightController::
   // function.
   AmbientLightSensorChange_Cause als_cause;
   switch (cause) {
-    case SetAmbientLightSensorEnabledRequest_Cause_RESTORED_FROM_USER_PREFERENCE:
+    case
+        SetAmbientLightSensorEnabledRequest_Cause_RESTORED_FROM_USER_PREFERENCE:
       als_cause = AmbientLightSensorChange_Cause_RESTORED_FROM_USER_PREFERENCE;
       break;
     default:

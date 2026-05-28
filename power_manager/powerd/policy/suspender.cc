@@ -12,6 +12,7 @@
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/ec/ec_commands.h>
 
@@ -648,9 +649,8 @@ Suspender::State Suspender::Suspend() {
       break;
 
     default:
-      NOTREACHED_IN_MIGRATION() << "Unexpected suspend request flavor "
-                                << static_cast<int>(suspend_request_flavor_);
-      break;
+      NOTREACHED() << "Unexpected suspend request flavor "
+                   << static_cast<int>(suspend_request_flavor_);
   }
 
   // SuspendAudio needs to happen after other processes have announced suspend

@@ -52,8 +52,7 @@ const char* GetLidAction(LidState state) {
     case LidState::NOT_PRESENT:
       return kLidNotPresentAction;
   }
-  NOTREACHED_IN_MIGRATION() << "Invalid lid state " << static_cast<int>(state);
-  return "lid-invalid";
+  NOTREACHED() << "Invalid lid state " << static_cast<int>(state);
 }
 
 const char* GetTabletModeAction(TabletMode mode) {
@@ -65,8 +64,7 @@ const char* GetTabletModeAction(TabletMode mode) {
     case TabletMode::UNSUPPORTED:
       return kTabletModeUnsupportedAction;
   }
-  NOTREACHED_IN_MIGRATION() << "Invalid tablet mode " << static_cast<int>(mode);
-  return "tablet-mode-invalid";
+  NOTREACHED() << "Invalid tablet mode " << static_cast<int>(mode);
 }
 
 const char* GetPowerButtonAction(ButtonState state) {
@@ -78,9 +76,7 @@ const char* GetPowerButtonAction(ButtonState state) {
     case ButtonState::REPEAT:
       return kPowerButtonRepeatAction;
   }
-  NOTREACHED_IN_MIGRATION()
-      << "Invalid power button state " << static_cast<int>(state);
-  return "power-invalid";
+  NOTREACHED() << "Invalid power button state " << static_cast<int>(state);
 }
 
 // InputObserver implementation that just records the events that it receives.

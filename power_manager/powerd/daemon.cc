@@ -19,6 +19,7 @@
 #include <base/format_macros.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -214,9 +215,8 @@ std::string PrivacyScreenStateToString(
     case privacy_screen::PrivacyScreenSetting_PrivacyScreenState_NOT_SUPPORTED:
       return "not supported";
     default:
-      NOTREACHED_IN_MIGRATION()
-          << "Unhandled privacy screen state " << static_cast<int>(state);
-      return base::StringPrintf("unknown (%d)", static_cast<int>(state));
+      NOTREACHED() << "Unhandled privacy screen state "
+                   << static_cast<int>(state);
   }
 }
 

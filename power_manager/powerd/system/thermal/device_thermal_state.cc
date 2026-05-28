@@ -26,7 +26,7 @@ std::string DeviceThermalStateToString(DeviceThermalState state) {
     case DeviceThermalState::kCritical:
       return "Critical";
   }
-  NOTREACHED_IN_MIGRATION();
+  NOTREACHED();
 }
 
 ThermalEvent::ThermalState DeviceThermalStateToProto(
@@ -43,7 +43,7 @@ ThermalEvent::ThermalState DeviceThermalStateToProto(
     case system::DeviceThermalState::kCritical:
       return ThermalEvent_ThermalState_CRITICAL;
   }
-  NOTREACHED_IN_MIGRATION();
+  NOTREACHED();
 }
 
 }  // namespace power_manager::system

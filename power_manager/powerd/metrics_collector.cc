@@ -154,10 +154,9 @@ std::string MetricsCollector::AppendPrivacyScreenStateToEnumName(
     case privacy_screen::PrivacyScreenSetting_PrivacyScreenState_ENABLED:
       return enum_name + kPrivacyScreenEnabled;
     default:
-      NOTREACHED_IN_MIGRATION()
+      NOTREACHED()
           << "Will not send metrics for unhandled privacy screen state "
           << static_cast<int>(state);
-      return enum_name;
   }
 }
 

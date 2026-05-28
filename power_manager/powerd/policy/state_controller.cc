@@ -744,8 +744,7 @@ std::string StateController::ActionToString(Action action) {
     case Action::DO_NOTHING:
       return "no-op";
   }
-  NOTREACHED_IN_MIGRATION() << "Unhandled action " << static_cast<int>(action);
-  return base::StringPrintf("unknown (%d)", static_cast<int>(action));
+  NOTREACHED() << "Unhandled action " << static_cast<int>(action);
 }
 
 // static
@@ -761,9 +760,7 @@ StateController::Action StateController::ProtoActionToAction(
     case PowerManagementPolicy_Action_DO_NOTHING:
       return Action::DO_NOTHING;
     default:
-      NOTREACHED_IN_MIGRATION()
-          << "Unhandled action " << static_cast<int>(proto_action);
-      return Action::DO_NOTHING;
+      NOTREACHED() << "Unhandled action " << static_cast<int>(proto_action);
   }
 }
 
@@ -1287,8 +1284,7 @@ void StateController::PerformAction(Action action, ActionReason reason) {
     case Action::DO_NOTHING:
       break;
     default:
-      NOTREACHED_IN_MIGRATION()
-          << "Unhandled action " << static_cast<int>(action);
+      NOTREACHED() << "Unhandled action " << static_cast<int>(action);
   }
 }
 

@@ -4,12 +4,12 @@
 //
 // Helper program for setting WiFi transmission power.
 
+#include <linux/nl80211.h>
+#include <net/if.h>
+
 #include <map>
 #include <string>
 #include <vector>
-
-#include <linux/nl80211.h>
-#include <net/if.h>
 
 #include <base/at_exit.h>
 #include <base/check.h>
@@ -923,7 +923,7 @@ class PowerSetter {
         FillMessageMTK(msg, tablet, domain);
         break;
       case WirelessDriver::NONE:
-        NOTREACHED_IN_MIGRATION() << "No driver found";
+        NOTREACHED() << "No driver found";
     }
 
     PCHECK(nl_send_auto(nl_sock_, msg) > 0) << "nl_send_auto failed";
