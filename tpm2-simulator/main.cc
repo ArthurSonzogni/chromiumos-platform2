@@ -6,6 +6,7 @@
 
 #include <base/at_exit.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
@@ -63,7 +64,7 @@ int main(int argc, char* argv[]) {
 #endif
 
     default:
-      NOTREACHED_IN_MIGRATION() << "Unknown TPM executor version";
+      NOTREACHED() << "Unknown TPM executor version";
   }
 
   tpm2_simulator::SimulatorDaemon daemon(executor.get());
