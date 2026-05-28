@@ -106,7 +106,7 @@ bool AddRule(FuzzedDataProvider& provider,
       }
     }
     default:
-      NOTREACHED_IN_MIGRATION();
+      LOG(ERROR) << "Unexpected rule type";
       return false;
   }
 }
@@ -135,7 +135,7 @@ bool RemoveRule(FakePortTracker& port_tracker, const FuzzRequest& request) {
         return port_tracker.StopUdpPortForwarding(request.port, request.ifname);
       }
     default:
-      NOTREACHED_IN_MIGRATION();
+      LOG(ERROR) << "Unexpected rule type";
       return false;
   }
 }

@@ -54,7 +54,7 @@ std::string RuleTypeName(PortTracker::PortRuleType type) {
     case PortTracker::kForwardingRule:
       return "ForwardingRule";
     default:
-      NOTREACHED_IN_MIGRATION() << "Unknown rule type " << type;
+      LOG(ERROR) << "Unknown rule type " << type;
       return std::to_string(type);
   }
 }
