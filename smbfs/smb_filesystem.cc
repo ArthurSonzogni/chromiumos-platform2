@@ -240,8 +240,7 @@ uint64_t SmbFilesystem::AddOpenFile(SMBCFILE* file) {
 void SmbFilesystem::RemoveOpenFile(uint64_t handle) {
   auto it = open_files_.find(handle);
   if (it == open_files_.end()) {
-    NOTREACHED_IN_MIGRATION() << "File handle not found";
-    return;
+    NOTREACHED() << "File handle not found";
   }
   open_files_.erase(it);
 }
@@ -1304,8 +1303,7 @@ std::ostream& operator<<(std::ostream& out, SmbFilesystem::ConnectError error) {
     case SmbFilesystem::ConnectError::kUnknownError:
       return out << "kUnknownError";
     default:
-      NOTREACHED_IN_MIGRATION();
-      return out << "INVALID_ERROR";
+      NOTREACHED();
   }
 }
 
