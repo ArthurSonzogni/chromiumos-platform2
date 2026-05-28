@@ -261,7 +261,8 @@ bool PayloadVersion::OperationAllowed(InstallOperation::Type operation) const {
 #ifndef __CHROMEOS__
     case InstallOperation::MOVE:
     case InstallOperation::BSDIFF:
-      NOTREACHED_IN_MIGRATION();
+      LOG(ERROR) << "MOVE/BSDIFF not supported on non-ChromeOS";
+      return false;
 #endif
     default:
       return false;

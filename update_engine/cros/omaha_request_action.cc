@@ -995,9 +995,7 @@ bool OmahaRequestAction::ShouldDeferDownload() {
       return false;
 
     default:
-      // Returning false for this default case so we err on the
-      // side of downloading updates than deferring in case of any bugs.
-      NOTREACHED_IN_MIGRATION();
+      LOG(ERROR) << "Unexpected default case";
       return false;
   }
 }

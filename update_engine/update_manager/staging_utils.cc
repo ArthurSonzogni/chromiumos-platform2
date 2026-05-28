@@ -83,7 +83,7 @@ base::TimeDelta CalculateWaitTimeFromSchedule(
     prev_days = days;
   }
   // Something went wrong.
-  NOTREACHED_IN_MIGRATION();
+  LOG(ERROR) << "Failed to calculate wait time from staging schedule";
   return base::Days(0);
 }
 

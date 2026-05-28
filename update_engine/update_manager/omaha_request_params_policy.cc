@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/notreached.h>
 
 #include "update_engine/common/constants.h"
 #include "update_engine/common/system_state.h"
@@ -86,7 +87,8 @@ EvalStatus OmahaRequestParamsPolicy::Evaluate(EvaluationContext* ec,
         request_params->set_rollback_data_save_requested(true);
         break;
       case RollbackToTargetVersion::kMaxValue:
-        NOTREACHED_IN_MIGRATION();
+        LOG(ERROR) << "Unexpected kMaxValue RollbackToTargetVersion";
+        break;
         // Don't add a default case to let the compiler warn about newly
         // added enum values which should be added here.
     }

@@ -4,9 +4,8 @@
 
 #include "update_engine/payload_consumer/payload_constants.h"
 
-#if BASE_VER < 822064
 #include <base/logging.h>
-#else
+#if BASE_VER >= 822064
 #include <base/notreached.h>
 #endif
 
@@ -67,7 +66,8 @@ const char* InstallOperationTypeName(InstallOperation::Type op_type) {
 #ifndef __CHROMEOS__
     case InstallOperation::BSDIFF:
     case InstallOperation::MOVE:
-      NOTREACHED_IN_MIGRATION();
+      LOG(ERROR) << "BSDIFF/MOVE not supported on non-ChromeOS";
+      return "<unknown_op>";
 #endif
     default:
       return "<unknown_op>";

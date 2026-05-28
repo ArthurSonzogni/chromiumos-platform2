@@ -9,6 +9,7 @@
 #include <set>
 #include <string>
 
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
@@ -120,10 +121,11 @@ string BoxedValue::ValuePrinter<RollbackToTargetVersion>(const void* value) {
     case RollbackToTargetVersion::kRollbackAndRestoreIfPossible:
       return "Rollback and restore if possible";
     case RollbackToTargetVersion::kMaxValue:
-      NOTREACHED_IN_MIGRATION();
+      LOG(ERROR) << "Unexpected kMaxValue RollbackToTargetVersion";
       return "Max value";
   }
-  NOTREACHED_IN_MIGRATION();
+  LOG(ERROR) << "Unexpected RollbackToTargetVersion value: "
+             << static_cast<int>(*val);
   return "Unknown";
 }
 
@@ -152,7 +154,7 @@ string BoxedValue::ValuePrinter<Stage>(const void* value) {
     case Stage::kCleanupPreviousUpdate:
       return "Cleanup Previous Update";
   }
-  NOTREACHED_IN_MIGRATION();
+  LOG(ERROR) << "Unexpected Stage value: " << static_cast<int>(*val);
   return "Unknown";
 }
 
@@ -168,7 +170,8 @@ string BoxedValue::ValuePrinter<UpdateRequestStatus>(const void* value) {
     case UpdateRequestStatus::kPeriodic:
       return "Periodic";
   }
-  NOTREACHED_IN_MIGRATION();
+  LOG(ERROR) << "Unexpected UpdateRequestStatus value: "
+             << static_cast<int>(*val);
   return "Unknown";
 }
 
@@ -220,7 +223,8 @@ string BoxedValue::ValuePrinter<ChannelDowngradeBehavior>(const void* value) {
     case ChannelDowngradeBehavior::kAllowUserToConfigure:
       return "User decides on channel downgrade behavior";
   }
-  NOTREACHED_IN_MIGRATION();
+  LOG(ERROR) << "Unexpected ChannelDowngradeBehavior value: "
+             << static_cast<int>(*val);
   return "Unknown";
 }
 

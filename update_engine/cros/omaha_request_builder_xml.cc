@@ -142,7 +142,10 @@ string OmahaRequestBuilderXml::GetAppBody(const OmahaAppData& app_data) const {
           app_body = GetPingDateBased(app_data.app_params);
           break;
         default:
-          NOTREACHED_IN_MIGRATION();
+          LOG(ERROR) << "Unexpected active counting type: "
+                     << static_cast<int>(
+                            app_data.app_params.active_counting_type);
+          break;
       }
     }
     if (!ping_only_) {

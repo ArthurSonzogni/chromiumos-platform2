@@ -4,9 +4,8 @@
 
 #include "update_engine/update_status_utils.h"
 
-#if BASE_VER < 822064
 #include <base/logging.h>
-#else
+#if BASE_VER >= 822064
 #include <base/notreached.h>
 #endif
 #include <base/strings/string_number_conversions.h>
@@ -73,8 +72,7 @@ const char* UpdateStatusToString(const UpdateStatus& status) {
     case UpdateStatus::UPDATED_BUT_DEFERRED:
       return update_engine::kUpdateStatusUpdatedButDeferred;
   }
-
-  NOTREACHED_IN_MIGRATION();
+  LOG(ERROR) << "Unexpected UpdateStatus value: " << static_cast<int>(status);
   return nullptr;
 }
 
