@@ -64,6 +64,11 @@ bool GetIpv4Address(std::string* out_result) {
   *out_result = std::string("Failed to find device ") + kDeviceName;
   for (struct ifaddrs* current = head; current != nullptr;
        current = current->ifa_next) {
+    // getifaddrs(3) may return entries with a NULL ifa_addr, e.g. for an
+    // ARPHRD_NONE TUN with no hardware address. Guard before dereferencing.
+    if (current->ifa_addr == nullptr) {
+      continue;
+    }
     if (current->ifa_addr->sa_family != AF_INET) {
       continue;
     }
