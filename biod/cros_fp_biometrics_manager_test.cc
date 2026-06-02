@@ -226,6 +226,7 @@ TEST_F(CrosFpBiometricsManagerTest, TestCheckPositiveMatchSecretNoSecret) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestInvalidRecordsAreDeletedWhileReading) {
+  EXPECT_CALL(*mock_cros_dev_, SetContext(kUserID)).WillOnce(Return(true));
   EXPECT_CALL(*mock_record_manager_, UserHasInvalidRecords(kUserID))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_record_manager_, DeleteInvalidRecords);
@@ -251,6 +252,7 @@ TEST_F(CrosFpBiometricsManagerTest, TestLoadingTemplate) {
   EXPECT_EQ(tmpl.size(), sizeof(struct ec_fp_template_encryption_metadata));
 
   // Expect that biod will send correct record data to FPMCU.
+  EXPECT_CALL(*mock_cros_dev_, SetContext(kUserID)).WillOnce(Return(true));
   EXPECT_CALL(*mock_cros_dev_, UploadTemplate(tmpl)).WillOnce(Return(true));
 
   std::vector<Record> user_records({{{kRecordFormatVersion, kRecordID, kUserID,
@@ -264,7 +266,15 @@ TEST_F(CrosFpBiometricsManagerTest, TestLoadingTemplate) {
   EXPECT_TRUE(cros_fp_biometrics_manager_->ReadRecordsForSingleUser(kUserID));
 }
 
+TEST_F(CrosFpBiometricsManagerTest,
+       TestReadRecordsForSingleUserFailsOnSetContext) {
+  EXPECT_CALL(*mock_cros_dev_, SetContext(kUserID)).WillOnce(Return(false));
+
+  EXPECT_FALSE(cros_fp_biometrics_manager_->ReadRecordsForSingleUser(kUserID));
+}
+
 TEST_F(CrosFpBiometricsManagerTest, TestLoadingTemplateUploadError) {
+  EXPECT_CALL(*mock_cros_dev_, SetContext(kUserID)).WillOnce(Return(true));
   std::vector<Record> user_records({{{kRecordFormatVersion, kRecordID, kUserID,
                                       kLabel, kFakeValidationValue1},
                                      kTemplateMetadataVersion0}});
@@ -279,6 +289,7 @@ TEST_F(CrosFpBiometricsManagerTest, TestLoadingTemplateUploadError) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestLoadingTemplateInvalidVersion) {
+  EXPECT_CALL(*mock_cros_dev_, SetContext(kUserID)).WillOnce(Return(true));
   std::vector<Record> user_records({{{kRecordFormatVersion, kRecordID, kUserID,
                                       kLabel, kFakeValidationValue1},
                                      kTemplateMetadataVersion1}});
@@ -295,6 +306,7 @@ TEST_F(CrosFpBiometricsManagerTest, TestLoadingTemplateInvalidVersion) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestLoadingTemplateNoSpaceAvailable) {
+  EXPECT_CALL(*mock_cros_dev_, SetContext(kUserID)).WillOnce(Return(true));
   std::vector<Record> user_records({{{kRecordFormatVersion, kRecordID, kUserID,
                                       kLabel, kFakeValidationValue1},
                                      kData1}});
@@ -308,6 +320,9 @@ TEST_F(CrosFpBiometricsManagerTest, TestLoadingTemplateNoSpaceAvailable) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestReadRecordsForSingleUserTwice) {
+  EXPECT_CALL(*mock_cros_dev_, SetContext(kUserID))
+      .Times(2)
+      .WillRepeatedly(Return(true));
   std::vector<Record> user_records({{{kRecordFormatVersion, kRecordID, kUserID,
                                       kLabel, kFakeValidationValue1},
                                      kTemplateMetadataVersion0}});

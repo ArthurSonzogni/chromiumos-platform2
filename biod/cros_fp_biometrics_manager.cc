@@ -160,7 +160,12 @@ bool CrosFpBiometricsManager::ReadRecordsForSingleUser(
   // biod and FPMCU in sync.
   loaded_records_.clear();
   suspicious_templates_.clear();
-  cros_dev_->SetContext(user_id);
+
+  // Check return value and bail if SetContext fails.
+  if (!cros_dev_->SetContext(user_id)) {
+    LOG(ERROR) << "Failed to set context for user: " << LogSafeID(user_id);
+    return false;
+  }
 
   auto valid_records = record_manager_->GetRecordsForUser(user_id);
   for (const auto& record : valid_records) {
