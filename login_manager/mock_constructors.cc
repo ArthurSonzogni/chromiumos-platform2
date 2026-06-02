@@ -64,7 +64,13 @@ MockPolicyKey::MockPolicyKey()
 MockPolicyKey::~MockPolicyKey() = default;
 
 MockPolicyService::MockPolicyService()
-    : PolicyService(nullptr, base::FilePath(), nullptr, nullptr, false) {}
+    : PolicyService(
+          /*system_utils=*/nullptr,
+          /*policy_dir=*/base::FilePath(),
+          /*policy_key=*/nullptr,
+          /*extension_install_policy_key=*/nullptr,
+          /*metrics=*/nullptr,
+          /*resilient_chrome_policy_store=*/false) {}
 MockPolicyService::~MockPolicyService() = default;
 
 MockPolicyServiceDelegate::MockPolicyServiceDelegate() = default;

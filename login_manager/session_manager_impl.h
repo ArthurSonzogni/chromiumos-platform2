@@ -325,7 +325,7 @@ class SessionManagerImpl
 
   // PolicyService::Delegate implementation:
   void OnPolicyPersisted(bool success) override;
-  void OnKeyPersisted(bool success) override;
+  void OnKeyPersisted(PolicyKey* key, bool success) override;
 
   void SetSystemClockLastSyncInfoRetryDelayForTesting(
       const base::TimeDelta& delay) {

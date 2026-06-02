@@ -1363,8 +1363,10 @@ void SessionManagerImpl::OnPolicyPersisted(bool success) {
   adaptor_.SendPropertyChangeCompleteSignal(ToSuccessSignal(success));
 }
 
-void SessionManagerImpl::OnKeyPersisted(bool success) {
-  adaptor_.SendSetOwnerKeyCompleteSignal(ToSuccessSignal(success));
+void SessionManagerImpl::OnKeyPersisted(PolicyKey* key, bool success) {
+  if (key == owner_key_) {
+    adaptor_.SendSetOwnerKeyCompleteSignal(ToSuccessSignal(success));
+  }
 }
 
 void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {

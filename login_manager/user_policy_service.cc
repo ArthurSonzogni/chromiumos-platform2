@@ -25,34 +25,50 @@ namespace em = enterprise_management;
 
 namespace login_manager {
 
-UserPolicyService::UserPolicyService(SystemUtils* system_utils,
-                                     const base::FilePath& policy_dir,
-                                     std::unique_ptr<PolicyKey> policy_key,
-                                     const base::FilePath& key_copy_path)
-    : PolicyService(system_utils, policy_dir, policy_key.get(), nullptr, false),
+UserPolicyService::UserPolicyService(
+    SystemUtils* system_utils,
+    const base::FilePath& policy_dir,
+    std::unique_ptr<PolicyKey> policy_key,
+    std::unique_ptr<PolicyKey> extension_install_policy_key,
+    const base::FilePath& key_copy_path,
+    const base::FilePath& extension_install_key_copy_path)
+    : PolicyService(system_utils,
+                    policy_dir,
+                    policy_key.get(),
+                    extension_install_policy_key.get(),
+                    nullptr,
+                    false),
       scoped_policy_key_(std::move(policy_key)),
-      key_copy_path_(key_copy_path) {}
+      scoped_extension_install_policy_key_(
+          std::move(extension_install_policy_key)),
+      key_copy_path_(key_copy_path),
+      extension_install_key_copy_path_(extension_install_key_copy_path) {}
 
 UserPolicyService::~UserPolicyService() = default;
 
-void UserPolicyService::PersistKeyCopy() {
-  // Create a copy at |key_copy_path_| that is readable by chronos.
-  if (key_copy_path_.empty()) {
+void UserPolicyService::CopyKeyToPath(PolicyKey* key,
+                                      const base::FilePath& path) {
+  if (path.empty()) {
     return;
   }
-  if (scoped_policy_key_->IsPopulated()) {
-    base::FilePath dir(key_copy_path_.DirName());
+  if (key && key->IsPopulated()) {
+    base::FilePath dir(path.DirName());
     base::CreateDirectory(dir);
     mode_t mode = S_IRWXU | S_IXGRP | S_IXOTH;
     chmod(dir.value().c_str(), mode);
 
-    system_utils()->WriteFileAtomically(key_copy_path_,
-                                        scoped_policy_key_->public_key_der(),
+    system_utils()->WriteFileAtomically(path, key->public_key_der(),
                                         S_IRUSR | S_IRGRP | S_IROTH);
   } else {
     // Remove the key if it has been cleared.
-    system_utils()->RemoveFile(key_copy_path_);
+    system_utils()->RemoveFile(path);
   }
+}
+
+void UserPolicyService::PersistKeyCopy() {
+  CopyKeyToPath(scoped_policy_key_.get(), key_copy_path_);
+  CopyKeyToPath(scoped_extension_install_policy_key_.get(),
+                extension_install_key_copy_path_);
 }
 
 void UserPolicyService::Store(const PolicyNamespace& ns,
@@ -73,10 +89,14 @@ void UserPolicyService::Store(const PolicyNamespace& ns,
   // Allow to switch to unmanaged state even if no signature is present.
   if (policy_data.state() == em::PolicyData::UNMANAGED &&
       !policy.has_policy_data_signature()) {
+    PolicyKey* validation_key = ns.first == POLICY_DOMAIN_EXTENSION_INSTALL
+                                    ? extension_install_policy_key()
+                                    : key();
+
     // Also clear the key.
-    if (key()->IsPopulated()) {
-      key()->ClobberCompromisedKey(std::vector<uint8_t>());
-      PersistKey();
+    if (validation_key && validation_key->IsPopulated()) {
+      validation_key->ClobberCompromisedKey(std::vector<uint8_t>());
+      PersistKey(validation_key);
     }
 
     GetOrCreateStore(ns)->Set(policy);
@@ -87,13 +107,20 @@ void UserPolicyService::Store(const PolicyNamespace& ns,
   PolicyService::StorePolicy(ns, policy, key_flags, std::move(completion));
 }
 
-void UserPolicyService::OnKeyPersisted(bool status) {
+void UserPolicyService::OnKeyPersisted(PolicyKey* key, bool status) {
   if (status) {
-    PersistKeyCopy();
+    if (key == scoped_policy_key_.get()) {
+      CopyKeyToPath(scoped_policy_key_.get(), key_copy_path_);
+    } else if (key == scoped_extension_install_policy_key_.get()) {
+      CopyKeyToPath(scoped_extension_install_policy_key_.get(),
+                    extension_install_key_copy_path_);
+    } else {
+      LOG(FATAL) << "Unknown key persisted to disk.";
+    }
   }
   // Only notify the delegate after writing the copy, so that chrome can find
   // the file after being notified that the key is ready.
-  PolicyService::OnKeyPersisted(status);
+  PolicyService::OnKeyPersisted(key, status);
 }
 
 }  // namespace login_manager

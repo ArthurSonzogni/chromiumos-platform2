@@ -135,7 +135,12 @@ DevicePolicyService::DevicePolicyService(
     crossystem::Crossystem* crossystem,
     VpdProcess* vpd_process,
     InstallAttributesReader* install_attributes_reader)
-    : PolicyService(system_utils, policy_dir, policy_key, metrics, true),
+    : PolicyService(system_utils,
+                    policy_dir,
+                    policy_key,
+                    /*extension_install_policy_key=*/nullptr,
+                    metrics,
+                    /*resilient_chrome_policy_store=*/true),
       nss_(nss),
       system_utils_(system_utils),
       crossystem_(crossystem),
@@ -159,7 +164,7 @@ bool DevicePolicyService::Initialize() {
     key_success = key()->PopulateFromBuffer(
         StringToBlob(GetChromeStore()->Get().new_public_key()));
     if (key_success) {
-      PersistKey();
+      PersistKey(key());
     }
   }
 

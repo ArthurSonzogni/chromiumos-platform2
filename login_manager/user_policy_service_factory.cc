@@ -35,6 +35,8 @@ const char kDaemonName[] = "session_manager";
 const char kPolicyDir[] = "policy";
 // Holds the public key for policy signing.
 const char kPolicyKeyFile[] = "key";
+// Name of the extension policy key files.
+const char kExtensionInstallPolicyKeyFile[] = "extension_install_key";
 
 // Directory that contains the public keys for user policy verification.
 // These keys are duplicates from the key contained in the vault, so that the
@@ -43,6 +45,9 @@ const char kPolicyKeyFile[] = "key";
 const char kPolicyKeyCopyDir[] = "/run/user_policy";
 // Name of the policy key files.
 const char kPolicyKeyCopyFile[] = "policy.pub";
+// Name of the extension policy key files.
+const char kExtensionInstallPolicyKeyCopyFile[] =
+    "policy_extension_install.pub";
 
 }  // namespace
 
@@ -71,14 +76,28 @@ std::unique_ptr<PolicyService> UserPolicyServiceFactory::Create(
     return nullptr;
   }
 
+  auto extension_install_key = std::make_unique<PolicyKey>(
+      system_utils_, policy_dir.Append(kExtensionInstallPolicyKeyFile), nss_);
+  bool extension_install_key_load_success =
+      extension_install_key->PopulateFromDiskIfPossible();
+  if (!extension_install_key_load_success) {
+    LOG(ERROR) << "Failed to load user extension install policy key from disk.";
+    return nullptr;
+  }
+
   const brillo::cryptohome::home::ObfuscatedUsername sanitized(
       brillo::cryptohome::home::SanitizeUserName(typed_username));
   const base::FilePath key_copy_file(base::StringPrintf(
       "%s/%s/%s", kPolicyKeyCopyDir, sanitized->c_str(), kPolicyKeyCopyFile));
+  const base::FilePath extension_install_key_copy_file(
+      base::StringPrintf("%s/%s/%s", kPolicyKeyCopyDir, sanitized->c_str(),
+                         kExtensionInstallPolicyKeyCopyFile));
 
   std::unique_ptr<UserPolicyService> service =
-      std::make_unique<UserPolicyService>(system_utils_, policy_dir,
-                                          std::move(key), key_copy_file);
+      std::make_unique<UserPolicyService>(
+          system_utils_, policy_dir, std::move(key),
+          std::move(extension_install_key), key_copy_file,
+          extension_install_key_copy_file);
   service->PersistKeyCopy();
   return service;
 }

@@ -77,17 +77,20 @@ class PolicyService {
    public:
     virtual ~Delegate() = default;
     virtual void OnPolicyPersisted(bool success) = 0;
-    virtual void OnKeyPersisted(bool success) = 0;
+    virtual void OnKeyPersisted(PolicyKey* key, bool success) = 0;
   };
 
   // Constructor. |policy_dir| is the directory where policy is stored.
   // |policy_key| is the key for policy validation.
+  // |extension_install_policy_key| is the key for extension install policy
+  // validation.
   // |metrics| is transferred to policy stores created by this instance.
   // |resilient_chrome_policy_store| is used to decide if the policy store has
   // to be created with backup files for resilience.
   PolicyService(SystemUtils* system_utils,
                 const base::FilePath& policy_dir,
                 PolicyKey* policy_key,
+                PolicyKey* extension_install_policy_key,
                 LoginMetrics* metrics,
                 bool resilient_chrome_policy_store);
   PolicyService(const PolicyService&) = delete;
@@ -118,7 +121,9 @@ class PolicyService {
 
   // Persists key() to disk synchronously and passes the result to
   // OnKeyPersisted().
-  void PersistKey();
+  // Persists the given key to disk synchronously and passes the result to
+  // OnKeyPersisted().
+  void PersistKey(PolicyKey* key);
 
   // Sets the policystore for namespace |ns|. Deletes the previous store if it
   // exists.
@@ -140,6 +145,13 @@ class PolicyService {
   PolicyKey* key() { return policy_key_; }
   void set_policy_key_for_test(PolicyKey* key) { policy_key_ = key; }
 
+  PolicyKey* extension_install_policy_key() {
+    return extension_install_policy_key_;
+  }
+  void set_extension_install_policy_key_for_test(PolicyKey* key) {
+    extension_install_policy_key_ = key;
+  }
+
   // Store a policy blob under the namespace |ns|. This does the heavy lifting
   // for Store(), making the signature checks, taking care of key changes and
   // persisting policy and key data to disk.
@@ -150,7 +162,9 @@ class PolicyService {
 
   // Handles completion of a key storage operation, reporting the result to
   // |delegate_|.
-  virtual void OnKeyPersisted(bool status);
+  // Handles completion of a key storage operation, reporting the result to
+  // |delegate_|.
+  virtual void OnKeyPersisted(PolicyKey* key, bool status);
 
   // Finishes persisting policy, notifying |delegate_| and reporting the
   // |dbus_error_code| through |completion|. |completion| may be null, and in
@@ -175,6 +189,7 @@ class PolicyService {
   PolicyStoreMap policy_stores_;
   base::FilePath policy_dir_;
   PolicyKey* policy_key_ = nullptr;
+  PolicyKey* extension_install_policy_key_ = nullptr;
   bool resilient_chrome_policy_store_ = false;
   Delegate* delegate_ = nullptr;
 

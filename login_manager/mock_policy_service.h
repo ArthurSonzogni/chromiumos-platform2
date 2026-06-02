@@ -91,7 +91,7 @@ class MockPolicyServiceDelegate : public PolicyService::Delegate {
   MockPolicyServiceDelegate();
   ~MockPolicyServiceDelegate() override;
   MOCK_METHOD(void, OnPolicyPersisted, (bool), (override));
-  MOCK_METHOD(void, OnKeyPersisted, (bool), (override));
+  MOCK_METHOD(void, OnKeyPersisted, (PolicyKey*, bool), (override));
 };
 }  // namespace login_manager
 

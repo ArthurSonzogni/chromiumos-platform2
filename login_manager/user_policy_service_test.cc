@@ -78,14 +78,16 @@ class UserPolicyServiceTest : public ::testing::Test {
         "/run/daemon-store/session_manager/__userhash__");
     ASSERT_TRUE(system_utils_.CreateDir(policy_dir));
     key_copy_file_ = base::FilePath("/run/user_policy/__userhash__/policy.pub");
+    extension_install_key_copy_file_ = base::FilePath(
+        "/run/user_policy/__userhash__/policy_extension_install.pub");
 
     fake_loop_.SetAsCurrent();
 
     key_ = new StrictMock<MockPolicyKey>;
     store_ = new StrictMock<MockPolicyStore>;
-    service_.reset(new UserPolicyService(&system_utils_, policy_dir,
-                                         std::unique_ptr<PolicyKey>(key_),
-                                         key_copy_file_));
+    service_.reset(new UserPolicyService(
+        &system_utils_, policy_dir, std::unique_ptr<PolicyKey>(key_), nullptr,
+        key_copy_file_, extension_install_key_copy_file_));
     service_->SetStoreForTesting(MakeChromePolicyNamespace(),
                                  std::unique_ptr<PolicyStore>(store_));
   }
@@ -104,6 +106,7 @@ class UserPolicyServiceTest : public ::testing::Test {
  protected:
   FakeSystemUtils system_utils_;
   base::FilePath key_copy_file_;
+  base::FilePath extension_install_key_copy_file_;
 
   const std::string fake_signature_ = "fake_signature";
 
@@ -257,6 +260,150 @@ TEST_F(UserPolicyServiceTest, PersistPolicyMultipleNamespaces) {
                   PolicyService::KEY_NONE,
                   MockPolicyService::CreateExpectSuccessCallback());
   fake_loop_.Run();
+}
+
+TEST_F(UserPolicyServiceTest, StoreAndRetrieveChromeAndExtensionInstallPolicy) {
+  const base::FilePath policy_dir(
+      "/run/daemon-store/session_manager/__userhash__");
+
+  auto chrome_key = std::make_unique<StrictMock<MockPolicyKey>>();
+  auto extension_key = std::make_unique<StrictMock<MockPolicyKey>>();
+
+  MockPolicyKey* chrome_key_ptr = chrome_key.get();
+  MockPolicyKey* extension_key_ptr = extension_key.get();
+
+  auto chrome_store = new StrictMock<MockPolicyStore>;
+  auto extension_store = new StrictMock<MockPolicyStore>;
+
+  UserPolicyService service(&system_utils_, policy_dir, std::move(chrome_key),
+                            std::move(extension_key), key_copy_file_,
+                            extension_install_key_copy_file_);
+
+  service.SetStoreForTesting(MakeChromePolicyNamespace(),
+                             base::WrapUnique(chrome_store));
+  service.SetStoreForTesting(MakeExtensionInstallPolicyNamespace(),
+                             base::WrapUnique(extension_store));
+
+  // 1. Write Chrome policies.
+  InitPolicy(em::PolicyData::ACTIVE, fake_signature_);
+
+  EXPECT_CALL(*chrome_key_ptr, Verify(_, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*chrome_store, Set(ProtoEq(policy_proto_)));
+  EXPECT_CALL(*chrome_store, Persist()).WillOnce(Return(true));
+
+  service.Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+                PolicyService::KEY_NONE,
+                MockPolicyService::CreateExpectSuccessCallback());
+  fake_loop_.Run();
+
+  // 2. Write Extension policies.
+  em::PolicyFetchResponse extension_policy_proto;
+  ASSERT_NO_FATAL_FAILURE(
+      InitPolicyFetchResponse("fake_extension_policy", em::PolicyData::ACTIVE,
+                              fake_signature_, &extension_policy_proto));
+
+  EXPECT_CALL(*extension_key_ptr, Verify(_, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*extension_store, Set(ProtoEq(extension_policy_proto)));
+  EXPECT_CALL(*extension_store, Persist()).WillOnce(Return(true));
+
+  service.Store(MakeExtensionInstallPolicyNamespace(),
+                SerializeAsBlob(extension_policy_proto),
+                PolicyService::KEY_NONE,
+                MockPolicyService::CreateExpectSuccessCallback());
+  fake_loop_.Run();
+
+  // 3. Fetch them individually in the same order.
+  std::vector<uint8_t> fetched_chrome_blob;
+  EXPECT_CALL(*chrome_store, Get()).WillOnce(ReturnRef(policy_proto_));
+  EXPECT_TRUE(
+      service.Retrieve(MakeChromePolicyNamespace(), &fetched_chrome_blob));
+  EXPECT_EQ(fetched_chrome_blob, SerializeAsBlob(policy_proto_));
+
+  std::vector<uint8_t> fetched_extension_blob;
+  EXPECT_CALL(*extension_store, Get())
+      .WillOnce(ReturnRef(extension_policy_proto));
+  EXPECT_TRUE(service.Retrieve(MakeExtensionInstallPolicyNamespace(),
+                               &fetched_extension_blob));
+  EXPECT_EQ(fetched_extension_blob, SerializeAsBlob(extension_policy_proto));
+}
+
+TEST_F(UserPolicyServiceTest, PersistKeyCopyPartial) {
+  const base::FilePath policy_dir(
+      "/run/daemon-store/session_manager/__userhash__");
+
+  auto chrome_key = std::make_unique<StrictMock<MockPolicyKey>>();
+  MockPolicyKey* chrome_key_ptr = chrome_key.get();
+  auto extension_key = std::make_unique<StrictMock<MockPolicyKey>>();
+  MockPolicyKey* extension_key_ptr = extension_key.get();
+
+  UserPolicyService service(&system_utils_, policy_dir, std::move(chrome_key),
+                            std::move(extension_key), key_copy_file_,
+                            extension_install_key_copy_file_);
+
+  std::vector<uint8_t> chrome_key_value = {0x12};
+  std::vector<uint8_t> extension_key_value = {0x34};
+
+  // Case 1: Only Chrome key is populated.
+  EXPECT_CALL(*chrome_key_ptr, IsPopulated()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*chrome_key_ptr, public_key_der())
+      .WillOnce(ReturnRef(chrome_key_value));
+  EXPECT_CALL(*extension_key_ptr, IsPopulated()).WillRepeatedly(Return(false));
+
+  EXPECT_FALSE(system_utils_.Exists(key_copy_file_));
+  EXPECT_FALSE(system_utils_.Exists(extension_install_key_copy_file_));
+
+  service.PersistKeyCopy();
+
+  EXPECT_TRUE(system_utils_.Exists(key_copy_file_));
+  EXPECT_FALSE(system_utils_.Exists(extension_install_key_copy_file_));
+
+  // Case 2: Only Extension key is populated.
+  EXPECT_CALL(*chrome_key_ptr, IsPopulated()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*extension_key_ptr, IsPopulated()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*extension_key_ptr, public_key_der())
+      .WillOnce(ReturnRef(extension_key_value));
+
+  // Remove the file created in Case 1 to ensure clean state.
+  EXPECT_TRUE(system_utils_.RemoveFile(key_copy_file_));
+
+  EXPECT_FALSE(system_utils_.Exists(key_copy_file_));
+  EXPECT_FALSE(system_utils_.Exists(extension_install_key_copy_file_));
+
+  service.PersistKeyCopy();
+
+  EXPECT_FALSE(system_utils_.Exists(key_copy_file_));
+  EXPECT_TRUE(system_utils_.Exists(extension_install_key_copy_file_));
+  // Case 3: Both keys are populated.
+  EXPECT_CALL(*chrome_key_ptr, IsPopulated()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*chrome_key_ptr, public_key_der())
+      .WillOnce(ReturnRef(chrome_key_value));
+  EXPECT_CALL(*extension_key_ptr, IsPopulated()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*extension_key_ptr, public_key_der())
+      .WillOnce(ReturnRef(extension_key_value));
+
+  // Remove the file created in Case 2 to ensure clean state.
+  EXPECT_TRUE(system_utils_.RemoveFile(extension_install_key_copy_file_));
+
+  EXPECT_FALSE(system_utils_.Exists(key_copy_file_));
+  EXPECT_FALSE(system_utils_.Exists(extension_install_key_copy_file_));
+
+  service.PersistKeyCopy();
+
+  EXPECT_TRUE(system_utils_.Exists(key_copy_file_));
+  EXPECT_TRUE(system_utils_.Exists(extension_install_key_copy_file_));
+
+  // Case 4: None are populated (should remove existing files).
+  EXPECT_CALL(*chrome_key_ptr, IsPopulated()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*extension_key_ptr, IsPopulated()).WillRepeatedly(Return(false));
+
+  // Files exist from Case 3.
+  EXPECT_TRUE(system_utils_.Exists(key_copy_file_));
+  EXPECT_TRUE(system_utils_.Exists(extension_install_key_copy_file_));
+
+  service.PersistKeyCopy();
+
+  EXPECT_FALSE(system_utils_.Exists(key_copy_file_));
+  EXPECT_FALSE(system_utils_.Exists(extension_install_key_copy_file_));
 }
 
 }  // namespace login_manager

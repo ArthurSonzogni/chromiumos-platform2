@@ -16,6 +16,7 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/strings/stringprintf.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/types/expected.h>
 #include <brillo/message_loops/message_loop.h>
@@ -36,6 +37,16 @@
 namespace em = enterprise_management;
 
 namespace login_manager {
+
+namespace {
+
+const char* GetKeyName(bool is_extension_install_policy) {
+  return is_extension_install_policy
+             ? "extension install policy key"
+             : "policy key";
+}
+
+}  // namespace
 
 PolicyNamespace MakeChromePolicyNamespace() {
   return std::make_pair(POLICY_DOMAIN_CHROME, std::string());
@@ -70,12 +81,14 @@ constexpr char PolicyService::kSignInExtensionsPolicyFileNamePrefix[] =
 PolicyService::PolicyService(SystemUtils* system_utils,
                              const base::FilePath& policy_dir,
                              PolicyKey* policy_key,
+                             PolicyKey* extension_install_policy_key,
                              LoginMetrics* metrics,
                              bool resilient_chrome_policy_store)
     : metrics_(metrics),
       system_utils_(system_utils),
       policy_dir_(policy_dir),
       policy_key_(policy_key),
+      extension_install_policy_key_(extension_install_policy_key),
       resilient_chrome_policy_store_(resilient_chrome_policy_store),
       delegate_(nullptr),
       weak_ptr_factory_(this) {}
@@ -143,6 +156,20 @@ void PolicyService::StorePolicy(const PolicyNamespace& ns,
                                 const em::PolicyFetchResponse& policy,
                                 int key_flags,
                                 Completion completion) {
+  PolicyKey* validation_key = ns.first == POLICY_DOMAIN_EXTENSION_INSTALL
+                                  ? extension_install_policy_key_
+                                  : policy_key_;
+  const char* key_name = GetKeyName(ns.first == POLICY_DOMAIN_EXTENSION_INSTALL);
+  if (!validation_key) {
+    constexpr char kNoNamespaceFormat[] = "No %s for namespace.";
+    std::string error_message =
+        base::StringPrintf(kNoNamespaceFormat, key_name);
+    LOG(ERROR) << error_message;
+    std::move(completion)
+        .Run(CreateError(dbus_error::kInvalidParameter, error_message));
+    return;
+  }
+
   // Use `policy_data_signature_type` field to determine which algorithm
   // to use.
   // In some cases the field is missing, but the blob is still signed
@@ -171,46 +198,49 @@ void PolicyService::StorePolicy(const PolicyNamespace& ns,
   }
 
   // Determine if the policy has pushed a new owner key and, if so, set it.
-  if (policy.has_new_public_key() && !key()->Equals(policy.new_public_key())) {
+  if (policy.has_new_public_key() &&
+      !validation_key->Equals(policy.new_public_key())) {
     // The policy contains a new key, and it is different from |key_|.
     std::vector<uint8_t> der = StringToBlob(policy.new_public_key());
 
     bool installed = false;
-    if (key()->IsPopulated()) {
+    if (validation_key->IsPopulated()) {
       if (policy.has_new_public_key_signature() && (key_flags & KEY_ROTATE)) {
         // Graceful key rotation.
-        LOG(INFO) << "Attempting policy key rotation.";
-        installed =
-            key()->Rotate(der, StringToBlob(policy.new_public_key_signature()),
-                          mapped_policy_data_signature_type.value());
+        LOG(INFO) << "Attempting " << key_name << " rotation.";
+        installed = validation_key->Rotate(
+            der, StringToBlob(policy.new_public_key_signature()),
+            mapped_policy_data_signature_type.value());
       }
     } else if (key_flags & KEY_INSTALL_NEW) {
-      LOG(INFO) << "Attempting to install new policy key.";
-      installed = key()->PopulateFromBuffer(der);
+      LOG(INFO) << "Attempting to install new " << key_name << ".";
+      installed = validation_key->PopulateFromBuffer(der);
     }
     if (!installed && (key_flags & KEY_CLOBBER)) {
-      LOG(INFO) << "Clobbering existing policy key.";
-      installed = key()->ClobberCompromisedKey(der);
+      LOG(INFO) << "Clobbering existing " << key_name << ".";
+      installed = validation_key->ClobberCompromisedKey(der);
     }
 
     if (!installed) {
-      constexpr char kErrorMessage[] = "Failed to install policy key!";
-      LOG(ERROR) << kErrorMessage << " Used signature type: "
+      constexpr char kFailedInstallFormat[] = "Failed to install %s!";
+      std::string error_message =
+          base::StringPrintf(kFailedInstallFormat, key_name);
+      LOG(ERROR) << error_message << " Used signature type: "
                  << mapped_policy_data_signature_type.value() << ".";
       std::move(completion)
-          .Run(CreateError(dbus_error::kPubkeySetIllegal, kErrorMessage));
+          .Run(CreateError(dbus_error::kPubkeySetIllegal, error_message));
 
       return;
     }
 
     // If here, need to persist the key just loaded into memory to disk.
-    PersistKey();
+    PersistKey(validation_key);
   }
 
   // Validate signature on policy and persist to disk.
-  if (!key()->Verify(StringToBlob(policy.policy_data()),
-                     StringToBlob(policy.policy_data_signature()),
-                     mapped_policy_data_signature_type.value())) {
+  if (!validation_key->Verify(StringToBlob(policy.policy_data()),
+                              StringToBlob(policy.policy_data_signature()),
+                              mapped_policy_data_signature_type.value())) {
     constexpr char kErrorMessage[] = "Signature could not be verified.";
     LOG(ERROR) << kErrorMessage << " Used signature type: "
                << mapped_policy_data_signature_type.value() << ".";
@@ -224,14 +254,15 @@ void PolicyService::StorePolicy(const PolicyNamespace& ns,
   PersistPolicy(ns, std::move(completion));
 }
 
-void PolicyService::OnKeyPersisted(bool status) {
+void PolicyService::OnKeyPersisted(PolicyKey* key, bool status) {
+  const char* key_name = GetKeyName(key == extension_install_policy_key_);
   if (status) {
-    LOG(INFO) << "Persisted policy key to disk.";
+    LOG(INFO) << "Persisted " << key_name << " to disk.";
   } else {
-    LOG(ERROR) << "Failed to persist policy key to disk.";
+    LOG(ERROR) << "Failed to persist " << key_name << " to disk.";
   }
   if (delegate_) {
-    delegate_->OnKeyPersisted(status);
+    delegate_->OnKeyPersisted(key, status);
   }
 }
 
@@ -256,8 +287,9 @@ void PolicyService::OnPolicyPersisted(Completion completion,
   }
 }
 
-void PolicyService::PersistKey() {
-  OnKeyPersisted(key()->Persist());
+void PolicyService::PersistKey(PolicyKey* key) {
+  CHECK(key);
+  OnKeyPersisted(key, key->Persist());
 }
 
 base::FilePath PolicyService::GetPolicyPath(const PolicyNamespace& ns) {

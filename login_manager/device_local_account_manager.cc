@@ -114,8 +114,12 @@ PolicyService* DeviceLocalAccountManager::GetPolicyService(
       return nullptr;
     }
 
-    entry->second = std::make_unique<PolicyService>(system_utils_, policy_dir,
-                                                    owner_key_, nullptr, false);
+    entry->second = std::make_unique<PolicyService>(
+        system_utils_, policy_dir,
+        /*policy_key=*/owner_key_,
+        /*extension_install_policy_key=*/nullptr,
+        /*metrics=*/nullptr,
+        /*resilient_chrome_policy_store=*/false);
   }
 
   return entry->second.get();

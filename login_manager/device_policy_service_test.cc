@@ -107,7 +107,7 @@ class FakePolicyServiceDelegate : public PolicyService::Delegate {
     settings_ = device_policy_service_->GetSettings();
   }
 
-  void OnKeyPersisted(bool success) override {}
+  void OnKeyPersisted(PolicyKey* key, bool success) override {}
 
   const em::ChromeDeviceSettingsProto& GetSettings() { return settings_; }
 

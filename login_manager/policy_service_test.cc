@@ -60,8 +60,11 @@ class PolicyServiceTest : public testing::Test {
   void SetUp() override {
     fake_loop_.SetAsCurrent();
     store_ = new StrictMock<MockPolicyStore>;
-    service_ = std::make_unique<PolicyService>(&system_utils_, base::FilePath(),
-                                               &key_, nullptr, false);
+    service_ = std::make_unique<PolicyService>(
+        &system_utils_, /*policy_dir=*/base::FilePath(), /*policy_key=*/&key_,
+        /*extension_install_policy_key=*/&extension_install_key_,
+        /*metrics=*/nullptr,
+        /*resilient_chrome_policy_store=*/false);
     service_->SetStoreForTesting(MakeChromePolicyNamespace(),
                                  std::unique_ptr<PolicyStore>(store_));
     service_->set_delegate(&delegate_);
@@ -87,40 +90,42 @@ class PolicyServiceTest : public testing::Test {
   }
 
   void ExpectVerifyAndSetPolicy(Sequence* sequence) {
-    EXPECT_CALL(key_, Verify(fake_data_, fake_sig_, _))
+    EXPECT_CALL(key(), Verify(fake_data_, fake_sig_, _))
         .InSequence(*sequence)
         .WillOnce(Return(true));
-    EXPECT_CALL(*store_, Set(ProtoEq(policy_proto_)))
+    EXPECT_CALL(store(), Set(ProtoEq(policy_proto_)))
         .Times(1)
         .InSequence(*sequence);
   }
 
   void ExpectSetPolicy(Sequence* sequence) {
-    EXPECT_CALL(*store_, Set(ProtoEq(policy_proto_)))
+    EXPECT_CALL(store(), Set(ProtoEq(policy_proto_)))
         .Times(1)
         .InSequence(*sequence);
   }
 
-  void ExpectPersistKey(Sequence* sequence) {
-    EXPECT_CALL(key_, Persist()).InSequence(*sequence).WillOnce(Return(true));
-    EXPECT_CALL(delegate_, OnKeyPersisted(true));
+  void ExpectPersistKey(MockPolicyKey& key, Sequence* sequence) {
+    EXPECT_CALL(key, Persist()).InSequence(*sequence).WillOnce(Return(true));
+    EXPECT_CALL(delegate_, OnKeyPersisted(&key, true));
   }
 
   void ExpectPersistPolicy(Sequence* sequence) {
-    EXPECT_CALL(*store_, Persist())
+    EXPECT_CALL(store(), Persist())
         .InSequence(*sequence)
         .WillOnce(Return(true));
     EXPECT_CALL(delegate_, OnPolicyPersisted(true));
   }
 
-  void ExpectKeyEqualsFalse(Sequence* sequence) {
-    EXPECT_CALL(key_, Equals(_))
+  void ExpectKeyEquals(MockPolicyKey& key, bool result, Sequence* sequence) {
+    EXPECT_CALL(key, Equals(_))
         .InSequence(*sequence)
-        .WillRepeatedly(Return(false));
+        .WillRepeatedly(Return(result));
   }
 
-  void ExpectKeyPopulated(Sequence* sequence, bool return_value) {
-    EXPECT_CALL(key_, IsPopulated())
+  void ExpectKeyPopulated(MockPolicyKey& key,
+                          bool return_value,
+                          Sequence* sequence) {
+    EXPECT_CALL(key, IsPopulated())
         .InSequence(*sequence)
         .WillRepeatedly(Return(return_value));
   }
@@ -164,11 +169,73 @@ class PolicyServiceTest : public testing::Test {
   // Use StrictMock to make sure that no unexpected policy or key mutations can
   // occur without the test failing.
   StrictMock<MockPolicyKey> key_;
+  StrictMock<MockPolicyKey> extension_install_key_;
   StrictMock<MockPolicyStore>* store_;
   MockPolicyServiceDelegate delegate_;
 
+  virtual MockPolicyKey& key() { return key_; }
+  virtual MockPolicyStore& store() { return *store_; }
+
   std::unique_ptr<PolicyService> service_;
 };
+
+class PolicyServiceKeyParamTest
+    : public PolicyServiceTest,
+      public testing::WithParamInterface<PolicyDomain> {
+ public:
+  using PolicyServiceTest::ExpectPersistKey;
+
+  void SetUp() override {
+    PolicyServiceTest::SetUp();
+    extension_store_ = new StrictMock<MockPolicyStore>;
+    service_->SetStoreForTesting(
+        MakeExtensionInstallPolicyNamespace(),
+        std::unique_ptr<PolicyStore>(extension_store_));
+  }
+
+  MockPolicyKey& key() override {
+    return GetParam() == POLICY_DOMAIN_CHROME ? key_ : extension_install_key_;
+  }
+
+  MockPolicyStore& store() override {
+    return GetParam() == POLICY_DOMAIN_CHROME ? *store_ : *extension_store_;
+  }
+
+  PolicyNamespace policy_namespace() {
+    return GetParam() == POLICY_DOMAIN_CHROME
+               ? MakeChromePolicyNamespace()
+               : MakeExtensionInstallPolicyNamespace();
+  }
+
+  void ExpectPersistKey(Sequence* sequence) {
+    PolicyServiceTest::ExpectPersistKey(key(), sequence);
+  }
+
+  void ExpectStoreFail(int flags, const std::string& code) {
+    EXPECT_CALL(key(), Persist()).Times(0);
+    EXPECT_CALL(store(), Set(_)).Times(0);
+    EXPECT_CALL(store(), Persist()).Times(0);
+
+    std::optional<std::string> actual_error_code;
+    service_->Store(policy_namespace(), SerializeAsBlob(policy_proto_), flags,
+                    base::BindLambdaForTesting(
+                        [&actual_error_code](brillo::ErrorPtr error) {
+                          actual_error_code = error->GetCode();
+                          return;
+                        }));
+    fake_loop_.Run();
+
+    ASSERT_TRUE(actual_error_code.has_value());
+    EXPECT_EQ(*actual_error_code, code);
+  }
+
+  StrictMock<MockPolicyStore>* extension_store_ = nullptr;
+};
+
+INSTANTIATE_TEST_SUITE_P(WithNamespace,
+                         PolicyServiceKeyParamTest,
+                         ::testing::Values(POLICY_DOMAIN_CHROME,
+                                           POLICY_DOMAIN_EXTENSION_INSTALL));
 
 const int PolicyServiceTest::kAllKeyFlags = PolicyService::KEY_ROTATE |
                                             PolicyService::KEY_INSTALL_NEW |
@@ -181,11 +248,20 @@ const char PolicyServiceTest::kSignalFailure[] = "failure";
 struct PolicySignatureTypeToAlgorithm {
   em::PolicyFetchRequest::SignatureType policy_signature_type;
   crypto::SignatureVerifier::SignatureAlgorithm expected_signature_algorithm;
+  PolicyDomain domain;
 };
 class PolicyServiceWithParameterizedPolicySignatureTypeTest
     : public PolicyServiceTest,
       public testing::WithParamInterface<PolicySignatureTypeToAlgorithm> {
  public:
+  void SetUp() override {
+    PolicyServiceTest::SetUp();
+    extension_store_ = new StrictMock<MockPolicyStore>;
+    service_->SetStoreForTesting(
+        MakeExtensionInstallPolicyNamespace(),
+        std::unique_ptr<PolicyStore>(extension_store_));
+  }
+
   em::PolicyFetchRequest::SignatureType GetPolicySignatureType() {
     return GetParam().policy_signature_type;
   }
@@ -202,31 +278,61 @@ class PolicyServiceWithParameterizedPolicySignatureTypeTest
     PolicyServiceTest::InitPolicy(data, signature, key, key_signature);
     policy_proto_.set_policy_data_signature_type(GetPolicySignatureType());
   }
+
+  MockPolicyKey& key() override {
+    return GetParam().domain == POLICY_DOMAIN_CHROME ? key_
+                                                     : extension_install_key_;
+  }
+
+  MockPolicyStore& store() override {
+    return GetParam().domain == POLICY_DOMAIN_CHROME ? *store_
+                                                     : *extension_store_;
+  }
+
+  PolicyNamespace policy_namespace() {
+    return GetParam().domain == POLICY_DOMAIN_CHROME
+               ? MakeChromePolicyNamespace()
+               : MakeExtensionInstallPolicyNamespace();
+  }
+
+  void ExpectPersistKey(Sequence* sequence) {
+    PolicyServiceTest::ExpectPersistKey(key(), sequence);
+  }
+
+  StrictMock<MockPolicyStore>* extension_store_ = nullptr;
 };
 
 INSTANTIATE_TEST_SUITE_P(PolicyServiceWithParameterizedPolicySignatureTypeTest,
                          PolicyServiceWithParameterizedPolicySignatureTypeTest,
                          ::testing::ValuesIn<PolicySignatureTypeToAlgorithm>(
                              {{em::PolicyFetchRequest::SHA1_RSA,
-                               crypto::SignatureVerifier::RSA_PKCS1_SHA1},
+                               crypto::SignatureVerifier::RSA_PKCS1_SHA1,
+                               POLICY_DOMAIN_CHROME},
+                              {em::PolicyFetchRequest::SHA1_RSA,
+                               crypto::SignatureVerifier::RSA_PKCS1_SHA1,
+                               POLICY_DOMAIN_EXTENSION_INSTALL},
                               {em::PolicyFetchRequest::SHA256_RSA,
-                               crypto::SignatureVerifier::RSA_PKCS1_SHA256}}));
+                               crypto::SignatureVerifier::RSA_PKCS1_SHA256,
+                               POLICY_DOMAIN_CHROME},
+                              {em::PolicyFetchRequest::SHA256_RSA,
+                               crypto::SignatureVerifier::RSA_PKCS1_SHA256,
+                               POLICY_DOMAIN_EXTENSION_INSTALL}}));
 
 TEST_P(PolicyServiceWithParameterizedPolicySignatureTypeTest, Store) {
   InitPolicyWithSignatureType(fake_data_, fake_sig_, empty_blob_, empty_blob_);
 
   Sequence s1, s2;
-  ExpectKeyEqualsFalse(&s1);
-  ExpectKeyPopulated(&s2, true);
-  EXPECT_CALL(key_,
+  ExpectKeyEquals(key(), false, &s1);
+  ExpectKeyPopulated(key(), true, &s2);
+  EXPECT_CALL(key(),
               Verify(fake_data_, fake_sig_, GetExpectedSignatureAlgorithm()))
       .InSequence(s1, s2)
       .WillRepeatedly(Return(true));
-  ExpectKeyPopulated(&s1, true);
+  ExpectKeyPopulated(key(), true, &s1);
   ExpectVerifyAndSetPolicy(&s2);
   ExpectPersistPolicy(&s2);
 
-  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+  service_->Store(policy_namespace(), SerializeAsBlob(policy_proto_),
                   kAllKeyFlags,
                   MockPolicyService::CreateExpectSuccessCallback());
 
@@ -237,190 +343,193 @@ TEST_P(PolicyServiceWithParameterizedPolicySignatureTypeTest, StoreRotation) {
   InitPolicyWithSignatureType(fake_data_, fake_sig_, fake_key_, fake_key_sig_);
 
   Sequence s1, s2;
-  ExpectKeyEqualsFalse(&s1);
-  ExpectKeyPopulated(&s2, true);
-  EXPECT_CALL(key_, Rotate(VectorEq(fake_key_), VectorEq(fake_key_sig_),
-                           GetExpectedSignatureAlgorithm()))
+  ExpectKeyEquals(key(), false, &s1);
+  ExpectKeyPopulated(key(), true, &s2);
+  EXPECT_CALL(key(), Rotate(VectorEq(fake_key_), VectorEq(fake_key_sig_),
+                            GetExpectedSignatureAlgorithm()))
       .InSequence(s1, s2)
       .WillOnce(Return(true));
-  ExpectKeyPopulated(&s1, true);
+  ExpectKeyPopulated(key(), true, &s1);
   ExpectVerifyAndSetPolicy(&s2);
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+  service_->Store(policy_namespace(), SerializeAsBlob(policy_proto_),
                   kAllKeyFlags,
                   MockPolicyService::CreateExpectSuccessCallback());
 
   fake_loop_.Run();
 }
 
-TEST_F(PolicyServiceTest, StoreWrongSignature) {
+TEST_P(PolicyServiceKeyParamTest, StoreWrongSignature) {
   InitPolicy(fake_data_, fake_sig_, empty_blob_, empty_blob_);
 
   Sequence s1, s2;
-  ExpectKeyEqualsFalse(&s1);
-  ExpectKeyPopulated(&s2, true);
-  EXPECT_CALL(key_, Verify(fake_data_, fake_sig_, _))
+  ExpectKeyEquals(key(), false, &s1);
+  ExpectKeyPopulated(key(), true, &s2);
+  EXPECT_CALL(key(), Verify(fake_data_, fake_sig_, _))
       .InSequence(s1, s2)
       .WillRepeatedly(Return(false));
 
   ExpectStoreFail(kAllKeyFlags, dbus_error::kVerifyFail);
 }
 
-TEST_F(PolicyServiceTest, StoreNoData) {
+TEST_P(PolicyServiceKeyParamTest, StoreNoData) {
   InitPolicy(empty_blob_, empty_blob_, empty_blob_, empty_blob_);
 
   ExpectStoreFail(kAllKeyFlags, dbus_error::kSigDecodeFail);
 }
 
-TEST_F(PolicyServiceTest, StoreNoSignature) {
+TEST_P(PolicyServiceKeyParamTest, StoreNoSignature) {
   InitPolicy(fake_data_, empty_blob_, empty_blob_, empty_blob_);
 
-  EXPECT_CALL(key_, Verify(fake_data_, std::vector<uint8_t>(), _))
+  EXPECT_CALL(key(), Verify(fake_data_, std::vector<uint8_t>(), _))
       .WillOnce(Return(false));
 
   ExpectStoreFail(kAllKeyFlags, dbus_error::kVerifyFail);
 }
 
-TEST_F(PolicyServiceTest, StoreNoKey) {
+TEST_P(PolicyServiceKeyParamTest, StoreNoKey) {
   InitPolicy(fake_data_, fake_sig_, empty_blob_, empty_blob_);
 
   Sequence s1, s2;
-  ExpectKeyEqualsFalse(&s1);
-  ExpectKeyPopulated(&s2, false);
-  EXPECT_CALL(key_, Verify(fake_data_, fake_sig_, _))
+  ExpectKeyEquals(key(), false, &s1);
+  ExpectKeyPopulated(key(), false, &s2);
+  EXPECT_CALL(key(), Verify(fake_data_, fake_sig_, _))
       .InSequence(s1, s2)
       .WillRepeatedly(Return(false));
 
   ExpectStoreFail(kAllKeyFlags, dbus_error::kVerifyFail);
 }
 
-TEST_F(PolicyServiceTest, StoreNewKey) {
+TEST_P(PolicyServiceKeyParamTest, StoreNewKey) {
   InitPolicy(fake_data_, fake_sig_, fake_key_, empty_blob_);
 
   Sequence s1, s2;
-  ExpectKeyEqualsFalse(&s1);
-  ExpectKeyPopulated(&s2, false);
-  EXPECT_CALL(key_, PopulateFromBuffer(VectorEq(fake_key_)))
+  ExpectKeyEquals(key(), false, &s1);
+  ExpectKeyPopulated(key(), false, &s2);
+  EXPECT_CALL(key(), PopulateFromBuffer(VectorEq(fake_key_)))
       .InSequence(s1, s2)
       .WillOnce(Return(true));
-  ExpectKeyPopulated(&s1, true);
+  ExpectKeyPopulated(key(), true, &s1);
+
   ExpectVerifyAndSetPolicy(&s2);
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+  service_->Store(policy_namespace(), SerializeAsBlob(policy_proto_),
                   kAllKeyFlags,
                   MockPolicyService::CreateExpectSuccessCallback());
 
   fake_loop_.Run();
 }
 
-TEST_F(PolicyServiceTest, StoreNewKeyClobber) {
+TEST_P(PolicyServiceKeyParamTest, StoreNewKeyClobber) {
   InitPolicy(fake_data_, fake_sig_, fake_key_, empty_blob_);
 
   Sequence s1, s2;
-  ExpectKeyEqualsFalse(&s1);
-  ExpectKeyPopulated(&s2, false);
-  EXPECT_CALL(key_, ClobberCompromisedKey(VectorEq(fake_key_)))
+  ExpectKeyEquals(key(), false, &s1);
+  ExpectKeyPopulated(key(), false, &s2);
+  EXPECT_CALL(key(), ClobberCompromisedKey(VectorEq(fake_key_)))
       .InSequence(s1, s2)
       .WillOnce(Return(true));
-  ExpectKeyPopulated(&s1, true);
+  ExpectKeyPopulated(key(), true, &s1);
+
   ExpectVerifyAndSetPolicy(&s2);
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+  service_->Store(policy_namespace(), SerializeAsBlob(policy_proto_),
                   PolicyService::KEY_CLOBBER,
                   MockPolicyService::CreateExpectSuccessCallback());
 
   fake_loop_.Run();
 }
 
-TEST_F(PolicyServiceTest, StoreNewKeySame) {
+TEST_P(PolicyServiceKeyParamTest, StoreNewKeySame) {
   InitPolicy(fake_data_, fake_sig_, fake_key_, empty_blob_);
 
   Sequence s1, s2, s3;
-  EXPECT_CALL(key_, Equals(BlobToString(fake_key_)))
+  EXPECT_CALL(key(), Equals(BlobToString(fake_key_)))
       .InSequence(s1)
       .WillRepeatedly(Return(true));
-  ExpectKeyPopulated(&s2, true);
+  ExpectKeyPopulated(key(), true, &s2);
   ExpectVerifyAndSetPolicy(&s3);
   ExpectPersistPolicy(&s2);
 
-  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+  service_->Store(policy_namespace(), SerializeAsBlob(policy_proto_),
                   kAllKeyFlags,
                   MockPolicyService::CreateExpectSuccessCallback());
 
   fake_loop_.Run();
 }
 
-TEST_F(PolicyServiceTest, StoreNewKeyNotAllowed) {
+TEST_P(PolicyServiceKeyParamTest, StoreNewKeyNotAllowed) {
   InitPolicy(fake_data_, fake_sig_, fake_key_, empty_blob_);
 
   Sequence s1, s2;
-  ExpectKeyEqualsFalse(&s1);
-  ExpectKeyPopulated(&s2, false);
+  ExpectKeyEquals(key(), false, &s1);
+  ExpectKeyPopulated(key(), false, &s2);
 
   ExpectStoreFail(PolicyService::KEY_NONE, dbus_error::kPubkeySetIllegal);
 }
 
-TEST_F(PolicyServiceTest, StoreRotationClobber) {
+TEST_P(PolicyServiceKeyParamTest, StoreRotationClobber) {
   InitPolicy(fake_data_, fake_sig_, fake_key_, fake_key_sig_);
 
   Sequence s1, s2;
-  ExpectKeyEqualsFalse(&s1);
-  ExpectKeyPopulated(&s2, false);
-  EXPECT_CALL(key_, ClobberCompromisedKey(VectorEq(fake_key_)))
+  ExpectKeyEquals(key(), false, &s1);
+  ExpectKeyPopulated(key(), false, &s2);
+  EXPECT_CALL(key(), ClobberCompromisedKey(VectorEq(fake_key_)))
       .InSequence(s1, s2)
       .WillOnce(Return(true));
-  ExpectKeyPopulated(&s1, true);
+  ExpectKeyPopulated(key(), true, &s1);
+
   ExpectVerifyAndSetPolicy(&s2);
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+  service_->Store(policy_namespace(), SerializeAsBlob(policy_proto_),
                   PolicyService::KEY_CLOBBER,
                   MockPolicyService::CreateExpectSuccessCallback());
 
   fake_loop_.Run();
 }
 
-TEST_F(PolicyServiceTest, StoreRotationNoSignature) {
+TEST_P(PolicyServiceKeyParamTest, StoreRotationNoSignature) {
   InitPolicy(fake_data_, fake_sig_, fake_key_, empty_blob_);
 
   Sequence s1, s2;
-  ExpectKeyEqualsFalse(&s1);
-  ExpectKeyPopulated(&s2, true);
+  ExpectKeyEquals(key(), false, &s1);
+  ExpectKeyPopulated(key(), true, &s2);
 
   ExpectStoreFail(PolicyService::KEY_ROTATE, dbus_error::kPubkeySetIllegal);
 }
 
-TEST_F(PolicyServiceTest, StoreRotationBadSignature) {
+TEST_P(PolicyServiceKeyParamTest, StoreRotationBadSignature) {
   InitPolicy(fake_data_, fake_sig_, fake_key_, fake_key_sig_);
 
   Sequence s1, s2;
-  ExpectKeyEqualsFalse(&s1);
-  ExpectKeyPopulated(&s2, true);
-  EXPECT_CALL(key_, Rotate(VectorEq(fake_key_), VectorEq(fake_key_sig_), _))
+  ExpectKeyEquals(key(), false, &s1);
+  ExpectKeyPopulated(key(), true, &s2);
+  EXPECT_CALL(key(), Rotate(VectorEq(fake_key_), VectorEq(fake_key_sig_), _))
       .InSequence(s1, s2)
       .WillOnce(Return(false));
 
   ExpectStoreFail(PolicyService::KEY_ROTATE, dbus_error::kPubkeySetIllegal);
 }
 
-TEST_F(PolicyServiceTest, StoreRotationNotAllowed) {
+TEST_P(PolicyServiceKeyParamTest, StoreRotationNotAllowed) {
   InitPolicy(fake_data_, fake_sig_, fake_key_, fake_key_sig_);
 
   Sequence s1, s2;
-  ExpectKeyEqualsFalse(&s1);
-  ExpectKeyPopulated(&s2, true);
+  ExpectKeyEquals(key(), false, &s1);
+  ExpectKeyPopulated(key(), true, &s2);
 
   ExpectStoreFail(PolicyService::KEY_NONE, dbus_error::kPubkeySetIllegal);
 }
 
-TEST_F(PolicyServiceTest, StoreRejectsSignatureTypeNone) {
+TEST_P(PolicyServiceKeyParamTest, StoreRejectsSignatureTypeNone) {
   InitPolicy(fake_data_, fake_sig_, fake_key_, empty_blob_);
   policy_proto_.set_policy_data_signature_type(
       enterprise_management::PolicyFetchRequest::NONE);
@@ -428,56 +537,54 @@ TEST_F(PolicyServiceTest, StoreRejectsSignatureTypeNone) {
   ExpectStoreFail(PolicyService::KEY_NONE, dbus_error::kInvalidParameter);
 }
 
-TEST_F(PolicyServiceTest, StoreDefaultsSignatureTypeToSHA1) {
+TEST_P(PolicyServiceKeyParamTest, StoreDefaultsSignatureTypeToSHA1) {
   InitPolicy(fake_data_, fake_sig_, fake_key_, fake_key_sig_);
   policy_proto_.clear_policy_data_signature_type();
 
   Sequence s1, s2;
-  ExpectKeyEqualsFalse(&s1);
-  ExpectKeyPopulated(&s2, true);
-  EXPECT_CALL(key_, Verify(fake_data_, fake_sig_,
-                           crypto::SignatureVerifier::RSA_PKCS1_SHA1))
+  ExpectKeyEquals(key(), false, &s1);
+  ExpectKeyPopulated(key(), true, &s2);
+  EXPECT_CALL(key(), Verify(fake_data_, fake_sig_,
+                            crypto::SignatureVerifier::RSA_PKCS1_SHA1))
       .InSequence(s1, s2)
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, Rotate(VectorEq(fake_key_), VectorEq(fake_key_sig_),
-                           crypto::SignatureVerifier::RSA_PKCS1_SHA1))
+  EXPECT_CALL(key(), Rotate(VectorEq(fake_key_), VectorEq(fake_key_sig_),
+                            crypto::SignatureVerifier::RSA_PKCS1_SHA1))
       .InSequence(s1, s2)
       .WillOnce(Return(true));
-  ExpectKeyPopulated(&s1, true);
+  ExpectKeyPopulated(key(), true, &s1);
+
   ExpectVerifyAndSetPolicy(&s2);
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+  service_->Store(policy_namespace(), SerializeAsBlob(policy_proto_),
                   kAllKeyFlags,
                   MockPolicyService::CreateExpectSuccessCallback());
 
   fake_loop_.Run();
 }
 
-TEST_F(PolicyServiceTest, Retrieve) {
+TEST_P(PolicyServiceKeyParamTest, Retrieve) {
   InitPolicy(fake_data_, fake_sig_, fake_key_, fake_key_sig_);
 
-  EXPECT_CALL(*store_, Get()).WillOnce(ReturnRef(policy_proto_));
+  EXPECT_CALL(store(), Get()).WillOnce(ReturnRef(policy_proto_));
 
   std::vector<uint8_t> out_policy_blob;
-  EXPECT_TRUE(
-      service_->Retrieve(MakeChromePolicyNamespace(), &out_policy_blob));
+  EXPECT_TRUE(service_->Retrieve(policy_namespace(), &out_policy_blob));
   EXPECT_EQ(SerializeAsBlob(policy_proto_), out_policy_blob);
 }
 
-TEST_F(PolicyServiceTest, PersistPolicySuccess) {
-  EXPECT_CALL(*store_, Persist()).WillOnce(Return(true));
+TEST_P(PolicyServiceKeyParamTest, PersistPolicySuccess) {
+  EXPECT_CALL(store(), Persist()).WillOnce(Return(true));
   EXPECT_CALL(delegate_, OnPolicyPersisted(true)).Times(1);
-  service_->PersistPolicy(MakeChromePolicyNamespace(),
-                          PolicyService::Completion());
+  service_->PersistPolicy(policy_namespace(), PolicyService::Completion());
 }
 
-TEST_F(PolicyServiceTest, PersistPolicyFailure) {
-  EXPECT_CALL(*store_, Persist()).WillOnce(Return(false));
+TEST_P(PolicyServiceKeyParamTest, PersistPolicyFailure) {
+  EXPECT_CALL(store(), Persist()).WillOnce(Return(false));
   EXPECT_CALL(delegate_, OnPolicyPersisted(false)).Times(1);
-  service_->PersistPolicy(MakeChromePolicyNamespace(),
-                          PolicyService::Completion());
+  service_->PersistPolicy(policy_namespace(), PolicyService::Completion());
 }
 
 // Tests PolicyService with multiple namespace and a real PolicyStore.
@@ -489,8 +596,13 @@ class PolicyServiceNamespaceTest : public testing::Test {
     base::FilePath temp_dir("/tmp/policy_dir");
     ASSERT_TRUE(system_utils_.CreateDir(temp_dir));
     fake_loop_.SetAsCurrent();
-    service_ = std::make_unique<PolicyService>(&system_utils_, temp_dir, &key_,
-                                               nullptr, false);
+    service_ = std::make_unique<PolicyService>(
+        &system_utils_,
+        /*policy_dir=*/temp_dir,
+        /*policy_key=*/&key_,
+        /*extension_install_policy_key=*/&extension_install_key_,
+        /*metrics=*/nullptr,
+        /*resilient_chrome_policy_store=*/false);
 
     const std::string kExtensionId1 = "abcdefghijklmnopabcdefghijklmnop";
     ns1_ = PolicyNamespace(POLICY_DOMAIN_CHROME, "");
@@ -526,7 +638,12 @@ class PolicyServiceNamespaceTest : public testing::Test {
   // Stores policy with value |policy_value| in the namespace |ns|.
   void StorePolicy(const std::string& policy_value, const PolicyNamespace& ns) {
     const std::vector<uint8_t> policy_blob = PolicyValueToBlob(policy_value);
-    EXPECT_CALL(key_, Verify(_, _, _)).WillRepeatedly(Return(true));
+    if (ns == ns3_) {
+      EXPECT_CALL(extension_install_key_, Verify(_, _, _))
+          .WillRepeatedly(Return(true));
+    } else {
+      EXPECT_CALL(key_, Verify(_, _, _)).WillRepeatedly(Return(true));
+    }
     service_->Store(ns, policy_blob, PolicyService::KEY_NONE,
                     MockPolicyService::CreateExpectSuccessCallback());
   }
@@ -563,6 +680,7 @@ class PolicyServiceNamespaceTest : public testing::Test {
   FakeSystemUtils system_utils_;
   std::unique_ptr<PolicyService> service_;
   StrictMock<MockPolicyKey> key_;
+  StrictMock<MockPolicyKey> extension_install_key_;
   PolicyNamespace ns1_;
   PolicyNamespace ns2_;
   PolicyNamespace ns3_;
