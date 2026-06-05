@@ -501,24 +501,8 @@ void MachineLearningServiceImpl::LoadHandwritingModel(
     // also contains the `library_dlc_path` field, we will not need to pass in
     // the `lib_path` separately because it is already in `spec`. Now this
     // needed to share the template function `LoadHandwritingLibAndRecognizer`.
-    std::string lib_path =
-        ml::HandwritingLibrary::kHandwritingDefaultInstallDir;
-    if (spec->library_dlc_path) {
-      if (*spec->library_dlc_path ==
-          ml::HandwritingLibrary::kHandwritingDefaultInstallDir) {
-        lib_path = *spec->library_dlc_path;
-      } else {
-        const std::optional<base::FilePath> real_path =
-            ml::ValidateAndGetRealDlcPath(
-                base::FilePath(*spec->library_dlc_path));
-        if (!real_path) {
-          LOG(ERROR) << "Invalid library DLC path: " << *spec->library_dlc_path;
-          std::move(callback).Run(LoadHandwritingModelResult::LOAD_MODEL_ERROR);
-          return;
-        }
-        lib_path = real_path->value();
-      }
-    }
+    const std::string lib_path = spec->library_dlc_path.value_or(
+        ml::HandwritingLibrary::kHandwritingDefaultInstallDir);
     LoadHandwritingLibAndRecognizer<HandwritingRecognizer>(
         std::move(spec), std::move(receiver), std::move(callback), lib_path);
     return;
@@ -813,21 +797,8 @@ void MachineLearningServiceImpl::LoadDocumentScanner(
 
   // From here below is the worker process.
   std::string path = ml::kLibDocumentScannerDefaultDir;
-  if (!config.is_null() && config->library_dlc_path) {
-    if (config->library_dlc_path->path == ml::kLibDocumentScannerDefaultDir) {
-      path = config->library_dlc_path->path;
-    } else {
-      const std::optional<base::FilePath> real_path =
-          ml::ValidateAndGetRealDlcPath(
-              base::FilePath(config->library_dlc_path->path));
-      if (!real_path) {
-        LOG(ERROR) << "Invalid library DLC path: "
-                   << config->library_dlc_path->path;
-        std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
-        return;
-      }
-      path = real_path->value();
-    }
+  if (!config.is_null()) {
+    path = config->library_dlc_path->path;
   }
   LoadDocumentScannerFromPath(std::move(receiver), std::move(callback),
                               std::move(path));
