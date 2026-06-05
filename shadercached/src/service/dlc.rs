@@ -281,7 +281,7 @@ pub async fn install_shader_cache_dlc<D: DbusConnectionTrait>(
     install_request.id = dlc_name;
     let install_request_bytes = protobuf::Message::write_to_bytes(&install_request)?;
     dbus_conn
-        .call_dbus_method(
+        .call_dbus_method::<(), _>(
             dlc_service::SERVICE_NAME,
             dlc_service::PATH_NAME,
             dlc_service::INTERFACE_NAME,
@@ -300,7 +300,7 @@ pub async fn uninstall_shader_cache_dlc<D: DbusConnectionTrait>(
     let dlc_name = steam_app_id_to_dlc(steam_game_id);
     debug!("Requesting to uninstall dlc {}", dlc_name);
     dbus_conn
-        .call_dbus_method(
+        .call_dbus_method::<(), _>(
             dlc_service::SERVICE_NAME,
             dlc_service::PATH_NAME,
             dlc_service::INTERFACE_NAME,

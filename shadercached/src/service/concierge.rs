@@ -68,7 +68,7 @@ pub async fn add_shader_cache_group_permission<D: DbusConnectionTrait>(
 
     debug!("Requesting concierge to add group permission");
     dbus_conn
-        .call_dbus_method(
+        .call_dbus_method::<(), _>(
             vm_concierge::SERVICE_NAME,
             vm_concierge::PATH_NAME,
             vm_concierge::INTERFACE_NAME,
