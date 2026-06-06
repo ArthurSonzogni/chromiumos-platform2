@@ -17,8 +17,8 @@ namespace vm_tools::concierge {
 
 BalloonPolicyInterface::BalloonPolicyInterface()
     // 1/37 of RAM means a 4GB dut gets ~100MB of window.
-    : balloon_trace_size_window_width_(base::SysInfo::AmountOfPhysicalMemory() /
-                                       37) {
+    : balloon_trace_size_window_width_(
+          base::SysInfo::AmountOfTotalPhysicalMemory() / 37) {
   LOG(INFO) << "BalloonTrace throttled with size window: "
             << balloon_trace_size_window_width_.InMiB() << " MIB";
 }

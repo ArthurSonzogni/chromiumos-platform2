@@ -94,11 +94,11 @@ std::string GetDevConfPath(apps::VmType type) {
   });
 }
 
-int64_t GetVmMemoryMiBInternal(base::ByteCount sys_memory, bool is_32bit) {
-  base::ByteCount vm_memory;
-  if (sys_memory >= base::GiB(4)) {
+int64_t GetVmMemoryMiBInternal(base::ByteSize sys_memory, bool is_32bit) {
+  base::ByteSize vm_memory;
+  if (sys_memory >= base::GiBU(4)) {
     // On devices with >=4GB RAM, reserve 1GB for other processes.
-    vm_memory = sys_memory - kHostReservedNum;
+    vm_memory = (sys_memory - kHostReservedNum).AsByteSize();
   } else {
     vm_memory = sys_memory / 4 * 3;
   }
@@ -118,7 +118,7 @@ int64_t GetVmMemoryMiBInternal(base::ByteCount sys_memory, bool is_32bit) {
   //
   // 3328 is chosen because it's a rounded number (i.e. 3328 % 256 == 0).
   // TODO(hashimoto): Remove this once crosvm becomes 64-bit on ARM.
-  static constexpr base::ByteCount k32bitVmMemoryMax = base::MiB(3328);
+  static constexpr base::ByteSize k32bitVmMemoryMax = base::MiBU(3328);
   if (is_32bit) {
     vm_memory = std::min(vm_memory, k32bitVmMemoryMax);
   }
@@ -164,7 +164,7 @@ std::vector<vm_tools::vhost_user_starter::IdMapItem> IdMapStringToIdMapItem(
 
 int64_t GetVmMemoryMiB() {
   return internal::GetVmMemoryMiBInternal(
-      base::SysInfo::AmountOfPhysicalMemory(), sizeof(uintptr_t) == 4);
+      base::SysInfo::AmountOfTotalPhysicalMemory(), sizeof(uintptr_t) == 4);
 }
 
 std::optional<int32_t> ReadFileToInt32(const base::FilePath& filename) {

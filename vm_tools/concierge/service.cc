@@ -40,7 +40,7 @@
 #include <vector>
 
 #include <base/base64url.h>
-#include <base/byte_count.h>
+#include <base/byte_size.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/containers/span.h>
@@ -1872,7 +1872,7 @@ StartVmResponse Service::StartVmInternal(
   vm_builder.SetVmCpuArgs(vm_cpu_args);
 
   /* Enable hugepages on devices with > 7 GB memory */
-  if (base::SysInfo::AmountOfPhysicalMemory() >= base::GiB(7)) {
+  if (base::SysInfo::AmountOfTotalPhysicalMemory() >= base::GiBU(7)) {
     vm_builder.AppendCustomParam("--hugepages", "");
   }
 
