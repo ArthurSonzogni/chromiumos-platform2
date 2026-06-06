@@ -15,7 +15,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/byte_count.h>
+#include <base/byte_size.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -1237,8 +1237,8 @@ void AddMlFlags(ChromiumCommandBuilder* builder,
     // practice, we compare against 3GiB not 4GiB.
     // Theoretically: this will match devices with RAM > (3GiB + something).
     // In practice:   all such devices have 4GB+.
-    constexpr base::ByteCount kSodaLibraryMinRam = base::MiB(3072);
-    if (base::SysInfo::AmountOfPhysicalMemory() >= kSodaLibraryMinRam) {
+    constexpr base::ByteSize kSodaLibraryMinRam = base::MiBU(3072);
+    if (base::SysInfo::AmountOfTotalPhysicalMemory() >= kSodaLibraryMinRam) {
       builder->AddFeatureEnableOverride("OnDeviceSpeechRecognition");
     }
   }
