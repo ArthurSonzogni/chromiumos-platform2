@@ -8,7 +8,7 @@
 #include <string>
 
 #include <base/base64.h>
-#include <base/byte_count.h>
+#include <base/byte_size.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -263,7 +263,7 @@ bool FeatureManagementImpl::Check_HW_Requirement(
   // DRAM >= 8GiB. But since not all the physical RAM is available (PCI hole),
   // settle for 7GiB.
   // Obtain the size of the physical memory of the system.
-  if (base::SysInfo::AmountOfPhysicalMemory() < base::GiB(7)) {
+  if (base::SysInfo::AmountOfTotalPhysicalMemory() < base::GiBU(7)) {
     return false;
   }
 
