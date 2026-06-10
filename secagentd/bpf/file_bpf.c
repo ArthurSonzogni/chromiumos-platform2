@@ -1031,7 +1031,7 @@ attributes using provided `before_attr`.
 after the modification or access.
  *
  */
-static inline __attribute__((always_inline)) void fill_file_image_info(
+static inline __attribute__((always_inline)) int fill_file_image_info(
     struct cros_file_image* image_info,
     struct file* file,
     struct dentry* dentry,
@@ -1041,7 +1041,7 @@ static inline __attribute__((always_inline)) void fill_file_image_info(
     const struct task_struct* t,
     struct rename_map_value* rename_map_value) {
   if (!image_info || !dentry) {
-    return;
+    return -1;
   }
 
   // Read the inode from the dentry
@@ -1080,7 +1080,9 @@ static inline __attribute__((always_inline)) void fill_file_image_info(
 
   } else {
     // Set the after inode info (path, inode, device_id)
-    resolve_path_to_string(&file_path, path, NULL, false);
+    if (resolve_path_to_string(&file_path, path, NULL, false) < 0) {
+      return -1;
+    }
     bpf_core_read_str(&image_info->after_inode_info.path, MAX_PATH_SIZE,
                       file_path);
     image_info->after_inode_info.inode = BPF_CORE_READ(inode, i_ino);
@@ -1112,6 +1114,7 @@ static inline __attribute__((always_inline)) void fill_file_image_info(
   // Get the inode attributes for the after modification state after setting
   // inode and device ID
   get_inode_attributes(inode, &image_info->after_inode_info.attr);
+  return 0;
 }
 
 /**
@@ -1427,9 +1430,12 @@ static inline __attribute__((always_inline)) int populate_rb(
   file_detailed_event->has_full_process_info =
       fill_process_start(&file_detailed_event->process_info, last_exec_task);
   fill_ns_info(&file_detailed_event->spawn_namespace, last_exec_task);
-  fill_file_image_info(&file_detailed_event->image_info, file, dentry, path,
-                       before_attr, sensitive_file_type, last_exec_task,
-                       rename_map_value);
+  if (fill_file_image_info(&file_detailed_event->image_info, file, dentry, path,
+                           before_attr, sensitive_file_type, last_exec_task,
+                           rename_map_value) < 0) {
+    bpf_ringbuf_discard(event, 0);
+    return -1;
+  }
 
   // Submit the event to the ring buffer
   bpf_ringbuf_submit(event, 0);
@@ -1506,11 +1512,17 @@ int BPF_PROG(fexit__security_path_rename,
   u_char* temp_path = NULL;
 
   // Resolve the old path to a string and store it in the map.
-  resolve_path_to_string(&temp_path, old_path, old_dentry, true);
+  if (resolve_path_to_string(&temp_path, old_path, old_dentry, true) < 0) {
+    cros_rename_map_delete();
+    return 0;
+  }
   bpf_probe_read_str(value->old_path, MAX_PATH_SIZE, temp_path);
 
   // Resolve the new path to a string and store it in the map.
-  resolve_path_to_string(&temp_path, new_path, new_dentry, true);
+  if (resolve_path_to_string(&temp_path, new_path, new_dentry, true) < 0) {
+    cros_rename_map_delete();
+    return 0;
+  }
   bpf_probe_read_str(value->new_path, MAX_PATH_SIZE, temp_path);
 
   value->sensitive_file_type = file_monitoring_settings.sensitive_file_type;
@@ -1815,9 +1827,6 @@ static inline __attribute__((always_inline)) void attr_change_fentry_common(
     return;
   }
 
-  uint8_t* file_path = NULL;
-  resolve_path_to_string(&file_path, path, NULL, false);
-
   map_value.sensitive_file_type = monitor_settings.sensitive_file_type;
 
   // Retrieve the PID and TGID
@@ -2101,7 +2110,10 @@ int BPF_PROG(fexit__path_mount,
   }
 
   u_char* file_path = NULL;
-  resolve_path_to_string(&file_path, path, NULL, false);
+  if (resolve_path_to_string(&file_path, path, NULL, false) < 0) {
+    bpf_ringbuf_discard(event, 0);
+    return 0;
+  }
   bpf_core_read_str(mount_data->dest_device_path, MAX_PATH_SIZE, file_path);
 
   // Compare mount_type_buffer with "/media"
@@ -2130,7 +2142,9 @@ int BPF_PROG(fentry__path_umount, struct path* path, int flags) {
   }
   // Read the root directory entry (dentry) of the mount
   u_char* file_path = NULL;
-  resolve_path_to_string(&file_path, path, NULL, false);
+  if (resolve_path_to_string(&file_path, path, NULL, false) < 0) {
+    return 0;
+  }
 
   // Compare mount_type_buffer with "/media"
   if (!strings_starts_with(file_path, "/media/", sizeof("/media/"))) {
