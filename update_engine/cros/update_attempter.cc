@@ -1452,27 +1452,6 @@ void UpdateAttempter::ProcessingDoneInternal(const ActionProcessor* processor,
     return;
   }
 
-  prefs_->SetInt64(kPrefsDeltaUpdateFailures, 0);
-  prefs_->SetString(kPrefsPreviousVersion,
-                    omaha_request_params_->app_version());
-  DeltaPerformer::ResetUpdateProgress(prefs_, false);
-
-  SystemState::Get()->payload_state()->UpdateSucceeded();
-
-  // Since we're done with scattering fully at this point, this is the
-  // safest point delete the state files, as we're sure that the status is
-  // set to reboot (which means no more updates will be applied until reboot)
-  // This deletion is required for correctness as we want the next update
-  // check to re-create a new random number for the update check count.
-  // Similarly, we also delete the wall-clock-wait period that was persisted
-  // so that we start with a new random value for the next update check
-  // after reboot so that the same device is not favored or punished in any
-  // way.
-  prefs_->Delete(kPrefsUpdateCheckCount);
-  SystemState::Get()->payload_state()->SetScatteringWaitPeriod(TimeDelta());
-  SystemState::Get()->payload_state()->SetStagingWaitPeriod(TimeDelta());
-  prefs_->Delete(kPrefsUpdateFirstSeenAt);
-
   // Note: below this comment should only be on |ErrorCode::kSuccess|.
   switch (pm_) {
     case ProcessMode::UPDATE:
@@ -1570,6 +1549,27 @@ void UpdateAttempter::ProcessingDoneMigrate(const ActionProcessor* processor,
 
 void UpdateAttempter::ProcessingDoneUpdate(const ActionProcessor* processor,
                                            ErrorCode code) {
+  prefs_->SetInt64(kPrefsDeltaUpdateFailures, 0);
+  prefs_->SetString(kPrefsPreviousVersion,
+                    omaha_request_params_->app_version());
+  DeltaPerformer::ResetUpdateProgress(prefs_, false);
+
+  SystemState::Get()->payload_state()->UpdateSucceeded();
+
+  // Since we're done with scattering fully at this point, this is the
+  // safest point delete the state files, as we're sure that the status is
+  // set to reboot (which means no more updates will be applied until reboot)
+  // This deletion is required for correctness as we want the next update
+  // check to re-create a new random number for the update check count.
+  // Similarly, we also delete the wall-clock-wait period that was persisted
+  // so that we start with a new random value for the next update check
+  // after reboot so that the same device is not favored or punished in any
+  // way.
+  prefs_->Delete(kPrefsUpdateCheckCount);
+  SystemState::Get()->payload_state()->SetScatteringWaitPeriod(TimeDelta());
+  SystemState::Get()->payload_state()->SetStagingWaitPeriod(TimeDelta());
+  prefs_->Delete(kPrefsUpdateFirstSeenAt);
+
   WriteUpdateCompletedMarker();
 
   if (!SystemState::Get()->dlcservice()->UpdateCompleted(
