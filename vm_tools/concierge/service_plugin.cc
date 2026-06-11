@@ -104,16 +104,14 @@ void Service::StartPluginVm(
     const vm_tools::concierge::StartPluginVmRequest& request) {
   ASYNC_SERVICE_METHOD();
 
+  LOG(INFO) << "Plugin VM is no longer supported. "
+            << "Rejecting StartPluginVm request.";
+
   StartVmResponse response;
-  // We change to a success status later if necessary.
+  response.set_success(false);
   response.set_status(VM_STATUS_FAILURE);
+  response.set_failure_reason("Plugin VM is no longer supported");
 
-  if (!CheckStartVmPreconditions(request, &response)) {
-    response_cb->Return(response);
-    return;
-  }
-
-  StartPluginVmInternal(request, response);
   response_cb->Return(response);
 }
 
