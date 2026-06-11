@@ -1,0 +1,8 @@
+Device: /dev/sda
+Vendor: WD
+Model: KLUEG8UHDB-C2D1
+Firmware: 0200
+
+bPreEOLInfo: 0x01
+bDeviceLifeTimeEstA: 0x01
+bDeviceLifeTimeEstB: 0x01

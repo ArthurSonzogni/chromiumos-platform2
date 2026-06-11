@@ -64,5 +64,9 @@ run_test sindin8de2_disk_metrics 5
 run_test nvme_disk_metrics 5
 run_test ufs_disk_metrics 5
 
+# shellcheck disable=SC2034
+STORAGE_INFO_FILE="tests/storage_info_6.txt"
+run_test ufs_disk_metrics 6
+
 
 rm -rf "${DISK_TEMP}"

@@ -127,14 +127,15 @@ nvme_disk_metrics() {
 }
 
 ufs_disk_metrics() {
-  local life method type
+  local life method type matcher repl
 
   # Extract revelevant UFS information from this file, if any.
   for method in 'a' 'b'; do
-    life="$(sed -ne "/life_time_estimation_${method}/s/.*:\(0x.*\)$/\1/p" \
-            "${STORAGE_INFO_FILE}")"
+    type="$(echo "${method}" | sed 's/.*/\u&/')"
+    matcher="(life_time_estimation_${method}|bDeviceLifeTimeEst${type})"
+    repl="s/.*${matcher}[^0-9]*(0x[0-9a-fA-F]+).*$/\2/p"
+    life="$(sed -nE "/${matcher}/${repl}" "${STORAGE_INFO_FILE}")"
     if [ -n "${life}" ]; then
-      type="$(echo "${method}" | sed 's/.*/\u&/')"
       metrics_client -s "Platform.Storage.Ufs.LifeUsed.Type${type}" \
                      "$(printf "%d" "${life}")"
     fi
