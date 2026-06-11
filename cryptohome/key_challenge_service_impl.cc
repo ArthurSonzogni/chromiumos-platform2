@@ -78,9 +78,6 @@ void OnDBusChallengeKeySuccess(
   KeyChallengeService::ResponseCallback original_callback =
       callback_holder->get();
   if (challenge_response.empty()) {
-    // TODO(crbug.com/1046860): Remove the logging after stabilizing the
-    // feature.
-    LOG(INFO) << "Signature key challenge failed: empty response";
     std::move(original_callback)
         .Run(MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
@@ -102,13 +99,6 @@ void OnDBusChallengeKeySuccess(
             CryptoError::CE_OTHER_FATAL));
     return;
   }
-  // TODO(crbug.com/1046860): Remove the logging after stabilizing the feature.
-  if (response_proto->has_signature_response_data()) {
-    LOG(INFO) << "Signature key challenge succeeded: signature size "
-              << response_proto->signature_response_data().signature().size();
-  } else {
-    LOG(INFO) << "Key challenge completed with no signature";
-  }
   std::move(original_callback).Run(std::move(response_proto));
 }
 
@@ -116,11 +106,8 @@ void OnDBusChallengeKeyFailure(
     std::shared_ptr<OnceCallbackHolder<KeyChallengeService::ResponseCallback>>
         callback_holder,
     brillo::Error* error) {
-  // TODO(crbug.com/1046860): Remove the logging after stabilizing the feature.
   CryptoStatus status;
   if (error) {
-    LOG(INFO) << "Signature key challenge failed: dbus error code "
-              << error->GetCode() << ", message " << error->GetMessage();
     // TODO(b/230326115): Distinguish between user cancellation and actual
     // error.
     status = MakeStatus<CryptohomeCryptoError>(
@@ -128,7 +115,6 @@ void OnDBusChallengeKeyFailure(
         ErrorActionSet(PrimaryAction::kIncorrectAuth),
         CryptoError::CE_OTHER_CRYPTO);
   } else {
-    LOG(INFO) << "Key challenge failed: unknown dbus error";
     status = MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocKeyChallengeServiceUnknownDBusErrorInChallengeKey),
@@ -221,35 +207,8 @@ void KeyChallengeServiceImpl::ChallengeKey(
     const AccountIdentifier& account_id,
     const KeyChallengeRequest& key_challenge_request,
     ResponseCallback response_callback) {
-  if (!dbus_validate_bus_name(key_delegate_dbus_service_name_.c_str(),
-                              nullptr /* error */)) {
-    // Bail out to avoid crashing inside the D-Bus library.
-    // TODO(emaxx): Remove this special handling once libchrome is uprev'ed to
-    // include the fix from crbug.com/927196.
-    LOG(ERROR) << "Invalid key challenge service name "
-               << key_delegate_dbus_service_name_;
-    std::move(response_callback)
-        .Run(MakeStatus<CryptohomeCryptoError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocKeyChallengeServiceInvalidDBusNameInChallengeKey),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            CryptoError::CE_OTHER_FATAL));
-    return;
-  }
   std::shared_ptr<OnceCallbackHolder<ResponseCallback>> callback_holder(
       new OnceCallbackHolder<ResponseCallback>(std::move(response_callback)));
-  // TODO(crbug.com/1046860): Remove the logging after stabilizing the feature.
-  if (key_challenge_request.has_signature_request_data()) {
-    LOG(INFO)
-        << "Starting signature key challenge request, size "
-        << key_challenge_request.signature_request_data().data_to_sign().size()
-        << ", spki size "
-        << key_challenge_request.signature_request_data()
-               .public_key_spki_der()
-               .size()
-        << ", algorithm "
-        << key_challenge_request.signature_request_data().signature_algorithm();
-  }
   dbus_proxy_.ChallengeKeyAsync(
       SerializeProto(account_id), SerializeProto(key_challenge_request),
       base::BindOnce(&OnDBusChallengeKeySuccess, callback_holder),
@@ -261,14 +220,6 @@ void KeyChallengeServiceImpl::FidoMakeCredential(
     const std::string& client_data_json,
     const cryptohome::fido::PublicKeyCredentialCreationOptions& request,
     MakeCredentialCallback response_callback) {
-  if (!dbus_validate_bus_name(key_delegate_dbus_service_name_.c_str(),
-                              nullptr /* error */)) {
-    LOG(ERROR) << "Invalid key challenge service name "
-               << key_delegate_dbus_service_name_;
-    std::move(response_callback).Run(nullptr /* response */);
-    return;
-  }
-
   std::shared_ptr<OnceCallbackHolder<MakeCredentialCallback>> callback_holder(
       new OnceCallbackHolder<MakeCredentialCallback>(
           std::move(response_callback)));
@@ -282,14 +233,6 @@ void KeyChallengeServiceImpl::FidoGetAssertion(
     const std::string& client_data_json,
     const cryptohome::fido::PublicKeyCredentialRequestOptions& request,
     GetAssertionCallback response_callback) {
-  if (!dbus_validate_bus_name(key_delegate_dbus_service_name_.c_str(),
-                              nullptr)) {
-    LOG(ERROR) << "Invalid key challenge service name "
-               << key_delegate_dbus_service_name_;
-    std::move(response_callback).Run(nullptr /* response */);
-    return;
-  }
-
   std::shared_ptr<OnceCallbackHolder<GetAssertionCallback>> callback_holder(
       new OnceCallbackHolder<GetAssertionCallback>(
           std::move(response_callback)));

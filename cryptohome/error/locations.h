@@ -657,7 +657,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocKeyChallengeServiceKnownDBusErrorInChallengeKey = 415,
   /* ./key_challenge_service_impl.cc */
   kLocKeyChallengeServiceUnknownDBusErrorInChallengeKey = 416,
-  /* ./key_challenge_service_impl.cc */
+  /* =Obsolete= */
   kLocKeyChallengeServiceInvalidDBusNameInChallengeKey = 417,
   /* =Obsolete= */
   kLocUserDataAuthChalCredFailedInChalRespMount = 418,
@@ -2199,7 +2199,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNameTooLongInUpdateAuthFactorMetadata = 3541,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockRemoveCredential = 3542,
-  /* ./user_session/real_user_session.cc */
+  /* =Obsolete= */
   kLocUserSessionRestoreKeyFailed = 3543,
   /* =Obsolete= */
   kLocUserDataAuthSessionNotFoundInRestoreDeviceKey = 3544,
