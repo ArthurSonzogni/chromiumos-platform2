@@ -80,3 +80,4 @@ send: 1
 readlinkat: 1
 recv: 1
 recvfrom: 1
+gettid: 1

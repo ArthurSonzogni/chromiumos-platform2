@@ -69,3 +69,4 @@ sendto: 1
 readlinkat: 1
 recvfrom: 1
 clock_gettime: 1
+gettid: 1
