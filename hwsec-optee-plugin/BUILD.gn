@@ -7,6 +7,9 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [ ":install_hwsec-optee-plugin" ]
+  if (use.test) {
+    deps += [ ":hwsec-optee-plugin_test" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -33,4 +36,20 @@ install_config("install_hwsec-optee-plugin") {
   install_path = "/usr/lib/tee-supplicant/plugins"
   type = "executable"
   deps = [ ":hwsec-optee-plugin" ]
+}
+
+if (use.test) {
+  executable("hwsec-optee-plugin_test") {
+    sources = [
+      "hwsec-optee-plugin.cc",
+      "hwsec-optee-plugin_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    run_test = true
+    defines = [ "UNIT_TEST" ]
+    deps = [ "//common-mk/testrunner:testrunner" ]
+  }
 }

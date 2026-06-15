@@ -9,4 +9,12 @@
 
 HWSEC_OPTEE_PLUGIN_EXPORT extern "C" struct plugin_method plugin_method;
 
+#if defined(UNIT_TEST)
+namespace hwsec {
+class OpteePluginFrontend;
+}  // namespace hwsec
+HWSEC_OPTEE_PLUGIN_EXPORT void SetHwsecForTesting(
+    const hwsec::OpteePluginFrontend* hwsec);
+#endif
+
 #endif  // HWSEC_OPTEE_PLUGIN_HWSEC_OPTEE_PLUGIN_H_

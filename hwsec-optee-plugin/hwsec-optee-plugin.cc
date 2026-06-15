@@ -30,9 +30,22 @@ extern "C" {
 #define GET_CIK_CERT_COMMAND 2
 #define GET_PEM_CERT_CHAIN_COMMAND 3
 
+#if defined(UNIT_TEST)
+static const hwsec::OpteePluginFrontend* g_mock_hwsec = nullptr;
+HWSEC_OPTEE_PLUGIN_EXPORT void SetHwsecForTesting(
+    const hwsec::OpteePluginFrontend* hwsec) {
+  g_mock_hwsec = hwsec;
+}
+#endif
+
 namespace {
 
 static const hwsec::OpteePluginFrontend& GetHwsec() {
+#if defined(UNIT_TEST)
+  if (g_mock_hwsec) {
+    return *g_mock_hwsec;
+  }
+#endif
   static thread_local hwsec::FactoryImpl hwsec_factory(
       hwsec::ThreadingMode::kCurrentThread);
   static thread_local std::unique_ptr<const hwsec::OpteePluginFrontend> hwsec =
@@ -63,6 +76,25 @@ static TEEC_Result GetInputLen(uint8_t* data,
   return TEEC_SUCCESS;
 }
 
+constexpr uint32_t kTpmCcStartAuthSession = 0x00000176;
+constexpr uint32_t kTpmCcFlushContext = 0x00000165;
+constexpr uint32_t kTpmCcNvReadPublic = 0x00000169;
+constexpr uint32_t kTpmCcNvRead = 0x0000014E;
+constexpr uint32_t kTpmCcNvIncrement = 0x00000134;
+
+static bool IsTpmCommandAllowed(uint32_t command_code) {
+  switch (command_code) {
+    case kTpmCcStartAuthSession:
+    case kTpmCcFlushContext:
+    case kTpmCcNvReadPublic:
+    case kTpmCcNvRead:
+    case kTpmCcNvIncrement:
+      return true;
+    default:
+      return false;
+  }
+}
+
 static TEEC_Result SendRawCommand(unsigned int sub_cmd,
                                   uint8_t* data,
                                   size_t data_len,
@@ -78,6 +110,17 @@ static TEEC_Result SendRawCommand(unsigned int sub_cmd,
     LOG(ERROR) << "The input command format is invalid!";
     *out_len = 0;
     return TEEC_ERROR_BAD_PARAMETERS;
+  }
+
+  uint32_t command_code;
+  memcpy(&command_code, data + 6, sizeof(uint32_t));
+  command_code = base::NetToHost32(command_code);
+
+  if (!IsTpmCommandAllowed(command_code)) {
+    LOG(ERROR) << "TPM command code 0x" << std::hex << command_code
+               << " is not allowed!";
+    *out_len = 0;
+    return TEEC_ERROR_ACCESS_DENIED;
   }
 
   brillo::Blob input(data, data + input_len);
