@@ -3,13 +3,13 @@
 // found in the LICENSE file.
 
 #include "oobe_config/filesystem/file_handler.h"
-#include "base/functional/bind.h"
-#include "oobe_config/filesystem/file_handler_for_testing.h"
+
+#include <signal.h>
+#include <sys/file.h>
+#include <unistd.h>
 
 #include <memory>
 #include <optional>
-#include <signal.h>
-#include <unistd.h>
 
 #include <base/command_line.h>
 #include <base/files/file_enumerator.h>
@@ -20,7 +20,9 @@
 #include <base/notreached.h>
 #include <brillo/process/process.h>
 #include <gtest/gtest.h>
-#include <sys/file.h>
+
+#include "base/functional/bind.h"
+#include "oobe_config/filesystem/file_handler_for_testing.h"
 
 namespace oobe_config {
 namespace {
@@ -59,6 +61,8 @@ class FileHandlerTest : public ::testing::Test {
       "var/lib/oobe_config_restore/rollback_data";
   static constexpr char kExpectedRollbackSaveTriggerFlag[] =
       "mnt/stateful_partition/.save_rollback_data";
+  static constexpr char kExpectedDeviceMigrationSaveDataFlag[] =
+      "mnt/stateful_partition/unencrypted/preserve/.save_device_migration_data";
   static constexpr char kExpectedDataSavedFlag[] =
       "var/lib/oobe_config_save/.data_saved";
   static constexpr char kExpectedOobeCompletedFlag[] =
@@ -300,6 +304,20 @@ TEST_F(FileHandlerTest, RemoveRollbackSaveTriggerFlag) {
   VerifyRemoveFunction(
       FileHandlerTest::kExpectedRollbackSaveTriggerFlag,
       base::BindRepeating(&FileHandler::RemoveRollbackSaveTriggerFlag,
+                          base::Unretained(&file_handler_)));
+}
+
+TEST_F(FileHandlerTest, HasDeviceMigrationSaveTriggerFlag) {
+  VerifyHasFunction(
+      FileHandlerTest::kExpectedDeviceMigrationSaveDataFlag,
+      base::BindRepeating(&FileHandler::HasDeviceMigrationSaveTriggerFlag,
+                          base::Unretained(&file_handler_)));
+}
+
+TEST_F(FileHandlerTest, RemoveDeviceMigrationSaveTriggerFlag) {
+  VerifyRemoveFunction(
+      FileHandlerTest::kExpectedDeviceMigrationSaveDataFlag,
+      base::BindRepeating(&FileHandler::RemoveDeviceMigrationSaveTriggerFlag,
                           base::Unretained(&file_handler_)));
 }
 

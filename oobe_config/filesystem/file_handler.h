@@ -7,11 +7,12 @@
 
 #include <optional>
 #include <string>
-#include "base/files/file_util.h"
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/time/time.h>
+
+#include "base/files/file_util.h"
 
 namespace oobe_config {
 
@@ -82,6 +83,13 @@ class FileHandler {
   bool HasRollbackSaveTriggerFlag() const;
   // Removes the flag that triggers oobe_config_save to run on shutdown.
   bool RemoveRollbackSaveTriggerFlag() const;
+
+  // Checks if the flag that oobe_config_save is triggered by device
+  // migration, and not rollback exists.
+  bool HasDeviceMigrationSaveTriggerFlag() const;
+  // Removes the flag that that oobe_config_save is triggered by device
+  // migration, and not rollback.
+  bool RemoveDeviceMigrationSaveTriggerFlag() const;
 
   // Places the flag that indicates oobe_config_save ran successfully.
   bool CreateDataSavedFlag() const;
@@ -171,6 +179,9 @@ class FileHandler {
 
   static constexpr char kSaveRollbackDataFile[] =
       "mnt/stateful_partition/.save_rollback_data";
+
+  static constexpr char kDeviceMigrationSaveDataFileName[] =
+      ".save_device_migration_data";
 
   static constexpr char kDecryptedRollbackDataFileName[] = "rollback_data";
   static constexpr char kOpensslEncryptedRollbackDataFileName[] =

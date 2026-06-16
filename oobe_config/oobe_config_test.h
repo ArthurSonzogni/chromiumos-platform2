@@ -5,8 +5,6 @@
 #ifndef OOBE_CONFIG_OOBE_CONFIG_TEST_H_
 #define OOBE_CONFIG_OOBE_CONFIG_TEST_H_
 
-#include "oobe_config/oobe_config.h"
-
 #include <memory>
 
 #include <base/files/scoped_temp_dir.h>
@@ -14,6 +12,7 @@
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 
 #include "oobe_config/filesystem/file_handler_for_testing.h"
+#include "oobe_config/oobe_config.h"
 
 namespace oobe_config {
 

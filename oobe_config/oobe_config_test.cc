@@ -4,9 +4,10 @@
 
 #include "oobe_config/oobe_config_test.h"
 
+#include <unistd.h>
+
 #include <memory>
 #include <string>
-#include <unistd.h>
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
@@ -90,7 +91,7 @@ void OobeConfigTest::CreateRollbackSpace() {
   ASSERT_TRUE(hwsec_oobe_config_->IsRollbackSpaceReady().ok());
 }
 
-// Test are grouped into three categories.
+// Tests are grouped into four categories.
 
 // 1. Tests that fake rollback to and from this version of the code, TPM-based
 //     encryption is possible but not activated. TPM space may exist, but it's
@@ -269,5 +270,24 @@ TEST_F(OobeConfigTest, RollbackDataWithTpmSpace) {
   ASSERT_EQ(rollback_data.network_config(), kNetworkConfig);
 }
 #endif  // USE_TPM2
+
+// 4. Tests that fake a device migration scenario. In such cases there is no
+// actual rollback, but the data should still get saved.
+
+TEST_F(OobeConfigTest, DeviceMigrationSaveTriggerFlagPreservedCorrectly) {
+  ASSERT_TRUE(file_handler_.CreateDeviceMigrationSaveTriggerFlag());
+
+  ASSERT_TRUE(oobe_config_->EncryptedRollbackSave(/*run_tpm_encryption=*/true));
+  SimulatePowerwash();
+  ASSERT_TRUE(oobe_config_->EncryptedRollbackRestore());
+
+  EXPECT_FALSE(file_handler_.HasDeviceMigrationSaveTriggerFlag());
+
+  std::string rollback_data_str;
+  ASSERT_TRUE(file_handler_.ReadDecryptedRollbackData(&rollback_data_str));
+  RollbackData rollback_data;
+  ASSERT_TRUE(rollback_data.ParseFromString(rollback_data_str));
+  ASSERT_TRUE(rollback_data.is_device_migration());
+}
 
 }  // namespace oobe_config

@@ -9,6 +9,9 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
+#include <base/logging.h>
+
 #include "dbus/dbus-protocol.h"
 #include "libhwsec/factory/factory.h"
 #include "libhwsec/frontend/oobe_config/frontend.h"
@@ -17,9 +20,6 @@
 #include "oobe_config/metrics/enterprise_rollback_metrics_handler.h"
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/proto_bindings/oobe_config.pb.h"
-
-#include <base/check.h>
-#include <base/logging.h>
 
 using brillo::dbus_utils::AsyncEventSequencer;
 

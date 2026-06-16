@@ -72,6 +72,9 @@ void CleanEnterpriseRollbackLeftovers(const FileHandler* file_handler,
   if (!file_handler->RemoveTpmEncryptedRollbackData()) {
     LOG(ERROR) << "Failed to remove TPM encrypted rollback data.";
   }
+  if (!file_handler->RemoveDeviceMigrationSaveTriggerFlag()) {
+    LOG(ERROR) << "Failed to remove device migration save flag.";
+  }
   ZeroTpmSpaceIfExists(hwsec_factory);
 }
 

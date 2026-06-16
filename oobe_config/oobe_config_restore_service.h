@@ -9,10 +9,10 @@
 #include <utility>
 #include <vector>
 
-#include "oobe_config/proto_bindings/oobe_config.pb.h"
-
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus_adaptors/org.chromium.OobeConfigRestore.h>
+
+#include "oobe_config/proto_bindings/oobe_config.pb.h"
 
 namespace oobe_config {
 

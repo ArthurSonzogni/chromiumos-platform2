@@ -15,4 +15,6 @@ message RollbackData {
   bool eula_auto_accept = 2;
   // Network configuration in ONC format.
   string network_config = 3;
+  // Whether the device migration flow is active.
+  bool is_device_migration = 4;
 }

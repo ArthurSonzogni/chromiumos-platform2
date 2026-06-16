@@ -60,6 +60,10 @@ void OobeConfig::GetRollbackData(RollbackData* rollback_data) const {
     rollback_data->set_network_config(network_config_for_testing_);
   }
 
+  if (file_handler_.HasDeviceMigrationSaveTriggerFlag()) {
+    rollback_data->set_is_device_migration(true);
+  }
+
   return;
 }
 

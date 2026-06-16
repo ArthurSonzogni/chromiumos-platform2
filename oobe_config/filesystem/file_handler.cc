@@ -117,6 +117,16 @@ bool FileHandler::RemoveRollbackSaveTriggerFlag() const {
   return base::DeleteFile(GetFullPath(kSaveRollbackDataFile));
 }
 
+bool FileHandler::HasDeviceMigrationSaveTriggerFlag() const {
+  return base::PathExists(
+      GetFullPath(kPreservePath).Append(kDeviceMigrationSaveDataFileName));
+}
+
+bool FileHandler::RemoveDeviceMigrationSaveTriggerFlag() const {
+  return brillo::DeleteFile(
+      GetFullPath(kPreservePath).Append(kDeviceMigrationSaveDataFileName));
+}
+
 bool FileHandler::CreateDataSavedFlag() const {
   return base::WriteFile(GetFullPath(kDataSavePath).Append(kDataSavedFileName),
                          std::string());

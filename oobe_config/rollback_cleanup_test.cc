@@ -89,12 +89,14 @@ TEST_F(RollbackCleanupTest, DoNotRemoveAnyRollbackDataIfOobeIsNotCompleted) {
   EXPECT_TRUE(file_handler_.WriteOpensslEncryptedRollbackData(data));
   EXPECT_TRUE(file_handler_.WriteTpmEncryptedRollbackData(data));
   EXPECT_TRUE(file_handler_.WriteDecryptedRollbackData(data));
+  EXPECT_TRUE(file_handler_.CreateDeviceMigrationSaveTriggerFlag());
 
   RollbackCleanup(&file_handler_, &metrics_handler_, &hwsec_factory_);
 
   EXPECT_TRUE(file_handler_.HasOpensslEncryptedRollbackData());
   EXPECT_TRUE(file_handler_.HasTpmEncryptedRollbackData());
   EXPECT_TRUE(file_handler_.HasDecryptedRollbackData());
+  EXPECT_TRUE(file_handler_.HasDeviceMigrationSaveTriggerFlag());
 }
 
 TEST_F(RollbackCleanupTest, RemoveRollbackDataIfOobeIsCompleted) {
@@ -102,12 +104,14 @@ TEST_F(RollbackCleanupTest, RemoveRollbackDataIfOobeIsCompleted) {
   EXPECT_TRUE(file_handler_.WriteOpensslEncryptedRollbackData(data));
   EXPECT_TRUE(file_handler_.WriteTpmEncryptedRollbackData(data));
   EXPECT_TRUE(file_handler_.WriteDecryptedRollbackData(data));
+  EXPECT_TRUE(file_handler_.CreateDeviceMigrationSaveTriggerFlag());
 
   RollbackCleanup(&file_handler_, &metrics_handler_, &hwsec_factory_);
 
   EXPECT_FALSE(file_handler_.HasOpensslEncryptedRollbackData());
   EXPECT_FALSE(file_handler_.HasTpmEncryptedRollbackData());
   EXPECT_FALSE(file_handler_.HasDecryptedRollbackData());
+  EXPECT_FALSE(file_handler_.HasDeviceMigrationSaveTriggerFlag());
 }
 
 TEST_F(RollbackCleanupTest, ClearTpmSpaceIfOobeIsCompleted) {

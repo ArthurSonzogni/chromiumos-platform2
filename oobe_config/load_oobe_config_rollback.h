@@ -5,13 +5,12 @@
 #ifndef OOBE_CONFIG_LOAD_OOBE_CONFIG_ROLLBACK_H_
 #define OOBE_CONFIG_LOAD_OOBE_CONFIG_ROLLBACK_H_
 
-#include "oobe_config/filesystem/file_handler.h"
-#include "oobe_config/load_oobe_config_interface.h"
-
 #include <string>
 
 #include <base/files/file_path.h>
 
+#include "oobe_config/filesystem/file_handler.h"
+#include "oobe_config/load_oobe_config_interface.h"
 #include "oobe_config/metrics/enterprise_rollback_metrics_handler.h"
 
 namespace oobe_config {

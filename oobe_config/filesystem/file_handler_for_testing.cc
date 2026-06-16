@@ -5,6 +5,7 @@
 #include "oobe_config/filesystem/file_handler_for_testing.h"
 
 #include <signal.h>
+
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -185,6 +186,11 @@ bool FileHandlerForTesting::GetEncryptedFlexOobeConfigFilePermissions(
 base::FilePath FileHandlerForTesting::GetFullPath(
     const std::string& path_without_root) const {
   return FileHandler::GetFullPath(path_without_root);
+}
+
+bool FileHandlerForTesting::CreateDeviceMigrationSaveTriggerFlag() {
+  return base::WriteFile(
+      GetFullPath(kPreservePath).Append(kDeviceMigrationSaveDataFileName), "");
 }
 
 }  // namespace oobe_config

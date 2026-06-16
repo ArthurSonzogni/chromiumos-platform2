@@ -8,8 +8,8 @@
 #include <memory>
 #include <string>
 
-#include <base/files/scoped_temp_dir.h>
 #include <base/files/file_path.h>
+#include <base/files/scoped_temp_dir.h>
 #include <brillo/process/process.h>
 
 #include "oobe_config/filesystem/file_handler.h"
@@ -113,6 +113,10 @@ class FileHandlerForTesting : public FileHandler {
 
   // Retrieves file permissions for file at `kFlexOobeConfigEncryptedFilePath`.
   bool GetEncryptedFlexOobeConfigFilePermissions(int* mode);
+
+  // Places the flag that indicates that the rollback config is being saved
+  // because of device migration.
+  bool CreateDeviceMigrationSaveTriggerFlag();
 
  private:
   static inline constexpr char kRamoops0FileName[] = "pmsg-ramoops-0";

@@ -9,7 +9,9 @@
 #include <utility>
 
 #include <base/files/scoped_temp_dir.h>
+#include <base/json/json_reader.h>
 #include <base/test/scoped_chromeos_version_info.h>
+#include <base/values.h>
 #include <base/version.h>
 #include <gtest/gtest.h>
 #include <metrics/structured/event_base.h>
@@ -63,6 +65,11 @@ class LoadOobeConfigRollbackTest : public OobeConfigTest {
     SimulatePowerwash();
     load_config_ = std::make_unique<LoadOobeConfigRollback>(
         oobe_config_.get(), rollback_metrics_.get(), file_handler_);
+  }
+
+  void FakePreceedingDeviceMigration() {
+    file_handler_.CreateDeviceMigrationSaveTriggerFlag();
+    FakePreceedingRollback();
   }
 
   void EnableRollbackMetricsReporting() {
@@ -142,6 +149,24 @@ TEST_F(LoadOobeConfigRollbackTest, DecryptionFailsGracefully) {
 
   std::string config, enrollment_domain;
   ASSERT_FALSE(load_config_->GetOobeConfigJson(&config));
+}
+
+TEST_F(LoadOobeConfigRollbackTest,
+       DeviceMigrationOmitsRollbackEnrollmentRestore) {
+  FakePreceedingDeviceMigration();
+  // TODO(b/522643246): Separate the metrics for migration.
+  EnableRollbackMetricsReporting();
+  ExpectOobeConfigRestoreMetricRecord(1);
+
+  std::string config;
+  ASSERT_TRUE(load_config_->GetOobeConfigJson(&config));
+
+  std::optional<base::DictValue> value =
+      base::JSONReader::ReadDict(config, base::JSON_PARSE_RFC);
+  ASSERT_TRUE(value.has_value());
+
+  EXPECT_FALSE(value->FindBool("enrollmentRestoreAfterRollback").has_value());
+  EXPECT_EQ(value->FindBool("welcomeNext"), true);
 }
 
 }  // namespace oobe_config

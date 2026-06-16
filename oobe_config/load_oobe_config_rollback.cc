@@ -53,6 +53,7 @@ LoadOobeConfigRollback::LoadOobeConfigRollback(
       rollback_metrics_(rollback_metrics) {}
 
 bool LoadOobeConfigRollback::GetOobeConfigJson(string* config) {
+  // TODO(b/522643246): Separate the metrics logging below for migration.
   LOG(INFO) << "Looking for rollback state.";
 
   *config = "";
@@ -129,9 +130,11 @@ bool LoadOobeConfigRollback::AssembleConfig(const RollbackData& rollback_data,
   // Set whether the EULA as already accepted and can be skipped if the field is
   // present in |rollback_data|.
   dictionary.Set("eulaAutoAccept", rollback_data.eula_auto_accept());
-  // Tell Chrome that it still has to create some robot accounts that were
-  // destroyed during rollback.
-  dictionary.Set("enrollmentRestoreAfterRollback", true);
+  if (!rollback_data.is_device_migration()) {
+    // Tell Chrome that it still has to create some robot accounts that were
+    // destroyed during rollback.
+    dictionary.Set("enrollmentRestoreAfterRollback", true);
+  }
   // Send network config to Chrome. Chrome takes care of how to reconfigure the
   // networks.
   dictionary.Set("networkConfig", rollback_data.network_config());
