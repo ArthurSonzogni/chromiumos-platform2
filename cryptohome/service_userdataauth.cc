@@ -1049,6 +1049,19 @@ void CryptohomeMiscAdaptor::GetLoginStatus(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::GetLoginStatusReply>> response,
     const user_data_auth::GetLoginStatusRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &CryptohomeMiscAdaptor::DoGetLoginStatus, weak_factory_.GetWeakPtr(),
+          ThreadSafeDBusMethodResponse<user_data_auth::GetLoginStatusReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void CryptohomeMiscAdaptor::DoGetLoginStatus(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetLoginStatusReply>> response,
+    const user_data_auth::GetLoginStatusRequest& in_request) {
   user_data_auth::GetLoginStatusReply reply;
   reply.set_owner_user_exists(service_->OwnerUserExists());
   reply.set_is_locked_to_single_user(
@@ -1156,6 +1169,19 @@ void UserDataAuthAdaptor::DoResetApplicationContainer(
 }
 
 void UserDataAuthAdaptor::GetArcDiskFeatures(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetArcDiskFeaturesReply>> response,
+    const user_data_auth::GetArcDiskFeaturesRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE, base::BindOnce(&UserDataAuthAdaptor::DoGetArcDiskFeatures,
+                                weak_factory_.GetWeakPtr(),
+                                ThreadSafeDBusMethodResponse<
+                                    user_data_auth::GetArcDiskFeaturesReply>::
+                                    MakeThreadSafe(std::move(response)),
+                                in_request));
+}
+
+void UserDataAuthAdaptor::DoGetArcDiskFeatures(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::GetArcDiskFeaturesReply>> response,
     const user_data_auth::GetArcDiskFeaturesRequest& in_request) {

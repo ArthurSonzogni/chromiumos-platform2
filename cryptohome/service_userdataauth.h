@@ -393,6 +393,10 @@ class UserDataAuthAdaptor
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::GetArcDiskFeaturesReply>> response,
       const user_data_auth::GetArcDiskFeaturesRequest& in_request) override;
+  void DoGetArcDiskFeatures(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetArcDiskFeaturesReply>> response,
+      const user_data_auth::GetArcDiskFeaturesRequest& in_request);
 
   void SetUserDataStorageWriteEnabled(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
@@ -590,10 +594,15 @@ class CryptohomeMiscAdaptor
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::GetSanitizedUsernameReply>> response,
       const user_data_auth::GetSanitizedUsernameRequest& in_request) override;
+
   void GetLoginStatus(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::GetLoginStatusReply>> response,
       const user_data_auth::GetLoginStatusRequest& in_request) override;
+  void DoGetLoginStatus(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetLoginStatusReply>> response,
+      const user_data_auth::GetLoginStatusRequest& in_request);
 
   void LockToSingleUserMountUntilReboot(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<

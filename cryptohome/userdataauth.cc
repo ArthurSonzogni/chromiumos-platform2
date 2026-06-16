@@ -2474,13 +2474,13 @@ user_data_auth::GetPinWeaverInfoReply UserDataAuth::GetPinWeaverInfo() {
 }
 
 bool UserDataAuth::OwnerUserExists() {
-  AssertOnOriginThread();
+  AssertOnMountThread();
   ObfuscatedUsername owner;
   return homedirs_->GetOwner(&owner);
 }
 
 bool UserDataAuth::IsArcQuotaSupported() {
-  AssertOnOriginThread();
+  AssertOnMountThread();
   // Quota is not supported if there are one or more unmounted Android users.
   // (b/181159107)
   return homedirs_->GetUnmountedAndroidDataCount() == 0;
