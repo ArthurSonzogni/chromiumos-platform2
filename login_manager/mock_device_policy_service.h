@@ -43,7 +43,8 @@ class MockDevicePolicyService : public DevicePolicyService {
       bool,
       ValidateRemoteDeviceWipeCommand,
       (const std::vector<uint8_t>&,
-       enterprise_management::PolicyFetchRequest::SignatureType signature_type),
+       enterprise_management::PolicyFetchRequest::SignatureType signature_type,
+       std::string* out_payload),
       (override));
 
   void set_system_utils(SystemUtils* system_utils) {

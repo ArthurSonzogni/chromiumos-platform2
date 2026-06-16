@@ -769,12 +769,16 @@ TEST_F(DevicePolicyServiceTest, TestResilientStore) {
 
 namespace {
 
-em::RemoteCommand CreatePowerwashCommand() {
+em::RemoteCommand CreatePowerwashCommand(
+    std::optional<std::string> payload = std::nullopt) {
   em::RemoteCommand command;
   command.set_type(em::RemoteCommand_Type_DEVICE_REMOTE_POWERWASH);
   command.set_command_id(123);
   command.set_age_of_command(45678);
   command.set_target_device_id("");
+  if (payload.has_value()) {
+    command.set_payload(payload.value());
+  }
   return command;
 }
 
@@ -794,7 +798,8 @@ em::SignedData CreateSignedCommand(const em::PolicyData& policy_data) {
 
 }  // namespace
 
-TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_Success) {
+TEST_F(DevicePolicyServiceTest,
+       ValidateRemoteDeviceWipeCommand_SuccessNoPayload) {
   MockNssUtil nss;
   InitService(&nss, false);
 
@@ -805,7 +810,40 @@ TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_Success) {
   em::SignedData data = CreateSignedCommand(policy_data);
 
   EXPECT_TRUE(service_->ValidateRemoteDeviceWipeCommand(
-      SerializeAsBlob(data), em::PolicyFetchRequest::SHA1_RSA));
+      SerializeAsBlob(data), em::PolicyFetchRequest::SHA1_RSA, nullptr));
+}
+
+TEST_F(DevicePolicyServiceTest,
+       ValidateRemoteDeviceWipeCommand_SuccessWithPayload) {
+  MockNssUtil nss;
+  InitService(&nss, false);
+
+  EXPECT_CALL(key_, Verify(_, _, crypto::SignatureVerifier::RSA_PKCS1_SHA1))
+      .WillOnce(Return(true));
+  em::RemoteCommand command =
+      CreatePowerwashCommand("{\"preserve_device_config\": false}");
+  em::PolicyData policy_data = CreatePolicydata(command);
+  em::SignedData data = CreateSignedCommand(policy_data);
+
+  EXPECT_TRUE(service_->ValidateRemoteDeviceWipeCommand(
+      SerializeAsBlob(data), em::PolicyFetchRequest::SHA1_RSA, nullptr));
+}
+
+TEST_F(DevicePolicyServiceTest,
+       ValidateRemoteDeviceWipeCommand_SuccessWithBadPayload) {
+  MockNssUtil nss;
+  InitService(&nss, false);
+
+  EXPECT_CALL(key_, Verify(_, _, crypto::SignatureVerifier::RSA_PKCS1_SHA1))
+      .WillOnce(Return(true));
+  // Validation shouldn't fail even with a malformed payload; the command will
+  // default to not preserving the configuration.
+  em::RemoteCommand command = CreatePowerwashCommand("{\"some_param\"}");
+  em::PolicyData policy_data = CreatePolicydata(command);
+  em::SignedData data = CreateSignedCommand(policy_data);
+
+  EXPECT_TRUE(service_->ValidateRemoteDeviceWipeCommand(
+      SerializeAsBlob(data), em::PolicyFetchRequest::SHA1_RSA, nullptr));
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_BadSignedData) {
@@ -816,7 +854,7 @@ TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_BadSignedData) {
 
   // Passing over RemoteCommand proto instead of SignedData should fail.
   EXPECT_FALSE(service_->ValidateRemoteDeviceWipeCommand(
-      SerializeAsBlob(command), em::PolicyFetchRequest::SHA1_RSA));
+      SerializeAsBlob(command), em::PolicyFetchRequest::SHA1_RSA, nullptr));
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_BadSignature) {
@@ -831,7 +869,7 @@ TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_BadSignature) {
   em::SignedData data = CreateSignedCommand(policy_data);
 
   EXPECT_FALSE(service_->ValidateRemoteDeviceWipeCommand(
-      SerializeAsBlob(data), em::PolicyFetchRequest::SHA1_RSA));
+      SerializeAsBlob(data), em::PolicyFetchRequest::SHA1_RSA, nullptr));
 }
 
 TEST_F(DevicePolicyServiceTest,
@@ -844,7 +882,7 @@ TEST_F(DevicePolicyServiceTest,
   em::SignedData data = CreateSignedCommand(policy_data);
 
   EXPECT_FALSE(service_->ValidateRemoteDeviceWipeCommand(
-      SerializeAsBlob(data), em::PolicyFetchRequest::NONE));
+      SerializeAsBlob(data), em::PolicyFetchRequest::NONE, nullptr));
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_BadPolicyData) {
@@ -860,7 +898,7 @@ TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_BadPolicyData) {
   data.mutable_data()->resize(data.data().size() - 1);
 
   EXPECT_FALSE(service_->ValidateRemoteDeviceWipeCommand(
-      SerializeAsBlob(data), em::PolicyFetchRequest::SHA1_RSA));
+      SerializeAsBlob(data), em::PolicyFetchRequest::SHA1_RSA, nullptr));
 }
 
 TEST_F(DevicePolicyServiceTest,
@@ -877,7 +915,7 @@ TEST_F(DevicePolicyServiceTest,
   em::SignedData data = CreateSignedCommand(policy_data);
 
   EXPECT_FALSE(service_->ValidateRemoteDeviceWipeCommand(
-      SerializeAsBlob(data), em::PolicyFetchRequest::SHA1_RSA));
+      SerializeAsBlob(data), em::PolicyFetchRequest::SHA1_RSA, nullptr));
 }
 
 TEST_F(DevicePolicyServiceTest,
@@ -895,7 +933,7 @@ TEST_F(DevicePolicyServiceTest,
   em::SignedData data = CreateSignedCommand(policy_data);
 
   EXPECT_FALSE(service_->ValidateRemoteDeviceWipeCommand(
-      SerializeAsBlob(data), em::PolicyFetchRequest::SHA1_RSA));
+      SerializeAsBlob(data), em::PolicyFetchRequest::SHA1_RSA, nullptr));
 }
 
 TEST_F(DevicePolicyServiceTest,
@@ -912,7 +950,7 @@ TEST_F(DevicePolicyServiceTest,
   em::SignedData data = CreateSignedCommand(policy_data);
 
   EXPECT_FALSE(service_->ValidateRemoteDeviceWipeCommand(
-      SerializeAsBlob(data), em::PolicyFetchRequest::SHA1_RSA));
+      SerializeAsBlob(data), em::PolicyFetchRequest::SHA1_RSA, nullptr));
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_BadDeviceId) {
@@ -935,7 +973,7 @@ TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_BadDeviceId) {
   EXPECT_CALL(*store_, Get()).WillOnce(ReturnRef(policy_proto));
 
   EXPECT_FALSE(service_->ValidateRemoteDeviceWipeCommand(
-      SerializeAsBlob(data), em::PolicyFetchRequest::SHA1_RSA));
+      SerializeAsBlob(data), em::PolicyFetchRequest::SHA1_RSA, nullptr));
 }
 
 TEST_F(DevicePolicyServiceTest, MayUpdateSystemSettings) {

@@ -24,6 +24,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/rand_util.h>
@@ -120,6 +121,24 @@ constexpr base::TimeDelta SessionManagerImpl::kCrashBeforeSuspendInterval =
     base::Seconds(5);
 constexpr base::TimeDelta SessionManagerImpl::kCrashAfterSuspendInterval =
     base::Seconds(5);
+
+// The name of the marker file used to trigger a save of rollback data
+// during the next shutdown. It is created if the remote powerwash command is
+// called with the option to persist some device configurations.
+const char kRollbackSaveMarkerFile[] =
+    "/mnt/stateful_partition/.save_rollback_data";
+
+// The name of the marker file used to indicate that rollback data save is
+// triggered by a device migration, and not an OS downgrade. Only has effect if
+// kRollbackSaveMarkerFile is also present. It is created if the remote
+// powerwash command is called with the option to persist some device
+// configurations.
+const char kDeviceMigrationSaveMarkerFile[] =
+    "/mnt/stateful_partition/unencrypted/preserve/.save_device_migration_data";
+
+// The name of the remote powerwash command payload parameter indicating whether
+// the device configuration should be persisted.
+const char kPreserveDeviceConfigFieldName[] = "preserve_device_config";
 
 namespace {
 
@@ -267,6 +286,44 @@ bool IsGuestMode(uint32_t mode) {
 
 bool IsGuestSession(const std::vector<std::string>& argv) {
   return std::ranges::contains(argv, BrowserJobInterface::kGuestSessionFlag);
+}
+
+// Tries to create marker files that ensure certain device configurations
+// persist over a powerwash and returns whether all required markers were
+// successfully written.
+bool WritePreserveDeviceConfigMarkerFiles(SystemUtils* system_utils) {
+  if (!system_utils) {
+    LOG(ERROR) << "Cannot write marker files because system_utils is null. "
+                  "Powerwash will not preserve any data.";
+    return false;
+  }
+
+  if (!system_utils->WriteStringToFile(
+          base::FilePath(kDeviceMigrationSaveMarkerFile), "")) {
+    PLOG(ERROR) << "Error in creating device migration save marker file: "
+                << kDeviceMigrationSaveMarkerFile << ". Powerwash will not"
+                << " preserve any data.";
+    return false;
+  }
+
+  // Only write the rollback save marker file if the migration marker was
+  // successfully created.
+  if (!system_utils->WriteStringToFile(base::FilePath(kRollbackSaveMarkerFile),
+                                       "")) {
+    PLOG(ERROR) << "Error in creating rollback save marker file: "
+                << kRollbackSaveMarkerFile << ". Powerwash will not"
+                << " preserve any data.";
+    if (!system_utils->RemoveFile(
+            base::FilePath(kDeviceMigrationSaveMarkerFile))) {
+      PLOG(ERROR) << "Failed to delete device migration save marker file: "
+                  << kDeviceMigrationSaveMarkerFile;
+    }
+    return false;
+  }
+
+  LOG(INFO)
+      << "Device migration data save has been scheduled on next shutdown.";
+  return true;
 }
 
 }  // namespace
@@ -1035,16 +1092,34 @@ bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
 
 bool SessionManagerImpl::StartRemoteDeviceWipe(
     brillo::ErrorPtr* error, const std::vector<uint8_t>& signed_command) {
+  std::string payload;
+
   if (!device_policy_->ValidateRemoteDeviceWipeCommand(
           signed_command,
-          enterprise_management::PolicyFetchRequest_SignatureType_SHA256_RSA)) {
+          enterprise_management::PolicyFetchRequest_SignatureType_SHA256_RSA,
+          &payload)) {
     *error = CreateError(dbus_error::kInvalidParameter,
                          "Invalid remote device wipe command signature type.");
 
     return false;
   }
 
-  InitiateDeviceWipe("remote_wipe_request");
+  std::string reason = "remote_wipe_request";
+  // Don't fail if payload is not supplied, just default to full wipe.
+  if (!payload.empty()) {
+    std::optional<base::DictValue> root = base::JSONReader::ReadDict(
+        payload, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+
+    const bool preserve_device_config =
+        root ? root->FindBool(kPreserveDeviceConfigFieldName).value_or(false)
+             : false;
+    if (preserve_device_config &&
+        WritePreserveDeviceConfigMarkerFiles(system_utils_)) {
+      reason = "remote_wipe_with_config_save_request";
+    }
+  }
+
+  InitiateDeviceWipe(reason);
 
   return true;
 }

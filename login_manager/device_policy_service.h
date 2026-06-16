@@ -92,11 +92,14 @@ class DevicePolicyService : public PolicyService {
   virtual void ClearBlockDevmode(Completion completion);
 
   // Validates the remote device wipe command received from the server against
-  // |signature_type| algorithm.
-  // Does not allow em::PolicyFetchRequest::NONE signature type.
+  // `signature_type` algorithm. If validation succeeds and `out_payload` is
+  // non-null, it is populated with the raw payload string from the command. The
+  // caller is responsible for parsing the payload and handling any malformed
+  // data. Does not allow em::PolicyFetchRequest::NONE signature type.
   virtual bool ValidateRemoteDeviceWipeCommand(
       const std::vector<uint8_t>& in_signed_command,
-      enterprise_management::PolicyFetchRequest::SignatureType signature_type);
+      enterprise_management::PolicyFetchRequest::SignatureType signature_type,
+      std::string* out_payload);
 
   // PolicyService:
   void Store(const PolicyNamespace& ns,

@@ -245,6 +245,11 @@ constexpr char kSaneEmail[] = "user@somewhere.com";
 
 constexpr char kEmptyAccountId[] = "";
 
+constexpr char kRollbackSaveMarkerFile[] =
+    "/mnt/stateful_partition/.save_rollback_data";
+constexpr char kDeviceMigrationSaveMarkerFile[] =
+    "/mnt/stateful_partition/unencrypted/preserve/.save_device_migration_data";
+
 std::vector<uint8_t> MakePolicyDescriptor(PolicyAccountType account_type,
                                           const std::string& account_id) {
   PolicyDescriptor descriptor;
@@ -1795,7 +1800,7 @@ TEST_F(SessionManagerImplTest,
   signed_command.push_back(1);
   EXPECT_CALL(
       *device_policy_service_,
-      ValidateRemoteDeviceWipeCommand(_, em::PolicyFetchRequest::SHA256_RSA))
+      ValidateRemoteDeviceWipeCommand(_, em::PolicyFetchRequest::SHA256_RSA, _))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(impl_->StartRemoteDeviceWipe(&error, signed_command));
@@ -1811,12 +1816,110 @@ TEST_F(SessionManagerImplTest,
   signed_command.push_back(1);
   EXPECT_CALL(
       *device_policy_service_,
-      ValidateRemoteDeviceWipeCommand(_, em::PolicyFetchRequest::SHA256_RSA))
+      ValidateRemoteDeviceWipeCommand(_, em::PolicyFetchRequest::SHA256_RSA, _))
       .WillOnce(Return(false));
 
   EXPECT_FALSE(impl_->StartRemoteDeviceWipe(&error, signed_command));
 
   EXPECT_EQ(dbus_error::kInvalidParameter, error->GetCode());
+}
+
+TEST_F(SessionManagerImplTest,
+       StartRemoteDeviceWipe_CorrectlySignedPayloadTrueShouldPowerwashSave) {
+  ASSERT_TRUE(system_utils_.CreateDir(
+      base::FilePath("/mnt/stateful_partition/unencrypted/preserve")));
+
+  ExpectDeviceRestart(1);
+  brillo::ErrorPtr error;
+  std::vector<uint8_t> signed_command;
+  signed_command.push_back(1);
+  std::string payload = "{\"preserve_device_config\": true}";
+  EXPECT_CALL(
+      *device_policy_service_,
+      ValidateRemoteDeviceWipeCommand(_, em::PolicyFetchRequest::SHA256_RSA, _))
+      .WillOnce(DoAll(SetArgPointee<2>(payload), Return(true)));
+
+  EXPECT_TRUE(impl_->StartRemoteDeviceWipe(&error, signed_command));
+  EXPECT_FALSE(error.get());
+
+  // Verify that the trigger file was written.
+  EXPECT_TRUE(system_utils_.Exists(base::FilePath(kRollbackSaveMarkerFile)));
+
+  // Verify that the migration marker file was written.
+  EXPECT_TRUE(
+      system_utils_.Exists(base::FilePath(kDeviceMigrationSaveMarkerFile)));
+}
+
+TEST_F(SessionManagerImplTest,
+       StartRemoteDeviceWipe_CorrectlySignedPayloadFalseShouldOnlyPowerwash) {
+  ASSERT_TRUE(system_utils_.CreateDir(
+      base::FilePath("/mnt/stateful_partition/unencrypted/preserve")));
+
+  ExpectDeviceRestart(1);
+  brillo::ErrorPtr error;
+  std::vector<uint8_t> signed_command;
+  signed_command.push_back(1);
+  std::string payload = "{\"preserve_device_config\": false}";
+  EXPECT_CALL(
+      *device_policy_service_,
+      ValidateRemoteDeviceWipeCommand(_, em::PolicyFetchRequest::SHA256_RSA, _))
+      .WillOnce(DoAll(SetArgPointee<2>(payload), Return(true)));
+
+  EXPECT_TRUE(impl_->StartRemoteDeviceWipe(&error, signed_command));
+  EXPECT_FALSE(error.get());
+
+  // Verify that NO files were written.
+  EXPECT_FALSE(system_utils_.Exists(base::FilePath(kRollbackSaveMarkerFile)));
+  EXPECT_FALSE(
+      system_utils_.Exists(base::FilePath(kDeviceMigrationSaveMarkerFile)));
+}
+
+TEST_F(SessionManagerImplTest,
+       StartRemoteDeviceWipe_CorrectlySignedNoPayloadShouldOnlyPowerwash) {
+  ASSERT_TRUE(system_utils_.CreateDir(
+      base::FilePath("/mnt/stateful_partition/unencrypted/preserve")));
+
+  ExpectDeviceRestart(1);
+  brillo::ErrorPtr error;
+  std::vector<uint8_t> signed_command;
+  signed_command.push_back(1);
+  std::string payload = "";
+  EXPECT_CALL(
+      *device_policy_service_,
+      ValidateRemoteDeviceWipeCommand(_, em::PolicyFetchRequest::SHA256_RSA, _))
+      .WillOnce(DoAll(SetArgPointee<2>(payload), Return(true)));
+
+  EXPECT_TRUE(impl_->StartRemoteDeviceWipe(&error, signed_command));
+  EXPECT_FALSE(error.get());
+
+  // Verify that NO files were written.
+  EXPECT_FALSE(system_utils_.Exists(base::FilePath(kRollbackSaveMarkerFile)));
+  EXPECT_FALSE(
+      system_utils_.Exists(base::FilePath(kDeviceMigrationSaveMarkerFile)));
+}
+
+TEST_F(SessionManagerImplTest,
+       StartRemoteDeviceWipe_CorrectlySignedBadPayloadShouldOnlyPowerwash) {
+  ASSERT_TRUE(system_utils_.CreateDir(
+      base::FilePath("/mnt/stateful_partition/unencrypted/preserve")));
+
+  ExpectDeviceRestart(1);
+  brillo::ErrorPtr error;
+  std::vector<uint8_t> signed_command;
+  signed_command.push_back(1);
+  std::string payload = "{\"some_other_param\": true}";
+  EXPECT_CALL(
+      *device_policy_service_,
+      ValidateRemoteDeviceWipeCommand(_, em::PolicyFetchRequest::SHA256_RSA, _))
+      .WillOnce(DoAll(SetArgPointee<2>(payload), Return(true)));
+
+  EXPECT_TRUE(impl_->StartRemoteDeviceWipe(&error, signed_command));
+  EXPECT_FALSE(error.get());
+
+  // Verify that NO files were written.
+  EXPECT_FALSE(system_utils_.Exists(base::FilePath(kRollbackSaveMarkerFile)));
+  EXPECT_FALSE(
+      system_utils_.Exists(base::FilePath(kDeviceMigrationSaveMarkerFile)));
 }
 
 TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {

@@ -420,7 +420,8 @@ void DevicePolicyService::ClearBlockDevmode(Completion completion) {
 
 bool DevicePolicyService::ValidateRemoteDeviceWipeCommand(
     const std::vector<uint8_t>& in_signed_command,
-    em::PolicyFetchRequest::SignatureType signature_type) {
+    em::PolicyFetchRequest::SignatureType signature_type,
+    std::string* out_payload) {
   // Parse the SignedData that was sent over the DBus call.
   em::SignedData signed_data;
   if (!signed_data.ParseFromArray(in_signed_command.data(),
@@ -476,6 +477,14 @@ bool DevicePolicyService::ValidateRemoteDeviceWipeCommand(
   if (remote_command.target_device_id() != GetDeviceId()) {
     LOG(ERROR) << "Invalid remote command target_device_id.";
     return false;
+  }
+
+  if (out_payload) {
+    // Pass the raw payload back to the caller without validating its JSON
+    // schema here. If the payload is malformed or empty, the caller can
+    // still proceed with a standard device wipe (fail-safe) rather than
+    // aborting an otherwise verified wipe command.
+    *out_payload = remote_command.payload();
   }
 
   // Note: the code here doesn't protect against replay attacks, but that is not
