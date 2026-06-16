@@ -417,7 +417,9 @@ static __attribute__((__always_inline__)) long resolve_path_to_string(
   mnt = container_of(curr_vfsmount, struct mount, mnt);
   mnt_parent = BPF_CORE_READ(mnt, mnt_parent);
 
-  size_t buf_off =
+  // This must be volatile to satisfy the Linux Kernel BPF verifier.
+  // See b/519667636 for details and associated LLVM bug.
+  volatile size_t buf_off =
       HALF_MAX_BUFFER_SIZE;  // Initialize buffer offset to halfway point
 
   // If include_dentry_path is true, append the name of the extra dentry
