@@ -132,7 +132,7 @@ ChallengeSignatureAlgorithm ToProto(SerializedChallengeSignatureAlgorithm obj) {
   }
 }
 
-SerializedChallengeSignatureAlgorithm FromProto(
+std::optional<SerializedChallengeSignatureAlgorithm> FromProto(
     ChallengeSignatureAlgorithm obj) {
   switch (obj) {
     case ChallengeSignatureAlgorithm::CHALLENGE_RSASSA_PKCS1_V1_5_SHA1:
@@ -143,6 +143,8 @@ SerializedChallengeSignatureAlgorithm FromProto(
       return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384;
     case ChallengeSignatureAlgorithm::CHALLENGE_RSASSA_PKCS1_V1_5_SHA512:
       return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512;
+    default:
+      return std::nullopt;
   }
 }
 
@@ -229,8 +231,9 @@ SerializedChallengePublicKeyInfo FromProto(const ChallengePublicKeyInfo& obj) {
   SerializedChallengePublicKeyInfo result;
   result.public_key_spki_der = BlobFromString(obj.public_key_spki_der());
   for (const auto& content : obj.signature_algorithm()) {
-    result.signature_algorithm.push_back(
-        FromProto(ChallengeSignatureAlgorithm{content}));
+    if (auto algorithm = FromProto(ChallengeSignatureAlgorithm{content})) {
+      result.signature_algorithm.push_back(*algorithm);
+    }
   }
   return result;
 }

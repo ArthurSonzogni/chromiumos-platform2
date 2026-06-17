@@ -17,7 +17,7 @@
 namespace cryptohome::proto {
 
 ChallengeSignatureAlgorithm ToProto(SerializedChallengeSignatureAlgorithm obj);
-SerializedChallengeSignatureAlgorithm FromProto(
+std::optional<SerializedChallengeSignatureAlgorithm> FromProto(
     ChallengeSignatureAlgorithm obj);
 
 std::optional<SerializedChallengeSignatureAlgorithm> FromProto(

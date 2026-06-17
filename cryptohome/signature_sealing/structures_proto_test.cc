@@ -33,8 +33,14 @@ TEST(ChallengeSignatureAlgorithmTest, FromProtoToProto) {
            ChallengeSignatureAlgorithm::CHALLENGE_RSASSA_PKCS1_V1_5_SHA384,
            ChallengeSignatureAlgorithm::CHALLENGE_RSASSA_PKCS1_V1_5_SHA512,
        }) {
-    EXPECT_EQ(algo, proto::ToProto(proto::FromProto(algo)));
+    EXPECT_EQ(algo, proto::ToProto(*proto::FromProto(algo)));
   }
+}
+
+TEST(ChallengeSignatureAlgorithmTest, FromInvalidProto) {
+  // Five is not a defined value in the proto, but clients can send it.
+  auto out_of_range = ChallengeSignatureAlgorithm{5};
+  EXPECT_EQ(std::nullopt, proto::FromProto(out_of_range));
 }
 
 TEST(SignatureSealedDataTest, ToProtoFromProtoTPM2) {
