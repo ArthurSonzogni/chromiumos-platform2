@@ -40,6 +40,7 @@
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <base/threading/platform_thread.h>
@@ -2722,6 +2723,17 @@ void ArcSetup::OnPrepareHostGeneratedDir() {
   if (!USE_ARCVM) {
     return;
   }
+
+  // Fix for b/516966155: Set a unique hostname to prevent mDNS conflicts.
+  // Generates a random hostname ("android-<hex>") to prevent the "localhost"
+  // mDNS cache flush loop.
+  std::array<uint8_t, 4> rand_value;
+  crypto::RandBytes(rand_value);
+  const std::string hostname_prop =
+      "net.hostname=android-" +
+      base::ToLowerASCII(base::HexEncode(rand_value)) + "\n";
+  EXIT_IF(!base::AppendToFile(property_files_dest_path, hostname_prop));
+  EXIT_IF(!base::AppendToFile(modified_properties_dest_path, hostname_prop));
 
   // CACHE_PARTITION is set when a dedicated cache partition is used
   // (b/182953041). The set value is the device number to be used.
