@@ -104,7 +104,7 @@ struct ManagerProperties {
   bool enable_single_ca_cert_verification_phase2 = false;
   // Whether to use the legacy dhcpcd7 or to enable the latest dhcpcd for
   // IPv4 provisioning.
-  bool use_legacy_dhcpcd = true;
+  bool use_legacy_dhcpcd = false;
   // Comma-separated list of technologies for which auto-connect is disabled.
   std::string no_auto_connect_technologies;
   // Comma-separated list of technologies that should never be enabled.

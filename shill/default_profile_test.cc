@@ -103,7 +103,7 @@ TEST_F(DefaultProfileTest, Save) {
   EXPECT_TRUE(storage->GetBool(DefaultProfile::kStorageId,
                                DefaultProfile::kStorageUseLegacyDHCPCD,
                                &use_legacy_dhcpcd));
-  EXPECT_TRUE(use_legacy_dhcpcd);
+  EXPECT_FALSE(use_legacy_dhcpcd);
   std::string name;
   EXPECT_TRUE(storage->GetString(DefaultProfile::kStorageId,
                                  DefaultProfile::kStorageName, &name));
@@ -117,7 +117,7 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
 
   profile_->LoadManagerProperties(&manager_props);
   EXPECT_TRUE(manager_props.arp_gateway);
-  EXPECT_TRUE(manager_props.use_legacy_dhcpcd);
+  EXPECT_FALSE(manager_props.use_legacy_dhcpcd);
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
             manager_props.check_portal_list);
   EXPECT_EQ("", manager_props.no_auto_connect_technologies);

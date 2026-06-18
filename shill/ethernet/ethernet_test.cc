@@ -116,14 +116,18 @@ class EthernetTest : public testing::Test {
   void SetUp() override {
     ethernet_->rtnl_handler_ = &rtnl_handler_;
 
+    // Since use_legacy_dhcpcd defaults to false, shill uses the non-legacy
+    // factory to manage the DHCP client. We assign the test mock to the
+    // non-legacy factory to intercept calls and set test expectations on it,
+    // while providing a placeholder factory to the legacy one.
+    ethernet_->GetPrimaryNetwork()
+        ->set_legacy_dhcp_controller_factory_for_testing(
+            std::make_unique<MockDHCPControllerFactory>());
     auto dhcp_controller_factory =
         std::make_unique<MockDHCPControllerFactory>();
     dhcp_controller_factory_ = dhcp_controller_factory.get();
-    ethernet_->GetPrimaryNetwork()
-        ->set_legacy_dhcp_controller_factory_for_testing(
-            std::move(dhcp_controller_factory));
     ethernet_->GetPrimaryNetwork()->set_dhcp_controller_factory_for_testing(
-        std::make_unique<MockDHCPControllerFactory>());
+        std::move(dhcp_controller_factory));
 
     EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
 

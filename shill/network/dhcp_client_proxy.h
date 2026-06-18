@@ -61,9 +61,8 @@ class DHCPClientProxy {
     // If true, the legacy dhcpcd7 will be used for IPv4 provisioning, otherwise
     // the latest dhcpcd will be used. Whatever value this option takes,
     // the latest dhcpcd will always be used for IPv6 (DHCPv6-PD).
-    // TODO(b/344500617): Disable this option by default and remove this option
-    // after we migrate to use the latest dhcpcd for IPv4.
-    bool use_legacy_dhcpcd = true;
+    // TODO(b/344500617): Remove this option when cleaning up legacy dhcpcd.
+    bool use_legacy_dhcpcd = false;
     // If true, the DHCP client will ARP for the gateway IP address as an
     // additional safeguard against the issued IP address being in-use by
     // another station.
