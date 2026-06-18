@@ -1473,10 +1473,9 @@ int SessionManagerImpl::GetKeyInstallFlags(const PolicyDescriptor& descriptor) {
       if (!AllSessionsAreIncognito() || !session_started_) {
         flags |= PolicyService::KEY_INSTALL_NEW;
       }
-      // If the owner is signed in, then allow clobbering the key. Also allow
-      // clobbering on the login screen where ChromeOS is presumably in a more
-      // secure state (primarily for managed devices).
-      if (OwnerIsSignedIn() || !session_started_) {
+      // Clobbering the owner key is allowed only in consumer devices and
+      // only when the owner is signed in.
+      if (OwnerIsSignedIn()) {
         flags |= PolicyService::KEY_CLOBBER;
       }
       return flags;

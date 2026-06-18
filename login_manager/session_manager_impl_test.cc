@@ -585,7 +585,6 @@ class SessionManagerImplTest : public ::testing::Test,
   static const pid_t kFakePid;
   static const char kNothing[];
   static const char kContainerInstanceId[];
-  static const int kAllKeyFlags;
 
  private:
   // Returns a response for the given method call. Used to implement
@@ -627,9 +626,6 @@ class SessionManagerImplTest : public ::testing::Test,
 
 const pid_t SessionManagerImplTest::kFakePid = 4;
 const char SessionManagerImplTest::kNothing[] = "";
-const int SessionManagerImplTest::kAllKeyFlags =
-    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW |
-    PolicyService::KEY_CLOBBER;
 
 TEST_F(SessionManagerImplTest, EmitLoginPromptVisible) {
   const char event_name[] = "login-prompt-visible";
@@ -904,7 +900,8 @@ TEST_F(SessionManagerImplTest,
 
 TEST_F(SessionManagerImplTest, StorePolicyEx_NoSession) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  ExpectStorePolicy(device_policy_service_, policy_blob, kAllKeyFlags);
+  ExpectStorePolicy(device_policy_service_, policy_blob,
+                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW);
   ResponseCapturer capturer;
   impl_->StorePolicyEx(
       capturer.CreateMethodResponse<>(),
@@ -913,8 +910,9 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_NoSession) {
 
 TEST_F(SessionManagerImplTest, StoreExtensionInstallPolicyEx_NoSession) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  ExpectStoreExtensionInstallPolicy(device_policy_service_, policy_blob,
-                                    kAllKeyFlags);
+  ExpectStoreExtensionInstallPolicy(
+      device_policy_service_, policy_blob,
+      PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW);
   ResponseCapturer capturer;
   impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
                        MakeExtensionInstallPolicyDescriptor(ACCOUNT_TYPE_DEVICE,
@@ -927,6 +925,22 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_SessionStarted) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   ExpectStorePolicy(device_policy_service_, policy_blob,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW);
+
+  ResponseCapturer capturer;
+  impl_->StorePolicyEx(
+      capturer.CreateMethodResponse<>(),
+      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
+}
+
+TEST_F(SessionManagerImplTest, StorePolicyEx_OwnerSignedIn) {
+  ExpectAndRunStartSession(kSaneEmail);
+  EXPECT_CALL(*device_policy_service_, UserIsOwner(kSaneEmail))
+      .WillRepeatedly(Return(true));
+
+  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
+  ExpectStorePolicy(device_policy_service_, policy_blob,
+                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW |
+                        PolicyService::KEY_CLOBBER);
 
   ResponseCapturer capturer;
   impl_->StorePolicyEx(
