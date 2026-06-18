@@ -754,7 +754,7 @@ void ArcVm::HandleSwapVmEnableRequest(SwapVmCallback callback) {
     vmm_swap_low_disk_policy_->CanEnable(
         *guest_memory_size_,
         base::BindOnce(&ArcVm::OnVmmSwapLowDiskPolicyResult,
-                       base::Unretained(this)));
+                       weak_ptr_factory_.GetWeakPtr()));
   } else {
     ApplyVmmSwapPolicyResult(std::move(callback),
                              VmmSwapPolicyResult::kApprove);
