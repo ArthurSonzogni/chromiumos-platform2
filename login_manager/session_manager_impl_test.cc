@@ -1943,6 +1943,15 @@ TEST_F(SessionManagerImplTest, ClearBlockDevmodeVpd) {
   impl_->ClearBlockDevmodeVpd(capturer.CreateMethodResponse<>());
 }
 
+TEST_F(SessionManagerImplTest, ClearBlockDevmodeVpd_Locked) {
+  install_attributes_reader_.SetLocked(true);
+  ResponseCapturer capturer;
+  EXPECT_CALL(*device_policy_service_, ClearBlockDevmode(_)).Times(0);
+  impl_->ClearBlockDevmodeVpd(capturer.CreateMethodResponse<>());
+  ASSERT_TRUE(capturer.response());
+  EXPECT_EQ(dbus_error::kVpdUpdateFailed, capturer.response()->GetErrorName());
+}
+
 TEST_F(SessionManagerImplTest, DisconnectLogFile) {
   // Write a log file and create a relative symlink pointing at it.
   constexpr char kData[] = "fake log data";

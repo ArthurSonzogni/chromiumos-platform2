@@ -1126,6 +1126,13 @@ bool SessionManagerImpl::StartRemoteDeviceWipe(
 
 void SessionManagerImpl::ClearBlockDevmodeVpd(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  if (install_attributes_reader_->IsLocked()) {
+    const brillo::ErrorPtr error =
+        CreateError(dbus_error::kVpdUpdateFailed,
+                    "ClearBlockDevmodeVpd is only permitted during OOBE");
+    response->ReplyWithError(error.get());
+    return;
+  }
   device_policy_->ClearBlockDevmode(
       dbus_service_->CreatePolicyServiceCompletionCallback(
           std::move(response)));
