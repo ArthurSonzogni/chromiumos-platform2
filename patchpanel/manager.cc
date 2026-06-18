@@ -4,6 +4,8 @@
 
 #include "patchpanel/manager.h"
 
+#include <sys/stat.h>
+
 #include <optional>
 #include <utility>
 
@@ -706,6 +708,16 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
     return response;
   }
   if (pid != ConnectedNamespace::kNewNetnsPid) {
+    struct stat self_st = {};
+    struct stat pid_st = {};
+    const std::string pid_ns = "/proc/" + std::to_string(pid) + "/ns/net";
+    if (stat("/proc/self/ns/net", &self_st) == 0 &&
+        stat(pid_ns.c_str(), &pid_st) == 0 && self_st.st_dev == pid_st.st_dev &&
+        self_st.st_ino == pid_st.st_ino) {
+      LOG(ERROR) << "Privileged namespace pid " << pid << " (root netns)";
+      return response;
+    }
+
     auto ns = system_->EnterNetworkNS(pid);
     if (!ns) {
       LOG(ERROR) << "Invalid namespace pid " << pid;
