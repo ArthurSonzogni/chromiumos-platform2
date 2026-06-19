@@ -186,8 +186,9 @@ bool PasspointCredentials::Save(StoreInterface* storage) {
   return true;
 }
 
-void PasspointCredentials::SetEapSlotGetter(Pkcs11SlotGetter* slot_getter) {
-  eap_.SetEapSlotGetter(slot_getter);
+void PasspointCredentials::SetEapSlotGetter(
+    base::WeakPtr<Pkcs11SlotGetter> slot_getter) {
+  eap_.SetEapSlotGetter(std::move(slot_getter));
 }
 
 std::string PasspointCredentials::GenerateIdentifier() {

@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/memory/ref_counted.h>
+#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/data_types.h"
@@ -62,7 +63,7 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
   bool Save(StoreInterface* storage);
 
   // Set PKCS#11 slot getter for |eap_|.
-  void SetEapSlotGetter(Pkcs11SlotGetter* slot_getter);
+  void SetEapSlotGetter(base::WeakPtr<Pkcs11SlotGetter> slot_getter);
 
   // Compares whether or not two Passpoint credentials are equal based on
   // Passpoint credentials' keys of FQDN and provisioning source (Android

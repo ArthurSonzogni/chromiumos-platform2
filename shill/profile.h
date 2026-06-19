@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/metrics.h"
@@ -192,7 +193,9 @@ class Profile : public base::RefCounted<Profile> {
 
   virtual StoreInterface* GetStorage() { return storage_.get(); }
 
-  Pkcs11SlotGetter* GetSlotGetter() { return slot_getter_.get(); }
+  base::WeakPtr<Pkcs11SlotGetter> GetSlotGetter() {
+    return slot_getter_ ? slot_getter_->GetWeakPtr() : nullptr;
+  }
 
   // Returns a read-only copy of the backing storage of the profile.
   virtual const StoreInterface* GetConstStorage() const {

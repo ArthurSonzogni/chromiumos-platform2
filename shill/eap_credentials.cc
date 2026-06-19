@@ -72,14 +72,14 @@ std::string AddAdditionalInnerEapParams(const std::string& inner_eap) {
 // slot ID part of |pkcs11_id| with the slot IDs taken from chaps through
 // |slot_getter|.
 pkcs11::Slot GetPkcs11Slot(const std::string& pkcs11_id,
-                           Pkcs11SlotGetter* slot_getter) {
+                           Pkcs11SlotGetter& slot_getter) {
   std::optional<pkcs11::Pkcs11Id> parsed =
       pkcs11::Pkcs11Id::ParseFromColonSeparated(pkcs11_id);
   if (!parsed) {
     LOG(ERROR) << "Invalid PKCS#11 ID " << pkcs11_id;
     return pkcs11::Slot::kUnknown;
   }
-  return slot_getter->GetSlotType(parsed->slot_id);
+  return slot_getter.GetSlotType(parsed->slot_id);
 }
 
 }  // namespace
@@ -383,7 +383,7 @@ void EapCredentials::Load(const StoreInterface* storage,
   // replace the slot ID.
   pkcs11::Slot slot;
   storage->GetInt(id, kStorageEapSlot, reinterpret_cast<int*>(&slot));
-  if (slot == pkcs11::kUnknown || slot_getter_ == nullptr) {
+  if (slot == pkcs11::kUnknown || !slot_getter_) {
     return;
   }
   slot_getter_->GetPkcs11SlotIdWithRetries(
@@ -462,8 +462,9 @@ void EapCredentials::ReplacePkcs11SlotIds(CK_SLOT_ID slot_id) {
   key_id_ = cert_id_;
 }
 
-void EapCredentials::SetEapSlotGetter(Pkcs11SlotGetter* slot_getter) {
-  slot_getter_ = slot_getter;
+void EapCredentials::SetEapSlotGetter(
+    base::WeakPtr<Pkcs11SlotGetter> slot_getter) {
+  slot_getter_ = std::move(slot_getter);
 }
 
 void EapCredentials::ReportEapEventMetric(
@@ -512,8 +513,9 @@ void EapCredentials::Save(StoreInterface* storage,
                           bool save_credentials) const {
   // Fix possible slot ID instability. Only try to get the PKCS#11 slot ID
   // synchronously as the profile might be removed soon after this call.
-  if (!cert_id_.empty() && slot_getter_ != nullptr && save_credentials) {
-    storage->SetInt(id, kStorageEapSlot, GetPkcs11Slot(cert_id_, slot_getter_));
+  if (!cert_id_.empty() && slot_getter_ && save_credentials) {
+    storage->SetInt(id, kStorageEapSlot,
+                    GetPkcs11Slot(cert_id_, *slot_getter_));
   } else {
     storage->DeleteKey(id, kStorageEapSlot);
   }

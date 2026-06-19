@@ -68,7 +68,7 @@ class EapCredentials {
 
   // Set PKCS#11 slot type by comparing slot ID value from |cert_id_| with the
   // slot ID value taken from chaps through |slot_getter|.
-  void SetEapSlotGetter(Pkcs11SlotGetter* slot_getter);
+  void SetEapSlotGetter(base::WeakPtr<Pkcs11SlotGetter> slot_getter);
 
   // Output metrics about this EAP connection to |metrics| with technology
   // |technology|.
@@ -285,7 +285,7 @@ class EapCredentials {
 
   // PKCS#11 slot getter to replace possible unstable slot ID of |cert_id_| and
   // |key_id_|.
-  Pkcs11SlotGetter* slot_getter_;
+  base::WeakPtr<Pkcs11SlotGetter> slot_getter_;
 
   std::unique_ptr<password_provider::PasswordProviderInterface>
       password_provider_;

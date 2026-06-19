@@ -5,8 +5,6 @@
 #ifndef SHILL_STORE_PKCS11_SLOT_GETTER_H_
 #define SHILL_STORE_PKCS11_SLOT_GETTER_H_
 
-#include <chaps/pkcs11/cryptoki.h>
-
 #include <memory>
 #include <string>
 #include <string_view>
@@ -14,10 +12,10 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chaps/pkcs11/cryptoki.h>
 #include <chaps/threading_mode.h>
 #include <chaps/token_manager_client.h>
 #include <gtest/gtest_prod.h>
-
 #include <shill/store/pkcs11_util.h>
 
 namespace shill {
@@ -63,6 +61,11 @@ class Pkcs11SlotGetter {
 
   // Get the slot type (user or system) of |slot_id|.
   virtual pkcs11::Slot GetSlotType(CK_SLOT_ID slot_id);
+
+  // Returns a weak pointer to this instance.
+  base::WeakPtr<Pkcs11SlotGetter> GetWeakPtr() {
+    return weak_factory_.GetWeakPtr();
+  }
 
  private:
   FRIEND_TEST(Pkcs11SlotGetterTest, GetInvalidUserSlot);

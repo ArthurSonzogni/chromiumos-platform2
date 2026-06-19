@@ -1348,9 +1348,9 @@ void Service::ClearEAPCertification() {
   remote_certification_.clear();
 }
 
-void Service::SetEapSlotGetter(Pkcs11SlotGetter* slot_getter) {
+void Service::SetEapSlotGetter(base::WeakPtr<Pkcs11SlotGetter> slot_getter) {
   if (mutable_eap()) {
-    mutable_eap()->SetEapSlotGetter(slot_getter);
+    mutable_eap()->SetEapSlotGetter(std::move(slot_getter));
   }
 }
 

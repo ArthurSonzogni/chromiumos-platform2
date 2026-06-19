@@ -768,7 +768,7 @@ WiFiProvider::GetSsidsConfiguredForAutoConnect() {
 
 void WiFiProvider::LoadCredentialsFromProfile(const ProfileRefPtr& profile) {
   const StoreInterface* storage = profile->GetConstStorage();
-  Pkcs11SlotGetter* slot_getter = profile->GetSlotGetter();
+  base::WeakPtr<Pkcs11SlotGetter> slot_getter = profile->GetSlotGetter();
   KeyValueStore args;
   args.Set<std::string>(PasspointCredentials::kStorageType,
                         PasspointCredentials::kTypePasspoint);

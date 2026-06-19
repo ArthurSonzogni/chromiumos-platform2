@@ -181,7 +181,7 @@ bool Profile::AdoptService(const ServiceRefPtr& service) {
   if (service->profile() == this) {
     return false;
   }
-  service->SetEapSlotGetter(slot_getter_.get());
+  service->SetEapSlotGetter(GetSlotGetter());
   service->SetProfile(this);
   return service->Save(storage_.get()) && storage_->Flush();
 }
@@ -204,7 +204,7 @@ bool Profile::LoadService(const ServiceRefPtr& service) {
   if (!ContainsService(service)) {
     return false;
   }
-  service->SetEapSlotGetter(slot_getter_.get());
+  service->SetEapSlotGetter(GetSlotGetter());
   bool ret = service->Load(storage_.get());
   service->MigrateDeprecatedStorage(storage_.get());
   return ret;
@@ -472,7 +472,7 @@ bool Profile::AdoptCredentials(const PasspointCredentialsRefPtr& credentials) {
   if (credentials->profile() == this) {
     return false;
   }
-  credentials->SetEapSlotGetter(slot_getter_.get());
+  credentials->SetEapSlotGetter(GetSlotGetter());
   credentials->SetProfile(this);
   return credentials->Save(storage_.get()) && storage_->Flush();
 }

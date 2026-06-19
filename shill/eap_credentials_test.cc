@@ -402,7 +402,7 @@ TEST_F(EapCredentialsTest, Load_UserSlot) {
   store.SetInt(kId, EapCredentials::kStorageEapSlot, pkcs11::kUser);
 
   // Expect invalid certificate and key ID to be corrected.
-  eap_.SetEapSlotGetter(&slot_getter_);
+  eap_.SetEapSlotGetter(slot_getter_.GetWeakPtr());
   EXPECT_CALL(slot_getter_,
               GetPkcs11SlotIdWithRetries(pkcs11::Slot::kUser, _, _))
       .WillOnce(WithArg<1>([](base::OnceCallback<void(CK_SLOT_ID)> callback) {
@@ -426,7 +426,7 @@ TEST_F(EapCredentialsTest, Load_SystemSlot) {
   store.SetInt(kId, EapCredentials::kStorageEapSlot, pkcs11::kSystem);
 
   // Expect invalid certificate and key ID to be corrected.
-  eap_.SetEapSlotGetter(&slot_getter_);
+  eap_.SetEapSlotGetter(slot_getter_.GetWeakPtr());
   EXPECT_CALL(slot_getter_,
               GetPkcs11SlotIdWithRetries(pkcs11::Slot::kSystem, _, _))
       .WillOnce(WithArg<1>([](base::OnceCallback<void(CK_SLOT_ID)> callback) {
@@ -446,7 +446,7 @@ TEST_F(EapCredentialsTest, SaveAndLoad_Pkcs11Id) {
   eap_.key_id_ = kKeyId;
   const std::string kId("storage-id");
 
-  eap_.SetEapSlotGetter(&slot_getter_);
+  eap_.SetEapSlotGetter(slot_getter_.GetWeakPtr());
   EXPECT_CALL(slot_getter_, GetPkcs11SlotId(pkcs11::Slot::kUser))
       .WillOnce(Return(1));
   eap_.Save(&store, kId, /*save_credentials=*/true);
@@ -455,7 +455,7 @@ TEST_F(EapCredentialsTest, SaveAndLoad_Pkcs11Id) {
   eap_.cert_id_ = "";
   eap_.key_id_ = "";
 
-  eap_.SetEapSlotGetter(&slot_getter_);
+  eap_.SetEapSlotGetter(slot_getter_.GetWeakPtr());
   EXPECT_CALL(slot_getter_,
               GetPkcs11SlotIdWithRetries(pkcs11::Slot::kUser, _, _))
       .WillOnce(WithArg<1>([](base::OnceCallback<void(CK_SLOT_ID)> callback) {

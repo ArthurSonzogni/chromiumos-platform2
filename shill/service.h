@@ -542,7 +542,7 @@ class Service : public base::RefCounted<Service> {
   mockable void ClearEAPCertification();
 
   // Set PKCS#11 slot getter for |eap_|.
-  void SetEapSlotGetter(Pkcs11SlotGetter* slot_getter);
+  void SetEapSlotGetter(base::WeakPtr<Pkcs11SlotGetter> slot_getter);
 
   // The inherited class that needs to send metrics after the service has
   // transitioned to the ready state should override this method.
