@@ -23,6 +23,30 @@ constexpr uint32_t kUploadThrottleRate = 100;
 constexpr uint32_t kDownloadThrottleRate = 300;
 const std::vector<std::string> kInterfaces = {"wlan0", "eth0"};
 const char kNewAddedInterface[] = "ppp0";
+const std::vector<std::string> kInvalidInterfaces = {
+    // Empty
+    "",
+    // Too long (>= 16 chars)
+    "abcdefghijklmnop",
+    // Invalid first char cases
+    "0wlan",
+    ".wlan",
+    // Invalid char cases
+    "wlan0;rm -rf /",
+    "wlan0\nrm -rf /",
+    "wlan0&&rm -rf /",
+    "wlan0||rm -rf /",
+    "$(rm -rf /)",
+    "`rm -rf /`",
+    "wlan/0",
+    "wlan\\0",
+    "wlan0#",
+    "wlan0*",
+    "wlan0?",
+    // Extra space cases
+    "wlan0 ",
+    " wlan0",
+};
 const std::vector<std::string> kDisabledCommands = {
     "qdisc del dev wlan0 root\n",
     "qdisc del dev wlan0 ingress\n",
@@ -205,6 +229,37 @@ TEST_F(ThrottlerTest, DisableThrottlingOnEmptyInterfaces) {
 
   // ApplyThrottleToNewInterface() should fail after throttling is disabled.
   EXPECT_FALSE(throttler_->ApplyThrottleToNewInterface(kNewAddedInterface));
+}
+
+TEST_F(ThrottlerTest, ThrottleInterfacesWithInvalidInterfaceNames) {
+  for (const auto& invalid_ifname : kInvalidInterfaces) {
+    Client client;
+    EXPECT_CALL(client, OnThrottlerDone(
+                            Property(&Error::type, Error::kOperationFailed)));
+    EXPECT_FALSE(throttler_->ThrottleInterfaces(
+        client.GetCallback(), kUploadThrottleRate, kDownloadThrottleRate,
+        {invalid_ifname}));
+  }
+}
+
+TEST_F(ThrottlerTest, DisableThrottlingWithInvalidInterfaceNames) {
+  throttler_->set_upload_rate_kbits_for_testing(kUploadThrottleRate);
+
+  for (const auto& invalid_ifname : kInvalidInterfaces) {
+    Client client;
+    EXPECT_CALL(client, OnThrottlerDone(
+                            Property(&Error::type, Error::kOperationFailed)));
+    EXPECT_FALSE(throttler_->DisableThrottlingOnAllInterfaces(
+        client.GetCallback(), {invalid_ifname}));
+  }
+}
+
+TEST_F(ThrottlerTest, ApplyThrottleToNewInterfaceWithInvalidInterfaceNames) {
+  throttler_->set_upload_rate_kbits_for_testing(kUploadThrottleRate);
+
+  for (const auto& invalid_ifname : kInvalidInterfaces) {
+    EXPECT_FALSE(throttler_->ApplyThrottleToNewInterface(invalid_ifname));
+  }
 }
 
 }  // namespace shill

@@ -4,6 +4,7 @@
 
 #include "shill/network/throttler.h"
 
+#include <net/if.h>
 #include <stdlib.h>
 
 #include <string>
@@ -18,6 +19,7 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 
 #include "shill/logging.h"
 
@@ -115,6 +117,29 @@ std::vector<std::string> GenerateDisabledThrottlingCommands(
   return commands;
 }
 
+bool IsValidInterfaceChar(char c) {
+  return base::IsAsciiAlpha(c) || base::IsAsciiDigit(c) || c == '_' ||
+         c == '-' || c == '.' || c == '@';
+}
+
+bool IsValidInterfaceName(std::string_view ifname) {
+  if (ifname.empty() || ifname.length() >= IFNAMSIZ) {
+    return false;
+  }
+
+  if (base::IsAsciiDigit(ifname.front()) || ifname.front() == '.') {
+    return false;
+  }
+
+  for (char c : ifname) {
+    if (!IsValidInterfaceChar(c)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 }  // namespace
 
 Throttler::Throttler(std::unique_ptr<TCProcessFactory> tc_process_factory)
@@ -131,6 +156,15 @@ bool Throttler::DisableThrottlingOnAllInterfaces(
   if (!IsThrottling()) {
     std::move(callback).Run(Error(Error::kSuccess, "", FROM_HERE));
     return true;
+  }
+
+  for (const std::string& ifname : interfaces) {
+    if (!IsValidInterfaceName(ifname)) {
+      std::move(callback).Run(Error(Error::kOperationFailed,
+                                    "Invalid interface name: " + ifname,
+                                    FROM_HERE));
+      return false;
+    }
   }
 
   if (!callback_.is_null()) {
@@ -167,6 +201,15 @@ bool Throttler::ThrottleInterfaces(ResultCallback callback,
     return false;
   }
 
+  for (const std::string& ifname : interfaces) {
+    if (!IsValidInterfaceName(ifname)) {
+      std::move(callback).Run(Error(Error::kOperationFailed,
+                                    "Invalid interface name: " + ifname,
+                                    FROM_HERE));
+      return false;
+    }
+  }
+
   if (!callback_.is_null()) {
     ResetAndReply(Error::kOperationAborted, "Aborted by the following request");
   }
@@ -182,6 +225,11 @@ bool Throttler::ThrottleInterfaces(ResultCallback callback,
 
 bool Throttler::ApplyThrottleToNewInterface(const std::string& interface) {
   if (!IsThrottling()) {
+    return false;
+  }
+
+  if (!IsValidInterfaceName(interface)) {
+    LOG(ERROR) << "Invalid interface name: " << interface;
     return false;
   }
 
