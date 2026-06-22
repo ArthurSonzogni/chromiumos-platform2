@@ -124,6 +124,48 @@ const char* ExitCodeToString(SessionManagerService::ExitCode code) {
   NOTREACHED() << "Invalid exit code " << code;
 }
 
+struct DBusMethodName {
+  std::string_view interface;
+  std::string_view name;
+};
+
+// Returns the name of the D-Bus method call, if message represents
+// a method call. Otherwise, std::nullopt.
+std::optional<DBusMethodName> GetMethodName(DBusMessage* message) {
+  if (::dbus_message_get_type(message) != DBUS_MESSAGE_TYPE_METHOD_CALL) {
+    return std::nullopt;
+  }
+
+  const char* interface = ::dbus_message_get_interface(message);
+  const char* name = ::dbus_message_get_member(message);
+  if (!name) {
+    return std::nullopt;
+  }
+  return DBusMethodName{interface ? interface : "", name};
+}
+
+// Returns true if the D-Bus method being called requires
+// to check the caller's PID for extra safeness.
+bool IsPidCheckRequired(const DBusMethodName& method_name) {
+  if (!method_name.interface.empty() &&
+      method_name.interface != kSessionManagerInterface) {
+    return false;
+  }
+
+  // The names of the methods that require caller PID check.
+  static constexpr const char* kTargetMethods[] = {
+      kSessionManagerRestartJob,
+      kSessionManagerSetFlagsForUser,
+  };
+  for (const char* method : kTargetMethods) {
+    if (method_name.name == method) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 }  // anonymous namespace
 
 void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
@@ -495,14 +537,14 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
                                                        DBusMessage* message,
                                                        void* data) {
   SessionManagerService* service = static_cast<SessionManagerService*>(data);
-  if (::dbus_message_is_method_call(message, kSessionManagerInterface,
-                                    kSessionManagerRestartJob)) {
+  const auto method_name = GetMethodName(message);
+  if (method_name.has_value() && IsPidCheckRequired(method_name.value())) {
     const char* sender = ::dbus_message_get_sender(message);
     if (!sender) {
-      LOG(ERROR) << "Call to RestartJob has no sender";
+      LOG(ERROR) << "Call to " << method_name->name << " has no sender";
       return DBUS_HANDLER_RESULT_HANDLED;
     }
-    LOG(INFO) << "Received RestartJob from " << sender;
+    LOG(INFO) << "Received " << method_name->name << " from " << sender;
     DBusMessage* get_pid = ::dbus_message_new_method_call(
         "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
         "GetConnectionUnixProcessID");
@@ -513,24 +555,26 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
         ::dbus_connection_send_with_reply_and_block(conn, get_pid, -1, nullptr);
     ::dbus_message_unref(get_pid);
     if (!got_pid) {
-      LOG(ERROR) << "Could not look up sender of RestartJob.";
+      LOG(ERROR) << "Could not look up sender of " << method_name->name << ".";
       return DBUS_HANDLER_RESULT_HANDLED;
     }
     uint32_t pid;
     if (!::dbus_message_get_args(got_pid, nullptr, DBUS_TYPE_UINT32, &pid,
                                  DBUS_TYPE_INVALID)) {
       ::dbus_message_unref(got_pid);
-      LOG(ERROR) << "Could not extract pid of sender of RestartJob.";
+      LOG(ERROR) << "Could not extract pid of sender of " << method_name->name
+                 << ".";
       return DBUS_HANDLER_RESULT_HANDLED;
     }
     ::dbus_message_unref(got_pid);
     if (!service->IsBrowser(pid)) {
-      LOG(WARNING) << "Sender of RestartJob (PID " << pid
+      LOG(WARNING) << "Sender of " << method_name->name << " (PID " << pid
                    << ") is no child of mine!";
       DBusMessage* denial = dbus_message_new_error(
           message, DBUS_ERROR_ACCESS_DENIED, "Sender is not browser.");
       if (!denial || !::dbus_connection_send(conn, denial, nullptr)) {
-        LOG(ERROR) << "Could not create error response to RestartJob.";
+        LOG(ERROR) << "Could not create error response to " << method_name->name
+                   << ".";
       }
       return DBUS_HANDLER_RESULT_HANDLED;
     }
