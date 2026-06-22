@@ -156,6 +156,23 @@ TEST_F(IconFinderTest, HappyCase) {
   EXPECT_TRUE(LocateIconFile("gimp", 48, 1) == icon_file_path);
 }
 
+// This test verifies that an icon in an XDG data dirs pixmaps directory
+// is found when no icon exists in the theme directories.
+TEST_F(IconFinderTest, XdgPixmapsFallback) {
+  std::unique_ptr<base::Environment> env = base::Environment::Create();
+  env->SetVar("XDG_DATA_DIRS", data_dir().value());
+  WriteDesktopFile("gimp.desktop",
+                   "[Desktop Entry]\n"
+                   "Type=Application\n"
+                   "Name=gimp\n"
+                   "Icon=gimp");
+  base::FilePath pixmaps_dir = data_dir().Append("pixmaps");
+  CHECK(base::CreateDirectory(pixmaps_dir));
+  base::FilePath pixmap_file_path = pixmaps_dir.Append("gimp.png");
+  base::WriteFile(pixmap_file_path, "");
+  EXPECT_TRUE(LocateIconFile("gimp", 48, 1) == pixmap_file_path);
+}
+
 // This test verifies that correct icon file path is returned.
 TEST_F(IconFinderTest, HappyScalableCase) {
   std::unique_ptr<base::Environment> env = base::Environment::Create();

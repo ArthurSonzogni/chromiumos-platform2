@@ -122,6 +122,14 @@ base::FilePath LocateIconFile(const std::string& desktop_file_id,
     }
   }
 
+  // Also check XDG data directories for pixmaps before the hardcoded path.
+  for (const base::FilePath& dir : xdg::GetDataDirectories()) {
+    base::FilePath test_path = dir.Append("pixmaps").Append(icon_filename);
+    if (base::PathExists(test_path)) {
+      return test_path;
+    }
+  }
+
   // Also check the default pixmaps dir as a last resort.
   base::FilePath test_path =
       base::FilePath(kDefaultPixmapsDir).Append(icon_filename);
