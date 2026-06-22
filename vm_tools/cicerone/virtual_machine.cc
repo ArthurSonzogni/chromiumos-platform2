@@ -58,9 +58,10 @@ VirtualMachine::VirtualMachine(uint32_t cid,
       pid_(pid),
       vm_token_(std::move(vm_token)),
       weak_ptr_factory_(this) {
-  // We currently only guarantee explicit vm_type passing for Baguette VMs
-  if (input_vm_type == apps::BAGUETTE) {
-    vm_type_ = apps::BAGUETTE;
+  // We currently only guarantee explicit vm_type passing for Baguette and
+  // Bruschetta VMs.
+  if (input_vm_type == apps::BAGUETTE || input_vm_type == apps::BRUSCHETTA) {
+    vm_type_ = input_vm_type;
   } else {
     vm_type_ = DetermineTypeFromCidAndToken(cid, vm_token_);
   }

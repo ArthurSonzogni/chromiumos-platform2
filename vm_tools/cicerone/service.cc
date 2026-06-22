@@ -1328,6 +1328,13 @@ void Service::ForwardSecurityKeyMessage(
     return;
   }
 
+  if (vm->GetType() != VirtualMachine::VmType::BRUSCHETTA) {
+    LOG(ERROR) << "Forwarding security key messages is only allowed for "
+               << "Bruschetta VMs";
+    event->Signal();
+    return;
+  }
+
   security_key_message.set_vm_name(vm_name);
   security_key_message.set_owner_id(owner_id);
   dbus::MethodCall method_call(

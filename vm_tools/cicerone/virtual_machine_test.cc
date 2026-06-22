@@ -131,6 +131,12 @@ TEST_F(VirtualMachineTest, PluginVmRegisterContainer) {
 TEST_F(VirtualMachineTest, VerifyVmTypes) {
   EXPECT_EQ(termina_vm_.GetType(), VirtualMachine::VmType::TERMINA);
   EXPECT_EQ(plugin_vm_.GetType(), VirtualMachine::VmType::PLUGIN_VM);
+
+  VirtualMachine bruschetta_vm(1, 4, "bruschetta_token", apps::BRUSCHETTA);
+  EXPECT_EQ(bruschetta_vm.GetType(), VirtualMachine::VmType::BRUSCHETTA);
+
+  VirtualMachine baguette_vm(1, 5, "baguette_token", apps::BAGUETTE);
+  EXPECT_EQ(baguette_vm.GetType(), VirtualMachine::VmType::BAGUETTE);
 }
 
 class UpgradeContainerTest : public VirtualMachineTest {
