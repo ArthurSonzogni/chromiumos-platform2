@@ -37,6 +37,7 @@ int LpToolsImpl::RunCommand(const std::string& command,
                             const std::vector<uint8_t>* std_input,
                             std::string* out) const {
   brillo::ProcessImpl process;
+  process.SetCloseUnusedFileDescriptors(true);
   process.RedirectOutputToMemory(/*combine=*/false);
 
   // TODO(b/340126451): Remove once the root cause of printscanmgr not being
