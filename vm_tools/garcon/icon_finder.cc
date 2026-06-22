@@ -25,7 +25,7 @@ constexpr char kDefaultPixmapsDir[] = "/usr/share/pixmaps/";
 constexpr char kScalable[] = "scalable";
 const char* const kThemeDirs[] = {"gnome", "hicolor"};
 
-const int kDefaultIconSizeDirs[] = {256, 128, 96, 64, 48, 32};
+const int kDefaultIconSizeDirs[] = {1024, 512, 256, 128, 96, 64, 48, 32};
 constexpr char kDefaultIconSubdir[] = "apps";
 
 // Returns a vector of directory paths under which an index.theme file is

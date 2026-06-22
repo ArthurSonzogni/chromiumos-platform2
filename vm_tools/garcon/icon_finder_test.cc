@@ -98,6 +98,8 @@ TEST_F(IconFinderTest, DefaultDirs) {
 TEST_F(IconFinderTest, NoIndexThemeNoDir) {
   std::vector<base::FilePath> expected_dirs = {
       icon_theme_dir().Append("48x48").Append("apps"),
+      icon_theme_dir().Append("1024x1024").Append("apps"),
+      icon_theme_dir().Append("512x512").Append("apps"),
       icon_theme_dir().Append("256x256").Append("apps"),
       icon_theme_dir().Append("128x128").Append("apps"),
       icon_theme_dir().Append("96x96").Append("apps"),
