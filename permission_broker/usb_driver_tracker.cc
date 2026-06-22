@@ -142,7 +142,8 @@ std::optional<std::string> UsbDriverTracker::RegisterClient(
   // |dup_lifeline_fd| is the duplicated file descriptor of the client's
   // lifeline pipe read end. The ownership needs to be transferred to the
   // internal tracking structure to keep readable callback registered.
-  base::ScopedFD fd(HANDLE_EINTR(open(path.value().c_str(), O_RDWR)));
+  base::ScopedFD fd(HANDLE_EINTR(
+      open(path.value().c_str(), O_RDWR | O_NOFOLLOW | O_CLOEXEC)));
   if (!fd.is_valid()) {
     PLOG(ERROR) << "Failed to open path " << path;
     return std::nullopt;

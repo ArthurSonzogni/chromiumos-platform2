@@ -228,7 +228,8 @@ bool PermissionBroker::OpenPathImpl(brillo::ErrorPtr* error,
     return false;
   }
 
-  base::ScopedFD fd(HANDLE_EINTR(open(in_path.c_str(), O_RDWR)));
+  base::ScopedFD fd(
+      HANDLE_EINTR(open(in_path.c_str(), O_RDWR | O_NOFOLLOW | O_CLOEXEC)));
   if (!fd.is_valid()) {
     brillo::errors::system::AddSystemError(error, FROM_HERE, errno);
     brillo::Error::AddToPrintf(error, FROM_HERE, kErrorDomainPermissionBroker,
