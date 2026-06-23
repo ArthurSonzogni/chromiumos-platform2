@@ -123,6 +123,7 @@
     <tp:docstring>
       Returns the logical volume created.
     </tp:docstring>
+    <annotation name="org.chromium.DBus.Method.IncludeDBusMessage" value="true"/>
     <arg name="thinpool" type="ay" direction="in">
       <tp:docstring>
         A serialized protobuf (Thinpool,
@@ -152,6 +153,7 @@
     <tp:docstring>
       Returns the logical volumes created.
     </tp:docstring>
+    <annotation name="org.chromium.DBus.Method.IncludeDBusMessage" value="true"/>
     <arg name="request" type="ay" direction="in">
       <tp:docstring>
         A serialized protobuf (CreateLogicalVolumesRequest,
@@ -173,6 +175,7 @@
     <tp:docstring>
       Removes the specified logical volume.
     </tp:docstring>
+    <annotation name="org.chromium.DBus.Method.IncludeDBusMessage" value="true"/>
     <arg name="logical_volume" type="ay" direction="in">
       <tp:docstring>
         A serialized protobuf (LogicalVolume,
@@ -186,6 +189,7 @@
     <tp:docstring>
       Removes the specified logical volume.
     </tp:docstring>
+    <annotation name="org.chromium.DBus.Method.IncludeDBusMessage" value="true"/>
     <arg name="request" type="ay" direction="in">
       <tp:docstring>
         A serialized protobuf (RemoveLogicalVolumesRequest,
@@ -207,6 +211,7 @@
     <tp:docstring>
       Toggles activation of the specified logical volume.
     </tp:docstring>
+    <annotation name="org.chromium.DBus.Method.IncludeDBusMessage" value="true"/>
     <arg name="logical_volume" type="ay" direction="in">
       <tp:docstring>
         A serialized protobuf (LogicalVolume,
@@ -225,6 +230,7 @@
     <tp:docstring>
       Resize the logical volume to the given size.
     </tp:docstring>
+    <annotation name="org.chromium.DBus.Method.IncludeDBusMessage" value="true"/>
     <arg name="logical_volume" type="ay" direction="in">
       <tp:docstring>
         A serialized protobuf (LogicalVolume,

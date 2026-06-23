@@ -8,6 +8,9 @@
 #include <string>
 #include <vector>
 
+#include <brillo/userdb_utils.h>
+#include <dbus/object_proxy.h>
+
 #include <base/files/file_path.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
@@ -160,9 +163,15 @@ bool Lvmd::GetLogicalVolume(brillo::ErrorPtr* error,
 
 bool Lvmd::CreateLogicalVolume(
     brillo::ErrorPtr* error,
+    dbus::Message* message,
     const lvmd::Thinpool& in_thinpool,
     const lvmd::LogicalVolumeConfiguration& in_logical_volume_configuration,
     lvmd::LogicalVolume* out_logical_volume) {
+  auto lv_name = in_logical_volume_configuration.name();
+  if (!IsClientAuthorized(error, message, lv_name)) {
+    return false;
+  }
+
   auto vg_name = in_thinpool.volume_group().name();
   auto vg = brillo::VolumeGroup(vg_name, {});
 
@@ -170,7 +179,6 @@ bool Lvmd::CreateLogicalVolume(
   auto thinpool = brillo::Thinpool(thinpool_name, vg_name, {});
 
   base::DictValue config;
-  auto lv_name = in_logical_volume_configuration.name();
   config.Set("name", lv_name);
   config.Set("size", brillo::string_utils::ToString(
                          in_logical_volume_configuration.size()));
@@ -195,8 +203,15 @@ bool Lvmd::CreateLogicalVolume(
 
 bool Lvmd::CreateLogicalVolumes(
     brillo::ErrorPtr* error,
+    dbus::Message* message,
     const lvmd::CreateLogicalVolumesRequest& in_request,
     lvmd::CreateLogicalVolumesResponse* out_response) {
+  for (const auto& info : in_request.logical_volume_infos()) {
+    if (!IsClientAuthorized(error, message, info.lv_config().name())) {
+      return false;
+    }
+  }
+
   std::vector<std::string> failed_lvs;
   for (const auto& info : in_request.logical_volume_infos()) {
     const auto& thinpool = info.thinpool();
@@ -204,7 +219,7 @@ bool Lvmd::CreateLogicalVolumes(
 
     brillo::ErrorPtr tmp_err;
     lvmd::LogicalVolume lv;
-    if (!CreateLogicalVolume(&tmp_err, thinpool, lv_config, &lv)) {
+    if (!CreateLogicalVolume(&tmp_err, message, thinpool, lv_config, &lv)) {
       failed_lvs.push_back(base::StringPrintf(
           "lv name (%s) thinpool (%s) vg (%s) size (%ld)",
           lv_config.name().c_str(), thinpool.name().c_str(),
@@ -229,11 +244,15 @@ bool Lvmd::CreateLogicalVolumes(
 }
 
 bool Lvmd::RemoveLogicalVolume(brillo::ErrorPtr* error,
+                               dbus::Message* message,
                                const lvmd::LogicalVolume& in_logical_volume) {
+  std::string lv_name = in_logical_volume.name();
+  if (!IsClientAuthorized(error, message, lv_name)) {
+    return false;
+  }
+
   auto vg_name = in_logical_volume.volume_group().name();
   auto vg = brillo::VolumeGroup(vg_name, {});
-
-  std::string lv_name = in_logical_volume.name();
 
   if (!lvm_->RemoveLogicalVolume(vg, lv_name)) {
     *error =
@@ -249,12 +268,19 @@ bool Lvmd::RemoveLogicalVolume(brillo::ErrorPtr* error,
 
 bool Lvmd::RemoveLogicalVolumes(
     brillo::ErrorPtr* error,
+    dbus::Message* message,
     const lvmd::RemoveLogicalVolumesRequest& in_request,
     lvmd::RemoveLogicalVolumesResponse* out_response) {
+  for (const auto& lv : in_request.logical_volume_list().logical_volume()) {
+    if (!IsClientAuthorized(error, message, lv.name())) {
+      return false;
+    }
+  }
+
   out_response->clear_logical_volume_list();
   for (const auto& lv : in_request.logical_volume_list().logical_volume()) {
     brillo::ErrorPtr tmp_err;
-    if (!RemoveLogicalVolume(&tmp_err, lv)) {
+    if (!RemoveLogicalVolume(&tmp_err, message, lv)) {
       // Only add failed to remove logical volumes into the response.
       // This will allow users to act on the logical volumes easier.
       auto* lv_added =
@@ -281,12 +307,17 @@ bool Lvmd::RemoveLogicalVolumes(
 
 bool Lvmd::ToggleLogicalVolumeActivation(
     brillo::ErrorPtr* error,
+    dbus::Message* message,
     const lvmd::LogicalVolume& in_logical_volume,
     bool activate) {
+  std::string lv_name = in_logical_volume.name();
+  if (!IsClientAuthorized(error, message, lv_name)) {
+    return false;
+  }
+
   auto vg_name = in_logical_volume.volume_group().name();
   auto vg = brillo::VolumeGroup(vg_name, {});
 
-  std::string lv_name = in_logical_volume.name();
   auto opt_lv = lvm_->GetLogicalVolume(vg, lv_name);
 
   if (!opt_lv) {
@@ -318,12 +349,17 @@ bool Lvmd::ToggleLogicalVolumeActivation(
 }
 
 bool Lvmd::ResizeLogicalVolume(brillo::ErrorPtr* error,
+                               dbus::Message* message,
                                const lvmd::LogicalVolume& in_logical_volume,
                                int64_t size) {
+  std::string lv_name = in_logical_volume.name();
+  if (!IsClientAuthorized(error, message, lv_name)) {
+    return false;
+  }
+
   auto vg_name = in_logical_volume.volume_group().name();
   auto vg = brillo::VolumeGroup(vg_name, {});
 
-  std::string lv_name = in_logical_volume.name();
   auto opt_lv = lvm_->GetLogicalVolume(vg, lv_name);
 
   if (!opt_lv) {
@@ -386,6 +422,80 @@ void Lvmd::PostponeShutdown() {
       base::BindRepeating(&brillo::Daemon::Quit, weak_factory_.GetWeakPtr()));
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, shutdown_callback_.callback(), kShutdownTimeout);
+}
+
+bool Lvmd::GetConnectionUnixUser(const std::string& connection_name,
+                                 uid_t* out_uid) {
+  dbus::ObjectProxy* dbus_proxy = bus_->GetObjectProxy(
+      "org.freedesktop.DBus", dbus::ObjectPath("/org/freedesktop/DBus"));
+  dbus::MethodCall method_call("org.freedesktop.DBus",
+                               "GetConnectionUnixUser");
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(connection_name);
+
+  auto response_expected = dbus_proxy->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!response_expected.has_value()) {
+    LOG(ERROR) << "Failed to call GetConnectionUnixUser";
+    return false;
+  }
+  std::unique_ptr<dbus::Response> response =
+      std::move(response_expected.value());
+  dbus::MessageReader reader(response.get());
+  uint32_t uid;
+  if (!reader.PopUint32(&uid)) {
+    LOG(ERROR) << "Failed to read UID from GetConnectionUnixUser response";
+    return false;
+  }
+  *out_uid = uid;
+  return true;
+}
+
+bool Lvmd::IsClientAuthorized(brillo::ErrorPtr* error,
+                             dbus::Message* message,
+                             const std::string& lv_name) {
+  if (!message) {
+    // Allows calls from tests where message is not provided.
+    return true;
+  }
+
+  std::string sender = message->GetSender();
+  if (sender.empty()) {
+    *error = CreateError(FROM_HERE, kErrorInternal, "Sender is empty");
+    return false;
+  }
+
+  uid_t caller_uid;
+  if (!GetConnectionUnixUser(sender, &caller_uid)) {
+    *error = CreateError(FROM_HERE, kErrorInternal, "Failed to get sender UID");
+    return false;
+  }
+
+  if (caller_uid == 0) {
+    // Root is always allowed
+    return true;
+  }
+
+  uid_t dlcservice_uid;
+  if (!brillo::userdb::GetUserInfo("dlcservice", &dlcservice_uid, nullptr)) {
+    *error = CreateError(FROM_HERE, kErrorInternal,
+                         "Failed to get dlcservice UID");
+    return false;
+  }
+
+  if (caller_uid == dlcservice_uid) {
+    if (base::StartsWith(lv_name, "dlc_", base::CompareCase::SENSITIVE)) {
+      return true;
+    }
+    *error = CreateError(
+        FROM_HERE, kErrorInternal,
+        "dlcservice is only allowed to access logical volumes starting with "
+        "'dlc_'");
+    return false;
+  }
+
+  *error = CreateError(FROM_HERE, kErrorInternal, "Unauthorized caller");
+  return false;
 }
 
 }  // namespace lvmd

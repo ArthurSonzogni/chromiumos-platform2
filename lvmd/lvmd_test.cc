@@ -47,7 +47,7 @@ TEST_F(LvmdTest, CreateLogicalVolumesEmpty) {
   brillo::ErrorPtr err;
   CreateLogicalVolumesRequest request;
   CreateLogicalVolumesResponse response;
-  EXPECT_TRUE(lvmd_->CreateLogicalVolumes(&err, request, &response));
+  EXPECT_TRUE(lvmd_->CreateLogicalVolumes(&err, nullptr, request, &response));
 }
 
 TEST_F(LvmdTest, CreateLogicalVolumesLvmCallCheck) {
@@ -60,7 +60,7 @@ TEST_F(LvmdTest, CreateLogicalVolumesLvmCallCheck) {
   auto opt_lv = std::make_optional<brillo::LogicalVolume>("", "", nullptr);
   EXPECT_CALL(*lvm_ptr_, CreateLogicalVolume(_, _, _)).WillOnce(Return(opt_lv));
 
-  EXPECT_TRUE(lvmd_->CreateLogicalVolumes(&err, request, &response));
+  EXPECT_TRUE(lvmd_->CreateLogicalVolumes(&err, nullptr, request, &response));
 }
 
 TEST_F(LvmdTest, CreateLogicalVolumesLvmFailureCheck) {
@@ -73,7 +73,7 @@ TEST_F(LvmdTest, CreateLogicalVolumesLvmFailureCheck) {
   std::optional<brillo::LogicalVolume> opt_lv;
   EXPECT_CALL(*lvm_ptr_, CreateLogicalVolume(_, _, _)).WillOnce(Return(opt_lv));
 
-  EXPECT_FALSE(lvmd_->CreateLogicalVolumes(&err, request, &response));
+  EXPECT_FALSE(lvmd_->CreateLogicalVolumes(&err, nullptr, request, &response));
 }
 
 TEST_F(LvmdTest, CreateLogicalVolumesSuccessfulLvsPopulated) {
@@ -107,7 +107,7 @@ TEST_F(LvmdTest, CreateLogicalVolumesSuccessfulLvsPopulated) {
           .WillRepeatedly((Return(opt_lv)));
     }
 
-    EXPECT_FALSE(lvmd_->CreateLogicalVolumes(&err, request, &response));
+    EXPECT_FALSE(lvmd_->CreateLogicalVolumes(&err, nullptr, request, &response));
   }
 
   ASSERT_TRUE(response.has_logical_volume_list());
@@ -120,7 +120,7 @@ TEST_F(LvmdTest, RemoveLogicalVolumesEmpty) {
   brillo::ErrorPtr err;
   RemoveLogicalVolumesRequest request;
   RemoveLogicalVolumesResponse response;
-  EXPECT_TRUE(lvmd_->RemoveLogicalVolumes(&err, request, &response));
+  EXPECT_TRUE(lvmd_->RemoveLogicalVolumes(&err, nullptr, request, &response));
 }
 
 TEST_F(LvmdTest, RemoveLogicalVolumesLvmCallCheck) {
@@ -132,7 +132,7 @@ TEST_F(LvmdTest, RemoveLogicalVolumesLvmCallCheck) {
 
   EXPECT_CALL(*lvm_ptr_, RemoveLogicalVolume(_, _)).WillOnce((Return(true)));
 
-  EXPECT_TRUE(lvmd_->RemoveLogicalVolumes(&err, request, &response));
+  EXPECT_TRUE(lvmd_->RemoveLogicalVolumes(&err, nullptr, request, &response));
 }
 
 TEST_F(LvmdTest, RemoveLogicalVolumesLvmFailureCheck) {
@@ -144,7 +144,7 @@ TEST_F(LvmdTest, RemoveLogicalVolumesLvmFailureCheck) {
 
   EXPECT_CALL(*lvm_ptr_, RemoveLogicalVolume(_, _)).WillOnce((Return(false)));
 
-  EXPECT_FALSE(lvmd_->RemoveLogicalVolumes(&err, request, &response));
+  EXPECT_FALSE(lvmd_->RemoveLogicalVolumes(&err, nullptr, request, &response));
 }
 
 TEST_F(LvmdTest, RemoveLogicalVolumesFailedLvsPopulated) {
@@ -164,7 +164,7 @@ TEST_F(LvmdTest, RemoveLogicalVolumesFailedLvsPopulated) {
     EXPECT_CALL(*lvm_ptr_, RemoveLogicalVolume(_, "lv2"))
         .WillOnce(Return(false));
 
-    EXPECT_FALSE(lvmd_->RemoveLogicalVolumes(&err, request, &response));
+    EXPECT_FALSE(lvmd_->RemoveLogicalVolumes(&err, nullptr, request, &response));
   }
 
   ASSERT_TRUE(response.has_logical_volume_list());

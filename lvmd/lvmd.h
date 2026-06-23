@@ -9,6 +9,8 @@
 #include <string>
 #include <utility>
 
+#include <dbus/message.h>
+
 #include <base/cancelable_callback.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
@@ -62,6 +64,7 @@ class Lvmd : public brillo::DBusServiceDaemon,
   // Returns the logical volume created.
   bool CreateLogicalVolume(
       brillo::ErrorPtr* error,
+      dbus::Message* message,
       const lvmd::Thinpool& in_thinpool,
       const lvmd::LogicalVolumeConfiguration& in_logical_volume_configuration,
       lvmd::LogicalVolume* out_logical_volume) override;
@@ -72,12 +75,14 @@ class Lvmd : public brillo::DBusServiceDaemon,
   // `lvmd::CreateLogicalVolumesResponse`.
   bool CreateLogicalVolumes(
       brillo::ErrorPtr* error,
+      dbus::Message* message,
       const lvmd::CreateLogicalVolumesRequest& in_request,
       lvmd::CreateLogicalVolumesResponse* out_response) override;
 
   // Removes the logical volume, if it exists.
   bool RemoveLogicalVolume(
       brillo::ErrorPtr* error,
+      dbus::Message* message,
       const lvmd::LogicalVolume& in_logical_volume) override;
 
   // Removes the logical volumes, if they exist.
@@ -86,6 +91,7 @@ class Lvmd : public brillo::DBusServiceDaemon,
   // `lvmd::RemoveLogicalVolumesResponse`.
   bool RemoveLogicalVolumes(
       brillo::ErrorPtr* error,
+      dbus::Message* message,
       const lvmd::RemoveLogicalVolumesRequest& in_request,
       lvmd::RemoveLogicalVolumesResponse* out_response) override;
 
@@ -94,12 +100,14 @@ class Lvmd : public brillo::DBusServiceDaemon,
   // effect.
   bool ToggleLogicalVolumeActivation(
       brillo::ErrorPtr* error,
+      dbus::Message* message,
       const lvmd::LogicalVolume& in_logical_volume,
       bool activate) override;
 
   // Resize the logical volume to the given `size`. If the `size` is less than
   // one block smaller than current size, the resizing will be skipped.
   bool ResizeLogicalVolume(brillo::ErrorPtr* error,
+                           dbus::Message* message,
                            const lvmd::LogicalVolume& in_logical_volume,
                            int64_t size) override;
 
@@ -110,6 +118,12 @@ class Lvmd : public brillo::DBusServiceDaemon,
   void OnShutdown(int* return_code) override;
 
  private:
+  bool GetConnectionUnixUser(const std::string& connection_name,
+                             uid_t* out_uid);
+  bool IsClientAuthorized(brillo::ErrorPtr* error,
+                          dbus::Message* message,
+                          const std::string& lv_name);
+
   void PostponeShutdown();
 
   // Daemon will automatically shutdown after this length of idle time.
