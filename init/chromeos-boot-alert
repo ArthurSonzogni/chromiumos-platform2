@@ -28,7 +28,10 @@ find_current_locale() {
   local state_file='/home/chronos/Local State'
   local locale=""
   if [ -f "${state_file}" ]; then
-    locale="$(jq --raw-output -e ".intl.app_locale" "${state_file}")"
+    locale="$(
+      jq --raw-output -e ".intl.app_locale" "${state_file}" |
+      tr -d -c 'a-zA-Z0-9-'
+    )"
   fi
   if [ -z "${locale}" ] || [ "${locale}" = "null" ]; then
     locale="$(cros_region_data -s locales)"
