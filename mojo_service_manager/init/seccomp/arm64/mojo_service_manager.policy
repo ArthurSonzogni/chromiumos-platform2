@@ -41,7 +41,7 @@ gettimeofday: 1
 getuid: 1
 listen: 1
 lseek: 1
-madvise: arg2 == MADV_DONTNEED
+madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL || arg2 == MADV_HUGEPAGE
 memfd_create: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mseal: 1

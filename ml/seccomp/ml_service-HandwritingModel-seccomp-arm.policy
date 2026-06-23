@@ -33,7 +33,7 @@ getrandom: arg2 in ~GRND_RANDOM
 gettid: 1
 gettimeofday: 1
 lstat64: 1
-madvise: arg2 == MADV_DONTNEED
+madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL
 memfd_create: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mseal: 1

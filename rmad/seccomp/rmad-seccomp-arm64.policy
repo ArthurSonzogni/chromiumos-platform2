@@ -116,3 +116,7 @@ fsync: 1
 sendfile: 1
 sync: 1
 fstat: 1
+
+# glibc 2.43 pthread_create installs thread stack guard pages via
+# madvise(MADV_GUARD_INSTALL); aarch64 malloc also uses madvise(MADV_HUGEPAGE).
+madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL || arg2 == MADV_HUGEPAGE

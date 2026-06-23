@@ -53,7 +53,7 @@ gettimeofday: 1
 getuid32: 1
 ioctl: arg1 == TCGETS || arg1 == TCGETS2
 kill: arg1 == SIGKILL || arg1 == SIGTERM
-madvise: arg2 == MADV_DONTNEED
+madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

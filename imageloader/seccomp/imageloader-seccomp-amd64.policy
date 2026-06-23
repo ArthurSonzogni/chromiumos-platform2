@@ -34,7 +34,7 @@ gettimeofday: 1
 gettid: 1
 lseek: 1
 lstat: 1
-madvise: arg2 == MADV_DONTNEED
+madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL
 mkdir: 1
 # Don't allow mmap with both PROT_WRITE and PROT_EXEC.
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
