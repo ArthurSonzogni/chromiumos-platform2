@@ -407,7 +407,27 @@ std::string IndexToName(unsigned int ifindex) {
   return std::string(buf);
 }
 
+std::optional<size_t> SafeNlMsgPayload(const nlmsghdr* header,
+                                       size_t header_size) {
+  if (!header || header->nlmsg_len < NLMSG_SPACE(header_size)) {
+    return std::nullopt;
+  }
+  return static_cast<size_t>(NLMSG_PAYLOAD(header, header_size));
+}
+
 }  // namespace
+
+std::optional<size_t> RTNLMessage::RtmPayload(const nlmsghdr* header) {
+  return SafeNlMsgPayload(header, sizeof(struct rtmsg));
+}
+
+std::optional<size_t> RTNLMessage::IfaPayload(const nlmsghdr* header) {
+  return SafeNlMsgPayload(header, sizeof(struct ifaddrmsg));
+}
+
+std::optional<size_t> RTNLMessage::IflaPayload(const nlmsghdr* header) {
+  return SafeNlMsgPayload(header, sizeof(struct ifinfomsg));
+}
 
 struct RTNLHeader {
   RTNLHeader() { memset(this, 0, sizeof(*this)); }
@@ -535,34 +555,34 @@ std::unique_ptr<RTNLMessage> RTNLMessage::Decode(
   }
 
   rtattr* attr_data = nullptr;
-  size_t attr_length = 0;
+  std::optional<size_t> attr_length = std::nullopt;
   std::unique_ptr<RTNLMessage> msg;
   switch (header->nlmsg_type) {
     case RTM_NEWLINK:
     case RTM_DELLINK:
       attr_data = IFLA_RTA(NLMSG_DATA(header));
-      attr_length = IFLA_PAYLOAD(header);
+      attr_length = IflaPayload(header);
       msg = DecodeLink(mode, payload);
       break;
 
     case RTM_NEWADDR:
     case RTM_DELADDR:
       attr_data = IFA_RTA(NLMSG_DATA(header));
-      attr_length = IFA_PAYLOAD(header);
+      attr_length = IfaPayload(header);
       msg = DecodeAddress(mode, payload);
       break;
 
     case RTM_NEWROUTE:
     case RTM_DELROUTE:
       attr_data = RTM_RTA(NLMSG_DATA(header));
-      attr_length = RTM_PAYLOAD(header);
+      attr_length = RtmPayload(header);
       msg = DecodeRoute(mode, payload);
       break;
 
     case RTM_NEWRULE:
     case RTM_DELRULE:
       attr_data = RTM_RTA(NLMSG_DATA(header));
-      attr_length = RTM_PAYLOAD(header);
+      attr_length = RtmPayload(header);
       msg = DecodeRule(mode, payload);
       break;
 
@@ -577,7 +597,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::Decode(
     case RTM_NEWNEIGH:
     case RTM_DELNEIGH:
       attr_data = RTM_RTA(NLMSG_DATA(header));
-      attr_length = RTM_PAYLOAD(header);
+      attr_length = RtmPayload(header);
       msg = DecodeNeighbor(mode, payload);
       break;
 
@@ -592,12 +612,21 @@ std::unique_ptr<RTNLMessage> RTNLMessage::Decode(
   msg->seq_ = header->nlmsg_seq;
   msg->pid_ = header->nlmsg_pid;
 
-  const std::unique_ptr<RTNLAttrMap> attrs = ParseAttrs(attr_data, attr_length);
-  if (!attrs) {
-    return nullptr;
-  }
-  for (const auto& pair : *attrs) {
-    msg->SetAttribute(pair.first, pair.second);
+  if (attr_data) {
+    if (!attr_length) {
+      LOG(ERROR) << "Invalid Netlink payload length for type "
+                 << header->nlmsg_type;
+      return nullptr;
+    }
+
+    const std::unique_ptr<RTNLAttrMap> attrs =
+        ParseAttrs(attr_data, *attr_length);
+    if (!attrs) {
+      return nullptr;
+    }
+    for (const auto& pair : *attrs) {
+      msg->SetAttribute(pair.first, pair.second);
+    }
   }
   return msg;
 }

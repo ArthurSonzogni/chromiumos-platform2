@@ -1235,4 +1235,52 @@ TEST_F(RTNLMessageTest, DnsslOptionsStringWithoutPIIs) {
         << "\", but was: " << output;
   }
 }
+
+TEST_F(RTNLMessageTest, RtmPayload) {
+  EXPECT_EQ(std::nullopt, RTNLMessage::RtmPayload(nullptr));
+
+  nlmsghdr border_hdr{};
+  border_hdr.nlmsg_len = NLMSG_SPACE(sizeof(struct rtmsg)) - 1;
+  EXPECT_EQ(std::nullopt, RTNLMessage::RtmPayload(&border_hdr));
+
+  nlmsghdr zero_payload_hdr{};
+  zero_payload_hdr.nlmsg_len = NLMSG_SPACE(sizeof(struct rtmsg));
+  EXPECT_EQ(0, RTNLMessage::RtmPayload(&zero_payload_hdr));
+
+  nlmsghdr valid_hdr{};
+  valid_hdr.nlmsg_len = NLMSG_SPACE(sizeof(struct rtmsg)) + 10;
+  EXPECT_EQ(10, RTNLMessage::RtmPayload(&valid_hdr));
+}
+
+TEST_F(RTNLMessageTest, IfaPayload) {
+  EXPECT_EQ(std::nullopt, RTNLMessage::IfaPayload(nullptr));
+
+  nlmsghdr border_hdr{};
+  border_hdr.nlmsg_len = NLMSG_SPACE(sizeof(struct ifaddrmsg)) - 1;
+  EXPECT_EQ(std::nullopt, RTNLMessage::IfaPayload(&border_hdr));
+
+  nlmsghdr zero_payload_hdr{};
+  zero_payload_hdr.nlmsg_len = NLMSG_SPACE(sizeof(struct ifaddrmsg));
+  EXPECT_EQ(0, RTNLMessage::IfaPayload(&zero_payload_hdr));
+
+  nlmsghdr valid_hdr{};
+  valid_hdr.nlmsg_len = NLMSG_SPACE(sizeof(struct ifaddrmsg)) + 15;
+  EXPECT_EQ(15, RTNLMessage::IfaPayload(&valid_hdr));
+}
+
+TEST_F(RTNLMessageTest, IflaPayload) {
+  EXPECT_EQ(std::nullopt, RTNLMessage::IflaPayload(nullptr));
+
+  nlmsghdr border_hdr{};
+  border_hdr.nlmsg_len = NLMSG_SPACE(sizeof(struct ifinfomsg)) - 1;
+  EXPECT_EQ(std::nullopt, RTNLMessage::IflaPayload(&border_hdr));
+
+  nlmsghdr zero_payload_hdr{};
+  zero_payload_hdr.nlmsg_len = NLMSG_SPACE(sizeof(struct ifinfomsg));
+  EXPECT_EQ(0, RTNLMessage::IflaPayload(&zero_payload_hdr));
+
+  nlmsghdr valid_hdr{};
+  valid_hdr.nlmsg_len = NLMSG_SPACE(sizeof(struct ifinfomsg)) + 20;
+  EXPECT_EQ(20, RTNLMessage::IflaPayload(&valid_hdr));
+}
 }  // namespace net_base

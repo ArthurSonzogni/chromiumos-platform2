@@ -19,6 +19,7 @@
 #include "net-base/ipv6_address.h"
 
 struct rtattr;
+struct nlmsghdr;
 
 namespace net_base {
 
@@ -173,6 +174,16 @@ class BRILLO_EXPORT RTNLMessage {
 
   // Packs the attribute map into bytes, with the proper alignment.
   static std::vector<uint8_t> PackAttrs(const RTNLAttrMap& attrs);
+
+  // Returns the attribute payload length for RTM messages safely,
+  // or std::nullopt if invalid.
+  static std::optional<size_t> RtmPayload(const nlmsghdr* header);
+  // Returns the attribute payload length for IFA messages safely,
+  // or std::nullopt if invalid.
+  static std::optional<size_t> IfaPayload(const nlmsghdr* header);
+  // Returns the attribute payload length for IFLA messages safely,
+  // or std::nullopt if invalid.
+  static std::optional<size_t> IflaPayload(const nlmsghdr* header);
 
   // Parse an RTNL message.  Returns nullptr on failure.
   static std::unique_ptr<RTNLMessage> Decode(base::span<const uint8_t> data);

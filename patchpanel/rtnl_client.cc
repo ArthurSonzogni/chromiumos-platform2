@@ -13,6 +13,7 @@
 #include <base/containers/span.h>
 #include <base/logging.h>
 #include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/rtnl_message.h>
 
 namespace patchpanel {
 namespace {
@@ -83,7 +84,13 @@ std::map<Address, net_base::MacAddress> GetNeighborMacTable(
           done = true;
           break;
         case RTM_NEWNEIGH: {
-          size_t rt_attr_len = RTM_PAYLOAD(msg_ptr);
+          std::optional<size_t> rt_attr_len_opt =
+              net_base::RTNLMessage::RtmPayload(msg_ptr);
+          if (!rt_attr_len_opt) {
+            LOG(ERROR) << "Invalid netlink message length for RTM_NEWNEIGH";
+            continue;
+          }
+          size_t rt_attr_len = *rt_attr_len_opt;
           ndmsg* nd_msg = reinterpret_cast<ndmsg*>(NLMSG_DATA(msg_ptr));
           // Filter out the special IPs that get resolved into MAC without
           // sending an ARP/NDP packet.
