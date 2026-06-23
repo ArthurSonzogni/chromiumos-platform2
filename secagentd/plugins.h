@@ -48,9 +48,11 @@ namespace secagentd {
 
 using AuthFactorType = cros_xdr::reporting::Authentication_AuthenticationType;
 
-// If the auth factor is not yet filled wait to see
-// if dbus signal is late.
-static constexpr base::TimeDelta kWaitForAuthFactorS = base::Seconds(3);
+// If the auth factor is not yet filled wait to see if dbus signal is late.
+// Set the timeout as 6 sec, as we have observed 4.5 sec delay in the worst
+// case (see crbug/504483587).
+static constexpr base::TimeDelta kWaitForAuthFactorS = base::Seconds(6);
+
 static constexpr uint64_t kMaxDelayForLockscreenAttemptsS = 3;
 
 // File path types (from your original code)
