@@ -67,6 +67,32 @@ TEST(NetlinkPacketTest, Constructor) {
   EXPECT_FALSE(complete_packet.ConsumeData(1, &payload_byte));
 }
 
+TEST(NetlinkPacketTest, ConstructorWithExtraTrailingBytes) {
+  // A packet that contains extra trailing bytes beyond nlmsg_len should
+  // only parse the payload up to nlmsg_len.
+  nlmsghdr hdr = {};
+  hdr.nlmsg_len = sizeof(nlmsghdr) + 1;
+  hdr.nlmsg_type = 3;
+
+  uint8_t extra_data[sizeof(nlmsghdr) + 2] = {};
+  memcpy(extra_data, &hdr, sizeof(nlmsghdr));
+  extra_data[sizeof(nlmsghdr)] = 20;
+  extra_data[sizeof(nlmsghdr) + 1] = 99;
+
+  NetlinkPacket extra_packet(extra_data);
+  EXPECT_TRUE(extra_packet.IsValid());
+  EXPECT_EQ(sizeof(nlmsghdr) + 1, extra_packet.GetLength());
+  EXPECT_EQ(3, extra_packet.GetMessageType());
+  EXPECT_EQ(1, extra_packet.GetRemainingLength());
+  EXPECT_EQ(1, extra_packet.GetPayload().size());
+  EXPECT_EQ(20, extra_packet.GetPayload()[0]);
+
+  uint8_t payload_byte = 0;
+  EXPECT_TRUE(extra_packet.ConsumeData(1, &payload_byte));
+  EXPECT_EQ(20, payload_byte);
+  EXPECT_FALSE(extra_packet.ConsumeData(1, &payload_byte));
+}
+
 TEST(NetlinkPacketTest, ConsumeData) {
   // This code assumes that the value of NLMSG_ALIGNTO is 4, and that nlmsghdr
   // is aligned to a 4-byte boundary.

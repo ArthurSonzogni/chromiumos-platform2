@@ -24,8 +24,10 @@ NetlinkPacket::NetlinkPacket(base::span<const uint8_t> buf)
     return;
   }
 
-  payload_ = std::make_unique<std::vector<uint8_t>>(
-      buf.begin() + sizeof(header_), buf.end());
+  const base::span<const uint8_t> payload_span =
+      buf.subspan(sizeof(header_), header_.nlmsg_len - sizeof(header_));
+  payload_ = std::make_unique<std::vector<uint8_t>>(payload_span.begin(),
+                                                    payload_span.end());
 }
 
 NetlinkPacket::~NetlinkPacket() = default;
