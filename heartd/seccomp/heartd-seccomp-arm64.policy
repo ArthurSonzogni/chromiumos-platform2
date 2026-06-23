@@ -37,7 +37,7 @@ statfs: 1
 chdir: 1
 fchdir: 1
 # 0x5401     = TCGETS
-ioctl: arg1 == 0x5401
+ioctl: arg1 == 0x5401 || arg1 == 0x802c542a
 umount2: 1
 pipe2: 1
 faccessat: 1

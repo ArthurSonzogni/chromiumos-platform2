@@ -33,7 +33,7 @@ getppid: 1
 getrandom: arg2 in ~GRND_RANDOM
 gettid: 1
 #ioctl calls by `CGPT`.
-ioctl: arg1 == BLKSSZGET || arg1 == BLKGETSIZE64 || arg1 == TCGETS
+ioctl: arg1 == BLKSSZGET || arg1 == BLKGETSIZE64 || arg1 == TCGETS || arg1 == TCGETS2
 ioperm: 1
 iopl: 1
 lseek: 1

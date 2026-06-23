@@ -55,7 +55,7 @@ getresuid: 1
 getsockname: 1
 clock_getres: 1
 lseek: 1
-ioctl: arg1 == TCGETS
+ioctl: arg1 == TCGETS || arg1 == TCGETS2
 getresgid: 1
 brk: 1
 getdents64: 1

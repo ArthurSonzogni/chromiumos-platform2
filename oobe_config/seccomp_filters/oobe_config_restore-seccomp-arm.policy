@@ -46,7 +46,7 @@ getsockname: 1
 gettid: 1
 gettimeofday: 1
 getuid32: 1
-ioctl: arg1 == TCGETS
+ioctl: arg1 == TCGETS || arg1 == TCGETS2
 lchown: 1
 _llseek: 1
 madvise: 1

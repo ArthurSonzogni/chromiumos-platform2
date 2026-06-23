@@ -47,7 +47,7 @@ write: 1
 writev: 1
 
 # For brillo::kLogToStderrIfTty. isatty(0) calls ioctl(0, TCGETS, *).
-ioctl: arg0 == 0 && arg1 == TCGETS
+ioctl: arg0 == 0 && arg1 == TCGETS || arg0 == 0 && arg1 == TCGETS2
 getpid: 1
 futex: 1
 futex_time64: 1

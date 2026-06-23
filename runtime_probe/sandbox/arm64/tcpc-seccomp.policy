@@ -15,7 +15,7 @@ fstatfs: 1
 gettid: 1
 # ioctl: arg1 == 0xc014ec00 /* CROS_EC_DEV_IOCXCMD */ ||
 #        arg1 == 0x5401 /* TCGETS */
-ioctl: arg1 == 0xc014ec00 || arg1 == 0x5401
+ioctl: arg1 == 0xc014ec00 || arg1 == 0x5401 || arg1 == 0x802c542a
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

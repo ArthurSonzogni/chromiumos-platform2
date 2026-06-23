@@ -53,7 +53,7 @@ clock_getres_time64: 1
 exit_group: 1
 getresgid32: 1
 ugetrlimit: 1
-ioctl: arg1 == TCGETS
+ioctl: arg1 == TCGETS || arg1 == TCGETS2
 gettimeofday: 1
 send: 1
 clock_gettime: 1

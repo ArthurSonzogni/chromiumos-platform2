@@ -61,7 +61,7 @@ getsockname: 1
 getppid: 1
 getpgid: 1
 inotify_init: 1
-ioctl: arg1 == TCGETS
+ioctl: arg1 == TCGETS || arg1 == TCGETS2
 kill: 1
 listen: 1
 lstat64: 1

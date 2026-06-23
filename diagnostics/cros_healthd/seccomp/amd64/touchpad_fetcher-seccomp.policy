@@ -37,7 +37,7 @@ lseek: 1
 #   0x5401 == TCGETS
 #   0x8913 == SIOCGIFFLAGS
 #   0x8914 == SIOCSIFFLAGS
-ioctl: arg1 == 0x5401 || arg1 == 0x8914 || arg1 == 0x8913
+ioctl: arg1 == 0x5401 || arg1 == 0x802c542a || arg1 == 0x8914 || arg1 == 0x8913
 getdents64: 1
 clock_nanosleep: 1
 geteuid: 1

@@ -80,7 +80,7 @@ getuid: 1
 #   0xc018647c == DRM_IOCTL_I915_GEM_CREATE_EXT
 #   0x4008646e == DRM_IOCTL_I915_GEM_CONTEXT_DESTROY
 #   0xc02864c3 == DRM_IOCTL_SYNCOBJ_WAIT (size increased)
-ioctl: arg1 == 0x5401 || arg1 == 0x6458 || arg1 == 0x40046460 || \
+ioctl: arg1 == 0x5401 || arg1 == 0x802c542a || arg1 == 0x6458 || arg1 == 0x40046460 || \
        arg1 == 0x40086409 || arg1 == 0x40086478 || arg1 == 0x400c645f || \
        arg1 == 0x4020645d || arg1 == 0x40406469 || arg1 == 0x80106463 || \
        arg1 == 0xc0086457 || arg1 == 0xc008646d || arg1 == 0xc00864bf || \

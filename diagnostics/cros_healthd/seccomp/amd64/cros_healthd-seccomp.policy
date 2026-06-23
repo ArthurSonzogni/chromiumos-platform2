@@ -122,7 +122,7 @@ getuid: 1
 #   0x4008646f == DRM_IOCTL_I915_GEM_SET_CACHING
 #   0xc018647c == DRM_IOCTL_I915_GEM_CREATE_EXT
 #   0xc02864c3 == DRM_IOCTL_SYNCOBJ_WAIT (size increased)
-ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
+ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || arg1 == TCGETS2 || \
        arg1 == 0x40086409 || arg1 == 0x4008646e || arg1 == 0x400c645f || \
        arg1 == 0x40406469 || arg1 == 0x80106463 || arg1 == 0xc0086457 || \
        arg1 == 0xc008646d || arg1 == 0xc00c6466 || arg1 == 0xc0106446 || \

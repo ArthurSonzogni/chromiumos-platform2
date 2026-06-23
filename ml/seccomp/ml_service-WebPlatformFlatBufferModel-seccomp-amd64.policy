@@ -58,7 +58,7 @@ sysinfo: 1
 
 # For emitting perfetto trace events.
 access: 1
-ioctl: arg1 == TCGETS
+ioctl: arg1 == TCGETS || arg1 == TCGETS2
 poll: 1
 ppoll: 1
 prctl: 1

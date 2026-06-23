@@ -46,7 +46,7 @@ getuid: 1
 # ioctl:
 #   HIDIOCGRDESCSIZE: 0x80044801
 #   HIDIOCGRDESC: 0x90044802
-ioctl: arg1 == SIOCGIFFLAGS || arg1 == SIOCSIFFLAGS || arg1 == TCGETS || \
+ioctl: arg1 == SIOCGIFFLAGS || arg1 == SIOCSIFFLAGS || arg1 == TCGETS || arg1 == TCGETS2 || \
         arg1 == 0x80044801 || arg1 == 0x90044802
 kill: arg1 == SIGKILL
 lseek: 1

@@ -21,7 +21,7 @@ ioctl: arg1 == 0xc16cb403 || arg1 == 0xc01c3a00 || \
        arg1 == 0x80084d17 || arg1 == 0xc048b402 || \
        arg1 == 0x8044b401 || arg1 == 0x5401 || \
        arg1 == 0xc014ec00 || arg1 == 0x40084d02 || \
-       arg1 == TCGETS || arg1 == 0xc040b408 || \
+       arg1 == TCGETS || arg1 == TCGETS2 || arg1 == 0xc040b408 || \
        arg1 == 0x5421
 read: 1
 statx: 1

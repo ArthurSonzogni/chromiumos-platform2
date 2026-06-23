@@ -64,7 +64,7 @@ write: 1
 clone: arg0 & CLONE_THREAD
 clone3: 1
 fcntl: 1
-ioctl: arg1 == TCGETS
+ioctl: arg1 == TCGETS || arg1 == TCGETS2
 poll: 1
 ppoll: 1
 prctl: 1

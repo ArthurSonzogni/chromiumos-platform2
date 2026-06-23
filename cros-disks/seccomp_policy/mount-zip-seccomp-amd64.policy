@@ -38,7 +38,7 @@ getrandom: arg2 in ~GRND_RANDOM
 gettid: 1
 gettimeofday: 1
 getuid: 1
-ioctl: arg1 == TCGETS
+ioctl: arg1 == TCGETS || arg1 == TCGETS2
 kill: arg1 == SIGKILL || arg1 == SIGTERM
 lseek: 1
 lstat: 1

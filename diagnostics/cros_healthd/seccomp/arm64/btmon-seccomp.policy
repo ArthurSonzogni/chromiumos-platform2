@@ -22,7 +22,7 @@ setsockopt: 1
 epoll_pwait: 1
 #   0x5401 == TCGETS
 #   0x5413 == TIOCGWINSZ
-ioctl: arg1 == 0x5401 || arg1 == 0x5413
+ioctl: arg1 == 0x5401 || arg1 == 0x802c542a || arg1 == 0x5413
 faccessat: 1
 set_tid_address: 1
 set_robust_list: 1

@@ -42,7 +42,7 @@ gettid: 1
 gettimeofday: 1
 getuid: 1
 # FIONBIO and TIOCGWINSZ are used when running is_running_from_installer
-ioctl: arg1 == TCGETS || arg1 == FIONBIO || arg1 == TIOCGWINSZ
+ioctl: arg1 == TCGETS || arg1 == TCGETS2 || arg1 == FIONBIO || arg1 == TIOCGWINSZ
 lchown: 1
 lseek: 1
 madvise: 1

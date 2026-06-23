@@ -87,7 +87,7 @@ sendto: 1
 #   0x8018457b == EVIOCGABS(ABS_MT_DISTANCE)
 #   0x8018457c == EVIOCGABS(ABS_MT_TOOL_X)
 #   0x8018457d == EVIOCGABS(ABS_MT_TOOL_Y)
-ioctl: arg1 == 0x5401 || arg1 == 0x8913 || arg1 == 0x8914 || \
+ioctl: arg1 == 0x5401 || arg1 == 0x802c542a || arg1 == 0x8913 || arg1 == 0x8914 || \
        arg1 == 0x80604518 || arg1 == 0x80084509 || arg1 == 0x80084519 || \
        arg1 == 0x80ff4506 || arg1 == 0x80ff4507 || arg1 == 0x80084525 || \
        arg1 == 0x80084522 || arg1 == 0x80084523 || arg1 == 0x80084520 || \

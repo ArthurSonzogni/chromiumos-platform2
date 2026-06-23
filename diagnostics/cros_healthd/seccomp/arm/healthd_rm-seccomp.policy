@@ -5,7 +5,7 @@
 prctl: arg0 == PR_SET_NAME || arg0 == PR_SET_KEEPCAPS || arg0 == PR_SET_SECCOMP
 close: 1
 exit_group: 1
-ioctl: arg1 == TCGETS
+ioctl: arg1 == TCGETS || arg1 == TCGETS2
 statx: 1
 unlinkat: 1
 _llseek: 1

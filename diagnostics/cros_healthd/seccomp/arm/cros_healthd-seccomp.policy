@@ -106,7 +106,7 @@ getuid32: 1
 #   0x80086444 == _IOC(_IOC_READ, 0x64, 0x44, 0x8)
 #   0x6442 == DRM_IOCTL_I915_FLIP or DRM_IOCTL_MGA_RESET
 #   0x40206441 == _IOC(_IOC_WRITE, 0x64, 0x41, 0x20)
-ioctl: arg1 == TCGETS || arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || \
+ioctl: arg1 == TCGETS || arg1 == TCGETS2 || arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || \
        arg1 == 0xc0048000 || arg1 == 0x40048001 || arg1 == 0x40108003 || \
        arg1 == 0x40088026 || arg1 == 0x4018800e || arg1 == 0x80048011 || \
        arg1 == 0xc0208005 || arg1 == 0x4020800f || arg1 == 0x40208018 || \

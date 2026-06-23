@@ -21,7 +21,7 @@ fstatfs64: 1
 gettimeofday: 1
 # ioctl: arg1 == 0x5401 /* TCGETS */ ||
 #        arg1 == 0xc014ec00 /* CROS_EC_DEV_IOCXCMD */
-ioctl: arg1 == 0x5401 || arg1 == 0xc014ec00
+ioctl: arg1 == 0x5401 || arg1 == 0x802c542a || arg1 == 0xc014ec00
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

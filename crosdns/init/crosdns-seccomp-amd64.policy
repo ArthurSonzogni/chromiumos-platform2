@@ -52,7 +52,7 @@ gettimeofday: 1
 exit_group: 1
 getresgid: 1
 getrlimit: 1
-ioctl: arg1 == TCGETS
+ioctl: arg1 == TCGETS || arg1 == TCGETS2
 getpid: 1
 prlimit64: arg2 == 0 && arg3 != 0
 futex: 1

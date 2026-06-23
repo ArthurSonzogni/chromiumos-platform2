@@ -46,7 +46,7 @@ connect: 1
 sendto: 1
 socket: arg0 == AF_UNIX
 # Used by libbrillo to know whether stderr is a TTY.
-ioctl: arg1 == TCGETS
+ioctl: arg1 == TCGETS || arg1 == TCGETS2
 prlimit64: arg2 == 0 && arg3 != 0
 # Used by sqlite3 to do random I/O.
 pread64: 1

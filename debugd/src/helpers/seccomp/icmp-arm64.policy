@@ -46,7 +46,7 @@ connect: 1
 getsockname: 1
 getsockopt: 1
 setitimer: 1
-ioctl: arg1 == TCGETS
+ioctl: arg1 == TCGETS || arg1 == TCGETS2
 wait4: 1
 restart_syscall: 1
 exit: 1

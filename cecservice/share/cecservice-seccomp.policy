@@ -35,7 +35,7 @@ gettid: 1
 gettimeofday: 1
 getuid: 1
 # Allowed ioctls are: CEC_ADAP_G_CAPS, CEC_DQEVENT, CEC_S_MODE, CEC_RECEIVE, CEC_ADAP_G_LOG_ADDRS, CEC_TRANSMIT, CEC_ADAP_S_LOG_ADDRS, TCGETS
-ioctl: arg1 == 0xc04c6100 || arg1 == 0xc0506107 || arg1 == 0x40046109 || arg1 == 0xc0386106 || arg1 == 0x805c6103 || arg1 == 0xc0386105 || arg1 == 0xc05c6104 || arg1 == TCGETS
+ioctl: arg1 == 0xc04c6100 || arg1 == 0xc0506107 || arg1 == 0x40046109 || arg1 == 0xc0386106 || arg1 == 0x805c6103 || arg1 == 0xc0386105 || arg1 == 0xc05c6104 || arg1 == TCGETS || arg1 == TCGETS2
 lseek: 1
 lstat: 1
 # Don't allow mmap with both PROT_WRITE and PROT_EXEC.

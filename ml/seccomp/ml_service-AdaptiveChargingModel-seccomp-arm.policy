@@ -39,7 +39,7 @@ getsockname: 1
 gettid: 1
 gettimeofday: 1
 getuid32: 1
-ioctl: arg1 == TCGETS
+ioctl: arg1 == TCGETS || arg1 == TCGETS2
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

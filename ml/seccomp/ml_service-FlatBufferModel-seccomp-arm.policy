@@ -59,7 +59,7 @@ access: 1
 clone: arg0 & CLONE_THREAD
 clone3: 1
 fcntl64: 1
-ioctl: arg1 == TCGETS
+ioctl: arg1 == TCGETS || arg1 == TCGETS2
 munmap: 1
 poll: 1
 ppoll: 1

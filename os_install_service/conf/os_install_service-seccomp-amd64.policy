@@ -21,7 +21,7 @@ ioctl: arg1 == BLKALIGNOFF || arg1 == BLKDISCARD || \
        arg1 == BLKSSZGET || arg1 == FIONBIO || arg1 == FS_IOC_GETFLAGS || \
        arg1 == FS_IOC_SETFLAGS || arg1 == LOOP_CLR_FD || \
        arg1 == LOOP_CTL_GET_FREE || arg1 == LOOP_SET_FD || \
-       arg1 == LOOP_SET_STATUS64 || arg1 == TCGETS || arg1 == TIOCGPGRP || \
+       arg1 == LOOP_SET_STATUS64 || arg1 == TCGETS || arg1 == TCGETS2 || arg1 == TIOCGPGRP || \
        arg1 == TIOCGWINSZ || arg1 == 0x1269 || arg1 == 0x5331 || \
        arg1 == 0x301 || arg1 == 0x80306d02 || arg1 == 0x5382 || \
        arg1 == 0x4c0a || arg1 == 0x5395 || arg1 == FDGETFDCSTAT || \

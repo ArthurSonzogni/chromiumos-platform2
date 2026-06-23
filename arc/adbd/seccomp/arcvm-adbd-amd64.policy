@@ -84,7 +84,7 @@ fstatfs: 1
 getrandom: arg2 in ~GRND_RANDOM
 
 # For ArcVmAdbBridgeDbc
-ioctl: arg1 == TCGETS || arg1 == TCSETS || \
+ioctl: arg1 == TCGETS || arg1 == TCGETS2 || arg1 == TCSETS || \
        arg1 == TCSETSW || arg1 == TCSETSF || \
        arg1 == FIONREAD
 getpid: 1

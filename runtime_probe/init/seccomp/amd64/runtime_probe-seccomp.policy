@@ -79,5 +79,5 @@ select: 1
 pselect6: 1
 
 # For brillo::kLogToStderrIfTty. isatty(0) calls ioctl(0, TCGETS, *).
-ioctl: arg0 == 0 && arg1 == TCGETS
+ioctl: arg0 == 0 && arg1 == TCGETS || arg0 == 0 && arg1 == TCGETS2
 fstatfs: 1

@@ -45,7 +45,7 @@ getsockopt: 1
 gettid: 1
 gettimeofday: 1
 getuid32: 1
-ioctl: arg1 == SIOCGIFFLAGS || arg1 == SIOCSIFFLAGS || arg1 == TCGETS || \
+ioctl: arg1 == SIOCGIFFLAGS || arg1 == SIOCSIFFLAGS || arg1 == TCGETS || arg1 == TCGETS2 || \
        arg1 == TIOCGWINSZ || arg1 == TIOCGPGRP || arg1 == 0x8004 || \
        arg1 == 0x4004644b || arg1 == 0x40048001 || arg1 == 0x40088007 || \
        arg1 == 0x40088026 || arg1 == 0x40108002 || arg1 == 0x40108003 || \

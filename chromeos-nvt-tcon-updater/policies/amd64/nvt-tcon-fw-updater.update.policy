@@ -27,7 +27,7 @@ getpid: 1
 getppid: 1
 gettid: 1
 # ioctl: arg1 == I2C_RDWR || arg1 == TCGETS
-ioctl: arg1 == 0x0707 || arg1 == TCGETS
+ioctl: arg1 == 0x0707 || arg1 == TCGETS || arg1 == TCGETS2
 lseek: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mseal: 1

@@ -37,7 +37,7 @@ gettid: 1
 # MIXER_READ(23) or MEMISLOCKED = 0x80084d17
 ioctl: arg1 == 0x40084d02 || arg1 == 0x40084d06 || \
        arg1 == 0x80084d17 || arg1 == BLKGETSIZE64 || \
-       arg1 == TCGETS || arg1 == BLKSSZGET
+       arg1 == TCGETS || arg1 == TCGETS2 || arg1 == BLKSSZGET
 lseek: 1
 madvise: 1
 mkdirat: 1

@@ -35,7 +35,7 @@ getsockname: 1
 gettid: 1
 gettimeofday: 1
 # Required by ml_core_internal.so
-ioctl: arg1 == SIOCGIFFLAGS || arg1 == SIOCSIFFLAGS || arg1 == TCGETS
+ioctl: arg1 == SIOCGIFFLAGS || arg1 == SIOCSIFFLAGS || arg1 == TCGETS || arg1 == TCGETS2
 lseek: 1
 madvise: 1
 memfd_create: 1

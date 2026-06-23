@@ -93,7 +93,7 @@ getuid: 1
 #   0x641f == DRM_IOCTL_DROP_MASTER
 #   0x40046411 == DRM_IOCTL_AUTH_MAGIC
 #   0xc02864c3 == DRM_IOCTL_SYNCOBJ_WAIT (size increased)
-ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
+ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || arg1 == TCGETS2 || \
      arg1 == 0x40086409 || arg1 == 0x4008646e || arg1 == 0x400c645f || \
      arg1 == 0x40406469 || arg1 == 0x80106463 || arg1 == 0xc0086457 || \
      arg1 == 0xc008646d || arg1 == 0xc00c6466 || arg1 == 0xc0106446 || \

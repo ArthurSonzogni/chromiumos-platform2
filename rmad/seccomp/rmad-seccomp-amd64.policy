@@ -84,7 +84,7 @@ sched_getaffinity: 1
 # (Old iotcl format, used by ChromeOS 3.18 and older)
 #
 # Please refer to src/platform/ec/util/cros_ec_dev.h for more info
-ioctl: arg1 == TCGETS || arg1 == SIOCGIFFLAGS || \
+ioctl: arg1 == TCGETS || arg1 == TCGETS2 || arg1 == SIOCGIFFLAGS || \
        arg1 == SIOCSIFFLAGS || arg1 == 0xc0103a01 || \
        arg1 == 0xc0283a00 || arg1 == 0xc108ec01 || \
        arg1 == 0xc014ec00 || arg1 == 0xc0283a00 || \

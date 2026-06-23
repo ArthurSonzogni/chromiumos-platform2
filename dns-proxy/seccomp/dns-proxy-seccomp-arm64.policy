@@ -45,7 +45,7 @@ set_tid_address: 1
 set_robust_list: 1
 getrlimit: 1
 prlimit64: 1
-ioctl: arg1 == TCGETS || arg1 == SIOCGIFFLAGS || arg1 == SIOCSIFFLAGS || arg1 == FIONREAD || arg1 == TIOCGWINSZ || arg1 == FIONBIO || arg1 == SIOCGIFINDEX
+ioctl: arg1 == TCGETS || arg1 == TCGETS2 || arg1 == SIOCGIFFLAGS || arg1 == SIOCSIFFLAGS || arg1 == FIONREAD || arg1 == TIOCGWINSZ || arg1 == FIONBIO || arg1 == SIOCGIFINDEX
 lseek: 1
 epoll_create1: 1
 clock_getres: 1

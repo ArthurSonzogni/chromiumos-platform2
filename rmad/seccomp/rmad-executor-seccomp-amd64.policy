@@ -41,7 +41,7 @@ brk: 1
 # BLKIOMIN               = 0x1278
 # FDGETFDCSTAT           = 0x80280215
 # FS_IOC_FIEMAP          = 0xc020660b
-ioctl: arg1 == BLKGETSIZE64 || arg1 == TCGETS || arg1 == BLKSSZGET || \
+ioctl: arg1 == BLKGETSIZE64 || arg1 == TCGETS || arg1 == TCGETS2 || arg1 == BLKSSZGET || \
        arg1 == FDGETFDCSTAT || arg1 == 0x5331 || arg1 == 0x5395 || \
        arg1 == 0xc014ec00   || arg1 == 0x80081272 || arg1 == 0x1279 || \
        arg1 == 0x80280215   || arg1 == 0x80041284 || arg1 == 0x1278 || \

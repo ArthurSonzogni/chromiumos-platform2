@@ -63,7 +63,7 @@ clock_getres: 1
 clock_gettime: 1
 gettimeofday: 1
 getresgid: 1
-ioctl: arg1 == TCGETS
+ioctl: arg1 == TCGETS || arg1 == TCGETS2
 exit_group: 1
 brk: 1
 getpid: 1

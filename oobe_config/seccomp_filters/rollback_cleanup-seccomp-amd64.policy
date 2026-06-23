@@ -74,7 +74,7 @@ mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 
 # For brillo::kLogToStderrIfTty
-ioctl: arg1 == TCGETS
+ioctl: arg1 == TCGETS || arg1 == TCGETS2
 
 # Manually added because structured metrics library asks for it.
 lchown: 1

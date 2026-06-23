@@ -52,7 +52,7 @@ prlimit64: 1
 # Gets the data size that can be read from a socket.
 # Sets the network interface flags.
 # Sets or clears nonblocking input/output for a socket.
-ioctl: arg1 == TCGETS || arg1 == SIOCGIFFLAGS || arg1 == SIOCSIFFLAGS || arg1 == FIONREAD || arg1 == TIOCGWINSZ || arg1 == FIONBIO
+ioctl: arg1 == TCGETS || arg1 == TCGETS2 || arg1 == SIOCGIFFLAGS || arg1 == SIOCSIFFLAGS || arg1 == FIONREAD || arg1 == TIOCGWINSZ || arg1 == FIONBIO
 lseek: 1
 epoll_create1: 1
 clock_getres: 1

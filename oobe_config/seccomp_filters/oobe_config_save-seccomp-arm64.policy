@@ -49,7 +49,7 @@ getsockname: 1
 gettid: 1
 gettimeofday: 1
 getuid: 1
-ioctl: arg1 == TCGETS || arg1 == TIOCGPGRP || arg1 == TIOCGWINSZ
+ioctl: arg1 == TCGETS || arg1 == TCGETS2 || arg1 == TIOCGPGRP || arg1 == TIOCGWINSZ
 lseek: 1
 madvise: 1
 memfd_create: 1

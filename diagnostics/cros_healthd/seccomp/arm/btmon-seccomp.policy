@@ -23,7 +23,7 @@ setsockopt: 1
 epoll_wait: 1
 #   0x5401 == TCGETS
 #   0x5413 == TIOCGWINSZ
-ioctl: arg1 == 0x5401 || arg1 == 0x5413
+ioctl: arg1 == 0x5401 || arg1 == 0x802c542a || arg1 == 0x5413
 access: 1
 ARM_set_tls: 1
 set_tid_address: 1

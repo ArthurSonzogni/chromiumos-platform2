@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-ioctl: arg1 == TCGETS || arg1 == SIOCGIFFLAGS
+ioctl: arg1 == TCGETS || arg1 == TCGETS2 || arg1 == SIOCGIFFLAGS
 openat: 1
 # Required for DBus connection
 socket: arg0 == AF_UNIX
