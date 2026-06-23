@@ -66,7 +66,15 @@ show_assets_message() {
   done
   locale_list="${locale_list} en-US en"
 
-  if display_boot_message "${message}" "${locale_list}"; then
+  # This is not nearly as tight as it should be.
+  # /dev: frecon updates the graphics directly.
+  # /dev/pts: frecon communicates via pseudo ttys.
+  # /run: frecon communication is via /run/frecon, and the scripts write state
+  #   to flag files directly under /run.
+  if minijail0 \
+       --profile=minimalistic-mountns-nodev -b/dev,,1 -b/dev/pts -b/run,,1 \
+       --uts -N -e -- \
+       /usr/sbin/display_boot_message "${message}" "${locale_list}"; then
     # Frecon may create the text terminal so we want to setup TTY again.
     setup_tty
   else
