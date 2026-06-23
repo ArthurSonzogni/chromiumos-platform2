@@ -20,6 +20,7 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/time/time.h>
+#include <chromeos/constants/imageloader.h>
 
 #include "imageloader/imageloader.h"
 #include "imageloader/verity_mounter.h"
@@ -29,6 +30,24 @@ namespace imageloader {
 namespace {
 constexpr char kSeccompFilterPath[] =
     "/usr/share/policy/imageloader-helper-seccomp.policy";
+
+bool IsAllowedMountPath(const base::FilePath& path) {
+  if (!path.IsAbsolute()) {
+    LOG(ERROR) << "Path is not absolute: " << path.value();
+    return false;
+  }
+  if (path.ReferencesParent()) {
+    LOG(ERROR) << "Path references parent: " << path.value();
+    return false;
+  }
+  base::FilePath mount_base(imageloader::kImageloaderMountBase);
+  if (mount_base != path && !mount_base.IsParent(path)) {
+    LOG(ERROR) << "Path is not under " << imageloader::kImageloaderMountBase
+               << ": " << path.value();
+    return false;
+  }
+  return true;
+}
 }  // namespace
 
 HelperProcessReceiver::HelperProcessReceiver(base::ScopedFD control_fd)
@@ -121,6 +140,14 @@ CommandResponse HelperProcessReceiver::HandleCommand(
 
     memmove(&pending_fd_, CMSG_DATA(cmsg), sizeof(pending_fd_));
 
+    base::FilePath mount_path(command.mount_path());
+    if (!IsAllowedMountPath(mount_path)) {
+      LOG(ERROR) << "Prohibited mount path: " << mount_path.value();
+      base::ScopedFD safe_fd(pending_fd_);
+      response.set_success(false);
+      return response;
+    }
+
     // Convert the fs type to a string.
     std::string fs_type;
     switch (command.fs_type()) {
@@ -138,7 +165,7 @@ CommandResponse HelperProcessReceiver::HandleCommand(
     }
 
     bool status = mounter_.Mount(base::ScopedFD(pending_fd_),
-                                 base::FilePath(command.mount_path()), fs_type,
+                                 mount_path, fs_type,
                                  command.table());
     if (!status) {
       LOG(ERROR) << "mount failed";
@@ -147,8 +174,13 @@ CommandResponse HelperProcessReceiver::HandleCommand(
     response.set_success(status);
   } else if (image_command.has_unmount_all_command()) {
     UnmountAllCommand command = image_command.unmount_all_command();
-    std::vector<base::FilePath> paths;
     const base::FilePath root_dir(command.unmount_rootpath());
+    if (!IsAllowedMountPath(root_dir)) {
+      LOG(ERROR) << "Prohibited unmount root path: " << root_dir.value();
+      response.set_success(false);
+      return response;
+    }
+    std::vector<base::FilePath> paths;
     response.set_success(
         mounter_.CleanupAll(command.dry_run(), root_dir, &paths));
     for (const auto& path : paths) {
@@ -158,6 +190,11 @@ CommandResponse HelperProcessReceiver::HandleCommand(
   } else if (image_command.has_unmount_command()) {
     UnmountCommand command = image_command.unmount_command();
     const base::FilePath path(command.unmount_path());
+    if (!IsAllowedMountPath(path)) {
+      LOG(ERROR) << "Prohibited unmount path: " << path.value();
+      response.set_success(false);
+      return response;
+    }
     response.set_success(mounter_.Cleanup(path));
   } else {
     LOG(FATAL) << "unknown operations";
