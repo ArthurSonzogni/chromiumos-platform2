@@ -147,6 +147,9 @@ bool MetricsLibrary::IsGuestMode() {
   bool is_guest = false;
   SessionManagerInterfaceProxy session_manager_interface(bus);
   session_manager_interface.IsGuestSessionActive(&is_guest, &error);
+
+  // Shut down the DBus connection to avoid leaking it
+  bus->ShutdownAndBlock();
   return is_guest;
 }
 
