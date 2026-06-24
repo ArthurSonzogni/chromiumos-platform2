@@ -237,8 +237,11 @@ std::unique_ptr<net_base::Socket> BroadcastForwarder::Bind(
 
 std::unique_ptr<net_base::Socket> BroadcastForwarder::BindRaw(
     std::string_view ifname) {
-  std::unique_ptr<net_base::Socket> socket = net_base::Socket::Create(
-      AF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_IP));
+  // Create with protocol=0 so the kernel does not start queuing packets
+  // until bind() sets sll_protocol. This allows the cBPF filter to be attached
+  // first before any packet processing.
+  std::unique_ptr<net_base::Socket> socket =
+      net_base::Socket::Create(AF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
   if (!socket) {
     PLOG(ERROR) << "socket() failed for raw socket";
     return nullptr;
@@ -251,6 +254,14 @@ std::unique_ptr<net_base::Socket> BroadcastForwarder::BindRaw(
     return nullptr;
   }
 
+  struct ifreq br;
+  Ioctl(socket->Get(), ifname, SIOCGIFBRDADDR, &br);
+  const auto bcast_addr = GetIfreqBroadaddr(br);
+
+  if (!SetBcastSockFilter(socket->Get(), bcast_addr)) {
+    return nullptr;
+  }
+
   struct sockaddr_ll bindaddr;
   memset(&bindaddr, 0, sizeof(bindaddr));
   bindaddr.sll_family = AF_PACKET;
@@ -260,13 +271,6 @@ std::unique_ptr<net_base::Socket> BroadcastForwarder::BindRaw(
   if (!socket->Bind(reinterpret_cast<const struct sockaddr*>(&bindaddr),
                     sizeof(bindaddr))) {
     PLOG(ERROR) << "bind() failed for broadcast forwarder on " << ifname;
-    return nullptr;
-  }
-
-  Ioctl(socket->Get(), ifname, SIOCGIFBRDADDR, &ifr);
-  const auto bcast_addr = GetIfreqBroadaddr(ifr);
-
-  if (!SetBcastSockFilter(socket->Get(), bcast_addr)) {
     return nullptr;
   }
 
