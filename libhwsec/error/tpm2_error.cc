@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libhwsec/error/tpm2_error.h"
+
 #include <memory>
 #include <string>
 
 #include <base/strings/stringprintf.h>
-
-#include "libhwsec/error/tpm2_error.h"
 
 namespace {
 
@@ -65,6 +65,17 @@ TPMRetryAction TPM2Error::ToTPMRetryAction() const {
       break;
     // Invalid handle to the TPM.
     case trunks::TPM_RC_HANDLE:
+    // RC_WARN codes.
+    case trunks::TPM_RC_CONTEXT_GAP:
+    case trunks::TPM_RC_OBJECT_MEMORY:
+    case trunks::TPM_RC_SESSION_MEMORY:
+    case trunks::TPM_RC_MEMORY:
+    case trunks::TPM_RC_SESSION_HANDLES:
+    case trunks::TPM_RC_OBJECT_HANDLES:
+    case trunks::TPM_RC_YIELDED:
+    case trunks::TPM_RC_CANCELED:
+    case trunks::TPM_RC_TESTING:
+    case trunks::TPM_RC_NV_UNAVAILABLE:
     case trunks::TPM_RC_REFERENCE_H0:
     case trunks::TPM_RC_REFERENCE_H1:
     case trunks::TPM_RC_REFERENCE_H2:
