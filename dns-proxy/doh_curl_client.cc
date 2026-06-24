@@ -274,8 +274,10 @@ std::unique_ptr<DoHCurlClient::State> DoHCurlClient::InitCurl(
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, state.get()->header_list);
 
   // Stores the data to be sent through HTTP POST and its length.
-  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, query.data());
+  // b/524311427: Use the copying variant: Resolver may free |query|'s backing
+  // SocketFd as soon as the first concurrent transfer succeeds.
   curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, query.size());
+  curl_easy_setopt(curl, CURLOPT_COPYPOSTFIELDS, query.data());
 
   // Set the user agent for the query.
   curl_easy_setopt(curl, CURLOPT_USERAGENT, kLinuxUserAgent);
