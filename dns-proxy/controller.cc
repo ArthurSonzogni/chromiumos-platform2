@@ -395,14 +395,22 @@ void Controller::OnMessage(const ProxyProc& proc,
   const ProxyMessage& proxy_msg = msg.proxy_message();
   switch (proxy_msg.type()) {
     case ProxyMessage::SET_ADDRS:
+      if (proc.opts.type != Proxy::Type::kSystem) {
+        LOG(ERROR) << "Ignoring SET_ADDRS from non-system proxy " << proc;
+        return;
+      }
       resolv_conf_->SetDNSProxyAddresses(std::vector<std::string>(
           proxy_msg.addrs().begin(), proxy_msg.addrs().end()));
       break;
     case ProxyMessage::CLEAR_ADDRS:
+      if (proc.opts.type != Proxy::Type::kSystem) {
+        LOG(ERROR) << "Ignoring CLEAR_ADDRS from non-system proxy " << proc;
+        return;
+      }
       resolv_conf_->SetDNSProxyAddresses({});
       break;
     default:
-      NOTREACHED();
+      LOG(ERROR) << "Unexpected ProxyMessage type from " << proc;
   }
 }
 
