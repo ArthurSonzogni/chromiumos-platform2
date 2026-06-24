@@ -102,10 +102,6 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus,
   tracepath_tool_ = std::make_unique<TracePathTool>();
   u2f_tool_ = std::make_unique<U2fTool>();
   verify_ro_tool_ = std::make_unique<VerifyRoTool>();
-  vm_plugin_dispatcher_tool_ = std::make_unique<SimpleServiceTool>(
-      "vmplugin_dispatcher", bus,
-      vm_tools::plugin_dispatcher::kVmPluginDispatcherServiceName,
-      vm_tools::plugin_dispatcher::kVmPluginDispatcherServicePath);
   wifi_power_tool_ = std::make_unique<WifiPowerTool>();
   session_manager_proxy_ = std::make_unique<SessionManagerProxy>(bus);
   scheduler_configuration_tool_ =
@@ -621,44 +617,6 @@ bool DebugdDBusAdaptor::RunShillScriptStart(
 bool DebugdDBusAdaptor::RunShillScriptStop(brillo::ErrorPtr* error,
                                            const std::string& handle) {
   return shill_scripts_tool_->Stop(handle, error);
-}
-
-void DebugdDBusAdaptor::StartVmPluginDispatcher(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
-    const std::string& in_user_id_hash,
-    const std::string& in_lang) {
-  // Perform basic validation of user ID hash.
-  if (in_user_id_hash.length() != 40) {
-    LOG(ERROR) << "Incorrect length of the user_id_hash (" << in_user_id_hash
-               << ")";
-    response->Return(false);
-    return;
-  }
-
-  if (!base::ContainsOnlyChars(in_user_id_hash, "abcdef0123456789")) {
-    LOG(ERROR) << "user_id_hash should only contain lower case hex digits ("
-               << in_user_id_hash << ")";
-    response->Return(false);
-    return;
-  }
-
-  // Perform basic validation of the language string. We expect it to be
-  // <language>[-<territory>].
-  std::vector<std::string_view> chunks = base::SplitStringPiece(
-      in_lang, "-", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-  if (chunks.size() < 1 || chunks.size() > 2 || chunks[0].empty()) {
-    LOG(ERROR) << "malformed language argument (" << in_lang << ")";
-    response->Return(false);
-    return;
-  }
-
-  vm_plugin_dispatcher_tool_->StartService(
-      {{"CROS_USER_ID_HASH", in_user_id_hash}, {"CROS_USER_UI_LANG", in_lang}},
-      std::move(response));
-}
-
-void DebugdDBusAdaptor::StopVmPluginDispatcher() {
-  vm_plugin_dispatcher_tool_->StopService();
 }
 
 bool DebugdDBusAdaptor::SetRlzPingSent(brillo::ErrorPtr* error) {

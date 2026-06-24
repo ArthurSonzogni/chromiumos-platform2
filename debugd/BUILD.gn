@@ -160,7 +160,6 @@ static_library("libdebugd") {
     "src/scheduler_configuration_tool.cc",
     "src/session_manager_proxy.cc",
     "src/shill_scripts_tool.cc",
-    "src/simple_service_tool.cc",
     "src/storage_tool.cc",
     "src/subprocess_tool.cc",
     "src/sysrq_tool.cc",

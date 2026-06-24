@@ -15,9 +15,9 @@
 #include <vector>
 
 #include <base/files/scoped_file.h>
+#include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <brillo/dbus/exported_property_set.h>
-#include <brillo/dbus/dbus_method_response.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 
@@ -55,7 +55,6 @@
 #include "debugd/src/scheduler_configuration_tool.h"
 #include "debugd/src/session_manager_proxy.h"
 #include "debugd/src/shill_scripts_tool.h"
-#include "debugd/src/simple_service_tool.h"
 #include "debugd/src/storage_tool.h"
 #include "debugd/src/sysrq_tool.h"
 #include "debugd/src/systrace_tool.h"
@@ -225,11 +224,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                            std::string* handle) override;
   bool RunShillScriptStop(brillo::ErrorPtr* error,
                           const std::string& handle) override;
-  void StartVmPluginDispatcher(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
-      const std::string& in_user_id_hash,
-      const std::string& in_lang) override;
-  void StopVmPluginDispatcher() override;
+
   bool SetRlzPingSent(brillo::ErrorPtr* error) override;
   bool UpdateAndVerifyFWOnUsbStart(brillo::ErrorPtr* error,
                                    const base::ScopedFD& outfd,
@@ -333,7 +328,6 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<TracePathTool> tracepath_tool_;
   std::unique_ptr<U2fTool> u2f_tool_;
   std::unique_ptr<VerifyRoTool> verify_ro_tool_;
-  std::unique_ptr<SimpleServiceTool> vm_plugin_dispatcher_tool_;
   std::unique_ptr<WifiPowerTool> wifi_power_tool_;
   std::unique_ptr<ProbeTool> probe_tool_;
   std::unique_ptr<KernelFeatureTool> kernel_feature_tool_;
