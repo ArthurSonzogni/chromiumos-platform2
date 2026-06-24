@@ -101,8 +101,10 @@ bool TsModel::InitTextSafetyModel(mojom::TextSafetyModelAssetsPtr assets) {
     return false;
   }
   ChromeMLTSModelDescriptor desc = {
-      .model = {.data = data_.data(), .size = data_.length()},
-      .sp_model = {.data = sp_model_.data(), .size = sp_model_.length()},
+      .model = {.data = data_.mutable_bytes().data(),
+                .size = data_.mutable_bytes().size()},
+      .sp_model = {.data = sp_model_.mutable_bytes().data(),
+                   .size = sp_model_.mutable_bytes().size()},
   };
   model_ = chrome_ml_->api().ts_api.CreateModel(&desc);
   return static_cast<bool>(model_);

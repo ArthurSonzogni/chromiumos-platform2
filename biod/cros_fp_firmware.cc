@@ -45,7 +45,7 @@ bool DecodeVersionFromArea(const base::MemoryMappedFile& image,
   // area->size can be larger than the printable characters in the buffer
   // std::string(char*, size_t) constructor will not stop at first \0
   const char* str =
-      reinterpret_cast<const char*>(&(image.data()[area->offset]));
+      reinterpret_cast<const char*>(&(image.bytes()[area->offset]));
   *ver = std::string(str, strnlen(str, area->size));
   return true;
 }
@@ -110,8 +110,8 @@ void CrosFpFirmware::DecodeVersionFromFile() {
     return;
   }
 
-  auto fmap_offset = fmap_find(image.data(), image.length());
-  if (fmap_offset < 0 || fmap_offset >= image.length()) {
+  auto fmap_offset = fmap_find(image.bytes().data(), image.bytes().size());
+  if (fmap_offset < 0 || fmap_offset >= image.bytes().size()) {
     LOG(ERROR) << "Failed to find FMAP inside firmware file '" << path_.value()
                << "'.";
     status_ = Status::kBadFmap;
@@ -122,7 +122,7 @@ void CrosFpFirmware::DecodeVersionFromFile() {
   base::MemoryMappedFile image_fmap_aligned;
   const base::MemoryMappedFile::Region image_fmap_aligned_region = {
       .offset = fmap_offset,
-      .size = image.length() - fmap_offset,
+      .size = image.bytes().size() - fmap_offset,
   };
   // MemoryMappedFile doesn't allow sharing the same open file with another
   // MemoryMappedFile nor does it allow mapping multiple file regions,
@@ -137,14 +137,14 @@ void CrosFpFirmware::DecodeVersionFromFile() {
     return;
   }
   const auto fmap =
-      reinterpret_cast<const struct fmap*>(image_fmap_aligned.data());
+      reinterpret_cast<const struct fmap*>(image_fmap_aligned.bytes().data());
 
   // The firmware file's self reported size should not be larger
   // than the file size.
-  if (fmap->size > image.length()) {
+  if (fmap->size > image.bytes().size()) {
     LOG(ERROR) << "FMAP reported an image size of " << fmap->size
                << ", which is larger than the entire file size, "
-               << image.length() << ", for '" << path_.value() << "'.";
+               << image.bytes().size() << ", for '" << path_.value() << "'.";
     status_ = Status::kBadFmap;
     return;
   }

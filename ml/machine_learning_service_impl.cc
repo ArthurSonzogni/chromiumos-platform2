@@ -106,8 +106,7 @@ void InitIcuIfNeeded() {
         base::MemoryMappedFile::Access::READ_ONLY));
     // Init the Icu library.
     UErrorCode err = U_ZERO_ERROR;
-    udata_setCommonData(const_cast<uint8_t*>(g_icu_data_mmap_file->data()),
-                        &err);
+    udata_setCommonData(g_icu_data_mmap_file->bytes().data(), &err);
     DCHECK(err == U_ZERO_ERROR);
     // Never try to load Icu data from files.
     udata_setFileAccess(UDATA_ONLY_PACKAGES, &err);

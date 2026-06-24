@@ -93,7 +93,7 @@ SignInHashTree::SignInHashTree(uint32_t leaf_length,
     PLOG(ERROR) << "Failed to initialize leaf cache.";
     return;
   }
-  if ((leaf_cache_.length() / kHashSize) != 1 << leaf_length_) {
+  if ((leaf_cache_.bytes().size() / kHashSize) != 1 << leaf_length_) {
     PLOG(ERROR) << "Leaf cache number mismatched.";
     return;
   }
@@ -364,7 +364,7 @@ uint8_t* SignInHashTree::GetInnerHashArrayPointer(uint32_t index) {
 
 uint8_t* SignInHashTree::GetLeafCacheArrayPointer(uint32_t index) {
   CHECK_LT(index, 1 << leaf_length_);
-  return &leaf_cache_.data()[index * kHashSize];
+  return &leaf_cache_.mutable_bytes()[index * kHashSize];
 }
 
 }  // namespace hwsec

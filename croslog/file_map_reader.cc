@@ -137,7 +137,7 @@ class FileMapReaderDelegateImpl : public FileMapReaderDelegate {
       return std::make_pair(nullptr, 0);
     }
 
-    return std::make_pair(mmap_->data(), mmap_->length());
+    return std::make_pair(mmap_->bytes().data(), mmap_->bytes().size());
   }
 
  private:

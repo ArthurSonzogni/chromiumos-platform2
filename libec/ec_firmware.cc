@@ -36,17 +36,19 @@ std::unique_ptr<EcFirmware> EcFirmware::Create(const base::FilePath file) {
     return nullptr;
   }
 
-  auto fmap_offset = fmap_find(fw->image_.data(), fw->image_.length());
+  auto fmap_offset =
+      fmap_find(fw->image_.bytes().data(), fw->image_.bytes().size());
 
-  fw->fmap_ =
-      reinterpret_cast<const struct fmap*>(fw->image_.data() + fmap_offset);
+  fw->fmap_ = reinterpret_cast<const struct fmap*>(fw->image_.bytes().data() +
+                                                   fmap_offset);
 
   /* The firmware file's self reported size should not be larger than the file
    * size. */
-  if (fw->fmap_->size > fw->image_.length()) {
+  if (fw->fmap_->size > fw->image_.bytes().size()) {
     LOG(ERROR) << "FMAP reported an image size of " << fw->fmap_->size
                << ", which is larger than the entire file size, "
-               << fw->image_.length() << ", for '" << file.value() << "'.";
+               << fw->image_.bytes().size() << ", for '" << file.value()
+               << "'.";
     return nullptr;
   }
 
@@ -125,7 +127,8 @@ std::optional<std::string> EcFirmware::GetVersion(
     return std::nullopt;
   }
 
-  const char* ver = reinterpret_cast<const char*>(image_.data() + area->offset);
+  const char* ver =
+      reinterpret_cast<const char*>(image_.bytes().data() + area->offset);
   if (strnlen(ver, area->size) >= area->size) {
     LOG(ERROR) << "Invalid version string.";
 
@@ -146,7 +149,7 @@ base::span<const uint8_t> EcFirmware::GetData(const enum ec_image image) const {
     return {};
   }
 
-  return {image_.data() + area->offset, area->size};
+  return image_.bytes().subspan(area->offset, area->size);
 }
 
 }  // namespace ec
