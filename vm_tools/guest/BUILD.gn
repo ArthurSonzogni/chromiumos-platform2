@@ -7,7 +7,6 @@ import("../sommelier/wayland_protocol.gni")
 
 group("guest") {
   deps = [
-    ":upgrade_container",
     "//vm_tools/garcon",
     "//vm_tools/guest_service_failure_notifier",
     "//vm_tools/maitred",
@@ -48,9 +47,4 @@ group("guest") {
 
 pkg_config("target_defaults") {
   pkg_deps = [ "libchrome" ]
-}
-
-copy("upgrade_container") {
-  sources = [ "../upgrade_container/upgrade_container" ]
-  outputs = [ "$root_out_dir/upgrade_container" ]
 }

@@ -84,20 +84,6 @@
                     value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::CancelImportLxdContainerResponse"/>
       </arg>
     </method>
-    <method name="CancelUpgradeContainer">
-      <tp:docstring>
-        Handles a request to cancel an ongoing container upgrade.
-      </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
-      <arg type="ay" name="request" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::CancelUpgradeContainerRequest"/>
-      </arg>
-      <arg type="ay" name="response" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::CancelUpgradeContainerResponse"/>
-      </arg>
-    </method>
     <method name="ConfigureForArcSideload">
       <tp:docstring>
         Handles a request to allow sideloading Arc (android) apps from the
@@ -535,20 +521,6 @@
                     value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::UpdateContainerDevicesResponse"/>
       </arg>
     </method>
-    <method name="UpgradeContainer">
-      <tp:docstring>
-        Handles a request to upgrade a container.
-      </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
-      <arg type="ay" name="request" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::UpgradeContainerRequest"/>
-      </arg>
-      <arg type="ay" name="response" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::UpgradeContainerResponse"/>
-      </arg>
-    </method>
     <!-- keep-sorted end -->
 
     <!-- keep-sorted start group_prefixes=</signal> -->
@@ -733,16 +705,6 @@
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::UninstallPackageProgressSignal"/>
-      </arg>
-    </signal>
-    <signal name="UpgradeContainerProgress">
-      <tp:docstring>
-        Inform listeners on update for the progress or completion of container
-        upgrade.
-      </tp:docstring>
-      <arg name="signal" type="ay">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::UpgradeContainerProgressSignal"/>
       </arg>
     </signal>
     <!-- keep-sorted end -->

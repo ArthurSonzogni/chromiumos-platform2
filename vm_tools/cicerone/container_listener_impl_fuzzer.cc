@@ -388,12 +388,6 @@ DEFINE_PROTO_FUZZER(
         break;
 
       case vm_tools::container::ContainerListenerFuzzerSingleAction::
-          kUpgradeContainerProgress:
-        tremplin_listener->UpgradeContainerStatus(
-            &context, &action.upgrade_container_progress(), &tremplin_response);
-        break;
-
-      case vm_tools::container::ContainerListenerFuzzerSingleAction::
           kUpdateListeningPorts:
         tremplin_listener->UpdateListeningPorts(
             &context, &action.update_listening_ports(), &tremplin_response);

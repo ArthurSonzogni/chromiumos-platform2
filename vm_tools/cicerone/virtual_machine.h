@@ -112,22 +112,6 @@ class VirtualMachine {
     FAILED,
   };
 
-  enum class UpgradeContainerStatus {
-    UNKNOWN,
-    STARTED,
-    ALREADY_RUNNING,
-    NOT_SUPPORTED,
-    ALREADY_UPGRADED,
-    FAILED,
-  };
-
-  enum class CancelUpgradeContainerStatus {
-    UNKNOWN,
-    NOT_RUNNING,
-    CANCELLED,
-    FAILED,
-  };
-
   enum class StartLxdStatus {
     UNKNOWN,
     STARTING,
@@ -339,16 +323,6 @@ class VirtualMachine {
 
   CancelImportLxdContainerStatus CancelImportLxdContainer(
       const std::string& in_progress_container_name, std::string* out_error);
-
-  // Begins a container OS upgrade (e.g. from debian/stretch to debian/buster).
-  UpgradeContainerStatus UpgradeContainer(
-      const Container* container,
-      const UpgradeContainerRequest::Version& target_version,
-      std::string* out_error);
-
-  // Cancels a running container OS upgrade.
-  CancelUpgradeContainerStatus CancelUpgradeContainer(Container* container,
-                                                      std::string* out_error);
 
   // Attaches a USB device on a given port to a container.
   AttachUsbToContainerStatus AttachUsbToContainer(const Container* container,

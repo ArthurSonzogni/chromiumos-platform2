@@ -80,11 +80,6 @@ class TremplinListenerImpl final
       const vm_tools::tremplin::ListeningPortInfo* request,
       vm_tools::tremplin::EmptyMessage* response) override;
 
-  grpc::Status UpgradeContainerStatus(
-      grpc::ServerContext* ctx,
-      const vm_tools::tremplin::UpgradeContainerProgress* request,
-      vm_tools::tremplin::EmptyMessage* response) override;
-
   grpc::Status UpdateStartLxdStatus(
       grpc::ServerContext* ctx,
       const vm_tools::tremplin::StartLxdProgress* request,

@@ -24,6 +24,7 @@
 #include <base/sequence_checker.h>
 #include <base/threading/thread.h>
 #include <brillo/process/process.h>
+#include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -33,7 +34,6 @@
 #include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/container_host.pb.h>
 #include <vm_sk_forwarding/sk_forwarding.pb.h>
-#include <chromeos/dbus/service_constants.h>
 
 #include "vm_tools/cicerone/container.h"
 #include "vm_tools/cicerone/container_listener_impl.h"
@@ -247,15 +247,6 @@ class Service : public org::chromium::VmCiceroneInterface {
       ImportLxdContainerProgressSignal* progress_signal,
       bool* result,
       base::WaitableEvent* event);
-
-  // Sends a D-Bus signal to inform listeners of progress or completion of a
-  // container upgrade. It will use |cid| to resolve the request to
-  // a VM. |progress_signal| should have all related fields set |result| is set
-  // to true on success, false otherwise. Signals |event| when done.
-  void ContainerUpgradeProgress(const uint32_t cid,
-                                UpgradeContainerProgressSignal* progress_signal,
-                                bool* result,
-                                base::WaitableEvent* event);
 
   // Sends a D-Bus signal to inform listeners of progress or completion of
   // starting lxd. It will use |cid| to resolve the request to a VM.
@@ -622,14 +613,6 @@ class Service : public org::chromium::VmCiceroneInterface {
   // container.
   ConfigureForArcSideloadResponse ConfigureForArcSideload(
       const ConfigureForArcSideloadRequest& request) override;
-
-  // Handles a request to upgrade a container.
-  UpgradeContainerResponse UpgradeContainer(
-      const UpgradeContainerRequest& request) override;
-
-  // Handles a request to cancel an ongoing container upgrade.
-  CancelUpgradeContainerResponse CancelUpgradeContainer(
-      const CancelUpgradeContainerRequest& request) override;
 
   // Handles a request to start LXD.
   StartLxdResponse StartLxd(const StartLxdRequest& request) override;

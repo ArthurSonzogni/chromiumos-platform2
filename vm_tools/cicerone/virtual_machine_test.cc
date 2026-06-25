@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "vm_tools/cicerone/virtual_machine.h"
+
 #include <string>
 
 #include <base/logging.h>
 #include <base/uuid.h>
 #include <gtest/gtest.h>
-
 #include <vm_applications/apps.pb.h>
 #include <vm_cicerone/cicerone_service.pb.h>
-#include "vm_tools/cicerone/virtual_machine.h"
 
 namespace vm_tools {
 namespace cicerone {
@@ -138,20 +138,6 @@ TEST_F(VirtualMachineTest, VerifyVmTypes) {
   VirtualMachine baguette_vm(1, 5, "baguette_token", apps::BAGUETTE);
   EXPECT_EQ(baguette_vm.GetType(), VirtualMachine::VmType::BAGUETTE);
 }
-
-class UpgradeContainerTest : public VirtualMachineTest {
- public:
-  void SetUp() override {
-    std::string token = termina_vm_.GenerateContainerToken(kFakeContainerName1);
-    EXPECT_TRUE(
-        termina_vm_.RegisterContainer(token, kFakeGarconPort1, kFakeIp1));
-    container_ = termina_vm_.GetContainerForName(kFakeContainerName1);
-    EXPECT_NE(container_, nullptr);
-  }
-
- protected:
-  const Container* container_;
-};
 
 }  // namespace cicerone
 }  // namespace vm_tools

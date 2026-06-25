@@ -571,9 +571,6 @@ void ServiceTestingHelper::SetDbusCallbackNames() {
   dbus_callbacks_[kConfigureForArcSideload].method_name =
       kConfigureForArcSideloadMethod;
   dbus_callbacks_[kConnectChunnel].method_name = kConnectChunnelMethod;
-  dbus_callbacks_[kUpgradeContainer].method_name = kUpgradeContainerMethod;
-  dbus_callbacks_[kCancelUpgradeContainer].method_name =
-      kCancelUpgradeContainerMethod;
   dbus_callbacks_[kStartLxd].method_name = kStartLxdMethod;
   dbus_callbacks_[kAddFileWatch].method_name = kAddFileWatchMethod;
   dbus_callbacks_[kRemoveFileWatch].method_name = kRemoveFileWatchMethod;

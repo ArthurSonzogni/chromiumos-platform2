@@ -10,7 +10,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+// clang-format off
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
+// clang-format on
 
 #include <algorithm>
 #include <optional>
@@ -986,16 +988,6 @@ void Service::ContainerImportProgress(
     base::WaitableEvent* event) {
   *result = FillVmInfoByCid(cid, progress_signal);
   cicerone_adaptor_.SendImportLxdContainerProgressSignal(*progress_signal);
-  event->Signal();
-}
-
-void Service::ContainerUpgradeProgress(
-    const uint32_t cid,
-    UpgradeContainerProgressSignal* progress_signal,
-    bool* result,
-    base::WaitableEvent* event) {
-  *result = FillVmInfoByCid(cid, progress_signal);
-  cicerone_adaptor_.SendUpgradeContainerProgressSignal(*progress_signal);
   event->Signal();
 }
 
@@ -2569,7 +2561,7 @@ SetUpLxdContainerUserResponse Service::SetUpLxdContainerUser(
   std::string error_msg;
 
   if (vm->GetType() == apps::BAGUETTE) {
-    // TODO: b/346396184
+    // TODO(b/360170397): Implement user support.
     LOG(WARNING)
         << "Ignore set username request as it's not supported in baguette yet";
     // Default username in Baguette is chronos
@@ -2914,83 +2906,6 @@ ConfigureForArcSideloadResponse Service::ConfigureForArcSideload(
       response.set_status(ConfigureForArcSideloadResponse::FAILED);
       break;
   }
-  return response;
-}
-
-UpgradeContainerResponse Service::UpgradeContainer(
-    const UpgradeContainerRequest& request) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received UpgradeContainer request";
-  UpgradeContainerResponse response;
-
-  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
-  if (!vm) {
-    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
-    response.set_status(UpgradeContainerResponse::FAILED);
-    response.set_failure_reason(base::StringPrintf(
-        "requested VM does not exist: %s", request.vm_name().c_str()));
-    return response;
-  }
-  Container* container = vm->GetContainerForName(request.container_name());
-  if (!container) {
-    std::string error_reason = base::StringPrintf(
-        "requested container %s does not exist on vm %s",
-        request.container_name().c_str(), request.vm_name().c_str());
-    LOG(ERROR) << error_reason;
-    response.set_status(UpgradeContainerResponse::FAILED);
-    response.set_failure_reason(std::move(error_reason));
-    return response;
-  }
-
-  std::string error_msg;
-  VirtualMachine::UpgradeContainerStatus status =
-      vm->UpgradeContainer(container, request.target_version(), &error_msg);
-
-  response.set_status(UpgradeContainerResponse::UNKNOWN);
-  if (UpgradeContainerResponse::Status_IsValid(static_cast<int>(status))) {
-    response.set_status(static_cast<UpgradeContainerResponse::Status>(status));
-  }
-  response.set_failure_reason(error_msg);
-  return response;
-}
-
-CancelUpgradeContainerResponse Service::CancelUpgradeContainer(
-    const CancelUpgradeContainerRequest& request) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received CancelUpgradeContainer request";
-  CancelUpgradeContainerResponse response;
-
-  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
-  if (!vm) {
-    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
-    response.set_status(CancelUpgradeContainerResponse::FAILED);
-    response.set_failure_reason(base::StringPrintf(
-        "requested VM does not exist: %s", request.vm_name().c_str()));
-    return response;
-  }
-
-  Container* container = vm->GetContainerForName(request.container_name());
-  if (!container) {
-    std::string error_reason = base::StringPrintf(
-        "requested container %s does not exist on vm %s",
-        request.container_name().c_str(), request.vm_name().c_str());
-    LOG(ERROR) << error_reason;
-    response.set_status(CancelUpgradeContainerResponse::FAILED);
-    response.set_failure_reason(std::move(error_reason));
-    return response;
-  }
-
-  std::string error_msg;
-  VirtualMachine::CancelUpgradeContainerStatus status =
-      vm->CancelUpgradeContainer(container, &error_msg);
-
-  response.set_status(CancelUpgradeContainerResponse::UNKNOWN);
-  if (CancelUpgradeContainerResponse::Status_IsValid(
-          static_cast<int>(status))) {
-    response.set_status(
-        static_cast<CancelUpgradeContainerResponse::Status>(status));
-  }
-  response.set_failure_reason(error_msg);
   return response;
 }
 

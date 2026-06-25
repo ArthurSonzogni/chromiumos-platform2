@@ -71,8 +71,6 @@ class ServiceTestingHelper {
     kApplyAnsiblePlaybook,
     kConfigureForArcSideload,
     kConnectChunnel,
-    kUpgradeContainer,
-    kCancelUpgradeContainer,
     kStartLxd,
     kAddFileWatch,
     kRemoveFileWatch,
