@@ -139,5 +139,15 @@ TEST_F(VirtualMachineTest, VerifyVmTypes) {
   EXPECT_EQ(baguette_vm.GetType(), VirtualMachine::VmType::BAGUETTE);
 }
 
+TEST_F(VirtualMachineTest, SetUpLxdContainerUserContainerless) {
+  VirtualMachine baguette_vm(1, 5, "baguette_token", apps::BAGUETTE);
+  std::string username;
+  std::string error_msg;
+  EXPECT_EQ(baguette_vm.SetUpLxdContainerUser("penguin", "testuser", &username,
+                                              &error_msg),
+            VirtualMachine::SetUpLxdContainerUserStatus::FAILED);
+  EXPECT_EQ(error_msg, "VM does not host containers");
+}
+
 }  // namespace cicerone
 }  // namespace vm_tools

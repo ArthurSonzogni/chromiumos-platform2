@@ -556,6 +556,11 @@ VirtualMachine::SetUpLxdContainerUser(const std::string& container_name,
                                       std::string* out_error) {
   DCHECK(out_username);
   DCHECK(out_error);
+  if (IsContainerless()) {
+    LOG(ERROR) << "Cannot set up LXD container user on a containerless VM";
+    *out_error = "VM does not host containers";
+    return VirtualMachine::SetUpLxdContainerUserStatus::FAILED;
+  }
   if (!tremplin_stub_) {
     *out_error = "tremplin is not connected";
     return VirtualMachine::SetUpLxdContainerUserStatus::FAILED;

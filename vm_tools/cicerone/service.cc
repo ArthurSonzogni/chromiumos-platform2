@@ -2460,18 +2460,6 @@ SetUpLxdContainerUserResponse Service::SetUpLxdContainerUser(
   std::string username;
   std::string error_msg;
 
-  if (vm->GetType() == apps::BAGUETTE) {
-    // TODO(b/360170397): Implement user support.
-    LOG(WARNING)
-        << "Ignore set username request as it's not supported in baguette yet";
-    // Default username in Baguette is chronos
-    username = "chronos";
-    response.set_container_username(username);
-    response.set_status(SetUpLxdContainerUserResponse::SUCCESS);
-    response.set_failure_reason(error_msg);
-    return response;
-  }
-
   VirtualMachine::SetUpLxdContainerUserStatus status =
       vm->SetUpLxdContainerUser(
           request.container_name().empty() ? kDefaultContainerName
