@@ -3,6 +3,11 @@
  * found in the LICENSE file.
  */
 
+#include <fcntl.h>
+#include <string.h>
+#include <sys/sysinfo.h>
+#include <unistd.h>
+
 #include <optional>
 
 #include <base/files/file.h>
@@ -12,23 +17,18 @@
 #include <base/posix/eintr_wrapper.h>
 #include <brillo/file_utils.h>
 #include <brillo/secure_blob.h>
-#include <fcntl.h>
+#include <libhwsec-foundation/crypto/big_num_util.h>
+#include <libhwsec-foundation/crypto/ecdh_hkdf.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
-#include <string.h>
-#include <sys/sysinfo.h>
+#include <pinweaver/pinweaver_eal.h>
 #include <tpm2/BaseTypes.h>
 #include <tpm2/Capabilities.h>
 #include <tpm2/Implementation.h>
 #include <tpm2/tpm_types.h>
-#include <unistd.h>
-
-#include <libhwsec-foundation/crypto/big_num_util.h>
-#include <libhwsec-foundation/crypto/ecdh_hkdf.h>
-#include <pinweaver/pinweaver_eal.h>
 
 #define DEVICE_KEY_SIZE 32
 #define PW_OBJ_CONST_SIZE 8
