@@ -7,6 +7,7 @@
 
 #include <optional>
 
+#include <base/files/file_path.h>
 #include <chromeos/ec/ec_commands.h>
 #include <libec/ec_command_factory.h>
 
