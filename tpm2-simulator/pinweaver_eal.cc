@@ -500,4 +500,9 @@ int pinweaver_eal_ecdh_derive(const struct pw_ba_ecc_pt_t* ecc_pt_in,
   memcpy(ecc_pt_out->y, out_y_blob.data(), out_y_blob.size());
   return 0;
 }
+
+void pinweaver_eal_clear_keys(void) {
+  /* tpm2-simulator does not maintain in-memory key labels that need clearing
+   * here. */
+}
 }
