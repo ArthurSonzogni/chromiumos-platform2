@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 
+#include <base/environment.h>
 #include <base/time/time.h>
 
 namespace run_oci {
@@ -41,7 +42,7 @@ struct OciProcessRlimit {
   rlim_t soft;
 };
 
-using OciEnvironment = std::map<std::string, std::string>;
+using OciEnvironment = base::EnvironmentMap;
 
 struct OciProcess {
   bool terminal = false;  // Optional

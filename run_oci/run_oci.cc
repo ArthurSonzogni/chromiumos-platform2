@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include <getopt.h>
+#include <libminijail.h>
+#include <scoped_minijail.h>
 #include <signal.h>
 #include <sys/mount.h>
 #include <sys/types.h>
@@ -38,8 +40,6 @@
 #include <libcontainer/config.h>
 #include <libcontainer/container.h>
 #include <libcontainer/libcontainer.h>
-#include <libminijail.h>
-#include <scoped_minijail.h>
 
 #include "run_oci/container_config_parser.h"
 #include "run_oci/container_options.h"
@@ -63,8 +63,7 @@ constexpr char kLogFilename[] = "log";
 constexpr size_t kMaxPidFileLength = 16;
 
 const std::map<std::string, int> kSignalMap = {
-#define SIGNAL_MAP_ENTRY(name) \
-  { #name, SIG##name }
+#define SIGNAL_MAP_ENTRY(name) {#name, SIG##name}
     SIGNAL_MAP_ENTRY(HUP),   SIGNAL_MAP_ENTRY(INT),    SIGNAL_MAP_ENTRY(QUIT),
     SIGNAL_MAP_ENTRY(ILL),   SIGNAL_MAP_ENTRY(TRAP),   SIGNAL_MAP_ENTRY(ABRT),
     SIGNAL_MAP_ENTRY(BUS),   SIGNAL_MAP_ENTRY(FPE),    SIGNAL_MAP_ENTRY(KILL),
