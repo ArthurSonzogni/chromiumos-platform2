@@ -10,8 +10,8 @@
 #include <utility>
 
 #include <base/run_loop.h>
-#include <base/test/test_future.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -177,6 +177,45 @@ TEST_F(SmbFilesystemTest, MaybeUpdateCredentials_IgnoreEmptyResponse) {
   EXPECT_CALL(*(fs.samba_impl()), UpdateCredentials(_)).Times(0);
   fs.MaybeUpdateCredentials(EACCES);
   EXPECT_TRUE(future.Wait());
+}
+
+TEST_F(SmbFilesystemTest, MakeShareFilePath) {
+  TestSmbFilesystem fs;
+
+  // Root.
+  {
+    base::FilePath file_path("/");
+    EXPECT_EQ("smb://server/share", fs.MakeShareFilePath(file_path));
+  }
+  // Single file name.
+  {
+    base::FilePath file_path("/log.txt");
+    EXPECT_EQ("smb://server/share/log.txt", fs.MakeShareFilePath(file_path));
+  }
+  // File name with path.
+  {
+    base::FilePath file_path("/foo/log.txt");
+    EXPECT_EQ("smb://server/share/foo/log.txt",
+              fs.MakeShareFilePath(file_path));
+  }
+  // File name with parent root literals.
+  {
+    base::FilePath file_path("/../foo/..bar/log.txt");
+    EXPECT_EQ("smb://server/share/../foo/..bar/log.txt",
+              fs.MakeShareFilePath(file_path));
+  }
+  // Path name with escapable characters.
+  {
+    base::FilePath file_path("/%2e%2e%2flog.txt");
+    EXPECT_EQ("smb://server/share/%252e%252e%252flog.txt",
+              fs.MakeShareFilePath(file_path));
+  }
+  // A path with backslashes.
+  {
+    base::FilePath file_path("/\\.\\.log.txt");
+    EXPECT_EQ("smb://server/share/%5C.%5C.log.txt",
+              fs.MakeShareFilePath(file_path));
+  }
 }
 
 }  // namespace smbfs

@@ -185,6 +185,7 @@ class SmbFilesystem : public Filesystem {
   FRIEND_TEST(SmbFilesystemTest, MaybeUpdateCredentials_NoDelegate);
   FRIEND_TEST(SmbFilesystemTest, MaybeUpdateCredentials_OnlyOneRequest);
   FRIEND_TEST(SmbFilesystemTest, MaybeUpdateCredentials_IgnoreEmptyResponse);
+  FRIEND_TEST(SmbFilesystemTest, MakeShareFilePath);
 
   // Cache stat information when listing directories to reduce unnecessary
   // network requests.

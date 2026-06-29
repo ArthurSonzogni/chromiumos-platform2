@@ -13,6 +13,8 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
+#include <base/strings/escape.h>
+#include <base/strings/strcat.h>
 
 #include "smbfs/samba_interface.h"
 #include "smbfs/smb_filesystem.h"
@@ -252,7 +254,7 @@ std::string RecursiveDeleteOperation::MakeSharePath(
     const base::FilePath& path) {
   DCHECK(path.IsAbsolute());
   DCHECK(!path.EndsWithSeparator());
-  return base_share_path_ + path.value();
+  return base::StrCat({base_share_path_, base::EscapePath(path.value())});
 }
 
 }  // namespace smbfs

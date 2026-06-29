@@ -16,6 +16,8 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/posix/safe_strerror.h>
+#include <base/strings/escape.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
@@ -220,7 +222,7 @@ std::string SmbFilesystem::MakeShareFilePath(const base::FilePath& path) const {
   // two properties should always hold.
   DCHECK(path.IsAbsolute());
   DCHECK(!path.EndsWithSeparator());
-  return base_share_path + path.value();
+  return base::StrCat({base_share_path, base::EscapePath(path.value())});
 }
 
 std::string SmbFilesystem::ShareFilePathFromInode(ino_t inode) const {
