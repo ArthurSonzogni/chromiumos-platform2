@@ -15,6 +15,7 @@
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
+#include <base/process/process_iterator.h>
 #include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/process_manager.h>
 
@@ -23,6 +24,18 @@
 #include "shill/technology.h"
 
 namespace shill {
+
+// ProcessFilter that matches interface-managing dhcpcd processes.
+//
+// We match processes whose first command-line argument (rewritten by
+// setproctitle() in dhcpcd) starts with "dhcpcd: " and ends with " [ip4]"
+// or " [ip6]". This matches names like:
+// - dhcpcd: eth0 [ip4]
+// - dhcpcd: wlan0 [ip6]
+class DHCPCDProcessFilter : public base::ProcessFilter {
+ public:
+  bool Includes(const base::ProcessEntry& entry) const override;
+};
 
 // The proxy for the latest dhcpcd.
 class DHCPCDProxy : public DHCPClientProxy {

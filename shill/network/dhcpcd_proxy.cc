@@ -34,7 +34,6 @@
 namespace shill {
 namespace {
 
-constexpr char kDHCPCDExecutableName[] = "dhcpcd";
 constexpr char kDHCPCDPath[] = "/sbin/dhcpcd";
 constexpr char kDHCPCDUser[] = "dhcp";
 constexpr char kDHCPCDGroup[] = "dhcp";
@@ -345,13 +344,30 @@ base::WeakPtr<DHCPCDProxy> DHCPCDProxy::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
 }
 
+bool DHCPCDProcessFilter::Includes(const base::ProcessEntry& entry) const {
+  if (entry.cmd_line_args().empty()) {
+    return false;
+  }
+  const std::string& title = entry.cmd_line_args()[0];
+  return title.starts_with("dhcpcd: ") &&
+         (title.ends_with(" [ip4]") || title.ends_with(" [ip6]"));
+}
+
 DHCPCDProxyFactory::DHCPCDProxyFactory(
     net_base::ProcessManager* process_manager)
     : process_manager_(process_manager) {
+  const DHCPCDProcessFilter filter;
+
   // Kill the dhcpcd processes accidentally left by previous run.
-  base::NamedProcessIterator iter(kDHCPCDExecutableName, nullptr);
+  base::ProcessIterator iter(&filter);
   while (const base::ProcessEntry* entry = iter.NextProcessEntry()) {
-    process_manager_->StopProcessAndBlock(entry->pid());
+    if (kill(entry->pid(), SIGKILL) < 0) {
+      PLOG(WARNING) << "Failed to kill leftover dhcpcd process "
+                    << entry->pid();
+    } else {
+      LOG(INFO) << "Killed leftover dhcpcd process " << entry->pid() << " ("
+                << entry->cmd_line_args()[0] << ")";
+    }
   }
 }
 

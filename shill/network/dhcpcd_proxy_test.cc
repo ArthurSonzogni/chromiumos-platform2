@@ -449,5 +449,43 @@ TEST(DHCPCDProxyTest, ParsePDConfiguration) {
           *net_base::IPv6CIDR::CreateFromCIDRString("fc00:0:0:101::/96")));
 }
 
+TEST(DHCPCDProcessFilterTest, FilterProcesses) {
+  const DHCPCDProcessFilter filter;
+
+  // Matching IPv4 title.
+  base::ProcessEntry entry1;
+  entry1.cmd_line_args_ = {"dhcpcd: eth0 [ip4]"};
+  EXPECT_TRUE(filter.Includes(entry1));
+
+  // Matching IPv6 title.
+  base::ProcessEntry entry2;
+  entry2.cmd_line_args_ = {"dhcpcd: wlan0 [ip6]"};
+  EXPECT_TRUE(filter.Includes(entry2));
+
+  // Matching prefix and suffix and with extra arguments.
+  base::ProcessEntry entry3;
+  entry3.cmd_line_args_ = {"dhcpcd: eth0 [ip4]", "--some-arg"};
+  EXPECT_TRUE(filter.Includes(entry3));
+
+  // Empty command line.
+  base::ProcessEntry entry4;
+  EXPECT_FALSE(filter.Includes(entry4));
+
+  // No matching prefix.
+  base::ProcessEntry entry5;
+  entry5.cmd_line_args_ = {"dhcpcd"};
+  EXPECT_FALSE(filter.Includes(entry5));
+
+  // No matching prefix.
+  base::ProcessEntry entry6;
+  entry6.cmd_line_args_ = {"dhcpcd-script"};
+  EXPECT_FALSE(filter.Includes(entry6));
+
+  // No matching suffix.
+  base::ProcessEntry entry7;
+  entry7.cmd_line_args_ = {"dhcpcd: [master]"};
+  EXPECT_FALSE(filter.Includes(entry7));
+}
+
 }  // namespace
 }  // namespace shill
