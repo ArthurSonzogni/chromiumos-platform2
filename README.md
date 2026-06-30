@@ -72,7 +72,6 @@ copies.
 | [feature_usage](./feature_usage/) | Library to provide a unified approach to report feature usage events |
 | [featured](./featured/) | Feature daemon for enabling and managing platform features |
 | [feedback](./feedback/) | Daemon for headless systems that want to gather feedback (normally Chrome manages it) |
-| [ferrochrome](./ferrochrome/) | Components to run Ferrochrome |
 | [flex_bluetooth](./flex_bluetooth/) | Updates Floss overrides for ChromeOS Flex |
 | [flex_hwis](./flex_hwis/) | Utility for collecting hardware information and sending it to a remote API |
 | [flex_id](./flex_id/) | Utility for generating flex_id, a machine identifier for devices without VPD info |
