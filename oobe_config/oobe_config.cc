@@ -18,6 +18,8 @@
 #include "libhwsec/frontend/oobe_config/frontend.h"
 #include "oobe_config/encryption/openssl_encryption.h"
 #include "oobe_config/encryption/pstore_storage.h"
+#include "oobe_config/metrics/enterprise_rollback_metrics_handler.h"
+#include "oobe_config/metrics/enterprise_rollback_metrics_tracking.h"
 #include "oobe_config/network_exporter.h"
 #include "oobe_config/rollback_data.pb.h"
 
@@ -43,6 +45,16 @@ OobeConfig::~OobeConfig() = default;
 void OobeConfig::GetRollbackData(RollbackData* rollback_data) const {
   const bool is_device_migration =
       file_handler_.HasDeviceMigrationSaveTriggerFlag();
+
+  if (is_device_migration) {
+    // For rollbacks, metrics tracking is started when the policy is detected,
+    // but this doesn't happen for migration so initiate it now.
+    oobe_config::EnterpriseRollbackMetricsHandler rollback_metrics;
+    if (!oobe_config::StartNewMigrationTracking(rollback_metrics)) {
+      LOG(ERROR) << "Failed to start tracking device migration metrics.";
+    }
+  }
+
   // If OOBE has been completed already, we know the EULA has been accepted.
   // However, if the device is being moved to the new domain, we don't want to
   // transfer eula acceptance.

@@ -40,6 +40,21 @@ void StructuredMetricRollbackPolicyActivated(
   event.Record();
 }
 
+void StructuredMetricRollbackMigrationTriggered(
+    const RollbackMetadata& rollback_metadata) {
+  LOG(INFO) << "Record RollbackMigrationTriggered event.";
+  auto event = metrics::structured::events::rollback_enterprise::
+      RollbackMigrationTriggered();
+  event
+      .Setorigin_chromeos_version_major(
+          rollback_metadata.origin_chromeos_version().major())
+      .Setorigin_chromeos_version_minor(
+          rollback_metadata.origin_chromeos_version().minor())
+      .Setorigin_chromeos_version_patch(
+          rollback_metadata.origin_chromeos_version().patch());
+  event.Record();
+}
+
 enum class OobeSaveResult {
   kSuccess = 0,
   kFailure = 1,
@@ -113,6 +128,9 @@ void RecordEnterpriseRollbackMetric(const EventData& event_data,
   switch (event_data.event()) {
     case EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED:
       StructuredMetricRollbackPolicyActivated(rollback_metadata);
+      break;
+    case EnterpriseRollbackEvent::MIGRATION_TRIGGERED:
+      StructuredMetricRollbackMigrationTriggered(rollback_metadata);
       break;
 
     case EnterpriseRollbackEvent::ROLLBACK_OOBE_CONFIG_SAVE_SUCCESS:

@@ -11,7 +11,6 @@
 #include <base/types/expected.h>
 #include <base/version.h>
 #include <brillo/brillo_export.h>
-
 #include <oobe_config/metrics/enterprise_rollback_metrics_handler.h>
 
 namespace oobe_config {
@@ -34,6 +33,11 @@ IsTrackingForRollbackTargetVersion(
 BRILLO_EXPORT bool StartNewTracking(
     oobe_config::EnterpriseRollbackMetricsHandler& rolback_metrics,
     std::string target_version_policy);
+
+// Starts a new tracking of device migration. Returns true if tracking starts
+// successfully.
+BRILLO_EXPORT bool StartNewMigrationTracking(
+    oobe_config::EnterpriseRollbackMetricsHandler& rolback_metrics);
 
 }  // namespace oobe_config
 

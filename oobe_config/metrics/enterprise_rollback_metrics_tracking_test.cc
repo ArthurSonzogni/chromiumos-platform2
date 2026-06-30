@@ -208,4 +208,16 @@ TEST_F(EnterpriseRollbackTrackingTest,
                    EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
 }
 
+TEST_F(EnterpriseRollbackTrackingTest, StartNewTrackingMigration) {
+  ASSERT_TRUE(StartNewMigrationTracking(*rollback_metrics_));
+
+  ASSERT_TRUE(rollback_metrics_->IsTrackingRollback());
+  ASSERT_TRUE(
+      rollback_metrics_->IsTrackingForTargetVersion(kDeviceVersionM108));
+  ASSERT_EQ(1, rollback_metrics_->TimesEventHasBeenTracked(
+                   EnterpriseRollbackEvent::MIGRATION_TRIGGERED));
+  ASSERT_EQ(0, rollback_metrics_->TimesEventHasBeenTracked(
+                   EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+}
+
 }  // namespace oobe_config

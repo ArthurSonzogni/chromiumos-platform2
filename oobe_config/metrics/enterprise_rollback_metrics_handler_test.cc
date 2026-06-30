@@ -660,4 +660,26 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
       kOsVersionM107));
 }
 
+TEST_F(EnterpriseRollbackMetricsHandlerTest, IsTrackingForMigration) {
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
+      kOsVersionM108, kOsVersionM108));
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::MIGRATION_TRIGGERED)));
+
+  ASSERT_TRUE(file_handler_->HasRollbackMetricsData());
+
+  // Verify file content.
+  EnterpriseRollbackMetricsData rollback_metrics_data;
+  ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
+
+  ASSERT_TRUE(OSVersionEqualChromeOSVersion(
+      kOsVersionM108,
+      rollback_metrics_data.rollback_metadata().origin_chromeos_version()));
+  ASSERT_TRUE(OSVersionEqualChromeOSVersion(
+      kOsVersionM108,
+      rollback_metrics_data.rollback_metadata().target_chromeos_version()));
+  ASSERT_EQ(rollback_metrics_data.event_data_size(), 1);
+}
+
 }  // namespace oobe_config

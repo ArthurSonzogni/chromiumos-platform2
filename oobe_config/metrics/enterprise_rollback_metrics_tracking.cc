@@ -56,6 +56,21 @@ bool RollbackPolicyActivatedStartTracking(
   return true;
 }
 
+// Starts a new enterprise rollback tracking for the device migration case.
+bool RollbackDeviceMigrationActivatedStartTracking(
+    oobe_config::EnterpriseRollbackMetricsHandler& rolback_metrics,
+    base::Version device_version) {
+  if (!rolback_metrics.StartTrackingRollback(device_version, device_version)) {
+    return false;
+  }
+
+  rolback_metrics.TrackEvent(
+      oobe_config::EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::MIGRATION_TRIGGERED));
+
+  return true;
+}
+
 }  // namespace
 
 std::optional<base::Version> GetDeviceVersion() {
@@ -114,6 +129,18 @@ bool StartNewTracking(
 
   return RollbackPolicyActivatedStartTracking(rolback_metrics, *device_version,
                                               *target_version);
+}
+
+bool StartNewMigrationTracking(
+    oobe_config::EnterpriseRollbackMetricsHandler& rolback_metrics) {
+  std::optional<base::Version> device_version = GetDeviceVersion();
+  if (!device_version.has_value()) {
+    LOG(ERROR) << "Error reading ChromeOS version";
+    return false;
+  }
+
+  return RollbackDeviceMigrationActivatedStartTracking(rolback_metrics,
+                                                       *device_version);
 }
 
 }  // namespace oobe_config

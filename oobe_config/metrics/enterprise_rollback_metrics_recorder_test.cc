@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "oobe_config/metrics/enterprise_rollback_metrics_recorder.h"
+
 #include <memory>
 #include <utility>
 
@@ -12,7 +14,6 @@
 #include <metrics/structured_events.h>
 
 #include "oobe_config/metrics/enterprise_rollback_metrics_data.pb.h"
-#include "oobe_config/metrics/enterprise_rollback_metrics_recorder.h"
 
 namespace oobe_config {
 

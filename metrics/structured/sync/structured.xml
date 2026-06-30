@@ -1304,6 +1304,22 @@
     </metric>
   </event>
 
+  <event name="RollbackMigrationTriggered">
+    <summary>
+      A device migration (remote wipe with config preservation) has been triggered.
+      This event happens before powerwash.
+    </summary>
+    <metric name="origin_chromeos_version_major" type="int">
+      <summary>ChromeOS major version of the device when the migration was triggered.</summary>
+    </metric>
+    <metric name="origin_chromeos_version_minor" type="int">
+      <summary>ChromeOS minor version of the device when the migration was triggered.</summary>
+    </metric>
+    <metric name="origin_chromeos_version_patch" type="int">
+      <summary>ChromeOS patch version of the device when the migration was triggered.</summary>
+    </metric>
+  </event>
+
   <event name="RollbackOobeConfigSave">
     <summary>
       Result of the process that encrypts and saves rollback data.
