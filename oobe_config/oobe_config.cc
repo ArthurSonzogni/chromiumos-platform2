@@ -41,14 +41,19 @@ OobeConfig::OobeConfig(const hwsec::OobeConfigFrontend* hwsec_oobe_config,
 OobeConfig::~OobeConfig() = default;
 
 void OobeConfig::GetRollbackData(RollbackData* rollback_data) const {
-  if (file_handler_.HasOobeCompletedFlag()) {
-    // If OOBE has been completed already, we know the EULA has been accepted.
-    rollback_data->set_eula_auto_accept(true);
-  }
+  const bool is_device_migration =
+      file_handler_.HasDeviceMigrationSaveTriggerFlag();
+  // If OOBE has been completed already, we know the EULA has been accepted.
+  // However, if the device is being moved to the new domain, we don't want to
+  // transfer eula acceptance.
+  const bool eula_auto_accept =
+      !is_device_migration && file_handler_.HasOobeCompletedFlag();
+  const bool eula_send_statistics =
+      !is_device_migration && file_handler_.HasMetricsReportingEnabledFlag();
 
-  if (file_handler_.HasMetricsReportingEnabledFlag()) {
-    rollback_data->set_eula_send_statistics(true);
-  }
+  rollback_data->set_eula_auto_accept(eula_auto_accept);
+  rollback_data->set_eula_send_statistics(eula_send_statistics);
+  rollback_data->set_is_device_migration(is_device_migration);
 
   if (network_config_for_testing_.empty()) {
     std::optional<std::string> network_config =
@@ -58,10 +63,6 @@ void OobeConfig::GetRollbackData(RollbackData* rollback_data) const {
     }
   } else {
     rollback_data->set_network_config(network_config_for_testing_);
-  }
-
-  if (file_handler_.HasDeviceMigrationSaveTriggerFlag()) {
-    rollback_data->set_is_device_migration(true);
   }
 
   return;
