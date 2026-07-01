@@ -938,10 +938,7 @@ base::expected<std::string, std::string> Log::GetCommandLogData() const {
   if (access_root_mount_ns_) {
     p.AllowAccessRootMountNamespace();
   }
-  // Opt-out of Minijail's default runtime environment, because the seccomp
-  // policy causes issues on jacuzzi. See b/267050115.
-  std::vector<std::string> minijail_args{"--no-default-runtime-environment"};
-  if (!p.Init(minijail_args)) {
+  if (!p.Init()) {
     return base::unexpected(kLogNotAvailable);
   }
   p.AddArg(kShell);
@@ -1134,10 +1131,7 @@ bool Log::StartToGetLogData(std::unique_ptr<SandboxedProcess>& child_proc,
   if (access_root_mount_ns_) {
     child_proc->AllowAccessRootMountNamespace();
   }
-  // Opt-out of Minijail's default runtime environment, because the seccomp
-  // policy causes issues on jacuzzi. See b/267050115.
-  std::vector<std::string> minijail_args{"--no-default-runtime-environment"};
-  if (!child_proc->Init(minijail_args)) {
+  if (!child_proc->Init()) {
     return false;
   }
 
