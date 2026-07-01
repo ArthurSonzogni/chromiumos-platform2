@@ -8,14 +8,21 @@
 
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <libusb.h>
 
 #include "lorgnette/ippusb_device.h"
 #include "lorgnette/usb/usb_device.h"
 
 namespace lorgnette {
 
-UsbDeviceImpl::UsbDeviceImpl(libusb_device* device) : device_(device) {}
+UsbDeviceImpl::UsbDeviceImpl(libusb_device* device) : device_(device) {
+  libusb_ref_device(device_);
+}
+
+UsbDeviceImpl::~UsbDeviceImpl() {
+  if (device_) {
+    libusb_unref_device(device_);
+  }
+}
 
 std::unique_ptr<UsbDeviceImpl> UsbDeviceImpl::Create(libusb_device* device) {
   UsbDeviceImpl* dev = new UsbDeviceImpl(device);

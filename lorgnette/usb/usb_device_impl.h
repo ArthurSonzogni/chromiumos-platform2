@@ -18,7 +18,7 @@ namespace lorgnette {
 
 class UsbDeviceImpl : public UsbDevice {
  public:
-  ~UsbDeviceImpl() override = default;
+  ~UsbDeviceImpl() override;
 
   static std::unique_ptr<UsbDeviceImpl> Create(libusb_device* device);
 
