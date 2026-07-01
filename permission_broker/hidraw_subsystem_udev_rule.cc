@@ -123,8 +123,10 @@ bool ParseDescriptorItem(const HidReportDescriptor& descriptor,
   if (offset >= descriptor.size) {
     return false;
   }
+  // HID 1.11 6.2.2.2: bSize 0/1/2/3 -> 0/1/2/4 data bytes.
+  static const int kSizeMap[4] = {0, 1, 2, 4};
   uint8_t header = descriptor.data[offset];
-  int data_size = header & 0x03;
+  int data_size = kSizeMap[header & 0x03];
   item->type = static_cast<ItemType>((header >> 2) & 0x03);
   item->tag.raw = (header & 0xf0) >> 4;
   item->depth = current_depth;
@@ -136,6 +138,9 @@ bool ParseDescriptorItem(const HidReportDescriptor& descriptor,
       return false;
     }
     int long_descriptor_size = descriptor.data[offset + kShortHeaderLength];
+    if (offset + kLongHeaderLength + long_descriptor_size > descriptor.size) {
+      return false;
+    }
     *bytes_read = kLongHeaderLength + long_descriptor_size;
     return true;
   }
@@ -204,22 +209,24 @@ bool HidrawSubsystemUdevRule::ParseToplevelCollectionUsages(
   if (!ParseToplevelDescriptorItems(descriptor, &items)) {
     return false;
   }
-  for (int i = 0; i < static_cast<int>(items.size()) - 2; ++i) {
-    DescriptorItem& first = items[i];
-    if (first.type != TYPE_GLOBAL ||
-        first.tag.global != GLOBAL_TAG_USAGE_PAGE) {
-      continue;
+  // Track Usage Page as a persistent global and Usage as a local item that is
+  // consumed by the next main item, matching kernel hid-core semantics.
+  uint32_t usage_page = 0;
+  bool have_usage = false;
+  uint32_t usage = 0;
+  for (const auto& it : items) {
+    if (it.type == TYPE_GLOBAL && it.tag.global == GLOBAL_TAG_USAGE_PAGE) {
+      usage_page = it.data_value;
+    } else if (it.type == TYPE_LOCAL && it.tag.local == LOCAL_TAG_USAGE) {
+      usage = it.data_value;
+      have_usage = true;
+    } else if (it.type == TYPE_MAIN) {
+      if (it.tag.main == MAIN_TAG_COLLECTION && have_usage) {
+        usages->push_back(HidUsage(static_cast<HidUsage::Page>(usage_page),
+                                   static_cast<uint16_t>(usage)));
+      }
+      have_usage = false;  // main item resets local state
     }
-    DescriptorItem& second = items[i + 1];
-    if (second.type != TYPE_LOCAL || second.tag.local != LOCAL_TAG_USAGE) {
-      continue;
-    }
-    DescriptorItem& third = items[i + 2];
-    if (third.type != TYPE_MAIN || third.tag.main != MAIN_TAG_COLLECTION) {
-      continue;
-    }
-    usages->push_back(HidUsage(static_cast<HidUsage::Page>(first.data_value),
-                               static_cast<uint16_t>(second.data_value)));
   }
   return true;
 }

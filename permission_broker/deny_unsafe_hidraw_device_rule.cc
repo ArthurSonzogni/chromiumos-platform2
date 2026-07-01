@@ -59,7 +59,8 @@ Rule::Result DenyUnsafeHidrawDeviceRule::ProcessHidrawDevice(
     struct udev_device* device) {
   std::vector<HidUsage> usages;
   if (!GetHidToplevelUsages(device, &usages)) {
-    return IGNORE;
+    // Fail closed: if we cannot parse the descriptor, do not grant access.
+    return DENY;
   }
 
   // Ignore devices which are known to be safe and should work with WebHID.
