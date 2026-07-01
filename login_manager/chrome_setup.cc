@@ -479,10 +479,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     builder->AddFeatureEnableOverride("QuickUnlockFingerprint");
   }
 
-  if (builder->UseFlagIsSet("clear_fast_ink_buffer")) {
-    builder->AddArg("--ash-clear-fast-ink-buffer");
-  }
-
   if (builder->UseFlagIsSet("enable_dsp_hotword")) {
     builder->AddFeatureEnableOverride("EnableDspHotword");
   }
