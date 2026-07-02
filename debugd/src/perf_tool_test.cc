@@ -46,6 +46,8 @@ TEST(PerfToolTest, MalformedQuipperOptions) {
 
   EXPECT_FALSE(ValidateQuipperArguments({"--duration", "--", "record"},
                                         subcommand, &error));
+  EXPECT_FALSE(ValidateQuipperArguments({"--inject_args", "--", "record"},
+                                        subcommand, &error));
 }
 
 TEST(PerfToolTest, UnsupportedPerfSubcommand) {
@@ -58,6 +60,24 @@ TEST(PerfToolTest, UnsupportedPerfSubcommand) {
   EXPECT_FALSE(ValidateQuipperArguments(
       {"--duration", "2", "--", "inject", "-b"}, subcommand, &error));
   EXPECT_EQ(subcommand, PERF_COMMAND_UNSUPPORTED);
+}
+
+TEST(PerfToolTest, TrailingDurationOptionAtEnd) {
+  PerfSubcommand subcommand;
+  brillo::ErrorPtr error;
+
+  EXPECT_FALSE(ValidateQuipperArguments({"--duration"}, subcommand, &error));
+  ASSERT_NE(error.get(), nullptr);
+  EXPECT_EQ(error->GetMessage(), "option --duration needs a following value");
+}
+
+TEST(PerfToolTest, TrailingInjectArgsOptionAtEnd) {
+  PerfSubcommand subcommand;
+  brillo::ErrorPtr error;
+
+  EXPECT_FALSE(ValidateQuipperArguments({"--inject_args"}, subcommand, &error));
+  ASSERT_NE(error.get(), nullptr);
+  EXPECT_EQ(error->GetMessage(), "option --inject_args needs a following value");
 }
 
 }  // namespace debugd

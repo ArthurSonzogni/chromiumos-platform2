@@ -277,7 +277,7 @@ bool ValidateQuipperArguments(const std::vector<std::string>& qp_args,
       if (args_iter == qp_args.end()) {
         DEBUGD_ADD_ERROR_FMT(error, kInvalidPerfArgumentErrorName,
                              "option %s needs a following value",
-                             args_iter->c_str());
+                             it->first.c_str());
         return false;
       }
     }
