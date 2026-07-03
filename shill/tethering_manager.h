@@ -169,6 +169,7 @@ class TetheringManager : public Network::EventHandler {
   FRIEND_TEST(TetheringManagerTest, MARWithSSIDChange);
   FRIEND_TEST(TetheringManagerTest, MARWithTetheringRestart);
   FRIEND_TEST(TetheringManagerTest, CheckMACStored);
+  FRIEND_TEST(TetheringManagerTest, UpstreamNetworkDestroyedWhileRestarting);
 
   enum class StopReason {
     kInitial,                   // Initial idle state.

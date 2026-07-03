@@ -1507,12 +1507,12 @@ void TetheringManager::OnNetworkStopped(int interface_index, bool is_failure) {
 }
 
 void TetheringManager::OnNetworkDestroyed(int network_id, int interface_index) {
+  upstream_network_ = nullptr;
+  upstream_service_ = nullptr;
   if (state_ == TetheringState::kTetheringIdle ||
       state_ == TetheringState::kTetheringRestarting) {
     return;
   }
-  upstream_network_ = nullptr;
-  upstream_service_ = nullptr;
   StopTetheringSession(StopReason::kUpstreamDisconnect);
 }
 

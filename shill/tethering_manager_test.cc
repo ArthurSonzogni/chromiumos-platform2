@@ -1480,6 +1480,34 @@ TEST_F(TetheringManagerTest, UpstreamNetworkDestroyed) {
                          kTetheringIdleReasonUpstreamDisconnect);
 }
 
+TEST_F(TetheringManagerTest, UpstreamNetworkDestroyedWhileRestarting) {
+  TetheringPrerequisite(tethering_manager_);
+  SetEnabledVerifyResult(tethering_manager_, true,
+                         TetheringManager::SetEnabledResult::kSuccess);
+
+  // Assert that upstream_network_ is set and is non-null
+  EXPECT_NE(tethering_manager_->upstream_network_, nullptr);
+
+  // Change SSID and set to TetheringConfig to enter restarting state.
+  KeyValueStore config = GetConfig(tethering_manager_);
+  SetConfigSSID(config, kTestAPHexSSID);
+  EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, config));
+  DispatchPendingEvents();
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringRestarting);
+
+  // Now, destroy the upstream network.
+  OnUpstreamNetworkDestroyed(tethering_manager_);
+
+  // Verify that upstream_network_ is cleared (set to nullptr).
+  EXPECT_EQ(tethering_manager_->upstream_network_, nullptr);
+  EXPECT_EQ(tethering_manager_->upstream_service_, nullptr);
+
+  // Tethering state should remain kTetheringRestarting
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringRestarting);
+}
+
 TEST_F(TetheringManagerTest, InterfaceDisabledWhenTetheringIsStarting) {
   TetheringPrerequisite(tethering_manager_);
 
