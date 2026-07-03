@@ -118,6 +118,7 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
   FRIEND_TEST(P2PManagerTest, GroupFinished_IgnoreDuplicates);
   FRIEND_TEST(P2PManagerTest, GroupFinished_IgnoreMissingDevice);
   FRIEND_TEST(P2PManagerTest, GroupFinished_IgnoreMissingProperties);
+  FRIEND_TEST(P2PManagerTest, DeleteP2PDeviceClearsDelegates);
   FRIEND_TEST(P2PManagerTest, GroupFormationFailure);
   FRIEND_TEST(P2PManagerTest, GroupFormationFailure_IgnoreDuplicates);
   FRIEND_TEST(P2PManagerTest, GroupFormationFailure_IgnoreMissingDevice);

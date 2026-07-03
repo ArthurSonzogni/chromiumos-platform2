@@ -522,6 +522,21 @@ void P2PManager::DeleteP2PDevice(P2PDeviceRefPtr p2p_dev) {
     return;
   }
 
+  if (supplicant_primary_p2pdevice_pending_event_delegate_ ==
+      static_cast<SupplicantP2PDeviceEventDelegateInterface*>(p2p_dev.get())) {
+    supplicant_primary_p2pdevice_pending_event_delegate_ = nullptr;
+  }
+
+  for (auto it = supplicant_primary_p2pdevice_event_delegates_.begin();
+       it != supplicant_primary_p2pdevice_event_delegates_.end();) {
+    if (it->second == static_cast<SupplicantP2PDeviceEventDelegateInterface*>(
+                          p2p_dev.get())) {
+      it = supplicant_primary_p2pdevice_event_delegates_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+
   if (p2p_dev->iface_type() == LocalDevice::IfaceType::kP2PGO) {
     p2p_group_owners_.erase(p2p_dev->shill_id());
   } else {

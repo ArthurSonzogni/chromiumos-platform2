@@ -5,6 +5,7 @@
 #include "shill/wifi/p2p_manager.h"
 
 #include <map>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -906,6 +907,41 @@ TEST_F(P2PManagerTest, GroupFinished_IgnoreMissingDevice) {
   EXPECT_EQ(p2p_manager_
                 ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
             nullptr);
+}
+
+TEST_F(P2PManagerTest, DeleteP2PDeviceClearsDelegates) {
+  KeyValueStore properties = DefaultGroupStartedProperties(kDefaultShillId);
+  RpcIdentifier interface_path = properties.Get<RpcIdentifier>(
+      WPASupplicant::kGroupStartedPropertyInterfaceObject);
+
+  // Keep a reference to p2p_device so it remains alive after being deleted from
+  // the manager.
+  scoped_refptr<MockP2PDevice> p2p_device = new NiceMock<MockP2PDevice>(
+      &manager_, LocalDevice::IfaceType::kP2PGO, "wlan0", 0, kDefaultShillId,
+      WiFiPhy::Priority(0), event_cb_.Get());
+
+  CreateP2PGroup(p2p_device.get());
+
+  EXPECT_CALL(*p2p_device, GroupStarted(properties)).Times(1);
+  PostGroupStarted(properties);
+
+  EXPECT_EQ(p2p_manager_
+                ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
+            p2p_device.get());
+
+  // Delete the device.
+  p2p_manager_->DeleteP2PDevice(p2p_device);
+
+  // Check that delegates are cleared.
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_event_delegates_.count(
+                interface_path),
+            0);
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
+
+  // Verify that GroupFinished is NOT called on the device.
+  EXPECT_CALL(*p2p_device, GroupFinished(_)).Times(0);
+  PostGroupFinished(kDefaultShillId);
 }
 
 TEST_F(P2PManagerTest, GroupFinished_IgnoreMissingProperties) {
