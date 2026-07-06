@@ -240,6 +240,35 @@ bool GetManagedDirectoryRoot(const base::FilePath& target_path,
   return true;
 }
 
+bool IsSafeRelativePath(const std::string& path_str) {
+  if (path_str.empty()) {
+    return false;
+  }
+  base::FilePath path(path_str);
+  return !path.IsAbsolute() && !path.ReferencesParent();
+}
+
+bool ValidateManifest(const PatchManifest& manifest) {
+  for (const auto& entry : manifest.entry()) {
+    if (!IsSafeRelativePath(entry.original_file_name())) {
+      LOG(ERROR) << "Invalid original_file_name: "
+                 << entry.original_file_name();
+      return false;
+    }
+    if (entry.has_base_file_name() &&
+        !IsSafeRelativePath(entry.base_file_name())) {
+      LOG(ERROR) << "Invalid base_file_name: " << entry.base_file_name();
+      return false;
+    }
+    if (entry.has_patch_file_name() &&
+        !IsSafeRelativePath(entry.patch_file_name())) {
+      LOG(ERROR) << "Invalid patch_file_name: " << entry.patch_file_name();
+      return false;
+    }
+  }
+  return true;
+}
+
 }  // namespace
 
 // We are on the encode path, and we are creating a new managed directory. We
@@ -258,6 +287,10 @@ bool ManagedDirectory::CreateNew(
   }
   if (!brillo::ReadTextProtobuf(*input_manifest_path, &manifest_)) {
     LOG(ERROR) << "Couldn't load provided patch manifest";
+    return false;
+  }
+  if (!ValidateManifest(manifest_)) {
+    LOG(ERROR) << "Manifest validation failed";
     return false;
   }
 
@@ -346,6 +379,10 @@ bool ManagedDirectory::CreateFromExisting(const base::FilePath& managed_path) {
   base::FilePath manifest_path = directory_root_.Append(kPatchManifestFilename);
   if (!brillo::ReadTextProtobuf(manifest_path, &manifest_)) {
     LOG(ERROR) << "Failed to read manifest file, exiting";
+    return false;
+  }
+  if (!ValidateManifest(manifest_)) {
+    LOG(ERROR) << "Manifest validation failed";
     return false;
   }
 

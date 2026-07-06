@@ -266,3 +266,107 @@ TEST_F(ManagedDirectoryTest, EncodeImmutableDirectory) {
   // Ensure src_path and tmp_decode paths have identical contents
   ASSERT_TRUE(util::DirectoriesAreEqual(src_path, tmp_decode.GetPath()));
 }
+
+// Tests for manifest validation during CreateFromExisting (Decode path)
+
+TEST(ManagedDirectoryValidationTest,
+     CreateFromExisting_RejectsOriginalFileAbsolutePath) {
+  base::ScopedTempDir tmp_dir;
+  ASSERT_TRUE(tmp_dir.CreateUniqueTempDir());
+
+  base::FilePath manifest_path =
+      tmp_dir.GetPath().Append(kPatchManifestFilename);
+  std::string bad_manifest =
+      "entry {\n"
+      "  original_file_name: \"/invalid_original\"\n"
+      "  base_file_name: \"valid_base\"\n"
+      "  patch_file_name: \"valid_patch\"\n"
+      "  original_file_md5_checksum: \"12345\"\n"
+      "}\n";
+  ASSERT_TRUE(base::WriteFile(manifest_path, bad_manifest));
+
+  ManagedDirectory managed_dir;
+  ASSERT_FALSE(managed_dir.CreateFromExisting(tmp_dir.GetPath()));
+}
+
+TEST(ManagedDirectoryValidationTest,
+     CreateFromExisting_RejectsOriginalFileParentReference) {
+  base::ScopedTempDir tmp_dir;
+  ASSERT_TRUE(tmp_dir.CreateUniqueTempDir());
+
+  base::FilePath manifest_path =
+      tmp_dir.GetPath().Append(kPatchManifestFilename);
+  std::string bad_manifest =
+      "entry {\n"
+      "  original_file_name: \"../../invalid_original\"\n"
+      "  base_file_name: \"valid_base\"\n"
+      "  patch_file_name: \"valid_patch\"\n"
+      "  original_file_md5_checksum: \"12345\"\n"
+      "}\n";
+  ASSERT_TRUE(base::WriteFile(manifest_path, bad_manifest));
+
+  ManagedDirectory managed_dir;
+  ASSERT_FALSE(managed_dir.CreateFromExisting(tmp_dir.GetPath()));
+}
+
+TEST(ManagedDirectoryValidationTest,
+     CreateFromExisting_RejectsBaseFileParentReference) {
+  base::ScopedTempDir tmp_dir;
+  ASSERT_TRUE(tmp_dir.CreateUniqueTempDir());
+
+  base::FilePath manifest_path =
+      tmp_dir.GetPath().Append(kPatchManifestFilename);
+  std::string bad_manifest =
+      "entry {\n"
+      "  original_file_name: \"valid_original\"\n"
+      "  base_file_name: \"../../invalid_base\"\n"
+      "  patch_file_name: \"valid_patch\"\n"
+      "  original_file_md5_checksum: \"12345\"\n"
+      "}\n";
+  ASSERT_TRUE(base::WriteFile(manifest_path, bad_manifest));
+
+  ManagedDirectory managed_dir;
+  ASSERT_FALSE(managed_dir.CreateFromExisting(tmp_dir.GetPath()));
+}
+
+TEST(ManagedDirectoryValidationTest,
+     CreateFromExisting_RejectsPatchFileParentReference) {
+  base::ScopedTempDir tmp_dir;
+  ASSERT_TRUE(tmp_dir.CreateUniqueTempDir());
+
+  base::FilePath manifest_path =
+      tmp_dir.GetPath().Append(kPatchManifestFilename);
+  std::string bad_manifest =
+      "entry {\n"
+      "  original_file_name: \"valid_original\"\n"
+      "  base_file_name: \"valid_base\"\n"
+      "  patch_file_name: \"../../invalid_patch\"\n"
+      "  original_file_md5_checksum: \"12345\"\n"
+      "}\n";
+  ASSERT_TRUE(base::WriteFile(manifest_path, bad_manifest));
+
+  ManagedDirectory managed_dir;
+  ASSERT_FALSE(managed_dir.CreateFromExisting(tmp_dir.GetPath()));
+}
+
+// Tests for manifest validation during CreateNew (Encode path)
+
+TEST(ManagedDirectoryValidationTest,
+     CreateNew_RejectsOriginalFileParentReference) {
+  base::ScopedTempDir tmp_dir;
+  ASSERT_TRUE(tmp_dir.CreateUniqueTempDir());
+
+  base::FilePath manifest_path =
+      tmp_dir.GetPath().Append("input_manifest.textproto");
+  std::string bad_manifest =
+      "entry {\n"
+      "  original_file_name: \"../../invalid_original\"\n"
+      "  base_file_name: \"valid_base\"\n"
+      "  patch_file_name: \"valid_patch\"\n"
+      "  original_file_md5_checksum: \"12345\"\n"
+      "}\n";
+  ASSERT_TRUE(base::WriteFile(manifest_path, bad_manifest));
+
+  ManagedDirectory managed_dir;
+  ASSERT_FALSE(managed_dir.CreateNew(tmp_dir.GetPath(), manifest_path));
+}
