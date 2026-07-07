@@ -125,11 +125,15 @@ bool LoadOobeConfigRollback::AssembleConfig(const RollbackData& rollback_data,
   dictionary.Set("welcomeNext", true);
   // Always skip network selection screen if possible.
   dictionary.Set("networkUseConnected", true);
-  // Set whether metrics should be enabled if it exists in |rollback_data|.
+  // Set whether metrics should be enabled if it exists in `rollback_data`.
   dictionary.Set("eulaSendStatistics", rollback_data.eula_send_statistics());
   // Set whether the EULA as already accepted and can be skipped if the field is
-  // present in |rollback_data|.
+  // present in `rollback_data`.
   dictionary.Set("eulaAutoAccept", rollback_data.eula_auto_accept());
+  // Skip the HID screen on Chromebits, Chromebases and Chromeboxes.
+  dictionary.Set("skipHidScreen", true);
+  // Tell Chrome to skip EU update opt out notice.
+  dictionary.Set("skipUpdateOptOutScreen", true);
   if (!rollback_data.is_device_migration()) {
     // Tell Chrome that it still has to create some robot accounts that were
     // destroyed during rollback.

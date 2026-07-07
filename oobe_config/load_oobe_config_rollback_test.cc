@@ -154,7 +154,6 @@ TEST_F(LoadOobeConfigRollbackTest, DecryptionFailsGracefully) {
 TEST_F(LoadOobeConfigRollbackTest,
        DeviceMigrationOmitsRollbackEnrollmentRestore) {
   FakePreceedingDeviceMigration();
-  // TODO(b/522643246): Separate the metrics for migration.
   EnableRollbackMetricsReporting();
   ExpectOobeConfigRestoreMetricRecord(1);
 
