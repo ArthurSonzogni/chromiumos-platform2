@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <base/containers/flat_map.h>
+#include <base/files/file_path.h>
 #include <keymaster/contexts/pure_soft_keymaster_context.h>
 
 #include "arc/keymint/context/openssl_utils.h"

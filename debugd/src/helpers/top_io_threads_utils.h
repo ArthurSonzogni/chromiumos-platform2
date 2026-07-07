@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/files/dir_reader_posix.h>
+#include <base/files/file_path.h>
 
 namespace debugd {
 
