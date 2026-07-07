@@ -37,6 +37,8 @@ class FuseSession::Impl {
 
   ~Impl() = default;
 
+  void DestroySmbFilesystem() { fs_.reset(); }
+
   // FUSE low-level operations. See fuse_lowlevel_ops in fuse_lowlevel.h for
   // details.
   static void FuseDestroy(void* userdata) {
@@ -334,6 +336,13 @@ FuseSession::~FuseSession() {
 
   // Ensure |stop_callback_| isn't called as a result of destruction.
   stop_callback_.Reset();
+
+  // Stop watching the FUSE channel to ensure no new requests can be dispatched.
+  read_watcher_.reset();
+
+  // Destroy the SmbFilesystem to stop its background thread and drop any
+  // pending tasks before we destroy the FUSE session.
+  impl_->DestroySmbFilesystem();
 
   if (session_) {
     // Disconnect the channel from the fuse_session before destroying them both.
