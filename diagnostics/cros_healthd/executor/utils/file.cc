@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/executor/utils/file.h"
 
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 
@@ -33,7 +34,8 @@ bool GetCreationTime(const base::FilePath& file_path, base::Time& out) {
   CHECK(file_path.IsAbsolute())
       << "File name in GetCreationTime must be absolute";
   struct statx statx_result;
-  if (statx(/*dirfd=ignored*/ 0, file_path.value().c_str(), /*flags=*/0,
+  if (statx(/*dirfd=ignored*/ 0, file_path.value().c_str(),
+            /*flags=*/AT_SYMLINK_NOFOLLOW,
             /*masks=*/STATX_BTIME, &statx_result) != 0) {
     PLOG(ERROR) << "statx failed for file " << file_path;
     return false;
@@ -53,7 +55,8 @@ bool GetCreationTime(const base::FilePath& file_path, base::Time& out) {
 std::optional<std::string> ReadFilePart(const base::FilePath& file_path,
                                         uint64_t begin,
                                         std::optional<uint64_t> size) {
-  base::File file(file_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
+  base::File file(file_path, base::File::FLAG_OPEN | base::File::FLAG_READ |
+                                 base::File::FLAG_NO_FOLLOW);
   if (!file.IsValid()) {
     PLOG(ERROR) << "Failed to open file " << file_path;
     return std::nullopt;
