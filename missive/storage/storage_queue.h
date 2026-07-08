@@ -239,6 +239,11 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
       base::OnceClosure cb,
       test::ErrorInjectionHandlerType handler = base::NullCallback());
 
+  // Test only: checks if the file containing the specified sequencing id is
+  // open.
+  void IsFileOpenedForTest(int64_t sequencing_id,
+                           base::OnceCallback<void(bool)> cb);
+
   // Returns the file sequence ID (the first sequence ID in the file) if the
   // sequence ID can be extracted from the extension. Otherwise, returns an
   // error status.

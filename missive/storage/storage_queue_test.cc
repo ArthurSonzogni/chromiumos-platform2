@@ -1892,6 +1892,53 @@ TEST_P(StorageQueueTest,
   }
 }
 
+TEST_P(StorageQueueTest, CloseFileOnSwitchingToNext) {
+  // Set max file size to small value to force multiple files.
+  CreateTestStorageQueueOrDie(
+      BuildStorageQueueOptionsPeriodic().set_max_single_file_size(1));
+
+  WriteStringOrDie(kData[0]);
+  WriteStringOrDie(kData[1]);
+  WriteStringOrDie(kData[2]);
+
+  // Trigger upload.
+  {
+    test::TestCallbackAutoWaiter waiter;
+    EXPECT_CALL(set_mock_uploader_expectations_,
+                Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
+        .WillOnce(
+            Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+              return TestUploader::SetUp(&waiter, this)
+                  .Required(0, kData[0])
+                  .Required(1, kData[1])
+                  .Required(2, kData[2])
+                  .Complete();
+            }))
+        .RetiresOnSaturation();
+
+    task_environment_.FastForwardBy(base::Seconds(1));
+  }
+
+  // Verify file 0 is closed.
+  {
+    test::TestEvent<bool> opened_event;
+    storage_queue_->IsFileOpenedForTest(0, opened_event.cb());
+    EXPECT_FALSE(opened_event.result());
+  }
+  // Verify file 1 is closed.
+  {
+    test::TestEvent<bool> opened_event;
+    storage_queue_->IsFileOpenedForTest(1, opened_event.cb());
+    EXPECT_FALSE(opened_event.result());
+  }
+  // Verify file 2 is closed.
+  {
+    test::TestEvent<bool> opened_event;
+    storage_queue_->IsFileOpenedForTest(2, opened_event.cb());
+    EXPECT_FALSE(opened_event.result());
+  }
+}
+
 TEST_P(StorageQueueTest, WriteAndRepeatedlyImmediateUpload) {
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsImmediate());
 

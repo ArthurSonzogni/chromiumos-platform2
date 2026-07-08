@@ -1278,6 +1278,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
       if (!blob.has_value() &&
           blob.error().error_code() == error::OUT_OF_RANGE) {
         // Reached end of file, switch to the next one (if present).
+        current_file_->second->Close();
         ++current_file_;
         if (current_file_ == files_.end()) {
           Response(Status::StatusOK());
@@ -1289,6 +1290,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
       if (!blob.has_value()) {
         // File found to be corrupt. Produce Gap record till the start of next
         // file, if present.
+        current_file_->second->Close();
         ++current_file_;
         current_pos_ = 0;
         uint64_t count = static_cast<uint64_t>(
@@ -1599,6 +1601,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     auto blob = EnsureBlob(sequence_info_.sequencing_id());
     if (!blob.has_value() && blob.error().error_code() == error::OUT_OF_RANGE) {
       // Reached end of file, switch to the next one (if present).
+      current_file_->second->Close();
       ++current_file_;
       if (current_file_ == files_.end()) {
         Response(Status::StatusOK());
@@ -1610,6 +1613,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     if (!blob.has_value()) {
       // File found to be corrupt. Produce Gap record till the start of next
       // file, if present.
+      current_file_->second->Close();
       ++current_file_;
       current_pos_ = 0;
       uint64_t count = static_cast<uint64_t>(
@@ -2719,6 +2723,30 @@ void StorageQueue::TestInjectErrorsForOperation(
             std::move(cb).Run();
           },
           std::move(cb), handler, base::WrapRefCounted(this)));
+}
+
+void StorageQueue::IsFileOpenedForTest(int64_t sequencing_id,
+                                       base::OnceCallback<void(bool)> cb) {
+  sequenced_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](int64_t sequencing_id, base::OnceCallback<void(bool)> cb,
+             scoped_refptr<StorageQueue> self) {
+            DCHECK_CALLED_ON_VALID_SEQUENCE(
+                self->storage_queue_sequence_checker_);
+            if (self->files_.empty()) {
+              std::move(cb).Run(false);
+              return;
+            }
+            auto it = self->files_.upper_bound(sequencing_id);
+            if (it != self->files_.begin()) {
+              --it;
+              std::move(cb).Run(it->second->is_opened());
+              return;
+            }
+            std::move(cb).Run(false);
+          },
+          sequencing_id, std::move(cb), base::WrapRefCounted(this)));
 }
 
 //
