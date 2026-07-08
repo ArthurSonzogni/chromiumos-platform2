@@ -1922,21 +1922,6 @@ TEST_F(SessionManagerImplTest,
       system_utils_.Exists(base::FilePath(kDeviceMigrationSaveMarkerFile)));
 }
 
-TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {
-  ASSERT_TRUE(system_utils_.RemoveFile(
-      base::FilePath(SessionManagerImpl::kLoggedInFlag)));
-  ExpectDeviceRestart(1);
-  impl_->InitiateDeviceWipe(
-      "overly long test message with\nspecial/chars$\t\xa4\xd6 1234567890");
-  std::string contents;
-  ASSERT_TRUE(system_utils_.ReadFileToString(
-      base::FilePath(SessionManagerImpl::kResetFile), &contents));
-  ASSERT_EQ(
-      "fast safe keepimg preserve_lvs reason="
-      "overly_long_test_message_with_special_chars_____12",
-      contents);
-}
-
 TEST_F(SessionManagerImplTest, ClearBlockDevmodeVpd) {
   ResponseCapturer capturer;
   EXPECT_CALL(*device_policy_service_, ClearBlockDevmode(_)).Times(1);
@@ -2154,5 +2139,46 @@ TEST_F(StartTPMFirmwareUpdateTest, PreserveStateful) {
   update_mode_ = "preserve_stateful";
   ExpectDeviceRestart(1);
 }
+
+struct InitiateDeviceWipeTestCase {
+  WipeReason reason;
+  std::string expected_reset_file_contents;
+};
+
+class InitiateDeviceWipeTest
+    : public SessionManagerImplTest,
+      public ::testing::WithParamInterface<InitiateDeviceWipeTestCase> {};
+
+TEST_P(InitiateDeviceWipeTest, InitiateDeviceWipe) {
+  const InitiateDeviceWipeTestCase& test_case = GetParam();
+  ASSERT_TRUE(system_utils_.RemoveFile(
+      base::FilePath(SessionManagerImpl::kLoggedInFlag)));
+  ExpectDeviceRestart(1);
+  impl_->InitiateDeviceWipe(test_case.reason);
+  std::string contents;
+  ASSERT_TRUE(system_utils_.ReadFileToString(
+      base::FilePath(SessionManagerImpl::kResetFile), &contents));
+  EXPECT_EQ(test_case.expected_reset_file_contents, contents);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AllWipeReasons,
+    InitiateDeviceWipeTest,
+    ::testing::ValuesIn<InitiateDeviceWipeTestCase>({
+        {WipeReason::kSessionManagerDBusRequest,
+         "fast safe keepimg preserve_lvs reason=session_manager_dbus_request"},
+        {WipeReason::kRemoteWipe,
+         "fast safe keepimg preserve_lvs reason=remote_wipe_request"},
+        {WipeReason::kRemoteWipePreserveConfig,
+         "fast safe keepimg preserve_lvs rollback "
+         "reason=remote_wipe_request_preserve_config"},
+        {WipeReason::kTpmFirmwareUpdateFirstBoot,
+         "fast safe keepimg preserve_lvs "
+         "reason=tpm_firmware_update_first_boot"},
+        {WipeReason::kTpmFirmwareUpdateCleanup,
+         "fast safe keepimg preserve_lvs reason=tpm_firmware_update_cleanup"},
+        {WipeReason::kBadPolicyKey,
+         "fast safe keepimg preserve_lvs reason=bad_policy_key"},
+    }));
 
 }  // namespace login_manager

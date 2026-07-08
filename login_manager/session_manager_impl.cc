@@ -72,6 +72,7 @@
 #include "login_manager/proto_bindings/login_screen_storage.pb.h"
 #include "login_manager/proto_bindings/policy_descriptor.pb.h"
 #include "login_manager/secret_util.h"
+#include "login_manager/session_manager_interface.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/user_policy_service_factory.h"
 #include "login_manager/validator_utils.h"
@@ -188,6 +189,30 @@ constexpr auto kStateKeysComputationErrorMessages = base::MakeFixedFlatMap<
          kMalformedReEnrollmentKey,
      "Malformed re-enrollment key"},
 });
+
+struct DeviceWipeParams {
+  std::string_view reason;
+  bool rollback;
+
+  std::string FormatCommand() const {
+    return base::StrCat({"fast safe keepimg preserve_lvs",
+                         (rollback ? " rollback" : ""), " reason=", reason});
+  }
+};
+
+constexpr auto kDeviceWipeParamMap =
+    base::MakeFixedFlatMap<WipeReason, DeviceWipeParams>({
+        {WipeReason::kSessionManagerDBusRequest,
+         {"session_manager_dbus_request", false}},
+        {WipeReason::kRemoteWipe, {"remote_wipe_request", false}},
+        {WipeReason::kRemoteWipePreserveConfig,
+         {"remote_wipe_request_preserve_config", true}},
+        {WipeReason::kTpmFirmwareUpdateFirstBoot,
+         {"tpm_firmware_update_first_boot", false}},
+        {WipeReason::kTpmFirmwareUpdateCleanup,
+         {"tpm_firmware_update_cleanup", false}},
+        {WipeReason::kBadPolicyKey, {"bad_policy_key", false}},
+    });
 
 const char* ToSuccessSignal(bool success) {
   return success ? "success" : "failure";
@@ -1086,7 +1111,7 @@ bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
     return false;
   }
 
-  InitiateDeviceWipe("session_manager_dbus_request");
+  InitiateDeviceWipe(WipeReason::kSessionManagerDBusRequest);
   return true;
 }
 
@@ -1104,7 +1129,7 @@ bool SessionManagerImpl::StartRemoteDeviceWipe(
     return false;
   }
 
-  std::string reason = "remote_wipe_request";
+  WipeReason reason = WipeReason::kRemoteWipe;
   // Don't fail if payload is not supplied, just default to full wipe.
   if (!payload.empty()) {
     std::optional<base::DictValue> root = base::JSONReader::ReadDict(
@@ -1115,7 +1140,7 @@ bool SessionManagerImpl::StartRemoteDeviceWipe(
              : false;
     if (preserve_device_config &&
         WritePreserveDeviceConfigMarkerFiles(system_utils_)) {
-      reason = "remote_wipe_with_config_save_request";
+      reason = WipeReason::kRemoteWipePreserveConfig;
     }
   }
 
@@ -1214,9 +1239,10 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
     return false;
   }
 
-  if (update_mode == kTPMFirmwareUpdateModeFirstBoot ||
-      update_mode == kTPMFirmwareUpdateModeCleanup) {
-    InitiateDeviceWipe("tpm_firmware_update_" + update_mode);
+  if (update_mode == kTPMFirmwareUpdateModeFirstBoot) {
+    InitiateDeviceWipe(WipeReason::kTpmFirmwareUpdateFirstBoot);
+  } else if (update_mode == kTPMFirmwareUpdateModeCleanup) {
+    InitiateDeviceWipe(WipeReason::kTpmFirmwareUpdateCleanup);
   } else if (update_mode == kTPMFirmwareUpdateModePreserveStateful) {
     // This flag file indicates that encrypted stateful should be preserved.
     if (!system_utils_->WriteFileAtomically(
@@ -1429,26 +1455,16 @@ void SessionManagerImpl::OnKeyPersisted(PolicyKey* key, bool success) {
   }
 }
 
-void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
-  // The log string must not be confused with other clobbers-state parameters.
-  // Sanitize by replacing all non-alphanumeric characters with underscores and
-  // clamping size to 50 characters.
-  std::string sanitized_reason(reason.substr(0, 50));
-  std::locale locale("C");
-  std::replace_if(
-      sanitized_reason.begin(), sanitized_reason.end(),
-      [&locale](const std::string::value_type character) {
-        return !std::isalnum(character, locale);
-      },
-      '_');
+void SessionManagerImpl::InitiateDeviceWipe(WipeReason reason) {
+  const auto device_param_it = kDeviceWipeParamMap.find(reason);
+  DCHECK_NE(device_param_it, kDeviceWipeParamMap.end());
   const base::FilePath reset_path(kResetFile);
-  const std::string reset_file_content =
-      "fast safe keepimg preserve_lvs reason=" + sanitized_reason;
+  std::string reset_file_content = device_param_it->second.FormatCommand();
   system_utils_->WriteFileAtomically(
       reset_path, base::as_byte_span(reset_file_content),
       S_IRUSR | S_IWUSR | S_IROTH, {.uid = 0, .gid = 0});
 
-  RestartDevice(sanitized_reason);
+  RestartDevice(std::string(device_param_it->second.reason));
 }
 
 // static

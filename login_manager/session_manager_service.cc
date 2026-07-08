@@ -53,6 +53,7 @@
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/session_manager_impl.h"
+#include "login_manager/session_manager_interface.h"
 #include "login_manager/siginfo_description.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/systemd_unit_starter.h"
@@ -632,7 +633,7 @@ bool SessionManagerService::ShouldRunBrowser() {
 bool SessionManagerService::InitializeImpl() {
   if (!impl_->Initialize()) {
     LOG(ERROR) << "Policy key is likely corrupt. Initiating device wipe.";
-    impl_->InitiateDeviceWipe("bad_policy_key");
+    impl_->InitiateDeviceWipe(WipeReason::kBadPolicyKey);
     impl_->Finalize();
     exit_code_ = MUST_WIPE_DEVICE;
     return false;

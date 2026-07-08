@@ -10,6 +10,25 @@
 
 namespace login_manager {
 
+// Identifies the trigger for initiating a device wipe (powerwash).
+// Each reason maps to specific clobber command arguments and an annotation
+// string persisted to clobber.log.
+enum class WipeReason {
+  // Initiated via D-Bus request (e.g., user-triggered reset from UI/OOBE).
+  kSessionManagerDBusRequest,
+  // Remote device wipe initiated by an admin without config saving.
+  kRemoteWipe,
+  // Remote device wipe that preserves network config and OOBE state across
+  // reboot.
+  kRemoteWipePreserveConfig,
+  // TPM firmware update wipe on first boot.
+  kTpmFirmwareUpdateFirstBoot,
+  // TPM firmware update cleanup wipe.
+  kTpmFirmwareUpdateCleanup,
+  // Initiated due to a corrupt or invalid policy key.
+  kBadPolicyKey,
+};
+
 class SessionManagerInterface {
  public:
   SessionManagerInterface() = default;
@@ -42,10 +61,10 @@ class SessionManagerInterface {
   // returned.
   virtual bool ShouldEndSession(std::string* reason_out) = 0;
 
-  // Starts a 'Powerwash' of the device.  |reason| is persisted to clobber.log
-  // to annotate the cause of the powerwash.  |reason| must not exceed 50 bytes
-  // in length and may only contain alphanumeric characters and underscores.
-  virtual void InitiateDeviceWipe(const std::string& reason) = 0;
+  // Starts a 'Powerwash' of the device. `reason` determines clobber parameters
+  // and the string persisted to clobber.log to annotate the cause of the
+  // powerwash.
+  virtual void InitiateDeviceWipe(WipeReason reason) = 0;
 };
 
 }  // namespace login_manager

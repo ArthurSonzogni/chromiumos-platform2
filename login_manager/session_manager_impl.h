@@ -204,7 +204,7 @@ class SessionManagerImpl
   // rebooting to allow early-boot code to wipe parts of stateful we
   // need wiped. Have a look at /src/platform2/init/chromeos_startup
   // for the gory details.
-  void InitiateDeviceWipe(const std::string& reason) override;
+  void InitiateDeviceWipe(WipeReason reason) override;
 
   //////////////////////////////////////////////////////////////////////////////
   // Methods exposed via RPC are defined below.
