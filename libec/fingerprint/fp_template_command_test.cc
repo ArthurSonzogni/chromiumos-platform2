@@ -56,6 +56,17 @@ TEST(FpTemplateCommand, MaxWriteSizeEqualsMaxPacketSize) {
   EXPECT_TRUE(FpTemplateCommand::Create(kTemplateData, kValidWriteSize, true));
 }
 
+TEST(FpTemplateCommand, InvalidWriteSizeTooSmall) {
+  constexpr int kInvalidMaxWriteSize = sizeof(fp_template::Header);
+  EXPECT_FALSE(
+      FpTemplateCommand::Create(kTemplateData, kInvalidMaxWriteSize, true));
+}
+
+TEST(FpTemplateCommand, MinimumValidWriteSize) {
+  constexpr int kValidWriteSize = sizeof(fp_template::Header) + 1;
+  EXPECT_TRUE(FpTemplateCommand::Create(kTemplateData, kValidWriteSize, true));
+}
+
 struct FpTemplateCommandTestParam {
   bool should_commit;
 };
