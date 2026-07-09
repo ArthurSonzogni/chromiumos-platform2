@@ -32,7 +32,8 @@ class BRILLO_EXPORT FlashWriteCommand
       return nullptr;
     }
 
-    if (max_packet_size == 0 || max_packet_size > kMaxPacketSize) {
+    if (max_packet_size <= sizeof(flash_write::Header) ||
+        max_packet_size > kMaxPacketSize) {
       return nullptr;
     }
 

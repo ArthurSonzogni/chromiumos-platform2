@@ -62,6 +62,18 @@ TEST(FlashWriteCommand, OffsetBoundaryCondition) {
                                          kValidMaxWriteSize));
 }
 
+TEST(FlashWriteCommand, InvalidWriteSizeTooSmall) {
+  constexpr int kInvalidMaxWriteSize = sizeof(flash_write::Header);
+  EXPECT_FALSE(FlashWriteCommand::Create(std::vector<uint8_t>(100), 0,
+                                         kInvalidMaxWriteSize));
+}
+
+TEST(FlashWriteCommand, MinimumValidWriteSize) {
+  constexpr int kValidWriteSize = sizeof(flash_write::Header) + 1;
+  EXPECT_TRUE(
+      FlashWriteCommand::Create(std::vector<uint8_t>(100), 0, kValidWriteSize));
+}
+
 // Mock the underlying EcCommand to test.
 class FlashWriteCommandTest : public testing::Test {
  public:
