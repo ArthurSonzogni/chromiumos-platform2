@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 anyhow = "*"
-quick-xml = "0.30.0"
+quick-xml = "0.41"
 
 [build-dependencies]
 anyhow = "*"

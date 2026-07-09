@@ -15,7 +15,7 @@ use std::os::raw::c_char;
 
 // Copies XML events into vec until reaching a </CamcorderProfiles> event. Will include the
 // CamcorderProfiles closing tag in the vector.
-fn consume_camera_profile(rdr: &mut Reader<&[u8]>, vec: &mut Vec<Event>) -> Result<()> {
+fn consume_camera_profile<'a>(rdr: &mut Reader<&'a [u8]>, vec: &mut Vec<Event<'a>>) -> Result<()> {
     loop {
         let mut done = false;
         let ev = rdr.read_event()?;
@@ -30,7 +30,7 @@ fn consume_camera_profile(rdr: &mut Reader<&[u8]>, vec: &mut Vec<Event>) -> Resu
             }
             _ => {}
         };
-        vec.push(ev.into_owned());
+        vec.push(ev);
         if done {
             return Ok(());
         }
@@ -52,12 +52,13 @@ fn safe_filter_camera_config(
     let mut xml_reader = Reader::from_str(xml_str.as_ref());
 
     loop {
-        match xml_reader.read_event()? {
+        let ev = xml_reader.read_event()?;
+        match ev {
             Event::Eof => break,
             Event::Start(ref t) => {
                 let mut pushorig = true;
                 if QName(b"MediaSettings") == t.name() {
-                    found_media_settings = true
+                    found_media_settings = true;
                 } else if QName(b"CamcorderProfiles") == t.name() {
                     let pno = match t.try_get_attribute("cameraId")? {
                         None => Err(anyhow!("cameraId attr missing")),
@@ -73,27 +74,27 @@ fn safe_filter_camera_config(
                         }
                     }?;
 
-                    if pno.len() != 0 {
+                    if !pno.is_empty() {
                         return Err(anyhow!("duplicate cameraId"));
                     }
 
-                    let mut newt = t.to_owned();
+                    let mut newt = t.clone();
                     newt.clear_attributes();
                     for maybeattr in t.attributes() {
-                        let attr = maybeattr?.to_owned();
+                        let attr = maybeattr?;
                         if attr.key != QName(b"cameraId") {
                             newt.push_attribute(attr);
                         }
                     }
-                    newt.push_attribute(Attribute::from(("cameraId", "0")));
+                    newt.push_attribute(("cameraId", "0"));
 
-                    pno.push(Event::Start(newt.into_owned()));
+                    pno.push(Event::Start(newt));
                     consume_camera_profile(&mut xml_reader, pno)?;
                     current = &mut afterp0;
                     pushorig = false;
                 }
                 if pushorig {
-                    current.push(Event::Start(t.to_owned()));
+                    current.push(Event::Start(t.clone()));
                 }
             }
             e => current.push(e),
@@ -112,20 +113,20 @@ fn safe_filter_camera_config(
     }
     let mut wrt = Writer::new_with_indent(Cursor::new(Vec::new()), ' ' as u8, 4);
     for ev in beforep0 {
-        wrt.write_event(ev)?
+        wrt.write_event(ev)?;
     }
     if enable_back {
         for ev in p0 {
-            wrt.write_event(ev)?
+            wrt.write_event(ev)?;
         }
     }
     if enable_front {
         for ev in p1 {
-            wrt.write_event(ev)?
+            wrt.write_event(ev)?;
         }
     }
     for ev in afterp0 {
-        wrt.write_event(ev)?
+        wrt.write_event(ev)?;
     }
     Ok(CString::new(wrt.into_inner().into_inner())?)
 }
@@ -156,9 +157,10 @@ fn safe_append_feature_management(orig_xml: &CStr, features: &Vec<&CStr>) -> Res
     let mut wrt = Writer::new_with_indent(Cursor::new(Vec::new()), ' ' as u8, 2);
     let xml_str = orig_xml.to_string_lossy();
     let mut xml_reader = Reader::from_str(xml_str.as_ref());
-    xml_reader.trim_text(true);
+    xml_reader.config_mut().trim_text(true);
     loop {
-        match xml_reader.read_event()? {
+        let ev = xml_reader.read_event()?;
+        match ev {
             Event::Eof => break,
             Event::End(ref t) => {
                 if QName(b"permissions") == t.name() {
@@ -170,9 +172,9 @@ fn safe_append_feature_management(orig_xml: &CStr, features: &Vec<&CStr>) -> Res
                         wrt.write_event(Event::Empty(featel))?;
                     }
                 }
-                wrt.write_event(Event::End(t.to_owned()))?;
+                wrt.write_event(Event::End(t.clone()))?;
             }
-            ev => wrt.write_event(ev.to_owned())?,
+            e => wrt.write_event(e)?,
         }
     }
     Ok(CString::new(wrt.into_inner().into_inner())?)
