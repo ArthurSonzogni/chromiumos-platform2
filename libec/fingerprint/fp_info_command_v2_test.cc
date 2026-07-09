@@ -16,6 +16,7 @@ namespace {
 using ::testing::ElementsAre;
 using ::testing::Eq;
 using ::testing::Return;
+using ::testing::SizeIs;
 
 TEST(FpInfoCommand_v2, FpInfoCommand_v2) {
   auto cmd = std::make_unique<FpInfoCommand_v2>();
@@ -258,6 +259,32 @@ TEST_F(FpInfoCommand_v2_SensorImageTest, ValidSensorImage) {
                               .pixel_format = 0x59455247,
                               .bpp = 16,
                               .fp_capture_type = FP_CAPTURE_PATTERN0}));
+}
+
+TEST_F(FpInfoCommand_v2_SensorImageTest,
+       MaliciousLargeCaptureCountClampedToProtocolMax) {
+  struct fp_info::Params_v2 resp{};
+
+  resp.info.sensor_info.num_capture_types = 100;
+  resp.image_frame_params[0] = {.frame_size = 5120,
+                                .pixel_format = 0x59455247,
+                                .width = 64,
+                                .height = 80,
+                                .bpp = 8,
+                                .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE};
+
+  EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
+
+  auto images = mock_fp_info_command.sensor_image();
+
+  ASSERT_THAT(images, SizeIs(FP_MAX_CAPTURE_TYPES));
+  EXPECT_THAT(images[0],
+              Eq(SensorImage{.width = 64,
+                             .height = 80,
+                             .frame_size = 5120,
+                             .pixel_format = 0x59455247,
+                             .bpp = 8,
+                             .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE}));
 }
 
 /**

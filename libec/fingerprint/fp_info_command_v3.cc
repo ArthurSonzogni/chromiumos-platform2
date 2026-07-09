@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <vector>
 
 #include "libec/fingerprint/fp_info_command.h"
@@ -40,6 +41,8 @@ std::vector<SensorImage> FpInfoCommand_v3::sensor_image() {
   }
 
   uint32_t count = Resp()->info.sensor_info.num_capture_types;
+  // FPMCU response is untrusted; clamp loop count to the protocol maximum.
+  count = std::min<uint32_t>(count, FP_MAX_CAPTURE_TYPES);
 
   for (uint32_t i = 0; i < count; ++i) {
     sensor_image_.emplace_back(
