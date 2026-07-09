@@ -479,6 +479,11 @@ void Manager::ArcShutdown() {
 
 std::optional<patchpanel::ArcVmStartupResponse> Manager::ArcVmStartup(
     uint32_t cid) {
+  if (kArcType != ArcService::ArcType::kVM) {
+    LOG(ERROR) << __func__ << " called but ARCVM is not enabled";
+    return std::nullopt;
+  }
+
   if (!arc_svc_.Start(cid)) {
     return std::nullopt;
   }
@@ -503,6 +508,11 @@ std::optional<patchpanel::ArcVmStartupResponse> Manager::ArcVmStartup(
 }
 
 void Manager::ArcVmShutdown(uint32_t cid) {
+  if (kArcType != ArcService::ArcType::kVM) {
+    LOG(ERROR) << __func__ << " called but ARCVM is not enabled";
+    return;
+  }
+
   multicast_metrics_.OnARCStopped();
 
   GuestMessage msg;
