@@ -11,9 +11,9 @@
 // URL when new images are available.
 
 // clang-format off
-constexpr char kBaguetteVersion[] = "2026-07-04-000156_3401ecb45ec88e957803aa1ac019f6f05aa10fa2";  // NOLINT
-constexpr char kBaguetteSHA256X86[] = "ef6b9fd756938e6ba841e887cb8b51889647ace5a9a90718ca939353c89949e8";  // NOLINT
-constexpr char kBaguetteSHA256Arm[] = "d083ef779d6a51c080c3ba660f207dda510d18a6de6859357ece5ba5e8c87a75";  // NOLINT
+constexpr char kBaguetteVersion[] = "2026-07-09-000103_3370d7f8eddfeceeea2e4aa9ddc338825bf1b2ec";  // NOLINT
+constexpr char kBaguetteSHA256X86[] = "ddc6dea377f2949ed79b592be506f49c7ea014456df78890420fbdab593908c0";  // NOLINT
+constexpr char kBaguetteSHA256Arm[] = "38eecc539a56e3f00f1563e88aae312b574b2312cdc207205610e6abfc205ccb";  // NOLINT
 // cpplint:enable
 
 #endif  // VM_TOOLS_CONCIERGE_BAGUETTE_VERSION_H_
