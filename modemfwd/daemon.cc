@@ -26,8 +26,10 @@
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
+#include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/service_constants.h>
 #include <cros_config/cros_config.h>
+#include <vboot/crossystem.h>
 
 #include "modemfwd/dlc_manager.h"
 #include "modemfwd/error.h"
@@ -127,6 +129,13 @@ void DBusAdaptor::ForceFlash(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> resp,
     const std::string& device_id,
     const brillo::VariantDictionary& args) {
+  if (::VbGetSystemPropertyInt("cros_debug") != 1) {
+    resp->ReplyWithError(
+        FROM_HERE, brillo::errors::dbus::kDomain, DBUS_ERROR_ACCESS_DENIED,
+        "ForceFlash is only allowed in developer mode or with cros_debug");
+    return;
+  }
+
   std::string carrier_uuid =
       brillo::GetVariantValueOrDefault<std::string>(args, "carrier_uuid");
   std::string variant =
