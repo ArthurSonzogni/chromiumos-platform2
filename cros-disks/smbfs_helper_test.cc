@@ -70,12 +70,11 @@ class SmbfsHelperTest : public ::testing::Test {
 
  protected:
   MountError ConfigureSandbox(const std::string& source,
-                              const std::vector<std::string>& params,
                               std::vector<std::string>* args) {
     FakeSandboxedProcess sandbox;
     MountError error =
-        helper_.ConfigureSandbox(source, kMountDir, params, &sandbox);
-    if (error == MountError::kSuccess && args) {
+        helper_.ConfigureSandbox(source, kMountDir, {}, &sandbox);
+    if (error == MountError::kSuccess) {
       *args = ParseOptions(sandbox);
     }
     return error;
@@ -88,67 +87,9 @@ class SmbfsHelperTest : public ::testing::Test {
 
 TEST_F(SmbfsHelperTest, CreateMounter) {
   std::vector<std::string> args;
-  EXPECT_CALL(
-      platform_,
-      DirectoryExists(
-          "/run/daemon-store/smbfs/0123456789abcdef0123456789abcdef01234567"))
-      .WillOnce(Return(true));
-  EXPECT_EQ(
-      MountError::kSuccess,
-      ConfigureSandbox(
-          kSomeSource.value(),
-          {"account_hash=0123456789abcdef0123456789abcdef01234567"}, &args));
+  EXPECT_EQ(MountError::kSuccess, ConfigureSandbox(kSomeSource.value(), &args));
   EXPECT_THAT(
       args, UnorderedElementsAre("uid=1000", "gid=1001", "mojo_id=foobarbaz"));
-}
-
-TEST_F(SmbfsHelperTest, ConfigureSandbox_ValidAccountHash) {
-  EXPECT_CALL(
-      platform_,
-      DirectoryExists(
-          "/run/daemon-store/smbfs/0123456789abcdef0123456789abcdef01234567"))
-      .WillOnce(Return(true));
-  EXPECT_EQ(MountError::kSuccess,
-            ConfigureSandbox(
-                kSomeSource.value(),
-                {"account_hash=0123456789abcdef0123456789abcdef01234567"},
-                /*args=*/nullptr));
-}
-
-TEST_F(SmbfsHelperTest, ConfigureSandbox_InvalidAccountHash) {
-  EXPECT_EQ(MountError::kInvalidMountOptions,
-            ConfigureSandbox(kSomeSource.value(), {"account_hash=short"},
-                             /*args=*/nullptr));
-  EXPECT_EQ(MountError::kInvalidMountOptions,
-            ConfigureSandbox(
-                kSomeSource.value(),
-                {"account_hash=0123456789abcdef0123456789abcdef0123456z"},
-                /*args=*/nullptr));
-}
-
-TEST_F(SmbfsHelperTest, ConfigureSandbox_MissingAccountHash) {
-  EXPECT_EQ(MountError::kInvalidMountOptions,
-            ConfigureSandbox(kSomeSource.value(), /*params=*/{},
-                             /*args=*/nullptr));
-}
-
-TEST_F(SmbfsHelperTest, ConfigureSandbox_EmptyAccountHash) {
-  EXPECT_EQ(MountError::kInvalidMountOptions,
-            ConfigureSandbox(kSomeSource.value(), {"account_hash="},
-                             /*args=*/nullptr));
-}
-
-TEST_F(SmbfsHelperTest, ConfigureSandbox_MissingDaemonStore) {
-  EXPECT_CALL(
-      platform_,
-      DirectoryExists(
-          "/run/daemon-store/smbfs/0123456789abcdef0123456789abcdef01234567"))
-      .WillOnce(Return(false));
-  EXPECT_EQ(MountError::kInsufficientPermissions,
-            ConfigureSandbox(
-                kSomeSource.value(),
-                {"account_hash=0123456789abcdef0123456789abcdef01234567"},
-                /*args=*/nullptr));
 }
 
 TEST_F(SmbfsHelperTest, CanMount) {

@@ -12,7 +12,6 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-#include <brillo/cryptohome.h>
 
 #include "cros-disks/fuse_mounter.h"
 #include "cros-disks/mount_options.h"
@@ -90,30 +89,13 @@ MountError SmbfsHelper::ConfigureSandbox(const std::string& source,
     LOG(ERROR) << "Cannot bind " << quote(kDbusSocketPath);
     return MountError::kInternalError;
   }
-  // Extract and validate the account_hash to restrict daemon-store access.
-  std::string account_hash;
-  if (!GetParamValue(params, "account_hash", &account_hash) ||
-      account_hash.empty()) {
-    LOG(ERROR) << "Missing or empty account_hash option";
-    return MountError::kInvalidMountOptions;
-  }
-
-  if (!brillo::cryptohome::home::IsSanitizedUserName(account_hash)) {
-    LOG(ERROR) << "Invalid user directory format";
-    return MountError::kInvalidMountOptions;
-  }
-
-  base::FilePath daemon_store_path =
-      base::FilePath(kDaemonStorePath).Append(account_hash);
-  if (!platform()->DirectoryExists(daemon_store_path.value())) {
-    LOG(ERROR) << "Directory does not exist for user";
-    return MountError::kInsufficientPermissions;
-  }
-
-  // Bind ONLY the specific user's daemon-store directory into the sandbox.
-  if (!sandbox->BindMount(daemon_store_path.value(), daemon_store_path.value(),
-                          /* writeable= */ true, /* recursive= */ true)) {
-    LOG(ERROR) << "Cannot bind " << quote(daemon_store_path.value());
+  // Need to use recursive binding because the daemon-store directory in
+  // their cryptohome is bind mounted inside |kDaemonStorePath|.
+  // TODO(crbug.com/1054705): Pass the user account hash as a mount option
+  // and restrict binding to that specific directory.
+  if (!sandbox->BindMount(kDaemonStorePath, kDaemonStorePath,
+                          /* writable= */ true, /* recursive= */ true)) {
+    LOG(ERROR) << "Cannot bind " << quote(kDaemonStorePath);
     return MountError::kInternalError;
   }
 
