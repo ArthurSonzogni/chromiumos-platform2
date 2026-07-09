@@ -105,7 +105,7 @@ CameraClient::CameraClient(int id,
           device_info, v4l2_event_monitor, sw_privacy_switch_on)),
       callback_ops_(nullptr),
       sw_privacy_switch_on_(sw_privacy_switch_on),
-      request_thread_("Capture request thread"),
+      request_thread_("Capture request thread", base::Thread::Restartable{}),
       camera_metrics_(CameraMetrics::New()) {
   memset(&camera3_device_, 0, sizeof(camera3_device_));
   camera3_device_.common.tag = HARDWARE_DEVICE_TAG;

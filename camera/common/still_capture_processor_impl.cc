@@ -246,7 +246,7 @@ inline size_t CalculateJpegSizeUpperBound(uint32_t width, uint32_t height) {
 
 StillCaptureProcessorImpl::StillCaptureProcessorImpl(
     std::unique_ptr<JpegCompressor> jpeg_compressor)
-    : thread_("StillCaptureProcessorImplThread"),
+    : thread_("StillCaptureProcessorImplThread", base::Thread::Restartable{}),
       jpeg_compressor_(std::move(jpeg_compressor)) {}
 
 StillCaptureProcessorImpl::~StillCaptureProcessorImpl() {
