@@ -99,3 +99,4 @@ getdents: 1
 nanosleep: 1
 open: 1
 lstat: 1
+shutdown: 1

@@ -90,3 +90,4 @@ clock_getres: 1
 faccessat2: 1
 getrlimit: 1
 nanosleep: 1
+shutdown: 1
