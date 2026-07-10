@@ -27,9 +27,11 @@ FakeProcessControl::FakeProcessControl() {
   }
   base::FilePath stdout_filepath;
   stdout_fd_ = base::CreateAndOpenFdForTemporaryFileInDir(temp_dir_.GetPath(),
+                                                          /*name_prefix=*/{},
                                                           &stdout_filepath);
   base::FilePath stderr_filepath;
   stderr_fd_ = base::CreateAndOpenFdForTemporaryFileInDir(temp_dir_.GetPath(),
+                                                          /*name_prefix=*/{},
                                                           &stderr_filepath);
   return_code_ = -1;
   is_connected_ = false;

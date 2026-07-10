@@ -42,8 +42,8 @@ void helper_process_receiver_fuzzer_run(const char* data, size_t size) {
 
   // Create temporary file to ingest as payload into control message.
   base::FilePath temp_file;
-  base::ScopedFD fd =
-      CreateAndOpenFdForTemporaryFileInDir(temp_dir.GetPath(), &temp_file);
+  base::ScopedFD fd = CreateAndOpenFdForTemporaryFileInDir(
+      temp_dir.GetPath(), /*name_prefix=*/{}, &temp_file);
   if (!fd.is_valid()) {
     LOG(ERROR) << "Failed to create temporary file.";
     return;

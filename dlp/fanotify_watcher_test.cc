@@ -74,7 +74,7 @@ class FanotifyWatcherTest : public ::testing::Test,
   bool SimulateFileOpen(int expected_counter) {
     base::FilePath temp_file;
     base::ScopedFD file_fd = base::CreateAndOpenFdForTemporaryFileInDir(
-        temp_dir_.GetPath(), &temp_file);
+        temp_dir_.GetPath(), /*name_prefix=*/{}, &temp_file);
     const int fd = file_fd.get();
     auto watchdog = std::make_unique<MockWatchdog>();
     EXPECT_CALL(*watchdog.get(), Disarm());

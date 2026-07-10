@@ -95,7 +95,8 @@ int ExecuteEmbeddedShellScript(const std::string& source,
   }
   base::FilePath temp_file;
   base::ScopedFD temp_fd;
-  temp_fd = CreateAndOpenFdForTemporaryFileInDir(temp_dir, &temp_file);
+  temp_fd = CreateAndOpenFdForTemporaryFileInDir(temp_dir, /*name_prefix=*/{},
+                                                 &temp_file);
   if (!temp_fd.is_valid()) {
     *output = "Error when executing CreateAndOpenFdForTemporaryFileInDir(...)";
     return kShellError;
