@@ -22,6 +22,12 @@ namespace chaps {
 // read-only.modify - True if attribute cannot be set with C_SetAttributeValue.
 // required - True if attribute is required for a valid object.
 static const AttributePolicy kPrivateKeyPolicies[] = {
+    // Key-usage flags must not be mutable post-creation: chapsd's only gate
+    // before forwarding C_Decrypt to TPM2_RSA_Decrypt is CKA_DECRYPT.
+    {CKA_DECRYPT, false, {false, false, true}, false},
+    {CKA_SIGN, false, {false, false, true}, false},
+    {CKA_SIGN_RECOVER, false, {false, false, true}, false},
+    {CKA_UNWRAP, false, {false, false, true}, false},
     {CKA_ALWAYS_SENSITIVE, false, {true, true, true}, false},
     {CKA_NEVER_EXTRACTABLE, false, {true, true, true}, false},
     {CKA_UNWRAP_TEMPLATE, false, {false, false, true}, false},
