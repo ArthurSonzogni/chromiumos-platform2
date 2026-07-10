@@ -304,6 +304,13 @@ ErrorType AccountManager::SetConfig(const std::string& principal_name,
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
   }
 
+  // Fail-closed: mark the config invalid on disk *before* persisting the new
+  // krb5.conf, so a crash/SIGKILL during the (potentially long, forked)
+  // ValidateConfig below cannot leave a stale is_config_valid=true paired with
+  // an unvalidated krb5.conf in daemon-store. b/260522099 follow-up.
+  account->data.set_is_config_valid(false);
+  SaveAccounts();
+
   // Saving the krb5 configuration is done even if the syntax is invalid.
   ErrorType error;
   error = SaveFile(GetKrb5ConfPath(principal_name), krb5conf);
