@@ -13,6 +13,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 #include <base/observer_list_types.h>
+#include <base/rand_util.h>
 #include <dbus/exported_object.h>
 #include <dbus/object_manager.h>
 #include <dbus/object_proxy.h>
@@ -219,7 +220,7 @@ class DBusWrapper : public DBusWrapperInterface,
   base::ObserverList<Observer> observers_;
 
   // Trace identifier used to connect async method calls to their responses.
-  uint64_t next_async_trace_id_ = reinterpret_cast<uint64_t>(this);
+  uint64_t next_async_trace_id_ = base::RandUint64();
 
   // Runs when an interface has been added to or removed from D-Bus.
   InterfaceCallback interface_callback_;

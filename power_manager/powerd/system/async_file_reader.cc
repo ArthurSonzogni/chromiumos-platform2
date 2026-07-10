@@ -12,6 +12,7 @@
 #include <utility>
 
 #include <base/check_op.h>
+#include <base/rand_util.h>
 #include <base/logging.h>
 #include <base/time/time.h>
 
@@ -46,7 +47,7 @@ bool AsyncFileReader::Init(const base::FilePath& path) {
     return false;
   }
   path_ = path;
-  trace_id_ = reinterpret_cast<uint64_t>(this) ^ fd_;
+  trace_id_ = base::RandUint64();
   return true;
 }
 
