@@ -105,7 +105,7 @@ void SystemProxyAdaptor::SetAuthenticationDetails(
     SetAuthenticationDetailsRequest auth_details,
     bool user_traffic,
     std::string* error_message) {
-  SandboxedWorker* worker = CreateWorkerIfNeeded(user_traffic);
+  auto worker = CreateWorkerIfNeeded(user_traffic);
   if (!worker) {
     error_message->append(kFailedToStartWorkerError);
     return;
@@ -165,7 +165,7 @@ std::vector<uint8_t> SystemProxyAdaptor::ClearUserCredentials(
 
 void SystemProxyAdaptor::ClearUserCredentials(bool user_traffic,
                                               std::string* error_message) {
-  SandboxedWorker* worker = GetWorker(user_traffic);
+  auto worker = GetWorker(user_traffic);
   if (!worker) {
     return;
   }
@@ -222,8 +222,9 @@ std::unique_ptr<SandboxedWorker> SystemProxyAdaptor::CreateWorker() {
   return std::make_unique<SandboxedWorker>(weak_ptr_factory_.GetWeakPtr());
 }
 
-SandboxedWorker* SystemProxyAdaptor::CreateWorkerIfNeeded(bool user_traffic) {
-  SandboxedWorker* worker = GetWorker(user_traffic);
+base::WeakPtr<SandboxedWorker> SystemProxyAdaptor::CreateWorkerIfNeeded(
+    bool user_traffic) {
+  auto worker = GetWorker(user_traffic);
   if (worker) {
     // A worker for traffic indicated by |user_traffic| already exists.
     return worker;
@@ -233,7 +234,7 @@ SandboxedWorker* SystemProxyAdaptor::CreateWorkerIfNeeded(bool user_traffic) {
 
   if (!worker->Start()) {
     ResetWorker(user_traffic);
-    return nullptr;
+    return base::WeakPtr<SandboxedWorker>();
   }
   // patchpanel_proxy is owned by |dbus_object_->bus_|.
   dbus::ObjectProxy* patchpanel_proxy = dbus_object_->GetBus()->GetObjectProxy(
@@ -246,16 +247,24 @@ SandboxedWorker* SystemProxyAdaptor::CreateWorkerIfNeeded(bool user_traffic) {
 }
 
 void SystemProxyAdaptor::SetCredentialsTask(
-    SandboxedWorker* worker, const worker::Credentials& credentials) {
-  DCHECK(worker);
+    base::WeakPtr<SandboxedWorker> worker,
+    const worker::Credentials& credentials) {
+  if (!worker) {
+    LOG(WARNING) << "Worker was destroyed before SetCredentialsTask executed";
+    return;
+  }
   worker->SetCredentials(credentials);
 }
 
 void SystemProxyAdaptor::SetKerberosEnabledTask(
-    SandboxedWorker* worker,
+    base::WeakPtr<SandboxedWorker> worker,
     bool kerberos_enabled,
     const std::string& principal_name) {
-  DCHECK(worker);
+  if (!worker) {
+    LOG(WARNING)
+        << "Worker was destroyed before SetKerberosEnabledTask executed";
+    return;
+  }
   worker->SetKerberosEnabled(kerberos_enabled,
                              kerberos_client_->krb5_conf_path(),
                              kerberos_client_->krb5_ccache_path());
@@ -295,8 +304,15 @@ bool SystemProxyAdaptor::ResetWorker(bool user_traffic) {
   return true;
 }
 
-SandboxedWorker* SystemProxyAdaptor::GetWorker(bool user_traffic) {
-  return user_traffic ? arc_worker_.get() : system_services_worker_.get();
+base::WeakPtr<SandboxedWorker> SystemProxyAdaptor::GetWorker(
+    bool user_traffic) {
+  if (user_traffic && arc_worker_) {
+    return arc_worker_->GetWeakPtr();
+  }
+  if (!user_traffic && system_services_worker_) {
+    return system_services_worker_->GetWeakPtr();
+  }
+  return base::WeakPtr<SandboxedWorker>();
 }
 
 bool SystemProxyAdaptor::IncludesSystemTraffic(TrafficOrigin traffic_origin) {
@@ -319,7 +335,7 @@ void SystemProxyAdaptor::OnPatchpanelServiceAvailable(bool user_traffic,
 void SystemProxyAdaptor::ConnectNamespace(bool user_traffic) {
   DCHECK_GT(netns_reconnect_attempts_available_, 0);
   --netns_reconnect_attempts_available_;
-  SandboxedWorker* worker = GetWorker(user_traffic);
+  auto worker = GetWorker(user_traffic);
   DCHECK(worker);
   // TODO(b/160736881, acostinas): Remove the delay after patchpanel
   // implements "ip netns" to create the veth pair across network namespaces.
@@ -330,10 +346,20 @@ void SystemProxyAdaptor::ConnectNamespace(bool user_traffic) {
       kConnectNamespaceDelay);
 }
 
-void SystemProxyAdaptor::ConnectNamespaceTask(SandboxedWorker* worker,
-                                              bool user_traffic) {
+std::unique_ptr<patchpanel::Client>
+SystemProxyAdaptor::CreatePatchpanelClient() {
+  return patchpanel::Client::New();
+}
+
+void SystemProxyAdaptor::ConnectNamespaceTask(
+    base::WeakPtr<SandboxedWorker> worker, bool user_traffic) {
+  if (!worker) {
+    LOG(WARNING) << "Worker was destroyed before ConnectNamespaceTask executed";
+    return;
+  }
+
   std::unique_ptr<patchpanel::Client> patchpanel_client =
-      patchpanel::Client::New();
+      CreatePatchpanelClient();
   if (!patchpanel_client) {
     LOG(ERROR) << "Failed to open networking service client";
     return;
@@ -368,8 +394,11 @@ void SystemProxyAdaptor::ConnectNamespaceTask(SandboxedWorker* worker,
   OnNamespaceConnected(worker, user_traffic);
 }
 
-void SystemProxyAdaptor::OnNamespaceConnected(SandboxedWorker* worker,
-                                              bool user_traffic) {
+void SystemProxyAdaptor::OnNamespaceConnected(
+    base::WeakPtr<SandboxedWorker> worker, bool user_traffic) {
+  if (!worker) {
+    return;
+  }
   WorkerActiveSignalDetails details;
   details.set_traffic_origin(user_traffic ? TrafficOrigin::USER
                                           : TrafficOrigin::SYSTEM);

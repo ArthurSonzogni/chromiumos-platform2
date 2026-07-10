@@ -10,13 +10,12 @@
 #include <string>
 #include <vector>
 
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
-
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/net-base/ipv4_address.h>
 #include <chromeos/scoped_minijail.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "bindings/worker_common.pb.h"
 
@@ -66,6 +65,10 @@ class SandboxedWorker {
   void SetNetNamespaceLifelineFd(base::ScopedFD net_namespace_lifeline_fd);
 
   pid_t pid() { return pid_; }
+
+  base::WeakPtr<SandboxedWorker> GetWeakPtr() {
+    return weak_ptr_factory_.GetWeakPtr();
+  }
 
   // Returns the address of the local proxy as host:port.
   virtual std::string local_proxy_host_and_port() {

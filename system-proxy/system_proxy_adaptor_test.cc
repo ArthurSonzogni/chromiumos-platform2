@@ -4,8 +4,6 @@
 
 #include "system-proxy/system_proxy_adaptor.h"
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 #include <list>
 #include <map>
 #include <utility>
@@ -21,6 +19,7 @@
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <dbus/kerberos/dbus-constants.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
@@ -28,12 +27,14 @@
 #include <dbus/mock_object_proxy.h>
 #include <dbus/object_path.h>
 #include <dbus/system_proxy/dbus-constants.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "bindings/worker_common.pb.h"
 #include "system-proxy/kerberos_client.h"
-#include "system_proxy/proto_bindings/system_proxy_service.pb.h"
 #include "system-proxy/protobuf_util.h"
 #include "system-proxy/sandboxed_worker.h"
+#include "system_proxy/proto_bindings/system_proxy_service.pb.h"
 
 using testing::_;
 using testing::Return;
@@ -92,10 +93,17 @@ class FakeSystemProxyAdaptor : public SystemProxyAdaptor {
   void ConnectNamespace(bool user_traffic) override {
     OnNamespaceConnected(GetWorker(user_traffic), user_traffic);
   }
+  std::unique_ptr<patchpanel::Client> CreatePatchpanelClient() override {
+    create_patchpanel_client_called_ = true;
+    return SystemProxyAdaptor::CreatePatchpanelClient();
+  }
+
+  bool create_patchpanel_client_called_ = false;
 
  private:
   FRIEND_TEST(SystemProxyAdaptorTest, KerberosEnabled);
   FRIEND_TEST(SystemProxyAdaptorTest, ConnectNamespace);
+  FRIEND_TEST(SystemProxyAdaptorTest, ConnectNamespaceTaskDestroyedWorker);
   FRIEND_TEST(SystemProxyAdaptorTest, ProxyResolutionFilter);
   FRIEND_TEST(SystemProxyAdaptorTest, ProtectionSpaceAuthenticationRequired);
   FRIEND_TEST(SystemProxyAdaptorTest, ProtectionSpaceNoCredentials);
@@ -378,6 +386,24 @@ TEST_F(SystemProxyAdaptorTest, ConnectNamespace) {
   adaptor_->system_services_worker_ = adaptor_->CreateWorker();
   adaptor_->ConnectNamespace(/* user_traffic= */ false);
   EXPECT_TRUE(active_worker_signal_called_);
+}
+
+TEST_F(SystemProxyAdaptorTest, ConnectNamespaceTaskDestroyedWorker) {
+  EXPECT_FALSE(active_worker_signal_called_);
+  adaptor_->system_services_worker_ = adaptor_->CreateWorker();
+  adaptor_->netns_reconnect_attempts_available_ = 1;
+
+  adaptor_->SystemProxyAdaptor::ConnectNamespace(/* user_traffic= */ false);
+
+  // Destroy the worker while the delayed task is pending in the message loop,
+  // simulating ShutDownProcess being called during the 1-second delay window.
+  adaptor_->ResetWorker(/* user_traffic= */ false);
+  EXPECT_FALSE(adaptor_->GetWorker(/* user_traffic= */ false));
+
+  adaptor_->ConnectNamespaceTask(base::WeakPtr<SandboxedWorker>(),
+                                 /* user_traffic= */ false);
+  EXPECT_FALSE(adaptor_->create_patchpanel_client_called_);
+  EXPECT_FALSE(active_worker_signal_called_);
 }
 
 // Test that verifies that authentication requests are result in sending a

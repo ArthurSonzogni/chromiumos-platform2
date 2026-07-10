@@ -24,6 +24,10 @@ class DBusObject;
 
 }  // namespace brillo
 
+namespace patchpanel {
+class Client;
+}  // namespace patchpanel
+
 namespace system_proxy {
 
 class KerberosClient;
@@ -61,12 +65,14 @@ class SystemProxyAdaptor : public org::chromium::SystemProxyAdaptor,
 
  protected:
   virtual std::unique_ptr<SandboxedWorker> CreateWorker();
+  virtual std::unique_ptr<patchpanel::Client> CreatePatchpanelClient();
   virtual void ConnectNamespace(bool user_traffic);
   // Triggers the |WorkerActive| signal.
-  void OnNamespaceConnected(SandboxedWorker* worker, bool user_traffic);
-  // Returns a pointer to the worker process associated with |user_traffic|. Can
-  // return nullptr.
-  SandboxedWorker* GetWorker(bool user_traffic);
+  void OnNamespaceConnected(base::WeakPtr<SandboxedWorker> worker,
+                            bool user_traffic);
+  // Returns a weak pointer to the worker process associated with
+  // |user_traffic|. Can return null WeakPtr.
+  base::WeakPtr<SandboxedWorker> GetWorker(bool user_traffic);
 
  private:
   friend class SystemProxyAdaptorTest;
@@ -77,22 +83,24 @@ class SystemProxyAdaptor : public org::chromium::SystemProxyAdaptor,
   FRIEND_TEST(SystemProxyAdaptorTest, ShutDownProcess);
   FRIEND_TEST(SystemProxyAdaptorTest, ShutDownArc);
   FRIEND_TEST(SystemProxyAdaptorTest, ConnectNamespace);
+  FRIEND_TEST(SystemProxyAdaptorTest, ConnectNamespaceTaskDestroyedWorker);
   FRIEND_TEST(SystemProxyAdaptorTest, ProxyResolutionFilter);
   FRIEND_TEST(SystemProxyAdaptorTest, ProtectionSpaceAuthenticationRequired);
   FRIEND_TEST(SystemProxyAdaptorTest, ProtectionSpaceNoCredentials);
   FRIEND_TEST(SystemProxyAdaptorTest, ClearUserCredentials);
   FRIEND_TEST(SystemProxyAdaptorTest, ClearUserCredentialsRestartService);
 
-  void SetCredentialsTask(SandboxedWorker* worker,
+  void SetCredentialsTask(base::WeakPtr<SandboxedWorker> worker,
                           const worker::Credentials& credentials);
 
-  void SetKerberosEnabledTask(SandboxedWorker* worker,
+  void SetKerberosEnabledTask(base::WeakPtr<SandboxedWorker> worker,
                               bool kerberos_enabled,
                               const std::string& principal_name);
 
   void ShutDownTask();
 
-  void ConnectNamespaceTask(SandboxedWorker* worker, bool user_traffic);
+  void ConnectNamespaceTask(base::WeakPtr<SandboxedWorker> worker,
+                            bool user_traffic);
 
   // Terminates the worker process for traffic indicated by |user_traffic| and
   // frees the SandboxedWorker associated with it.
@@ -108,9 +116,10 @@ class SystemProxyAdaptor : public org::chromium::SystemProxyAdaptor,
   bool IncludesUserTraffic(TrafficOrigin traffic_origin);
 
   // Checks if a worker process exists and if not creates one and sends a
-  // request to patchpanel to setup the network namespace for it. Returns true
-  // if the worker exists or was created successfully, false otherwise.
-  SandboxedWorker* CreateWorkerIfNeeded(bool user_traffic);
+  // request to patchpanel to setup the network namespace for it. Returns a
+  // weak pointer to the worker if it exists or was created successfully, or
+  // a null weak pointer otherwise.
+  base::WeakPtr<SandboxedWorker> CreateWorkerIfNeeded(bool user_traffic);
 
   // If setting the authentication details to |worker| fails, it  updates
   // |error_message| with an appropriate error message.
