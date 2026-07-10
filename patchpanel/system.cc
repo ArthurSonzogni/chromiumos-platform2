@@ -19,9 +19,10 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/files/file_util.h>
+#include <brillo/file_utils.h>
 
 #include "patchpanel/bpf/constants.h"
 
@@ -254,20 +255,10 @@ bool System::Write(std::string_view path, std::string_view content) {
 }
 
 bool System::WriteConfigFile(base::FilePath path, std::string_view contents) {
-  if (!base::WriteFile(path, contents)) {
+  if (!brillo::WriteFileAtomically(
+          path, base::as_byte_span(contents), S_IRUSR | S_IRGRP | S_IWUSR,
+          {.uid = kPatchpaneldUid, .gid = kPatchpaneldGid})) {
     PLOG(ERROR) << "Failed to write config file to " << path;
-    return false;
-  }
-
-  if (chmod(path.value().c_str(), S_IRUSR | S_IRGRP | S_IWUSR)) {
-    PLOG(ERROR) << "Failed to set permissions on " << path;
-    brillo::DeletePathRecursively(path);
-    return false;
-  }
-
-  if (chown(path.value().c_str(), kPatchpaneldUid, kPatchpaneldGid) != 0) {
-    PLOG(ERROR) << "Failed to change owner group of " << path;
-    brillo::DeletePathRecursively(path);
     return false;
   }
   return true;
