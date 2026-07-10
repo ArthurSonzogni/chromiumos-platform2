@@ -60,8 +60,12 @@ class BluetoothRoutineBase {
   base::ScopedClosureRunner reset_bluetooth_powered_;
 
  private:
+  // Drops any cached pointer to a removed adapter so later GetAdapter() calls
+  // return null instead of a dangling proxy.
+  void OnAdapterRemoved(const dbus::ObjectPath& adapter_path);
   // The adapters from Bluetooth proxy.
   std::vector<org::bluez::Adapter1ProxyInterface*> adapters_;
+  base::CallbackListSubscription adapter_removed_subscription_;
 };
 
 }  // namespace bluez

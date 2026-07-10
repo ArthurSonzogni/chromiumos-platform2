@@ -117,6 +117,11 @@ void BluetoothDiscoveryRoutine::RunNextStep() {
                          weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kCheckDiscoveringStatusOn:
+      if (!GetAdapter()) {
+        SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
+                         kBluetoothRoutineFailedGetAdapter);
+        return;
+      }
       // Wait for the property changed event in |OnAdapterPropertyChanged|.
       GetAdapter()->StartDiscoveryAsync(
           base::DoNothing(),
@@ -125,6 +130,11 @@ void BluetoothDiscoveryRoutine::RunNextStep() {
               weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kCheckDiscoveringStatusOff:
+      if (!GetAdapter()) {
+        SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
+                         kBluetoothRoutineFailedGetAdapter);
+        return;
+      }
       // Wait for the property changed event in |OnAdapterPropertyChanged|.
       GetAdapter()->StopDiscoveryAsync(
           base::DoNothing(),
@@ -268,7 +278,7 @@ void BluetoothDiscoveryRoutine::SetResultAndStop(
     mojom::DiagnosticRoutineStatusEnum status,
     const std::string& status_message) {
   // Make the adapter stop discovery when routine is stopped.
-  if (step_ == TestStep::kCheckDiscoveringStatusOn) {
+  if (step_ == TestStep::kCheckDiscoveringStatusOn && GetAdapter()) {
     GetAdapter()->StopDiscoveryAsync(base::DoNothing(), base::DoNothing());
   }
   // Cancel all pending callbacks.

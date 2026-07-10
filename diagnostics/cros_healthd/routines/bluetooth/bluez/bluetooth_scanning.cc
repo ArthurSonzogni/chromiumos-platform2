@@ -172,6 +172,11 @@ void BluetoothScanningRoutine::RunNextStep() {
                          weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kStartDiscovery:
+      if (!GetAdapter()) {
+        SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
+                         kBluetoothRoutineFailedGetAdapter);
+        return;
+      }
       GetAdapter()->StartDiscoveryAsync(
           base::BindOnce(&BluetoothScanningRoutine::RunNextStep,
                          weak_ptr_factory_.GetWeakPtr()),
@@ -186,6 +191,11 @@ void BluetoothScanningRoutine::RunNextStep() {
           exec_duration_);
       break;
     case TestStep::kStopDiscovery:
+      if (!GetAdapter()) {
+        SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
+                         kBluetoothRoutineFailedGetAdapter);
+        return;
+      }
       GetAdapter()->StopDiscoveryAsync(
           base::BindOnce(&BluetoothScanningRoutine::RunNextStep,
                          weak_ptr_factory_.GetWeakPtr()),

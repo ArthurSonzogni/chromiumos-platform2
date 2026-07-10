@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluez/bluetooth_base.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -15,6 +16,7 @@
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/bluez_controller.h"
+#include "diagnostics/cros_healthd/system/bluez_event_hub.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
@@ -58,6 +60,12 @@ BluetoothRoutineBase::BluetoothRoutineBase(Context* context)
     : context_(context) {
   CHECK(context_);
   adapters_ = context->bluez_controller()->GetAdapters();
+  // The generated org::bluezProxy ObjectManager owns the Adapter1Proxy as a
+  // unique_ptr and frees it on InterfacesRemoved.  Invalidate our raw cache
+  // when that happens so subsequent GetAdapter() calls return null.
+  adapter_removed_subscription_ =
+      context_->bluez_event_hub()->SubscribeAdapterRemoved(base::BindRepeating(
+          &BluetoothRoutineBase::OnAdapterRemoved, base::Unretained(this)));
 }
 
 BluetoothRoutineBase::~BluetoothRoutineBase() = default;
@@ -67,6 +75,16 @@ org::bluez::Adapter1ProxyInterface* BluetoothRoutineBase::GetAdapter() const {
     return nullptr;
   }
   return adapters_[0];
+}
+
+void BluetoothRoutineBase::OnAdapterRemoved(
+    const dbus::ObjectPath& adapter_path) {
+  adapters_.erase(std::remove_if(adapters_.begin(), adapters_.end(),
+                                 [&](org::bluez::Adapter1ProxyInterface* a) {
+                                   return !a ||
+                                          a->GetObjectPath() == adapter_path;
+                                 }),
+                  adapters_.end());
 }
 
 void BluetoothRoutineBase::EnsureAdapterPoweredState(
