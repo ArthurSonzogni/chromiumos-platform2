@@ -119,9 +119,16 @@ DocumentScannerImpl::~DocumentScannerImpl() {
 void DocumentScannerImpl::DetectCornersFromNV12Image(
     ReadOnlySharedMemoryRegionPtr nv12_image,
     DetectCornersFromNV12ImageCallback callback) {
+  // libdocumentscanner.so reads a fixed 256x256 NV12 frame (98304 bytes) from
+  // the supplied pointer with no length argument; reject undersized regions to
+  // prevent OOB reads of adjacent worker memory.
+  constexpr size_t kNv12ImageSize = 256 * 256 * 3 / 2;
   auto detect_from_mapping_callback = base::BindOnce(
       [](LibDocumentScanner* scanner, base::span<const uint8_t> image,
          std::vector<LibDocumentScanner::Point>* corners) -> bool {
+        if (image.size() < kNv12ImageSize) {
+          return false;
+        }
         return scanner->DetectCornersFromNV12Image(image.data(), corners);
       },
       scanner_.get());
