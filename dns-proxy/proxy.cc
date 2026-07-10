@@ -12,6 +12,7 @@
 
 #include <optional>
 #include <set>
+#include <tuple>
 
 #include <base/check.h>
 #include <base/functional/bind.h>
@@ -70,6 +71,26 @@ std::vector<std::string> ToStringVec(const std::vector<T>& addrs) {
     ret.push_back(addr.ToString());
   }
   return ret;
+}
+
+using NameServers = std::tuple<std::vector<net_base::IPv4Address>,
+                               std::vector<net_base::IPv6Address>>;
+
+NameServers GetNameservers(
+    const std::vector<net_base::IPAddress>& dns_servers) {
+  std::vector<net_base::IPv4Address> ipv4_nameservers;
+  std::vector<net_base::IPv6Address> ipv6_nameservers;
+  for (const auto& addr : dns_servers) {
+    switch (addr.GetFamily()) {
+      case net_base::IPFamily::kIPv4:
+        ipv4_nameservers.push_back(*addr.ToIPv4Address());
+        break;
+      case net_base::IPFamily::kIPv6:
+        ipv6_nameservers.push_back(*addr.ToIPv6Address());
+        break;
+    }
+  }
+  return {ipv4_nameservers, ipv6_nameservers};
 }
 
 }  // namespace
@@ -744,8 +765,9 @@ void Proxy::UpdateNameServers() {
     return;
   }
 
-  // Use pointer to avoid unnecessary copies.
-  auto* network_config = &device_->network_config;
+  std::vector<net_base::IPv4Address> ipv4_nameservers;
+  std::vector<net_base::IPv6Address> ipv6_nameservers;
+
   // Special case for VPN without nameserver. Fallback to default physical
   // network's nameserver(s).
   if (device_->type == shill::Client::Device::Type::kVPN &&
@@ -755,21 +777,11 @@ void Proxy::UpdateNameServers() {
       LOG(ERROR) << *this << " no default non-VPN device found";
       return;
     }
-    network_config = &dd->network_config;
-  }
-
-  std::vector<net_base::IPv4Address> ipv4_nameservers;
-  std::vector<net_base::IPv6Address> ipv6_nameservers;
-
-  for (const auto& addr : network_config->dns_servers) {
-    switch (addr.GetFamily()) {
-      case net_base::IPFamily::kIPv4:
-        ipv4_nameservers.push_back(*addr.ToIPv4Address());
-        break;
-      case net_base::IPFamily::kIPv6:
-        ipv6_nameservers.push_back(*addr.ToIPv6Address());
-        break;
-    }
+    std::tie(ipv4_nameservers, ipv6_nameservers) =
+        GetNameservers(dd->network_config.dns_servers);
+  } else {
+    std::tie(ipv4_nameservers, ipv6_nameservers) =
+        GetNameservers(device_->network_config.dns_servers);
   }
 
   if (ipv4_nameservers.empty() && ipv6_nameservers.empty()) {
