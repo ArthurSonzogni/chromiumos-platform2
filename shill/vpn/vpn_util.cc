@@ -17,6 +17,7 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/file_utils.h>
 #include <chromeos/net-base/process_manager.h>
 
 namespace shill {
@@ -35,21 +36,11 @@ class VPNUtilImpl : public VPNUtil {
 
 bool VPNUtilImpl::WriteConfigFile(const base::FilePath& filename,
                                   const std::string& contents) const {
-  if (!base::WriteFile(filename, contents)) {
+  if (!brillo::WriteFileAtomically(filename, base::as_byte_span(contents),
+                                   S_IRUSR | S_IRGRP, {.gid = kVPNGid})) {
     LOG(ERROR) << "Failed to write config file";
     return false;
   }
-
-  if (chmod(filename.value().c_str(), S_IRUSR | S_IRGRP) != 0) {
-    PLOG(ERROR) << "Failed to make config file group-readable";
-    return false;
-  }
-
-  if (chown(filename.value().c_str(), -1, kVPNGid) != 0) {
-    PLOG(ERROR) << "Failed to change gid of config file";
-    return false;
-  }
-
   return true;
 }
 
