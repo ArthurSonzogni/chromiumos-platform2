@@ -80,4 +80,6 @@ sysinfo: 1
 # tgkill is used by abort() and CHECK()/LOG(FATAL).
 tgkill: 1
 uname: 1
+unlink: 1
+unlinkat: 1
 write: 1
