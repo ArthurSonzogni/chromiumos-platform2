@@ -949,8 +949,13 @@ void P2PDevice::AcquireClientIP() {
 bool P2PDevice::StartGroupNetwork() {
   if (!manager()->patchpanel_client() ||
       !manager()->patchpanel_client()->CreateLocalOnlyNetwork(
-          link_name().value(), base::BindOnce(&P2PDevice::OnGroupNetworkStarted,
-                                              base::Unretained(this)))) {
+          link_name().value(),
+          // Hold a strong reference across the asynchronous patchpanel call.
+          // P2PDevice is base::RefCounted (via LocalDevice); using Unretained
+          // here is unsafe because P2PManager::ActionTimerExpired can drop the
+          // last reference before patchpanel replies (use-after-free).
+          base::BindOnce(&P2PDevice::OnGroupNetworkStarted,
+                         scoped_refptr<P2PDevice>(this)))) {
     LOG(ERROR) << log_name() << ": Failed to create local only network";
     PostDeviceEvent(DeviceEvent::kNetworkFailure);
     return false;
