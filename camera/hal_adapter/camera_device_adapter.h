@@ -356,6 +356,12 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   std::unordered_map<uint64_t, std::unique_ptr<camera_buffer_handle_t>>
       buffer_handles_ GUARDED_BY(buffer_handles_lock_);
 
+  // Number of in-flight HAL references to each buffer_id. The
+  // camera_buffer_handle_t backing memory must not be freed while this is
+  // non-zero, because the HAL holds a raw pointer into it (camera3.h §2460).
+  std::unordered_map<uint64_t, int> buffer_inflight_refs_
+      GUARDED_BY(buffer_handles_lock_);
+
   // A mutex to guard |buffer_handles_|.
   base::Lock buffer_handles_lock_;
 

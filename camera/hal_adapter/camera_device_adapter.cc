@@ -624,6 +624,7 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
       internal::DeserializeStreamBuffer(request->input_buffer, streams_,
                                         buffer_handles_, &input_buffer);
     }
+    ++buffer_inflight_refs_[request->input_buffer->buffer_id];
     req.input_buffer = &input_buffer;
     registered_buffers.emplace_back(request->input_buffer->buffer_id,
                                     *req.input_buffer);
@@ -652,6 +653,7 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
         internal::DeserializeStreamBuffer(
             out_buf_ptr, streams_, buffer_handles_, &output_buffers.at(i));
       }
+      ++buffer_inflight_refs_[request->output_buffers[i]->buffer_id];
       registered_buffers.emplace_back(request->output_buffers[i]->buffer_id,
                                       output_buffers.at(i));
     }
@@ -1565,6 +1567,7 @@ CameraDeviceAdapter::DeserializeReturnedBufferRequest(
             buf_ptr, streams_, buffer_handles_,
             ret.output_buffers + output_buffers_index++);
       }
+      ++buffer_inflight_refs_[buf_ptr->buffer_id];
     }
     ret.num_output_buffers = output_buffers_index;
   }
@@ -1651,6 +1654,17 @@ void CameraDeviceAdapter::RemoveReturnBufferLocked(
     uint64_t buffer_id, const camera3_stream_buffer_t& buffer) {
   buffer_handles_lock_.AssertAcquired();
   DCHECK(buffer_handles_.find(buffer_id) != buffer_handles_.end());
+  // A hostile Mojo client may have pipelined the same buffer_id in multiple
+  // in-flight requests; the HAL still holds raw pointers into
+  // buffer_handles_[buffer_id] for the others. Do not free until the last
+  // reference returns.
+  auto ref = buffer_inflight_refs_.find(buffer_id);
+  if (ref != buffer_inflight_refs_.end()) {
+    if (--ref->second > 0) {
+      return;
+    }
+    buffer_inflight_refs_.erase(ref);
+  }
   buffer_handles_[buffer_id]->state = kReturned;
   MaybeRemoveBufferLocked(buffer);
 }
