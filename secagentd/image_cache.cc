@@ -31,12 +31,17 @@
 #include "brillo/secure_blob.h"
 #include "openssl/sha.h"
 #include "secagentd/bpf/bpf_types.h"
+
 namespace {
 
-static const char kErrorFailedToRead[] = "Error reading file ";
-static const char kErrorSslSha[] = "SSL SHA error";
-static const char kErrorBytesRead[] =
+constexpr char kErrorFailedToRead[] = "Error reading file ";
+constexpr char kErrorSslSha[] = "SSL SHA error";
+constexpr char kErrorBytesRead[] =
     "Failed to read the expected number of bytes from the file. ";
+
+// Allow a 10 millisecond delta for nanosec.
+constexpr u_int64_t kEpsilonNs = 10000000;
+
 }  // namespace
 
 namespace secagentd {
@@ -44,20 +49,25 @@ namespace secagentd {
 constexpr ImageCache::InternalImageCacheType::size_type kImageCacheMaxSize =
     256;
 
-// Allow a 10 millisecond delta for nanosec.
-const u_int64_t kEpsilonNs = 10000000;
-
 absl::StatusOr<ImageCacheInterface::HashValue>
 ImageCache::VerifyStatAndGenerateImageHash(
     const ImageCacheInterface::ImageCacheKeyType& image_key,
     bool force_full_sha256,
     const base::FilePath& image_path_in_current_ns) {
-  auto hash = GenerateImageHash(image_path_in_current_ns, force_full_sha256);
+  base::File file(image_path_in_current_ns,
+                  base::File::FLAG_OPEN | base::File::FLAG_READ);
+  if (!file.IsValid()) {
+    return absl::NotFoundError(
+        base::StrCat({kErrorFailedToRead, image_path_in_current_ns.value()}));
+  }
+
+  auto hash = GenerateImageHashInternal(file, image_path_in_current_ns,
+                                        force_full_sha256);
   if (!hash.ok()) {
     return hash.status();
   }
   base::stat_wrapper_t image_stat;
-  if (base::File::Stat(image_path_in_current_ns, &image_stat) ||
+  if (base::File::Fstat(file.GetPlatformFile(), &image_stat) ||
       (image_stat.st_dev != image_key.inode_device_id) ||
       (image_stat.st_ino != image_key.inode) ||
       (image_stat.st_mtim.tv_sec != image_key.mtime.tv_sec) ||
@@ -115,6 +125,15 @@ absl::StatusOr<ImageCacheInterface::HashValue> ImageCache::GenerateImageHash(
         base::StrCat({kErrorFailedToRead, image_path_in_current_ns.value()}));
   }
 
+  return GenerateImageHashInternal(file, image_path_in_current_ns,
+                                   force_full_sha);
+}
+
+absl::StatusOr<ImageCacheInterface::HashValue>
+ImageCache::GenerateImageHashInternal(
+    base::File& file,
+    const base::FilePath& image_path_for_logging,
+    bool force_full_sha) {
   base::TimeTicks start = base::TimeTicks::Now();
   SHA256_CTX ctx;
   if (!SHA256_Init(&ctx)) {
@@ -124,7 +143,7 @@ absl::StatusOr<ImageCacheInterface::HashValue> ImageCache::GenerateImageHash(
   int64_t file_size = file.GetLength();
   if (file_size < 0) {
     return absl::AbortedError(base::StrCat(
-        {"Could not get file length:", image_path_in_current_ns.value()}));
+        {"Could not get file length:", image_path_for_logging.value()}));
   }
 
   bool is_partial =
@@ -155,7 +174,7 @@ absl::StatusOr<ImageCacheInterface::HashValue> ImageCache::GenerateImageHash(
     auto bytes_read = file.Read(offset, base::as_writable_byte_span(buf));
     if (!bytes_read.has_value()) {
       return absl::AbortedError(
-          base::StrCat({kErrorBytesRead, image_path_in_current_ns.value()}));
+          base::StrCat({kErrorBytesRead, image_path_for_logging.value()}));
     }
     // Update SHA256 context with the read data.
     if (!SHA256_Update(&ctx, buf.data(), *bytes_read)) {

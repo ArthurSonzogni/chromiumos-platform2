@@ -141,6 +141,10 @@ class ImageCache : public ImageCacheInterface {
       const ImageCacheKeyType& image_key,
       bool force_full_sha256,
       const base::FilePath& image_path_in_current_ns);
+  absl::StatusOr<HashValue> GenerateImageHashInternal(
+      base::File& file,
+      const base::FilePath& image_path_for_logging,
+      bool force_full_sha256);
 
   const base::FilePath root_path_;
   const size_t sha_chunk_size_;
