@@ -1483,6 +1483,12 @@ StartVmResponse Service::StartVmInternal(
 
   apps::VmType classification = internal::ClassifyVm(request);
 
+  // Borealis has been deprecated. Reject all attempts to start a Borealis VM.
+  if (classification == apps::VmType::BOREALIS) {
+    response.set_failure_reason("BOREALIS VMs are deprecated");
+    return response;
+  }
+
   // Log how long it takes to start the VM.
   metrics::DurationRecorder duration_recorder(
       raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()),
