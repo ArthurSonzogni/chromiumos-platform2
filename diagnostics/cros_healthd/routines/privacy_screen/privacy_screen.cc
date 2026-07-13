@@ -39,7 +39,7 @@ void PrivacyScreenRoutine::Start() {
   base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&PrivacyScreenRoutine::ValidateState,
-                     base::Unretained(this)),
+                     weak_factory_.GetWeakPtr()),
       // This delay is working as a timeout. The timeout is concerning two
       // checks, failing either of which leads to the failure of routine.
       //
