@@ -113,6 +113,7 @@ pkg_config("target_defaults") {
     # order.
     "system_api",
     "uuid",
+    "vboot_host",
   ]
   if (use.fuzzer) {
     pkg_deps += [ "protobuf" ]

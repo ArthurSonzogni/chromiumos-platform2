@@ -8,6 +8,8 @@
 #include <math.h>
 #include <stdint.h>
 
+#include <vboot/crossystem.h>
+
 #include <iostream>
 #include <optional>
 #include <string>
@@ -45,6 +47,14 @@
 namespace shill {
 
 namespace {
+
+bool IsDevMode() {
+#if defined(TEST_BUILD)
+  return true;
+#else
+  return VbGetSystemPropertyInt("cros_debug") == 1;
+#endif
+}
 
 static constexpr char kSSIDPrefix[] = "chromeOS-";
 // Random suffix should provide enough uniqueness to have low SSID collision
@@ -365,24 +375,32 @@ std::optional<bool> TetheringManager::FromProperties(
     restart = true;
   }
 
-  if (properties.Contains<std::string>(
-          kTetheringConfDownstreamDeviceForTestProperty) &&
-      downstream_device_for_test_ !=
-          properties.Get<std::string>(
-              kTetheringConfDownstreamDeviceForTestProperty)) {
-    downstream_device_for_test_ = properties.Get<std::string>(
-        kTetheringConfDownstreamDeviceForTestProperty);
-    restart = true;
-  }
+  if (IsDevMode()) {
+    if (properties.Contains<std::string>(
+            kTetheringConfDownstreamDeviceForTestProperty) &&
+        downstream_device_for_test_ !=
+            properties.Get<std::string>(
+                kTetheringConfDownstreamDeviceForTestProperty)) {
+      downstream_device_for_test_ = properties.Get<std::string>(
+          kTetheringConfDownstreamDeviceForTestProperty);
+      restart = true;
+    }
 
-  if (properties.Contains<uint32_t>(
-          kTetheringConfDownstreamPhyIndexForTestProperty) &&
-      downstream_phy_index_for_test_ !=
-          properties.Get<uint32_t>(
-              kTetheringConfDownstreamPhyIndexForTestProperty)) {
-    downstream_phy_index_for_test_ = properties.Get<uint32_t>(
-        kTetheringConfDownstreamPhyIndexForTestProperty);
-    restart = true;
+    if (properties.Contains<uint32_t>(
+            kTetheringConfDownstreamPhyIndexForTestProperty) &&
+        downstream_phy_index_for_test_ !=
+            properties.Get<uint32_t>(
+                kTetheringConfDownstreamPhyIndexForTestProperty)) {
+      downstream_phy_index_for_test_ = properties.Get<uint32_t>(
+          kTetheringConfDownstreamPhyIndexForTestProperty);
+      restart = true;
+    }
+  } else if (properties.Contains<std::string>(
+                 kTetheringConfDownstreamDeviceForTestProperty) ||
+             properties.Contains<uint32_t>(
+                 kTetheringConfDownstreamPhyIndexForTestProperty)) {
+    LOG(WARNING)
+        << "Ignoring *ForTest tethering config keys from D-Bus in non-dev mode";
   }
 
   return restart;
@@ -772,7 +790,8 @@ void TetheringManager::StartTetheringSession(WiFiPhy::Priority priority) {
       mar_ ? MACAddress::CreateRandom().address().value()
            : stable_mac_addr_.address().value();
   bool request_accepted;
-  if (downstream_device_for_test_ && downstream_phy_index_for_test_) {
+  if (IsDevMode() && downstream_device_for_test_ &&
+      downstream_phy_index_for_test_) {
     request_accepted = manager_->wifi_provider()->CreateHotspotDeviceForTest(
         mac_address, *downstream_device_for_test_,
         *downstream_phy_index_for_test_,
