@@ -416,8 +416,8 @@ bool ModemQrtr::SendCommand(QmiCmdInterface* qmi_command,
   packet.data = encoded_buffer.data();
   packet.data_len = encoded_buffer.size();
 
-  size_t len = qmi_encode_message(&packet, QMI_REQUEST, qmi_command->qmi_type(),
-                                  id, c_struct, ei);
+  ssize_t len = qmi_encode_message(&packet, QMI_REQUEST,
+                                   qmi_command->qmi_type(), id, c_struct, ei);
   if (len < 0) {
     LOG(ERROR) << "Failed to encode QMI UIM request: "
                << qmi_command->qmi_type();
@@ -858,8 +858,8 @@ int ModemQrtr::ReceiveQmiSendApdu(const qrtr_packet& packet) {
   uim_send_apdu_resp resp;
   unsigned int id;
   ApduTxInfo* info = static_cast<ApduTxInfo*>(base_info);
-  if (!qmi_decode_message(&resp, &id, &packet, QMI_RESPONSE, cmd.qmi_type(),
-                          uim_send_apdu_resp_ei)) {
+  if (qmi_decode_message(&resp, &id, &packet, QMI_RESPONSE, cmd.qmi_type(),
+                         uim_send_apdu_resp_ei) < 0) {
     LOG(ERROR) << "Failed to decode QMI UIM response: " << cmd.ToString();
     return kQmiMessageProcessingError;
   }
