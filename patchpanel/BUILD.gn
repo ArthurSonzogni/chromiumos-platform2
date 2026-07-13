@@ -358,6 +358,7 @@ if (use.test) {
       "network/routing_table_test.cc",
       "network_monitor_service_test.cc",
       "noop_subprocess_controller.cc",
+      "patchpanel_adaptor_test.cc",
       "proto_utils_test.cc",
       "qos_service_test.cc",
       "routing_service_test.cc",

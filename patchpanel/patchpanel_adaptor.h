@@ -11,6 +11,7 @@
 #include <base/files/scoped_file.h>
 #include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/process_manager.h>
+#include <dbus/message.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/dbus_adaptors/org.chromium.patchpanel.h"
@@ -49,10 +50,14 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
 
   // Implements org::chromium::PatchPanelInterface, which are mapping to the
   // exported D-Bus methods.
-  ArcVmShutdownResponse ArcVmShutdown(
-      const ArcVmShutdownRequest& request) override;
-  ArcVmStartupResponse ArcVmStartup(
-      const ArcVmStartupRequest& request) override;
+  bool ArcVmShutdown(brillo::ErrorPtr* error,
+                     dbus::Message* message,
+                     const ArcVmShutdownRequest& request,
+                     ArcVmShutdownResponse* response) override;
+  bool ArcVmStartup(brillo::ErrorPtr* error,
+                    dbus::Message* message,
+                    const ArcVmStartupRequest& request,
+                    ArcVmStartupResponse* response) override;
   ConnectNamespaceResponse ConnectNamespace(
       const ConnectNamespaceRequest& request,
       const base::ScopedFD& client_fd) override;
@@ -72,10 +77,14 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
       const TrafficCountersRequest& request) const override;
   ModifyPortRuleResponse ModifyPortRule(
       const ModifyPortRuleRequest& request) override;
-  BruschettaVmShutdownResponse BruschettaVmShutdown(
-      const BruschettaVmShutdownRequest& request) override;
-  BruschettaVmStartupResponse BruschettaVmStartup(
-      const BruschettaVmStartupRequest& request) override;
+  bool BruschettaVmShutdown(brillo::ErrorPtr* error,
+                            dbus::Message* message,
+                            const BruschettaVmShutdownRequest& request,
+                            BruschettaVmShutdownResponse* response) override;
+  bool BruschettaVmStartup(brillo::ErrorPtr* error,
+                           dbus::Message* message,
+                           const BruschettaVmStartupRequest& request,
+                           BruschettaVmStartupResponse* response) override;
   SetDnsRedirectionRuleResponse SetDnsRedirectionRule(
       const SetDnsRedirectionRuleRequest& request,
       const base::ScopedFD& client_fd) override;
@@ -83,10 +92,14 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
       const SetVpnLockdownRequest& request) override;
   TagSocketResponse TagSocket(const TagSocketRequest& request,
                               const base::ScopedFD& socket_fd) override;
-  TerminaVmShutdownResponse TerminaVmShutdown(
-      const TerminaVmShutdownRequest& request) override;
-  TerminaVmStartupResponse TerminaVmStartup(
-      const TerminaVmStartupRequest& request) override;
+  bool TerminaVmShutdown(brillo::ErrorPtr* error,
+                         dbus::Message* message,
+                         const TerminaVmShutdownRequest& request,
+                         TerminaVmShutdownResponse* response) override;
+  bool TerminaVmStartup(brillo::ErrorPtr* error,
+                        dbus::Message* message,
+                        const TerminaVmStartupRequest& request,
+                        TerminaVmStartupResponse* response) override;
 
   NotifyAndroidWifiMulticastLockChangeResponse
   NotifyAndroidWifiMulticastLockChange(
@@ -119,6 +132,7 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
   void RecordDbusEvent(DbusUmaEvent event) const;
 
   brillo::dbus_utils::DBusObject dbus_object_;
+  scoped_refptr<::dbus::Bus> bus_;
 
   // UMA metrics client. The caller should guarantee it outlives this
   // PatchpanelAdaptor instance.
@@ -127,6 +141,15 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
   // The core logic of patchpanel.
   std::unique_ptr<Manager> manager_;
 };
+
+// Verifies that the D-Bus caller of VM startup/shutdown methods is either the
+// owner of org.chromium.VmConcierge or root (UID 0). Both vm_concierge and
+// sandboxed crosvm device processes run as the "crosvm" user (UID 299), so
+// D-Bus policy alone cannot prevent a compromised crosvm device sandbox from
+// calling VM lifecycle methods (b/524048256).
+bool CheckConciergeSender(dbus::Message* message,
+                          dbus::Bus* bus,
+                          brillo::ErrorPtr* error);
 
 }  // namespace patchpanel
 #endif  // PATCHPANEL_PATCHPANEL_ADAPTOR_H_

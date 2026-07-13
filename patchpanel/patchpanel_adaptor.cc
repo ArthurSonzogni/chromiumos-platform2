@@ -4,7 +4,11 @@
 
 #include "patchpanel/patchpanel_adaptor.h"
 
+#include <sys/types.h>
+
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -13,6 +17,9 @@
 #include <base/posix/eintr_wrapper.h>
 #include <chromeos/dbus/patchpanel/dbus-constants.h>
 #include <chromeos/net-base/process_manager.h>
+#include <dbus/dbus-protocol.h>
+#include <dbus/object_proxy.h>
+#include <dbus/vm_concierge/dbus-constants.h>
 #include <metrics/metrics_library.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
@@ -35,6 +42,36 @@ base::ScopedFD Dup(const base::ScopedFD& fd) {
   }
   return base::ScopedFD(duped_fd);
 }
+
+// Queries dbus-daemon for the Unix UID of |connection_name| via
+// org.freedesktop.DBus.GetConnectionUnixUser.
+std::optional<uid_t> GetConnectionUnixUser(dbus::Bus* bus,
+                                           const std::string& connection_name) {
+  dbus::ObjectProxy* dbus_proxy =
+      bus->GetObjectProxy(DBUS_SERVICE_DBUS, dbus::ObjectPath(DBUS_PATH_DBUS));
+  if (!dbus_proxy) {
+    LOG(ERROR) << "Failed to get ObjectProxy for " << DBUS_SERVICE_DBUS;
+    return std::nullopt;
+  }
+  dbus::MethodCall method_call(DBUS_INTERFACE_DBUS, "GetConnectionUnixUser");
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(connection_name);
+
+  auto response = dbus_proxy->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!response.has_value() || !response.value()) {
+    LOG(ERROR) << "Failed to call GetConnectionUnixUser for "
+               << connection_name;
+    return std::nullopt;
+  }
+  dbus::MessageReader reader(response.value().get());
+  uint32_t uid = 0;
+  if (!reader.PopUint32(&uid)) {
+    LOG(ERROR) << "Failed to read UID from GetConnectionUnixUser response";
+    return std::nullopt;
+  }
+  return static_cast<uid_t>(uid);
+}
 }  // namespace
 
 PatchpanelAdaptor::PatchpanelAdaptor(const base::FilePath& cmd_path,
@@ -45,6 +82,7 @@ PatchpanelAdaptor::PatchpanelAdaptor(const base::FilePath& cmd_path,
                                      std::unique_ptr<RTNLClient> rtnl_client)
     : org::chromium::PatchPanelAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kPatchPanelServicePath)),
+      bus_(bus),
       metrics_(metrics),
       manager_(std::make_unique<Manager>(cmd_path,
                                          bus,
@@ -63,28 +101,81 @@ void PatchpanelAdaptor::RegisterAsync(
   dbus_object_.RegisterAsync(std::move(cb));
 }
 
-ArcVmShutdownResponse PatchpanelAdaptor::ArcVmShutdown(
-    const ArcVmShutdownRequest& request) {
+bool CheckConciergeSender(dbus::Message* message,
+                          dbus::Bus* bus,
+                          brillo::ErrorPtr* error) {
+  if (!message) {
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         DBUS_ERROR_INVALID_ARGS, "Missing message");
+    return false;
+  }
+  const std::string sender = message->GetSender();
+  if (sender.empty()) {
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         DBUS_ERROR_INVALID_ARGS, "Empty sender");
+    return false;
+  }
+  if (!bus) {
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         DBUS_ERROR_FAILED, "Missing bus");
+    return false;
+  }
+  const std::string owner = bus->GetServiceOwnerAndBlock(
+      vm_tools::concierge::kVmConciergeServiceName, dbus::Bus::SUPPRESS_ERRORS);
+  if (!owner.empty() && sender == owner) {
+    return true;
+  }
+  // Also allow root (UID 0) callers (e.g. local integration tests such as
+  // tast.vm.VhostUserNet that invoke VM startup/shutdown RPCs directly without
+  // vm_concierge).
+  const std::optional<uid_t> uid = GetConnectionUnixUser(bus, sender);
+  if (uid.has_value() && *uid == 0) {
+    return true;
+  }
+  LOG(ERROR) << "Expected sender to be "
+             << vm_tools::concierge::kVmConciergeServiceName << " but got "
+             << sender;
+  brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                       DBUS_ERROR_ACCESS_DENIED, "Sender not authorized");
+  return false;
+}
+
+bool PatchpanelAdaptor::ArcVmShutdown(brillo::ErrorPtr* error,
+                                      dbus::Message* message,
+                                      const ArcVmShutdownRequest& request,
+                                      ArcVmShutdownResponse* response) {
+  if (!CheckConciergeSender(message, bus_.get(), error)) {
+    return false;
+  }
   LOG(INFO) << "ARCVM shutting down";
   RecordDbusEvent(DbusUmaEvent::kArcVmShutdown);
 
   manager_->ArcVmShutdown(request.cid());
   RecordDbusEvent(DbusUmaEvent::kArcVmShutdownSuccess);
-  return {};
+  return true;
 }
 
-ArcVmStartupResponse PatchpanelAdaptor::ArcVmStartup(
-    const ArcVmStartupRequest& request) {
+bool PatchpanelAdaptor::ArcVmStartup(brillo::ErrorPtr* error,
+                                     dbus::Message* message,
+                                     const ArcVmStartupRequest& request,
+                                     ArcVmStartupResponse* response) {
+  if (!CheckConciergeSender(message, bus_.get(), error)) {
+    return false;
+  }
   LOG(INFO) << "ARCVM starting up";
   RecordDbusEvent(DbusUmaEvent::kArcVmStartup);
 
-  const auto response = manager_->ArcVmStartup(request.cid());
-  if (!response) {
+  const auto manager_response = manager_->ArcVmStartup(request.cid());
+  if (!manager_response) {
     LOG(ERROR) << "Failed to start ARCVM network service";
-    return {};
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         DBUS_ERROR_FAILED,
+                         "Failed to start ARCVM network service");
+    return false;
   }
+  *response = *manager_response;
   RecordDbusEvent(DbusUmaEvent::kArcVmStartupSuccess);
-  return *response;
+  return true;
 }
 
 ConnectNamespaceResponse PatchpanelAdaptor::ConnectNamespace(
@@ -231,19 +322,31 @@ ModifyPortRuleResponse PatchpanelAdaptor::ModifyPortRule(
   return response;
 }
 
-BruschettaVmShutdownResponse PatchpanelAdaptor::BruschettaVmShutdown(
-    const BruschettaVmShutdownRequest& request) {
+bool PatchpanelAdaptor::BruschettaVmShutdown(
+    brillo::ErrorPtr* error,
+    dbus::Message* message,
+    const BruschettaVmShutdownRequest& request,
+    BruschettaVmShutdownResponse* response) {
+  if (!CheckConciergeSender(message, bus_.get(), error)) {
+    return false;
+  }
   LOG(INFO) << "Bruschetta VM shutting down";
   RecordDbusEvent(DbusUmaEvent::kBruschettaVmShutdown);
 
   manager_->BruschettaVmShutdown(request.id());
 
   RecordDbusEvent(DbusUmaEvent::kBruschettaVmShutdownSuccess);
-  return {};
+  return true;
 }
 
-BruschettaVmStartupResponse PatchpanelAdaptor::BruschettaVmStartup(
-    const BruschettaVmStartupRequest& request) {
+bool PatchpanelAdaptor::BruschettaVmStartup(
+    brillo::ErrorPtr* error,
+    dbus::Message* message,
+    const BruschettaVmStartupRequest& request,
+    BruschettaVmStartupResponse* response) {
+  if (!CheckConciergeSender(message, bus_.get(), error)) {
+    return false;
+  }
   const uint64_t vm_id = request.id();
   LOG(INFO) << __func__ << "(cid: " << vm_id << ")";
   RecordDbusEvent(DbusUmaEvent::kBruschettaVmStartup);
@@ -252,12 +355,13 @@ BruschettaVmStartupResponse PatchpanelAdaptor::BruschettaVmStartup(
   if (!bruschetta_device) {
     LOG(ERROR) << __func__ << "(cid: " << vm_id
                << "): Failed to create virtual Device";
-    return {};
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         DBUS_ERROR_FAILED, "Failed to create virtual Device");
+    return false;
   }
-  BruschettaVmStartupResponse response;
-  FillBruschettaAllocationProto(*bruschetta_device, &response);
+  FillBruschettaAllocationProto(*bruschetta_device, response);
   RecordDbusEvent(DbusUmaEvent::kBruschettaVmStartupSuccess);
-  return response;
+  return true;
 }
 
 SetDnsRedirectionRuleResponse PatchpanelAdaptor::SetDnsRedirectionRule(
@@ -299,19 +403,30 @@ TagSocketResponse PatchpanelAdaptor::TagSocket(
   return response;
 }
 
-TerminaVmShutdownResponse PatchpanelAdaptor::TerminaVmShutdown(
-    const TerminaVmShutdownRequest& request) {
+bool PatchpanelAdaptor::TerminaVmShutdown(
+    brillo::ErrorPtr* error,
+    dbus::Message* message,
+    const TerminaVmShutdownRequest& request,
+    TerminaVmShutdownResponse* response) {
+  if (!CheckConciergeSender(message, bus_.get(), error)) {
+    return false;
+  }
   LOG(INFO) << "Termina VM shutting down";
   RecordDbusEvent(DbusUmaEvent::kTerminaVmShutdown);
 
   manager_->TerminaVmShutdown(request.cid());
 
   RecordDbusEvent(DbusUmaEvent::kTerminaVmShutdownSuccess);
-  return {};
+  return true;
 }
 
-TerminaVmStartupResponse PatchpanelAdaptor::TerminaVmStartup(
-    const TerminaVmStartupRequest& request) {
+bool PatchpanelAdaptor::TerminaVmStartup(brillo::ErrorPtr* error,
+                                         dbus::Message* message,
+                                         const TerminaVmStartupRequest& request,
+                                         TerminaVmStartupResponse* response) {
+  if (!CheckConciergeSender(message, bus_.get(), error)) {
+    return false;
+  }
   const uint32_t cid = request.cid();
   LOG(INFO) << __func__ << "(cid: " << cid << ")";
   RecordDbusEvent(DbusUmaEvent::kTerminaVmStartup);
@@ -319,22 +434,29 @@ TerminaVmStartupResponse PatchpanelAdaptor::TerminaVmStartup(
   if (!termina_device) {
     LOG(ERROR) << __func__ << "(cid: " << cid << ")"
                << ": Failed to create virtual Device";
-    return {};
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         DBUS_ERROR_FAILED, "Failed to create virtual Device");
+    return false;
   }
   if (!termina_device->lxd_ipv4_subnet()) {
     LOG(ERROR) << __func__ << "(cid: " << cid << ")"
                << ": Missing LXD container IPv4 subnet";
-    return {};
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         DBUS_ERROR_FAILED,
+                         "Missing LXD container IPv4 subnet");
+    return false;
   }
   if (!termina_device->lxd_ipv4_address()) {
     LOG(ERROR) << __func__ << "(cid: " << cid << ")"
                << ": Missing LXD container IPv4 address";
-    return {};
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         DBUS_ERROR_FAILED,
+                         "Missing LXD container IPv4 address");
+    return false;
   }
-  TerminaVmStartupResponse response;
-  FillTerminaAllocationProto(*termina_device, &response);
+  FillTerminaAllocationProto(*termina_device, response);
   RecordDbusEvent(DbusUmaEvent::kTerminaVmStartupSuccess);
-  return response;
+  return true;
 }
 
 NotifyAndroidWifiMulticastLockChangeResponse

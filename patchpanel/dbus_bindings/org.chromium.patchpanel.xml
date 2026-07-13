@@ -22,7 +22,8 @@
   <interface name="org.chromium.PatchPanel">
     <!-- Exported methods. -->
     <method name="ArcVmShutdown">
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal" />
+      <annotation name="org.chromium.DBus.Method.IncludeDBusMessage" value="true" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ArcVmShutdownRequest" />
@@ -34,7 +35,8 @@
     </method>
 
     <method name="ArcVmStartup">
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal" />
+      <annotation name="org.chromium.DBus.Method.IncludeDBusMessage" value="true" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ArcVmStartupRequest" />
@@ -148,7 +150,8 @@
     </method>
 
     <method name="BruschettaVmShutdown">
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal" />
+      <annotation name="org.chromium.DBus.Method.IncludeDBusMessage" value="true" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::BruschettaVmShutdownRequest" />
@@ -160,7 +163,8 @@
     </method>
 
     <method name="BruschettaVmStartup">
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal" />
+      <annotation name="org.chromium.DBus.Method.IncludeDBusMessage" value="true" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::BruschettaVmStartupRequest" />
@@ -210,7 +214,8 @@
     </method>
 
     <method name="TerminaVmShutdown">
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal" />
+      <annotation name="org.chromium.DBus.Method.IncludeDBusMessage" value="true" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::TerminaVmShutdownRequest" />
@@ -222,7 +227,8 @@
     </method>
 
     <method name="TerminaVmStartup">
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal" />
+      <annotation name="org.chromium.DBus.Method.IncludeDBusMessage" value="true" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::TerminaVmStartupRequest" />
