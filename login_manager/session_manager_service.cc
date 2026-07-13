@@ -156,6 +156,7 @@ bool IsPidCheckRequired(const DBusMethodName& method_name) {
   static constexpr const char* kTargetMethods[] = {
       kSessionManagerRestartJob,
       kSessionManagerSetFlagsForUser,
+      kSessionManagerHandleLockScreenDismissed,
   };
   for (const char* method : kTargetMethods) {
     if (method_name.name == method) {
