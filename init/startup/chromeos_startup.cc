@@ -93,6 +93,16 @@ constexpr char kSELinuxEnforce[] = "fs/selinux/enforce";
 constexpr char kBpf[] = "fs/bpf";
 constexpr char kBpfAccessGrp[] = "bpf-access";
 
+struct BpfSubdir {
+  const char* name;
+  const char* owner;
+};
+
+constexpr BpfSubdir kBpfSubdirs[] = {
+    {"patchpanel", "patchpaneld"},
+    {"secagentd", "secagentd"},
+};
+
 // This file is created by clobber-state after the transition to dev mode.
 constexpr char kDevModeFile[] = ".developer_mode";
 // Flag file indicating that encrypted stateful should be preserved across
@@ -446,19 +456,7 @@ void ChromeosStartup::EarlySetup() {
   }
 
   // Mount bpffs for loading and pinning ebpf objects.
-  gid_t bpffs_grp;
-  if (!brillo::userdb::GetGroupInfo(kBpfAccessGrp, &bpffs_grp)) {
-    PLOG(WARNING) << "Can't get gid for " << kBpfAccessGrp;
-  } else {
-    const std::string data =
-        base::StrCat({"mode=0770,gid=", std::to_string(bpffs_grp)});
-    const base::FilePath bpffs = sysfs.Append(kBpf);
-    if (!platform_->Mount(empty, bpffs, "bpf", kCommonMountFlags,
-                          data.c_str())) {
-      // TODO(b/232901639): Improve failure reporting.
-      PLOG(WARNING) << "Unable to mount " << bpffs.value();
-    }
-  }
+  MountBpffs();
 
   // Mount securityfs as it is used to configure inode security policies below.
   const base::FilePath securityfs = sysfs.Append(kKernelSecurity);
@@ -493,6 +491,54 @@ void ChromeosStartup::EarlySetup() {
     }
   } else {
     LOG(WARNING) << "Process management security disabled by flag file.";
+  }
+}
+
+void ChromeosStartup::MountBpffs() {
+  gid_t bpffs_grp;
+  if (!brillo::userdb::GetGroupInfo(kBpfAccessGrp, &bpffs_grp)) {
+    PLOG(WARNING) << "Can't get gid for " << kBpfAccessGrp;
+    return;
+  }
+
+  const base::FilePath sysfs = root_.Append(kSysfs);
+  const base::FilePath bpffs = sysfs.Append(kBpf);
+  const std::string data =
+      base::StrCat({"mode=01770,gid=", std::to_string(bpffs_grp)});
+  const base::FilePath empty;
+
+  if (!platform_->Mount(empty, bpffs, "bpf", kCommonMountFlags, data.c_str())) {
+    // TODO(b/232901639): Improve failure reporting.
+    PLOG(WARNING) << "Unable to mount " << bpffs.value();
+    return;
+  }
+
+  // Provision isolated subdirectories for eBPF consumers.
+  // Pre-creating these as root prevents unprivileged daemons from
+  // squatting on the names.
+  for (const auto& subdir : kBpfSubdirs) {
+    base::FilePath path = bpffs.Append(subdir.name);
+    if (!platform_->CreateDirectory(path)) {
+      PLOG(WARNING) << "Failed to create BPF subdirectory: " << path.value();
+      continue;
+    }
+    uid_t uid;
+    gid_t gid;
+    if (!brillo::userdb::GetUserInfo(subdir.owner, &uid, &gid)) {
+      PLOG(WARNING) << "Failed to get user info for BPF subdirectory: "
+                    << subdir.owner;
+      continue;
+    }
+    if (!platform_->SetOwnership(path, uid, gid, false)) {
+      PLOG(WARNING) << "Failed to set ownership for BPF subdirectory: "
+                    << path.value();
+      continue;
+    }
+    if (!platform_->SetPermissions(path, 0700)) {
+      PLOG(WARNING) << "Failed to set permissions for BPF subdirectory: "
+                    << path.value();
+      continue;
+    }
   }
 }
 
