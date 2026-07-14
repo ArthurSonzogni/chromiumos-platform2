@@ -311,8 +311,7 @@ CellularCapability3gpp::CellularCapability3gpp(
       metrics_(metrics),
       pending_activation_store_(pending_activation_store),
       parsed_scan_result_operator_info_(
-          new MobileOperatorInfo(cellular->dispatcher(), "ParseScanResult")),
-      weak_ptr_factory_(this) {
+          new MobileOperatorInfo(cellular->dispatcher(), "ParseScanResult")) {
   SLOG(this, 1) << "Cellular capability constructed: 3GPP";
   parsed_scan_result_operator_info_->Init();
 }
@@ -1978,6 +1977,9 @@ void CellularCapability3gpp::UpdateSims() {
   LOG(INFO) << __func__ << " Sim path: " << sim_path_.value()
             << " SimSlots: " << sim_slots_.size();
 
+  // Invalidate any in-flight SIM property requests from previous UpdateSims() runs.
+  sim_request_weak_ptr_factory_.InvalidateWeakPtrs();
+
   // Clear current properties and requests.
   sim_properties_.clear();
   pending_sim_requests_.clear();
@@ -2037,7 +2039,12 @@ void CellularCapability3gpp::OnAllSimPropertiesReceived() {
   for (const auto& iter : sim_properties_) {
     size_t slot = iter.second.slot;
     DCHECK_GE(slot, 0u);
-    DCHECK_LT(slot, num_slots);
+    if (slot >= num_slots) {
+      // A late GetAll reply may carry a slot index bound before |sim_slots_|
+      // was shrunk by a subsequent PropertiesChanged(SimSlots). Drop it.
+      LOG(WARNING) << __func__ << ": stale slot " << slot << " >= " << num_slots;
+      continue;
+    }
     sim_slot_properties[slot] = iter.second;
     if (iter.first == sim_path_) {
       primary_slot = slot;
@@ -2848,11 +2855,20 @@ void CellularCapability3gpp::RequestSimProperties(size_t slot,
   sim_properties_proxy_ptr->GetAllAsync(
       MM_DBUS_INTERFACE_SIM,
       base::BindOnce(&CellularCapability3gpp::OnGetSimProperties,
-                     weak_ptr_factory_.GetWeakPtr(), slot, sim_path,
+                     sim_request_weak_ptr_factory_.GetWeakPtr(), slot, sim_path,
                      std::move(sim_properties_proxy)),
-      base::BindOnce([](const Error& error) {
-        LOG(ERROR) << "Error fetching SIM properties: " << error;
-      }));
+      base::BindOnce(&CellularCapability3gpp::OnGetSimPropertiesFailed,
+                     sim_request_weak_ptr_factory_.GetWeakPtr(), sim_path));
+}
+
+void CellularCapability3gpp::OnGetSimPropertiesFailed(RpcIdentifier sim_path,
+                                                       const Error& error) {
+  LOG(ERROR) << "Error fetching SIM properties for " << sim_path.value()
+             << ": " << error;
+  pending_sim_requests_.erase(sim_path);
+  if (pending_sim_requests_.empty()) {
+    OnAllSimPropertiesReceived();
+  }
 }
 
 void CellularCapability3gpp::OnGetSimProperties(

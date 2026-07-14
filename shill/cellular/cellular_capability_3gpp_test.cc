@@ -2764,4 +2764,68 @@ TEST_F(CellularCapability3gppTest, VerifyRetriableConnectError) {
       capability_->RetriableConnectError(Error(Error::kOperationNotAllowed)));
 }
 
+TEST_F(CellularCapability3gppTest, DropStaleSimPropertiesReplies) {
+  InitProxies();
+
+  const char kIccid1[] = "110100000001";
+  const char kEid1[] = "110100000002";
+  KeyValueStore sim_properties1;
+  sim_properties1.Set<std::string>(MM_SIM_PROPERTY_SIMIDENTIFIER, kIccid1);
+  sim_properties1.Set<std::string>(MM_SIM_PROPERTY_EID, kEid1);
+  SetSimProperties(kSimPath1, sim_properties1);
+
+  const char kIccid2[] = "220200000002";
+  const char kEid2[] = "220200000003";
+  KeyValueStore sim_properties2;
+  sim_properties2.Set<std::string>(MM_SIM_PROPERTY_SIMIDENTIFIER, kIccid2);
+  sim_properties2.Set<std::string>(MM_SIM_PROPERTY_EID, kEid2);
+  SetSimProperties(kSimPath2, sim_properties2);
+
+  // Issue first UpdateSims with 2 slots, but DO NOT dispatch pending events yet.
+  KeyValueStore modem_properties1;
+  modem_properties1.Set<RpcIdentifier>(MM_MODEM_PROPERTY_SIM, kSimPath1);
+  RpcIdentifiers slots1 = {kSimPath1, kSimPath2};
+  modem_properties1.Set<RpcIdentifiers>(MM_MODEM_PROPERTY_SIMSLOTS, slots1);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties1);
+
+  // Issue second UpdateSims with only 1 slot before first set of callbacks dispatch.
+  KeyValueStore modem_properties2;
+  modem_properties2.Set<RpcIdentifier>(MM_MODEM_PROPERTY_SIM, kSimPath1);
+  RpcIdentifiers slots2 = {kSimPath1};
+  modem_properties2.Set<RpcIdentifiers>(MM_MODEM_PROPERTY_SIMSLOTS, slots2);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties2);
+
+  // Dispatch all events. First run's callbacks should be dropped (invalidated weak ptr).
+  dispatcher_.DispatchPendingEvents();
+
+  const KeyValueStores& sim_slot_info = cellular_->sim_slot_info_for_testing();
+  ASSERT_EQ(1u, sim_slot_info.size());
+  EXPECT_EQ(sim_slot_info[0].Get<std::string>(kSIMSlotInfoICCID), kIccid1);
+  EXPECT_EQ(sim_slot_info[0].Get<std::string>(kSIMSlotInfoEID), kEid1);
+}
+
+TEST_F(CellularCapability3gppTest, GetSimPropertiesFailed) {
+  InitProxies();
+
+  const char kIccid1[] = "110100000001";
+  KeyValueStore sim_properties1;
+  sim_properties1.Set<std::string>(MM_SIM_PROPERTY_SIMIDENTIFIER, kIccid1);
+  SetSimProperties(kSimPath1, sim_properties1);
+
+  // Add second SIM path with empty properties.
+  SetSimProperties(kSimPath2, {});
+
+  KeyValueStore modem_properties;
+  modem_properties.Set<RpcIdentifier>(MM_MODEM_PROPERTY_SIM, kSimPath1);
+  RpcIdentifiers slots = {kSimPath1, kSimPath2};
+  modem_properties.Set<RpcIdentifiers>(MM_MODEM_PROPERTY_SIMSLOTS, slots);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties);
+  dispatcher_.DispatchPendingEvents();
+
+  // OnAllSimPropertiesReceived should still be called despite kSimPath2 failing.
+  const KeyValueStores& sim_slot_info = cellular_->sim_slot_info_for_testing();
+  ASSERT_EQ(2u, sim_slot_info.size());
+  EXPECT_EQ(sim_slot_info[0].Get<std::string>(kSIMSlotInfoICCID), kIccid1);
+}
+
 }  // namespace shill

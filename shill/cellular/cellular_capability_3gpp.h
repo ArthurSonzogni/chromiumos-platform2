@@ -484,6 +484,7 @@ class CellularCapability3gpp {
       RpcIdentifier sim_path,
       std::unique_ptr<DBusPropertiesProxy> sim_properties_proxy,
       const KeyValueStore& properties);
+  void OnGetSimPropertiesFailed(RpcIdentifier sim_path, const Error& error);
 
   // Bearer property change handlers
   void OnBearerPropertiesChanged(const KeyValueStore& properties);
@@ -627,7 +628,8 @@ class CellularCapability3gpp {
   // needs to try all of them until the UE is registered in the network.
   base::CancelableOnceClosure try_next_attach_apn_callback_;
 
-  base::WeakPtrFactory<CellularCapability3gpp> weak_ptr_factory_;
+  base::WeakPtrFactory<CellularCapability3gpp> sim_request_weak_ptr_factory_{this};
+  base::WeakPtrFactory<CellularCapability3gpp> weak_ptr_factory_{this};
 };
 
 }  // namespace shill
