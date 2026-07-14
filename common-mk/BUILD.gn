@@ -244,6 +244,7 @@ config("test") {
     # directory.
     "-Wl,-rpath=\$ORIGIN/",
     "-Wl,-rpath=\$ORIGIN/lib/",
+    "-Wl,-rpath-link=.",
     "-Wl,-rpath-link=lib/",
   ]
 
