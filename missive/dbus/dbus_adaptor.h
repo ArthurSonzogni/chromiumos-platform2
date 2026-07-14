@@ -5,7 +5,10 @@
 #ifndef MISSIVE_DBUS_DBUS_ADAPTOR_H_
 #define MISSIVE_DBUS_DBUS_ADAPTOR_H_
 
+#include <map>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <base/memory/weak_ptr.h>
 #include <base/threading/thread.h>
@@ -40,6 +43,7 @@ class DBusAdaptor : public org::chromium::MissivedAdaptor,
   // Forward org::chromium::MissivedInterface
   void EnqueueRecord(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                          EnqueueRecordResponse>> out_response,
+                     dbus::Message* message,
                      const EnqueueRecordRequest& in_request) override;
 
   void FlushPriority(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
@@ -61,13 +65,33 @@ class DBusAdaptor : public org::chromium::MissivedAdaptor,
           UpdateEncryptionKeyResponse>> out_response,
       const UpdateEncryptionKeyRequest& in_request) override;
 
+  // Handles NameOwnerChanged signals from the D-Bus system bus. Used to detect
+  // when clients disconnect so we can evict their cached UID mappings.
+  void OnNameOwnerChanged(dbus::Signal* signal);
+
  private:
   void StartupFinished(base::OnceCallback<void(Status)> failure_cb,
                        Status status);
 
   static void OnFailure(Status status);
 
+  void OnGetConnectionUnixUser(const std::string& sender,
+                               dbus::Response* response);
+
+  struct PendingEnqueueRequest {
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<EnqueueRecordResponse>>
+        response;
+    EnqueueRecordRequest request;
+  };
+
   brillo::dbus_utils::DBusObject dbus_object_;
+  scoped_refptr<dbus::Bus> bus_;
+  dbus::ObjectProxy* dbus_proxy_;
+  std::map<std::string, uid_t> sender_uids_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  std::map<std::string, std::vector<PendingEnqueueRequest>> pending_lookups_
+      GUARDED_BY_CONTEXT(sequence_checker_);
   std::unique_ptr<MissiveService> missive_
       GUARDED_BY_CONTEXT(sequence_checker_);
   bool daemon_is_ready_ GUARDED_BY_CONTEXT(sequence_checker_) = false;

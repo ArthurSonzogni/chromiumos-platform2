@@ -21,6 +21,8 @@
                     value="missive/proto/interface.pb.h;::reporting::EnqueueRecordResponse" />
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+      <annotation name="org.chromium.DBus.Method.IncludeDBusMessage"
+                  value="true"/>
     </method>
     <method name="FlushPriority">
       <tp:docstring>

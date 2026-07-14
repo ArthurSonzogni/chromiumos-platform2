@@ -12,6 +12,9 @@ constexpr char kUmaUnavailableErrorReason[] =
 constexpr char kUmaDataLossErrorReason[] =
     "Platform.Missive.DataLossErrorReason";
 
+constexpr char kUmaPermissionDeniedErrorReason[] =
+    "Platform.Missive.PermissionDeniedErrorReason";
+
 // These enum values represent the different error messages associated with
 // usages of `error::UNAVAILABLE` in Missive. Anytime `error::UNAVAILABLE` is
 // used, it should be UMA logged using this enum and
@@ -42,7 +45,8 @@ enum class UnavailableErrorReason {
   UNABLE_TO_BUILD_REPORT_QUEUE = 16,
   UPLOAD_CLIENT_DESTRUCTED = 17,
   UPLOAD_CLIENT_NO_DBUS_RESPONSE = 18,
-  MAX_VALUE = 19
+  SENDER_UNIX_USER_LOOKUP_FAILED = 19,
+  MAX_VALUE
 };
 
 // These enum values represent the different error messages associated with
@@ -83,6 +87,21 @@ enum class DataLossErrorReason {
   METADATA_GENERATION_ID_OUT_OF_RANGE = 24,
   METADATA_LAST_RECORD_DIGEST_IS_CORRUPT = 25,
   MISSING_GENERATION_ID = 26,
+  MAX_VALUE
+};
+
+// These enum values represent the different error messages associated with
+// usages of `error::PERMISSION_DENIED` in Missive. Anytime
+// `error::PERMISSION_DENIED` is used, it should be UMA logged using this enum
+// and kUmaPermissionDeniedErrorReason.
+//
+// Update PermissionDeniedErrorReason in
+// tools/metrics/histograms/metadata/platform/enums.xml when adding new values.
+//
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class PermissionDeniedErrorReason {
+  SECURE_DESTINATION_FORBIDDEN = 0,
   MAX_VALUE
 };
 }  // namespace reporting
