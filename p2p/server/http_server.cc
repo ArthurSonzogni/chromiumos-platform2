@@ -47,16 +47,23 @@ HttpServerExternalProcess::HttpServerExternalProcess(
       port_(0),
       num_connections_(0),
       pid_(0),
-      child_stdout_fd_(-1) {}
+      child_stdout_fd_(-1),
+      stopping_(false),
+      child_watch_source_id_(0) {}
 
 HttpServerExternalProcess::~HttpServerExternalProcess() {
   child_watch_.reset(nullptr);
+
+  if (child_watch_source_id_ != 0) {
+    g_source_remove(child_watch_source_id_);
+  }
 
   if (child_stdout_fd_ != -1) {
     close(child_stdout_fd_);
   }
   if (pid_ != 0) {
     kill(pid_, SIGTERM);
+    g_spawn_close_pid(pid_);
   }
 }
 
@@ -67,6 +74,7 @@ bool HttpServerExternalProcess::Start() {
     LOG(ERROR) << "Server is already running with pid " << pid_;
     return false;
   }
+  stopping_ = false;
   CHECK_EQ(child_stdout_fd_, -1);
 
   vector<const char*> args;
@@ -83,7 +91,7 @@ bool HttpServerExternalProcess::Start() {
   if (!g_spawn_async_with_pipes(NULL,  // working_dir
                                 const_cast<gchar**>(args.data()),
                                 NULL,  // envp
-                                (GSpawnFlags)0, NULL,
+                                G_SPAWN_DO_NOT_REAP_CHILD, NULL,
                                 NULL,  // child_setup, user_data
                                 &pid_,
                                 NULL,  // standard_input
@@ -98,6 +106,8 @@ bool HttpServerExternalProcess::Start() {
   // Setup the watch class for child messages.
   child_watch_.reset(new StructSerializerWatcher<P2PServerMessage>(
       child_stdout_fd_, OnMessageReceived, reinterpret_cast<void*>(this)));
+
+  child_watch_source_id_ = g_child_watch_add(pid_, OnChildExited, this);
 
   return true;
 }
@@ -196,6 +206,24 @@ void HttpServerExternalProcess::OnMessageReceived(const P2PServerMessage& msg,
   }
 }
 
+// static
+void HttpServerExternalProcess::OnChildExited(GPid pid, gint status,
+                                              gpointer user_data) {
+  g_spawn_close_pid(pid);
+
+  HttpServerExternalProcess* server =
+      reinterpret_cast<HttpServerExternalProcess*>(user_data);
+  server->child_watch_source_id_ = 0;
+
+  if (server->stopping_) {
+    // Expected exit, do nothing.
+    return;
+  }
+  LOG(ERROR) << "Child process " << pid << " exited unexpectedly with status "
+             << status << ". Exiting parent process.";
+  exit(1);
+}
+
 void HttpServerExternalProcess::UpdateNumConnections(int num_connections) {
   if (num_connections_ == num_connections) {
     return;
@@ -214,7 +242,14 @@ bool HttpServerExternalProcess::Stop() {
     return false;
   }
 
+  stopping_ = true;
+
   child_watch_.reset(nullptr);
+
+  if (child_watch_source_id_ != 0) {
+    g_source_remove(child_watch_source_id_);
+    child_watch_source_id_ = 0;
+  }
 
   if (child_stdout_fd_ != -1) {
     close(child_stdout_fd_);
@@ -223,6 +258,7 @@ bool HttpServerExternalProcess::Stop() {
 
   if (pid_ != 0) {
     kill(pid_, SIGTERM);
+    g_spawn_close_pid(pid_);
   }
   pid_ = 0;
 

@@ -288,7 +288,7 @@ bool ConnectionDelegate::SendResponse(int http_response_code,
   num_to_send = response.size();
   num_total_sent = 0;
   while (num_to_send > 0) {
-    ssize_t num_sent = send(fd_, buf + num_total_sent, num_to_send, 0);
+    ssize_t num_sent = send(fd_, buf + num_total_sent, num_to_send, MSG_NOSIGNAL);
     if (num_sent == -1) {
       PLOG(ERROR) << "Error sending";
       return false;
@@ -385,7 +385,7 @@ bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
     num_sent_from_buf = 0;
     while (num_to_send_from_buf > 0) {
       ssize_t num_sent =
-          send(fd_, buf + num_sent_from_buf, num_to_send_from_buf, 0);
+          send(fd_, buf + num_sent_from_buf, num_to_send_from_buf, MSG_NOSIGNAL);
       if (num_sent == -1) {
         PLOG(ERROR) << "Error sending";
         return false;

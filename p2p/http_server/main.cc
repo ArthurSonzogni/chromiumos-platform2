@@ -5,6 +5,7 @@
 #include <cctype>
 #include <cinttypes>
 #include <string>
+#include <signal.h>
 
 #include <base/command_line.h>
 #include <base/files/file_path.h>
@@ -35,6 +36,8 @@ static void Usage(FILE* output) {
 
 int main(int argc, char* argv[]) {
   int ret = 1;
+
+  signal(SIGPIPE, SIG_IGN);
 
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();

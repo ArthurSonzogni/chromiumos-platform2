@@ -56,6 +56,8 @@ class HttpServerExternalProcess : public HttpServer {
   static void OnMessageReceived(const p2p::util::P2PServerMessage& msg,
                                 void* user_data);
 
+  static void OnChildExited(GPid pid, gint status, gpointer user_data);
+
   // Test methods are declared as friends to access the OnMessageReceived method
   // directly.
   friend int ::LLVMFuzzerTestOneInput(const uint8_t*, size_t);
@@ -83,6 +85,8 @@ class HttpServerExternalProcess : public HttpServer {
   GPid pid_;
   int child_stdout_fd_;
   NumConnectionsCallback num_connections_callback_;
+  bool stopping_;
+  guint child_watch_source_id_;
 
   // A message watch for child P2PServerMessages.
   std::unique_ptr<
