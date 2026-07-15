@@ -52,3 +52,4 @@ tgkill: 1
 getpeername: 1
 fcntl64: 1
 unlinkat: 1
+getsockopt: 1

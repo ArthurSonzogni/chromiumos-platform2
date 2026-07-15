@@ -9,6 +9,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/files/scoped_file.h>
@@ -39,5 +40,10 @@ std::optional<std::pair<unsigned int, std::string>> ExtractCidValue(
 // Returns the CID of the peer that is connected to |fd|, which must be a
 // connected VSOCK socket.
 std::optional<unsigned int> GetPeerCid(int fd);
+
+inline constexpr std::string_view kChromeSecontext = "u:r:cros_browser:s0";
+
+// Returns true iff the AF_UNIX peer on |fd| has the expected SELinux context.
+bool PeerIsChrome(int fd, std::string_view expected_secontext);
 
 #endif  // ARC_VM_BOOT_NOTIFICATION_SERVER_UTIL_H_

@@ -9,7 +9,11 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
+// <linux/vm_sockets.h> depends on <sys/socket.h> (for struct sockaddr and
+// sa_family_t) and must be included after it.
+// clang-format off
 #include <linux/vm_sockets.h>
+// clang-format on
 
 #include <optional>
 #include <tuple>
@@ -77,17 +81,42 @@ int main(int argc, const char** argv) {
 
   // Chrome will connect first to check that the server is listening, without
   // sending anything.
-  {
+  bool logged_ping_warning = false;
+  while (true) {
     base::ScopedFD conn = WaitForClientConnect(host_fd.get());
     if (!conn.is_valid()) {
       LOG(FATAL) << "Unable to accept connection from host";
     }
+    if (PeerIsChrome(conn.get(), kChromeSecontext)) {
+      break;
+    }
+    // Non-Chrome processes must not be allowed to connect to host.socket.
+    // We log a warning and continue waiting for Chrome instead of aborting
+    // to avoid allowing unauthorized local processes to trigger a DoS
+    // against the ARCVM boot sequence.
+    if (!logged_ping_warning) {
+      LOG(WARNING) << "Rejecting non-Chrome peer on host.socket (ping)";
+      logged_ping_warning = true;
+    }
   }
 
   // Receive props from Chrome.
-  base::ScopedFD host_client = WaitForClientConnect(host_fd.get());
-  if (!host_client.is_valid()) {
-    LOG(FATAL) << "Unable to accept connection from host";
+  base::ScopedFD host_client;
+  bool logged_props_warning = false;
+  while (true) {
+    host_client = WaitForClientConnect(host_fd.get());
+    if (!host_client.is_valid()) {
+      LOG(FATAL) << "Unable to accept connection from host";
+    }
+    if (PeerIsChrome(host_client.get(), kChromeSecontext)) {
+      break;
+    }
+    // As above, log a warning and continue waiting for valid Chrome client
+    // rather than aborting.
+    if (!logged_props_warning) {
+      LOG(WARNING) << "Rejecting non-Chrome peer on host.socket (props)";
+      logged_props_warning = true;
+    }
   }
 
   std::optional<std::string> props = ReadFD(host_client.get());

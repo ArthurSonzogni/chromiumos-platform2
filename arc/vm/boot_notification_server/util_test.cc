@@ -4,16 +4,17 @@
 
 #include "arc/vm/boot_notification_server/util.h"
 
+#include <fcntl.h>
+#include <limits.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/un.h>
+#include <unistd.h>
+
 #include <atomic>
 #include <optional>
-#include <string.h>
-
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <sys/time.h>
-#include <unistd.h>
-#include <fcntl.h>
 
 #include <base/command_line.h>
 #include <base/files/scoped_file.h>
@@ -131,6 +132,33 @@ TEST_F(BootNotificationServerTest, ExtractCidValue) {
   std::optional<std::pair<unsigned int, std::string>> result3 =
       ExtractCidValue(props_wrong_cid);
   EXPECT_FALSE(result3);
+}
+
+// Checks that PeerIsChrome correctly validates the peer SELinux context.
+TEST_F(BootNotificationServerTest, PeerIsChrome) {
+  int fds[2];
+  ASSERT_EQ(socketpair(AF_UNIX, SOCK_STREAM, 0, fds), 0);
+  base::ScopedFD fd0(fds[0]);
+  base::ScopedFD fd1(fds[1]);
+
+  char context[NAME_MAX] = {};
+  socklen_t len = sizeof(context);
+  if (getsockopt(fd0.get(), SOL_SOCKET, SO_PEERSEC, context, &len) != 0) {
+    int err = errno;
+    if (err == ENOPROTOOPT || err == EOPNOTSUPP) {
+      GTEST_SKIP()
+          << "Skipping PeerIsChrome test because SO_PEERSEC is not supported";
+    }
+    FAIL() << "getsockopt SO_PEERSEC failed: " << strerror(err);
+  }
+
+  std::string_view self_context(context, len);
+  if (auto pos = self_context.find('\0'); pos != std::string_view::npos) {
+    self_context.remove_suffix(self_context.size() - pos);
+  }
+
+  EXPECT_TRUE(PeerIsChrome(fd0.get(), self_context));
+  EXPECT_FALSE(PeerIsChrome(fd0.get(), "u:r:invalid_context:s0"));
 }
 
 // TODO(wvk): Add a test for GetPeerCid once vsock loopback address is available

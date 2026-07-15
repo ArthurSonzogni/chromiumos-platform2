@@ -4,13 +4,16 @@
 
 #include "arc/vm/boot_notification_server/util.h"
 
+#include <limits.h>
 #include <linux/vm_sockets.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
 
 #include <optional>
+#include <string_view>
 
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
@@ -114,4 +117,21 @@ std::optional<unsigned int> GetPeerCid(int fd) {
     return std::nullopt;
   }
   return addr.svm_cid;
+}
+
+bool PeerIsChrome(int fd, std::string_view expected_secontext) {
+  char context[NAME_MAX] = {};
+  socklen_t len = sizeof(context);
+  if (getsockopt(fd, SOL_SOCKET, SO_PEERSEC, context, &len) != 0) {
+    PLOG(ERROR) << "SO_PEERSEC failed";
+    return false;
+  }
+
+  std::string_view sec_context(context, len);
+  // Remove trailing bytes if present.
+  if (auto pos = sec_context.find('\0'); pos != std::string_view::npos) {
+    sec_context.remove_suffix(sec_context.size() - pos);
+  }
+
+  return sec_context == expected_secontext;
 }
