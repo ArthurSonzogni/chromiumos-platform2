@@ -41,9 +41,10 @@ int main(int argc, char** argv) {
 
   if (FLAGS_get_fw_info) {
     const char kUnknownRevision[] = "unknown-revision";
-    std::vector<std::string> res = base::SplitString(
-        FLAGS_shill_fw_revision, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
-        base::SplitResult::SPLIT_WANT_NONEMPTY);
+    std::vector<std::string> res =
+        base::SplitString(FLAGS_shill_fw_revision, base::kWhitespaceASCII,
+                          base::WhitespaceHandling::TRIM_WHITESPACE,
+                          base::SplitResult::SPLIT_WANT_NONEMPTY);
     if (res.empty()) {
       printf("%s:%s\n", modemfwd::kFwMain, kUnknownRevision);
       return EXIT_SUCCESS;

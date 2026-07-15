@@ -89,6 +89,10 @@ class ModemHelper {
   virtual bool PowerOff() = 0;
 };
 
+std::string SanitizeFirmwareRevision(const std::string& firmware_revision);
+bool ParseFirmwareInfo(const std::string& helper_output,
+                       FirmwareInfo* out_info);
+
 std::unique_ptr<ModemHelper> CreateModemHelper(const HelperInfo& helper_info);
 
 }  // namespace modemfwd

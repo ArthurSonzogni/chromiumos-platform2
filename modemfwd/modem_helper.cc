@@ -164,44 +164,17 @@ class ModemHelperImpl : public ModemHelper {
                        const std::string& firmware_revision) override {
     CHECK(out_info);
     std::string helper_output;
+    std::string sanitized_revision =
+        SanitizeFirmwareRevision(firmware_revision);
     if (!RunHelperProcess(helper_info_,
                           {kGetFirmwareInfo,
                            base::StringPrintf("%s=%s", kShillFirmwareRevision,
-                                              firmware_revision.c_str())},
+                                              sanitized_revision.c_str())},
                           &helper_output)) {
       return false;
     }
 
-    base::StringPairs parsed_versions;
-    bool result = base::SplitStringIntoKeyValuePairs(helper_output, ':', '\n',
-                                                     &parsed_versions);
-    if (parsed_versions.size() == 0) {
-      LOG(WARNING) << "Modem helper returned malformed firmware version info";
-      return false;
-    }
-
-    if (!result) {
-      LOG(WARNING) << "Modem helper returned malformed firmware version info,"
-                   << " part of version info failed to parse.";
-    }
-
-    for (const auto& pair : parsed_versions) {
-      if (pair.first == kFwMain) {
-        out_info->main_version = pair.second;
-      } else if (pair.first == kFwCarrier) {
-        out_info->carrier_version = pair.second;
-      } else if (pair.first == kFwCarrierUuid) {
-        out_info->carrier_uuid = pair.second;
-      } else if (pair.first == kFwOem) {
-        out_info->oem_version = pair.second;
-      } else if (pair.first == "") {
-        continue;
-      } else {
-        out_info->assoc_versions.insert(pair);
-      }
-    }
-
-    return true;
+    return ParseFirmwareInfo(helper_output, out_info);
   }
 
   // modemfwd::ModemHelper overrides.
@@ -337,6 +310,47 @@ class ModemHelperImpl : public ModemHelper {
  private:
   HelperInfo helper_info_;
 };
+
+std::string SanitizeFirmwareRevision(const std::string& firmware_revision) {
+  std::string sanitized;
+  base::RemoveChars(firmware_revision, "\r\n", &sanitized);
+  return sanitized;
+}
+
+bool ParseFirmwareInfo(const std::string& helper_output,
+                       FirmwareInfo* out_info) {
+  CHECK(out_info);
+  base::StringPairs parsed_versions;
+  bool result = base::SplitStringIntoKeyValuePairs(helper_output, ':', '\n',
+                                                   &parsed_versions);
+  if (parsed_versions.empty()) {
+    LOG(WARNING) << "Modem helper returned malformed firmware version info";
+    return false;
+  }
+
+  if (!result) {
+    LOG(WARNING) << "Modem helper returned malformed firmware version info,"
+                 << " part of version info failed to parse.";
+  }
+
+  for (const auto& pair : parsed_versions) {
+    if (pair.first == kFwMain) {
+      out_info->main_version = pair.second;
+    } else if (pair.first == kFwCarrier) {
+      out_info->carrier_version = pair.second;
+    } else if (pair.first == kFwCarrierUuid) {
+      out_info->carrier_uuid = pair.second;
+    } else if (pair.first == kFwOem) {
+      out_info->oem_version = pair.second;
+    } else if (pair.first.empty()) {
+      continue;
+    } else {
+      out_info->assoc_versions.insert(pair);
+    }
+  }
+
+  return true;
+}
 
 std::unique_ptr<ModemHelper> CreateModemHelper(const HelperInfo& helper_info) {
   return std::make_unique<ModemHelperImpl>(helper_info);
