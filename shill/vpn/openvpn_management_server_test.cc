@@ -42,7 +42,13 @@ MATCHER_P(StringEq, value, "") {
 class OpenVPNManagementServerTest : public testing::Test {
  public:
   OpenVPNManagementServerTest()
-      : manager_(&control_, &dispatcher_, &metrics_, "", "", ""),
+      : manager_(&control_,
+                 &dispatcher_,
+                 &metrics_,
+                 "",
+                 "",
+                 "",
+                 /*is_dev_mode=*/true),
         driver_(&manager_, &process_manager_),
         server_(&driver_) {
     auto socket_factory = std::make_unique<net_base::MockSocketFactory>();

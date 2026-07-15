@@ -180,7 +180,8 @@ Manager::Manager(ControlInterface* control_interface,
                  Metrics* metrics,
                  const std::string& run_directory,
                  const std::string& storage_directory,
-                 const std::string& user_storage_directory)
+                 const std::string& user_storage_directory,
+                 bool is_dev_mode)
     : dispatcher_(dispatcher),
       control_interface_(control_interface),
       metrics_(metrics),
@@ -217,7 +218,8 @@ Manager::Manager(ControlInterface* control_interface,
       network_throttling_enabled_(false),
       download_rate_kbits_(0),
       upload_rate_kbits_(0),
-      tethering_manager_(new TetheringManager(this)) {
+      tethering_manager_(new TetheringManager(this, is_dev_mode)),
+      is_dev_mode_(is_dev_mode) {
   HelpRegisterConstDerivedRpcIdentifier(
       kActiveProfileProperty, &Manager::GetActiveProfileRpcIdentifier);
   HelpRegisterDerivedString(kAlwaysOnVpnPackageProperty,

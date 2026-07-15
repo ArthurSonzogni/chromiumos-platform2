@@ -703,6 +703,37 @@ TEST_F(TetheringManagerTest, TetheringConfig) {
       config.ContainsVariant(kTetheringConfDownstreamPhyIndexForTestProperty));
 }
 
+TEST_F(TetheringManagerTest, TetheringConfigNotIsDevMode) {
+  // SetAndPersistConfig succeeds when a user is logged in.
+  ASSERT_TRUE(base::CreateDirectory(temp_dir_.GetPath().Append("user")));
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager_, kUserProfile));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kUserProfile));
+
+  // Create a TetheringManager with dev_mode = false.
+  TetheringManager tethering_manager_non_dev(&manager_,
+                                             /*is_dev_mode=*/false);
+
+  // Fake Tethering configuration with test-only properties.
+  KeyValueStore args = GenerateFakeConfig(kTestAPHexSSID, kTestPassword,
+                                          kTestDownstreamDeviceForTest,
+                                          kTestDownstreamPhyIndexForTest);
+
+  // SetAndPersistConfig should succeed (it returns true even if it ignores some
+  // properties).
+  EXPECT_TRUE(SetAndPersistConfig(&tethering_manager_non_dev, args));
+
+  // Read the configuration and check if test-only properties are NOT present.
+  KeyValueStore config = GetConfig(&tethering_manager_non_dev);
+  EXPECT_FALSE(
+      config.ContainsVariant(kTetheringConfDownstreamDeviceForTestProperty));
+  EXPECT_FALSE(
+      config.ContainsVariant(kTetheringConfDownstreamPhyIndexForTestProperty));
+
+  // SSID and password should still be set.
+  EXPECT_EQ(GetConfigSSID(config), kTestAPHexSSID);
+  EXPECT_EQ(GetConfigPassphrase(config), kTestPassword);
+}
+
 TEST_F(TetheringManagerTest, DefaultConfigCheck) {
   // SetEnabled proceed to starting state and persist the default config.
   ASSERT_TRUE(base::CreateDirectory(temp_dir_.GetPath().Append("user")));

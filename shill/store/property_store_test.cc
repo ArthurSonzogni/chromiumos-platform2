@@ -63,7 +63,8 @@ PropertyStoreTest::PropertyStoreTest()
                metrics(),
                run_path(),
                storage_path(),
-               std::string()) {}
+               std::string(),
+               /*is_dev_mode=*/true) {}
 
 PropertyStoreTest::~PropertyStoreTest() = default;
 

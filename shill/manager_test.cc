@@ -115,7 +115,7 @@ class MockPatchpanelClient : public patchpanel::FakeClient {
 class MockTetheringManager : public shill::TetheringManager {
  public:
   explicit MockTetheringManager(shill::Manager* manager)
-      : shill::TetheringManager(manager) {}
+      : shill::TetheringManager(manager, /*is_dev_mode=*/true) {}
   ~MockTetheringManager() = default;
 
   MOCK_METHOD(void, LoadConfigFromProfile, (const ProfileRefPtr&), (override));
@@ -649,7 +649,7 @@ TEST_F(ManagerTest, DeviceDeregistration) {
 
 TEST_F(ManagerTest, ServiceRegistration) {
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
-                  storage_path(), std::string());
+                  storage_path(), std::string(), /*is_dev_mode=*/true);
   ProfileRefPtr profile(CreateProfileForManager(&manager));
   ASSERT_NE(nullptr, profile);
   AdoptProfile(&manager, profile);
@@ -690,7 +690,7 @@ TEST_F(ManagerTest, ServiceRegistration) {
 
 TEST_F(ManagerTest, RegisterKnownService) {
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
-                  storage_path(), std::string());
+                  storage_path(), std::string(), /*is_dev_mode=*/true);
   ProfileRefPtr profile(CreateProfileForManager(&manager));
   ASSERT_NE(nullptr, profile);
   AdoptProfile(&manager, profile);
@@ -711,7 +711,7 @@ TEST_F(ManagerTest, RegisterKnownService) {
 
 TEST_F(ManagerTest, RegisterUnknownService) {
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
-                  storage_path(), std::string());
+                  storage_path(), std::string(), /*is_dev_mode=*/true);
   ProfileRefPtr profile(CreateProfileForManager(&manager));
   ASSERT_NE(nullptr, profile);
   AdoptProfile(&manager, profile);
@@ -797,7 +797,7 @@ TEST_F(ManagerTest, GetServicesProperty) {
 
 TEST_F(ManagerTest, MoveService) {
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
-                  storage_path(), std::string());
+                  storage_path(), std::string(), /*is_dev_mode=*/true);
   MockServiceRefPtr s2(new MockService(&manager));
   // Inject an actual profile, backed by a fake StoreInterface
   {
@@ -896,7 +896,8 @@ TEST_F(ManagerTest, CreateProfile) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
-                  storage_path(), temp_dir.GetPath().value());
+                  storage_path(), temp_dir.GetPath().value(),
+                  /*is_dev_mode=*/true);
 
   // Invalid name should be rejected.
   EXPECT_EQ(Error::kInvalidArguments, TestCreateProfile(&manager, ""));
@@ -928,7 +929,8 @@ TEST_F(ManagerTest, PushPopProfile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
-                  storage_path(), temp_dir.GetPath().value());
+                  storage_path(), temp_dir.GetPath().value(),
+                  /*is_dev_mode=*/true);
   std::vector<ProfileRefPtr>& profiles = GetProfiles(&manager);
 
   // Pushing an invalid profile should fail.
@@ -1106,7 +1108,8 @@ TEST_F(ManagerTest, RemoveProfile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
-                  storage_path(), temp_dir.GetPath().value());
+                  storage_path(), temp_dir.GetPath().value(),
+                  /*is_dev_mode=*/true);
 
   const char kProfile0[] = "profile0";
   base::FilePath profile_path(Profile::GetFinalStoragePath(
@@ -1210,7 +1213,8 @@ TEST_F(ManagerTest, CreateDuplicateProfileWithMissingKeyfile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
-                  storage_path(), temp_dir.GetPath().value());
+                  storage_path(), temp_dir.GetPath().value(),
+                  /*is_dev_mode=*/true);
 
   const char kProfile0[] = "profile0";
   base::FilePath profile_path(Profile::GetFinalStoragePath(
@@ -3929,7 +3933,8 @@ TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
-                  storage_path(), temp_dir.GetPath().value());
+                  storage_path(), temp_dir.GetPath().value(),
+                  /*is_dev_mode=*/true);
   // Can't use |wifi_provider_|, because it's owned by the Manager
   // object in the fixture.
   MockWiFiProvider* wifi_provider = new NiceMock<MockWiFiProvider>(&manager);
@@ -3980,7 +3985,7 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   // user profile.
   manager.reset(new Manager(control_interface(), dispatcher(), metrics(),
                             run_path(), temp_dir.GetPath().value(),
-                            temp_dir.GetPath().value()));
+                            temp_dir.GetPath().value(), /*is_dev_mode=*/true));
   manager->InitializeProfiles();
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
             manager->props_.check_portal_list);
@@ -4001,7 +4006,7 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   // check_portal_list, rather than the default.
   manager.reset(new Manager(control_interface(), dispatcher(), metrics(),
                             run_path(), temp_dir.GetPath().value(),
-                            temp_dir.GetPath().value()));
+                            temp_dir.GetPath().value(), /*is_dev_mode=*/true));
   manager->InitializeProfiles();
   EXPECT_EQ(kCustomCheckPortalList, manager->props_.check_portal_list);
 
@@ -4010,7 +4015,7 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   manager.reset(new Manager(control_interface(), dispatcher(), metrics(),
                             run_path(), temp_dir.GetPath().value(),
-                            temp_dir.GetPath().value()));
+                            temp_dir.GetPath().value(), /*is_dev_mode=*/true));
   manager->InitializeProfiles();
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
             manager->props_.check_portal_list);
@@ -4022,7 +4027,7 @@ TEST_F(ManagerTest, ProfileStackChangeLogging) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   manager.reset(new Manager(control_interface(), dispatcher(), metrics(),
                             run_path(), temp_dir.GetPath().value(),
-                            temp_dir.GetPath().value()));
+                            temp_dir.GetPath().value(), /*is_dev_mode=*/true));
 
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
@@ -4906,7 +4911,8 @@ TEST_F(ManagerTest, TetheringLoadAndUnloadConfiguration) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
-                  storage_path(), temp_dir.GetPath().value());
+                  storage_path(), temp_dir.GetPath().value(),
+                  /*is_dev_mode=*/true);
   MockTetheringManager* tethering = new MockTetheringManager(&manager);
   manager.tethering_manager_.reset(tethering);
   const char kDefaultProfile0[] = "default";

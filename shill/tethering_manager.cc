@@ -8,8 +8,6 @@
 #include <math.h>
 #include <stdint.h>
 
-#include <vboot/crossystem.h>
-
 #include <iostream>
 #include <optional>
 #include <string>
@@ -47,14 +45,6 @@
 namespace shill {
 
 namespace {
-
-bool IsDevMode() {
-#if defined(TEST_BUILD)
-  return true;
-#else
-  return VbGetSystemPropertyInt("cros_debug") == 1;
-#endif
-}
 
 static constexpr char kSSIDPrefix[] = "chromeOS-";
 // Random suffix should provide enough uniqueness to have low SSID collision
@@ -179,8 +169,9 @@ GetUplinkIPv6Configuration(const Network& network) {
 
 }  // namespace
 
-TetheringManager::TetheringManager(Manager* manager)
+TetheringManager::TetheringManager(Manager* manager, bool is_dev_mode)
     : manager_(manager),
+      is_dev_mode_(is_dev_mode),
       experimental_tethering_functionality_(false),
       state_(TetheringState::kTetheringIdle),
       upstream_network_(nullptr),
@@ -375,7 +366,7 @@ std::optional<bool> TetheringManager::FromProperties(
     restart = true;
   }
 
-  if (IsDevMode()) {
+  if (is_dev_mode_) {
     if (properties.Contains<std::string>(
             kTetheringConfDownstreamDeviceForTestProperty) &&
         downstream_device_for_test_ !=
@@ -790,7 +781,7 @@ void TetheringManager::StartTetheringSession(WiFiPhy::Priority priority) {
       mar_ ? MACAddress::CreateRandom().address().value()
            : stable_mac_addr_.address().value();
   bool request_accepted;
-  if (IsDevMode() && downstream_device_for_test_ &&
+  if (is_dev_mode_ && downstream_device_for_test_ &&
       downstream_phy_index_for_test_) {
     request_accepted = manager_->wifi_provider()->CreateHotspotDeviceForTest(
         mac_address, *downstream_device_for_test_,

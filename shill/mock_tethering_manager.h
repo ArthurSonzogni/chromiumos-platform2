@@ -18,7 +18,8 @@ namespace shill {
 
 class MockTetheringManager : public TetheringManager {
  public:
-  explicit MockTetheringManager(Manager* manager) : TetheringManager(manager) {}
+  explicit MockTetheringManager(Manager* manager)
+      : TetheringManager(manager, /*is_dev_mode=*/true) {}
   MockTetheringManager(const MockTetheringManager&) = delete;
   MockTetheringManager& operator=(const MockTetheringManager&) = delete;
 

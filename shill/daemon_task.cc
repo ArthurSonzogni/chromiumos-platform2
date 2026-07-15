@@ -16,6 +16,7 @@
 #include <chromeos/net-base/netlink_manager.h>
 #include <chromeos/net-base/netlink_message.h>
 #include <chromeos/net-base/process_manager.h>
+#include <vboot/crossystem.h>
 
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_control.h"
@@ -35,6 +36,12 @@ constexpr uint32_t RTMGRP_ND_USEROPT = 1 << (RTNLGRP_ND_USEROPT - 1);
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDaemon;
 }  // namespace Logging
+
+namespace {
+bool IsDevMode() {
+  return VbGetSystemPropertyInt("cros_debug") == 1;
+}
+}  // namespace
 
 DaemonTask::DaemonTask(Config* config)
     : config_(config),
@@ -68,7 +75,7 @@ void DaemonTask::Init() {
   manager_ = std::make_unique<Manager>(
       control_.get(), dispatcher_.get(), metrics_.get(),
       config_->GetRunDirectory(), config_->GetStorageDirectory(),
-      config_->GetUserStorageDirectory());
+      config_->GetUserStorageDirectory(), IsDevMode());
   control_->RegisterManagerObject(
       manager_.get(),
       base::BindOnce(&DaemonTask::Start, base::Unretained(this)));

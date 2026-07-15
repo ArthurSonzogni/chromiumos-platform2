@@ -142,7 +142,8 @@ class Manager {
           Metrics* metrics,
           const std::string& run_directory,
           const std::string& storage_directory,
-          const std::string& user_storage_directory);
+          const std::string& user_storage_directory,
+          bool is_dev_mode);
   Manager(const Manager&) = delete;
   Manager& operator=(const Manager&) = delete;
 
@@ -952,6 +953,9 @@ class Manager {
   // Tethering manager to manage tethering related state machine, properties
   // and session.
   std::unique_ptr<TetheringManager> tethering_manager_;
+
+  // Flag to store if the device is in developer mode or not.
+  bool is_dev_mode_;
 
   base::WeakPtrFactory<Manager> weak_factory_{this};
 };

@@ -21,7 +21,13 @@ namespace shill {
 MockManager::MockManager(ControlInterface* control_interface,
                          EventDispatcher* dispatcher,
                          Metrics* metrics)
-    : Manager(control_interface, dispatcher, metrics, "", "", ""),
+    : Manager(control_interface,
+              dispatcher,
+              metrics,
+              "",
+              "",
+              "",
+              /*is_dev_mode=*/true),
       mock_ethernet_provider_(new MockEthernetProvider()) {
   mock_device_info_ = std::make_unique<NiceMock<MockDeviceInfo>>(this);
   mock_cellular_service_provider_ =
@@ -47,7 +53,8 @@ MockManager::MockManager(ControlInterface* control_interface,
               metrics,
               run_directory,
               storage_directory,
-              user_storage_directory) {}
+              user_storage_directory,
+              /*is_dev_mode=*/true) {}
 
 MockManager::~MockManager() = default;
 

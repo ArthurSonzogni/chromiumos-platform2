@@ -112,7 +112,7 @@ class TetheringManager : public Network::EventHandler {
   // Storage group for tethering configs.
   static constexpr char kStorageId[] = "tethering";
 
-  explicit TetheringManager(Manager* manager);
+  TetheringManager(Manager* manager, bool is_dev_mode);
   TetheringManager(const TetheringManager&) = delete;
   TetheringManager& operator=(const TetheringManager&) = delete;
 
@@ -308,6 +308,8 @@ class TetheringManager : public Network::EventHandler {
 
   // TetheringManager is created and owned by Manager.
   Manager* manager_;
+  // Flag to store if the device is in developer mode or not.
+  bool is_dev_mode_;
   // Flag to enable tethering on untested carriers/modems and modem FWs.
   bool experimental_tethering_functionality_;
   // Tethering state as listed in enum TetheringState.
