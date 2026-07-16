@@ -4,6 +4,7 @@
 
 #include "secagentd/process_cache.h"
 
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <cstdint>
@@ -173,6 +174,9 @@ class ProcessCacheTestFixture : public ::testing::Test {
   }
 
   void ClearInternalCache() { process_cache_->process_cache_->Clear(); }
+  scoped_refptr<ImageCacheInterface> GetImageCache() {
+    return process_cache_->image_cache_;
+  }
 
   void SetUp() override {
     device_user_ = base::MakeRefCounted<MockDeviceUser>();
@@ -1082,6 +1086,37 @@ TEST_F(ProcessCacheTestFixture, ImageCacheHashAFileLargerThanBuf) {
   EXPECT_STRCASEEQ(
       "6C9C6E06F2269516F665541D40859DC514FA7AB87C114C6FDFAE4BBDD6A93416",
       actual[0]->image().sha256().c_str());
+}
+
+TEST_F(ProcessCacheTestFixture, ImageCacheOpenFileSafelyDirectory) {
+  ImageCache::ImageCacheKeyType image_key{
+      .inode_device_id = 0, .inode = 0, .mtime = {0, 0}, .ctime = {0, 0}};
+
+  // Pass an absolute directory path so SafeAppendAbsolutePath succeeds and
+  // OpenFileSafely rejects it via !S_ISREG.
+  auto result = GetImageCache()->InclusiveGetImage(image_key, false, kPidInit,
+                                                   base::FilePath("/proc"));
+  EXPECT_FALSE(result.ok());
+
+  auto direct_result =
+      GetImageCache()->GenerateImageHash(fake_root_.GetPath(), false);
+  EXPECT_FALSE(direct_result.ok());
+}
+
+TEST_F(ProcessCacheTestFixture, ImageCacheOpenFileSafelyFifo) {
+  const base::FilePath fifo_path = fake_root_.GetPath().Append("test_fifo");
+  ASSERT_EQ(0, mkfifo(fifo_path.value().c_str(), 0600));
+
+  ImageCache::ImageCacheKeyType image_key{
+      .inode_device_id = 0, .inode = 0, .mtime = {0, 0}, .ctime = {0, 0}};
+
+  // Opening a writerless FIFO must be rejected immediately without blocking.
+  auto result = GetImageCache()->InclusiveGetImage(
+      image_key, false, kPidInit, base::FilePath("/test_fifo"));
+  EXPECT_FALSE(result.ok());
+
+  auto direct_result = GetImageCache()->GenerateImageHash(fifo_path, true);
+  EXPECT_FALSE(direct_result.ok());
 }
 
 TEST_F(ProcessCacheTestFixture, HashImageInForeignMountNamespace) {

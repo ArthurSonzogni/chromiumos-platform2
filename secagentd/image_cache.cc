@@ -4,6 +4,7 @@
 
 #include "secagentd/image_cache.h"
 
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -21,7 +22,9 @@
 #include "base/containers/span.h"
 #include "base/files/file.h"
 #include "base/files/file_path.h"
+#include "base/files/scoped_file.h"
 #include "base/logging.h"
+#include "base/posix/eintr_wrapper.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_tokenizer.h"
@@ -42,6 +45,58 @@ constexpr char kErrorBytesRead[] =
 // Allow a 10 millisecond delta for nanosec.
 constexpr u_int64_t kEpsilonNs = 10000000;
 
+struct PinnedRegularFile {
+  base::File file;
+  struct stat statbuf;
+};
+
+// Opens a file path without blocking and pins the underlying inode so that the
+// returned readable descriptor and stat metadata are guaranteed to refer to the
+// exact same regular-file inode (preventing path-swap TOCTOU races):
+// 1. Opens the path with O_PATH | O_CLOEXEC to pin the resolved inode in the
+//    kernel without blocking on special files (e.g. FIFOs/named pipes).
+// 2. Performs fstat() on the pinned O_PATH descriptor to verify S_ISREG and
+//    capture the inode's device/inode numbers and timestamps.
+// 3. Reopens the pinned inode directly via /proc/self/fd/N (bypassing path
+//    re-resolution) with O_RDONLY | O_NONBLOCK | O_CLOEXEC | O_NOCTTY.
+absl::StatusOr<PinnedRegularFile> OpenAndPinRegularFile(
+    const base::FilePath& path) {
+  base::ScopedFD path_pinned_fd(
+      HANDLE_EINTR(open(path.value().c_str(), O_PATH | O_CLOEXEC)));
+  if (!path_pinned_fd.is_valid()) {
+    return absl::NotFoundError(
+        base::StrCat({kErrorFailedToRead, path.value()}));
+  }
+
+  struct stat statbuf;
+  if (fstat(path_pinned_fd.get(), &statbuf) != 0) {
+    return absl::NotFoundError(
+        base::StrCat({kErrorFailedToRead, path.value()}));
+  }
+
+  if (!S_ISREG(statbuf.st_mode)) {
+    return absl::InvalidArgumentError(
+        base::StrCat({"Not a regular file: ", path.value()}));
+  }
+
+  // Reopen the already-pinned inode via /proc/self/fd so the path cannot be
+  // swapped between fstat() above and reading below.
+  std::string proc_fd_path =
+      base::StringPrintf("/proc/self/fd/%d", path_pinned_fd.get());
+  base::ScopedFD pinned_read_fd(HANDLE_EINTR(open(
+      proc_fd_path.c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC | O_NOCTTY)));
+
+  if (!pinned_read_fd.is_valid()) {
+    return absl::NotFoundError(
+        base::StrCat({kErrorFailedToRead, path.value()}));
+  }
+
+  return PinnedRegularFile{
+      .file = base::File(pinned_read_fd.release()),
+      .statbuf = statbuf,
+  };
+}
+
 }  // namespace
 
 namespace secagentd {
@@ -54,28 +109,22 @@ ImageCache::VerifyStatAndGenerateImageHash(
     const ImageCacheInterface::ImageCacheKeyType& image_key,
     bool force_full_sha256,
     const base::FilePath& image_path_in_current_ns) {
-  base::File file(image_path_in_current_ns,
-                  base::File::FLAG_OPEN | base::File::FLAG_READ);
-  if (!file.IsValid()) {
-    return absl::NotFoundError(
-        base::StrCat({kErrorFailedToRead, image_path_in_current_ns.value()}));
+  auto pinned_file_or = OpenAndPinRegularFile(image_path_in_current_ns);
+  if (!pinned_file_or.ok()) {
+    return pinned_file_or.status();
   }
 
-  auto hash = GenerateImageHashInternal(file, image_path_in_current_ns,
-                                        force_full_sha256);
-  if (!hash.ok()) {
-    return hash.status();
-  }
-  base::stat_wrapper_t image_stat;
-  if (base::File::Fstat(file.GetPlatformFile(), &image_stat) ||
-      (image_stat.st_dev != image_key.inode_device_id) ||
+  PinnedRegularFile pinned_file = std::move(pinned_file_or).value();
+  const struct stat& image_stat = pinned_file.statbuf;
+
+  if ((image_stat.st_dev != image_key.inode_device_id) ||
       (image_stat.st_ino != image_key.inode) ||
       (image_stat.st_mtim.tv_sec != image_key.mtime.tv_sec) ||
       std::abs(image_stat.st_mtim.tv_nsec - image_key.mtime.tv_nsec) >
-          kEpsilonNs ||
+          static_cast<int64_t>(kEpsilonNs) ||
       (image_stat.st_ctim.tv_sec != image_key.ctime.tv_sec) ||
       std::abs(image_stat.st_ctim.tv_nsec - image_key.ctime.tv_nsec) >
-          kEpsilonNs) {
+          static_cast<int64_t>(kEpsilonNs)) {
     return absl::NotFoundError(
         base::StrCat({"Failed to match stat of image hashed at ",
                       image_path_in_current_ns.value(),
@@ -106,7 +155,13 @@ ImageCache::VerifyStatAndGenerateImageHash(
                       ".",
                       base::NumberToString(image_stat.st_ctim.tv_nsec)}));
   }
-  return hash;
+
+  // `pinned_file.file` is bound to the exact inode verified by `image_stat`
+  // above (via /proc/self/fd), and ChromeOS enforces W^X at the mount level
+  // (executable mounts are MS_RDONLY; writable mounts are MS_NOEXEC), so the
+  // verified inode cannot be swapped or modified in-place while being hashed.
+  return GenerateImageHashInternal(pinned_file.file, image_path_in_current_ns,
+                                   force_full_sha256);
 }
 
 // The function determines whether to compute a full or partial hash based on
@@ -118,15 +173,12 @@ ImageCache::VerifyStatAndGenerateImageHash(
 // if the hash was for the full file or just a part.
 absl::StatusOr<ImageCacheInterface::HashValue> ImageCache::GenerateImageHash(
     const base::FilePath& image_path_in_current_ns, bool force_full_sha) {
-  base::File file(image_path_in_current_ns,
-                  base::File::FLAG_OPEN | base::File::FLAG_READ);
-  if (!file.IsValid()) {
-    return absl::NotFoundError(
-        base::StrCat({kErrorFailedToRead, image_path_in_current_ns.value()}));
+  auto pinned_file_or = OpenAndPinRegularFile(image_path_in_current_ns);
+  if (!pinned_file_or.ok()) {
+    return pinned_file_or.status();
   }
-
-  return GenerateImageHashInternal(file, image_path_in_current_ns,
-                                   force_full_sha);
+  return GenerateImageHashInternal(pinned_file_or->file,
+                                   image_path_in_current_ns, force_full_sha);
 }
 
 absl::StatusOr<ImageCacheInterface::HashValue>
