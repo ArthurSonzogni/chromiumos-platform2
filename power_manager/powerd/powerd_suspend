@@ -228,6 +228,15 @@ else
     /usr/sbin/modem_shutdown
   fi
 
+  # Execute board-specific pre-suspend quirks/workarounds if available.
+  # This file allows platform-specific power management adjustments before
+  # the system enters suspend state. This file should be provided by board
+  # overlays if platform-specific quirk is needed before suspend.
+  if [ -x "/usr/sbin/powerd_pre_suspend_quirk" ]; then
+    log_msg "Running pre-suspend quirk"
+    /usr/sbin/powerd_pre_suspend_quirk
+  fi
+
   log_msg "Finalizing suspend"
   # Make sure that hwclock is cached for when we wake up, this way we don't
   # wait for io and get a more accurate time for wakeup
@@ -306,6 +315,15 @@ else
   fi
 
   bind_igb_devices
+
+  # Execute board-specific post-resume quirk if available to handle any
+  # platform-specific recovery or re-initialization needed after resume.
+  # This file should be provided by board overlays if platform-specific
+  # quirk is needed after resume.
+  if [ -x "/usr/sbin/powerd_post_resume_quirk" ]; then
+    log_msg "Running post-resume quirk"
+    /usr/sbin/powerd_post_resume_quirk
+  fi
 
   # `modem_startup` (along with `modem_shutdown`) exists only if board-specific
   # overlays provide one. Future project should re-use the script name when
