@@ -4206,7 +4206,7 @@ void UserDataAuth::GenerateFreshRecoveryId(
   user_data_auth::GenerateFreshRecoveryIdReply reply;
   std::unique_ptr<cryptorecovery::RecoveryCryptoImpl> recovery =
       cryptorecovery::RecoveryCryptoImpl::Create(recovery_crypto_, platform_);
-  if (!recovery || recovery->GenerateFreshRecoveryId(request.account_id())) {
+  if (!recovery || !recovery->GenerateFreshRecoveryId(request.account_id())) {
     ReplyWithError(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(

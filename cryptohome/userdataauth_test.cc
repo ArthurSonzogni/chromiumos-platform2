@@ -5760,4 +5760,22 @@ TEST_F(UserDataAuthApiTest, ResetLECredentialsSuccess) {
   ASSERT_EQ(auth_reply->error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
+TEST_F(UserDataAuthApiTest, GenerateFreshRecoveryIdFailure) {
+  user_data_auth::GenerateFreshRecoveryIdRequest req;
+  TestFuture<user_data_auth::GenerateFreshRecoveryIdReply> reply;
+
+  // Cause all filesystem writes to fail. The recovery ID generation will not
+  // work if it cannot write out the new ID.
+  EXPECT_CALL(system_apis_.platform, WriteStringToFileAtomicDurable(_, _, _))
+      .WillRepeatedly(Return(false));
+
+  userdataauth_->GenerateFreshRecoveryId(
+      req,
+      reply.GetCallback<const user_data_auth::GenerateFreshRecoveryIdReply&>());
+  EXPECT_THAT(reply.Get().error_info(),
+              HasPossibleActions(PossibleActionSet(
+                  {user_data_auth::PossibleAction::
+                       POSSIBLY_DEV_CHECK_UNEXPECTED_STATE})));
+}
+
 }  // namespace cryptohome
