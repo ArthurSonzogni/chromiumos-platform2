@@ -35,6 +35,7 @@ constexpr char kRsuChallengeRegexp[] = R"(CHALLENGE=([[:alnum:]]{80}))";
 const std::vector<std::string> kGetCcdInfoArgv{kGsctoolCmd, "-a", "-I", "-M"};
 constexpr char kFactoryModeMatchStr[] = "CCD_FLAG_FACTORY_MODE=Y";
 constexpr char kInitialFactoryModeMatchStr[] = "INITIAL_FACTORY_MODE=Y";
+constexpr char kTestlabModeMatchStr[] = "CCD_FLAG_TESTLAB_MODE=Y";
 // Constants for factory mode.
 const std::vector<std::string> kEnableFactoryModeArgv{kGsctoolCmd, "-a", "-F",
                                                       "enable"};
@@ -179,6 +180,12 @@ bool GscUtilsImpl::IsInitialFactoryModeEnabled() const {
   std::string output;
   cmd_utils_->GetOutput(kGetCcdInfoArgv, &output);
   return output.find(kInitialFactoryModeMatchStr) != std::string::npos;
+}
+
+bool GscUtilsImpl::IsTestlabModeEnabled() const {
+  std::string output;
+  cmd_utils_->GetOutput(kGetCcdInfoArgv, &output);
+  return output.find(kTestlabModeMatchStr) != std::string::npos;
 }
 
 std::optional<std::string> GscUtilsImpl::GetBoardIdType() const {

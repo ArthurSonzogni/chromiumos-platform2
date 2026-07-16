@@ -50,6 +50,9 @@ class GscUtils {
   // Check if GSC initial factory mode is enabled.
   virtual bool IsInitialFactoryModeEnabled() const = 0;
 
+  // Check if GSC testlab mode is enabled.
+  virtual bool IsTestlabModeEnabled() const = 0;
+
   // Get GSC board ID type.
   virtual std::optional<std::string> GetBoardIdType() const = 0;
 

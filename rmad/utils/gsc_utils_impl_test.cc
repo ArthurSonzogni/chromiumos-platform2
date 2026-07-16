@@ -67,6 +67,20 @@ STATE=Locked
 INITIAL_FACTORY_MODE=N
 ---
 )";
+constexpr char kTestlabModeEnabledResponse[] = R"(
+STATE=Locked
+---
+---
+CCD_FLAG_TESTLAB_MODE=Y
+---
+)";
+constexpr char kTestlabModeDisabledResponse[] = R"(
+STATE=Locked
+---
+---
+CCD_FLAG_TESTLAB_MODE=N
+---
+)";
 
 // Constants for board ID.
 constexpr char kGetBoardIdResponse[] = R"(
@@ -278,6 +292,34 @@ TEST_F(GscUtilsTest, IsInitialFactoryModeEnabled_NoResponse) {
   auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
 
   EXPECT_FALSE(gsc_utils->IsInitialFactoryModeEnabled());
+}
+
+TEST_F(GscUtilsTest, IsTestlabModeEnabled_Enabled) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kTestlabModeEnabledResponse), Return(true)));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_TRUE(gsc_utils->IsTestlabModeEnabled());
+}
+
+TEST_F(GscUtilsTest, IsTestlabModeEnabled_Disabled) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kTestlabModeDisabledResponse), Return(true)));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_FALSE(gsc_utils->IsTestlabModeEnabled());
+}
+
+TEST_F(GscUtilsTest, IsTestlabModeEnabled_NoResponse) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_FALSE(gsc_utils->IsTestlabModeEnabled());
 }
 
 TEST_F(GscUtilsTest, GetBoardIdType_Success) {

@@ -126,12 +126,17 @@ void RmadInterfaceImpl::InitializeExternalUtils(
       base::FilePath(kDefaultUnencryptedRmaDirPath).Append(kJsonStoreFilePath),
       false);
 
+  gsc_utils_ = std::make_unique<GscUtilsImpl>();
+
   // Set shimless mode in |json_store_|, this has to be done before registering
   // state handlers.
   auto vpd_utils = std::make_unique<VpdUtilsImpl>();
   std::string shimless_mode;
-  if (vpd_utils->GetShimlessMode(&shimless_mode)) {
+  if (gsc_utils_->IsTestlabModeEnabled() &&
+      vpd_utils->GetShimlessMode(&shimless_mode)) {
     json_store_->SetValue(kShimlessMode, shimless_mode);
+  } else {
+    json_store_->RemoveKey(kShimlessMode);
   }
 
   working_dir_path_ = base::FilePath(kDefaultWorkingDirPath);
@@ -144,7 +149,6 @@ void RmadInterfaceImpl::InitializeExternalUtils(
   power_manager_client_ = std::make_unique<PowerManagerClientImpl>();
   udev_utils_ = std::make_unique<UdevUtilsImpl>();
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
-  gsc_utils_ = std::make_unique<GscUtilsImpl>();
 }
 
 bool RmadInterfaceImpl::WaitForServices() {

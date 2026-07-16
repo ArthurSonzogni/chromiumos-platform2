@@ -25,6 +25,7 @@ class GscUtilsImpl : public GscUtils {
   bool DisableFactoryMode() const override;
   bool IsFactoryModeEnabled() const override;
   bool IsInitialFactoryModeEnabled() const override;
+  bool IsTestlabModeEnabled() const override;
   std::optional<std::string> GetBoardIdType() const override;
   std::optional<std::string> GetBoardIdFlags() const override;
   bool SetBoardId(bool is_custom_label) const override;

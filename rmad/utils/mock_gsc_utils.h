@@ -26,6 +26,7 @@ class MockGscUtils : public GscUtils {
   MOCK_METHOD(bool, DisableFactoryMode, (), (const, override));
   MOCK_METHOD(bool, IsFactoryModeEnabled, (), (const, override));
   MOCK_METHOD(bool, IsInitialFactoryModeEnabled, (), (const, override));
+  MOCK_METHOD(bool, IsTestlabModeEnabled, (), (const, override));
   MOCK_METHOD(std::optional<std::string>,
               GetBoardIdType,
               (),
