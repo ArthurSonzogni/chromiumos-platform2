@@ -11,12 +11,6 @@
 namespace pciguard {
 
 void* Authorizer::AuthorizerThread(void* ptr) {
-  if (pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL) ||
-      pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL)) {
-    PLOG(ERROR) << __func__ << ": Can't set thread cancel state or type.";
-    exit(EX_OSERR);
-  }
-
   Authorizer* authorizer = static_cast<Authorizer*>(ptr);
   Job job;
   while (authorizer->GetNextJob(&job)) {
@@ -37,6 +31,7 @@ Authorizer::Authorizer(SysfsUtils* utils)
     : mutex_(PTHREAD_MUTEX_INITIALIZER),
       job_available_(PTHREAD_COND_INITIALIZER),
       authorization_in_flight_(false),
+      should_stop_(false),
       utils_(utils) {
   if (pthread_create(&authorizer_thread_, NULL, &Authorizer::AuthorizerThread,
                      this)) {
@@ -47,7 +42,11 @@ Authorizer::Authorizer(SysfsUtils* utils)
 }
 
 Authorizer::~Authorizer() {
-  pthread_cancel(authorizer_thread_);
+  if (pthread_mutex_lock(&mutex_) == 0) {
+    should_stop_ = true;
+    pthread_cond_signal(&job_available_);
+    pthread_mutex_unlock(&mutex_);
+  }
   pthread_join(authorizer_thread_, NULL);
   LOG(INFO) << "Destroyed authorizer object";
 }
@@ -91,26 +90,26 @@ bool Authorizer::GetNextJob(Job* job) {
     return false;
   }
 
-  do {
-    if (!queue_.empty()) {
-      *job = queue_.front();
-      queue_.pop();
-      LOG(INFO) << "Fetched authorization job (" << job->type_ << ","
-                << job->syspath_ << ")";
+  while (queue_.empty() && !should_stop_) {
+    pthread_cond_wait(&job_available_, &mutex_);
+  }
 
-      authorization_in_flight_ = true;
+  if (should_stop_) {
+    pthread_mutex_unlock(&mutex_);
+    return false;
+  }
 
-      if (pthread_mutex_unlock(&mutex_)) {
-        PLOG(ERROR) << "Mutex unlock issue while retrieving job";
-      }
-      return true;
-    }
-  } while (!pthread_cond_wait(&job_available_, &mutex_));
+  *job = queue_.front();
+  queue_.pop();
+  LOG(INFO) << "Fetched authorization job (" << job->type_ << ","
+            << job->syspath_ << ")";
+
+  authorization_in_flight_ = true;
 
   if (pthread_mutex_unlock(&mutex_)) {
     PLOG(ERROR) << "Mutex unlock issue while retrieving job";
   }
-  return false;
+  return true;
 }
 
 }  // namespace pciguard

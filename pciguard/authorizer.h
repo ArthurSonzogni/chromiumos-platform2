@@ -5,9 +5,10 @@
 #ifndef PCIGUARD_AUTHORIZER_H_
 #define PCIGUARD_AUTHORIZER_H_
 
-#include <base/files/file_path.h>
 #include <memory>
 #include <queue>
+
+#include <base/files/file_path.h>
 
 #include "pciguard/sysfs_utils.h"
 
@@ -42,6 +43,7 @@ class Authorizer {
   bool authorization_in_flight_;
 
   pthread_t authorizer_thread_;
+  bool should_stop_ = false;
   SysfsUtils* utils_;
   static void* AuthorizerThread(void* ptr);
   bool GetNextJob(Job* job);
