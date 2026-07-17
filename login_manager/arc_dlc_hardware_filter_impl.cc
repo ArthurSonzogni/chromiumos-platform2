@@ -11,7 +11,7 @@
 #include <string_view>
 
 #include <base/bits.h>
-#include <base/byte_count.h>
+#include <base/byte_size.h>
 #include <base/containers/fixed_flat_set.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -134,9 +134,9 @@ bool ArcDlcHardwareFilterImpl::IsRamSupportArcDlc() const {
   }
 
   const uint64_t aligned_total_bytes = base::bits::AlignUp(
-      total_bytes.value(), static_cast<uint64_t>(base::GiB(1).InBytes()));
+      total_bytes.value(), static_cast<uint64_t>(base::GiBU(1).InBytes()));
 
-  return base::ByteCount(aligned_total_bytes) >= base::GiB(4);
+  return base::ByteSize(aligned_total_bytes) >= base::GiBU(4);
 }
 
 bool ArcDlcHardwareFilterImpl::IsBootDiskSupportArcDlc() const {
@@ -167,7 +167,7 @@ bool ArcDlcHardwareFilterImpl::IsBootDiskSupportArcDlc() const {
   LOG(INFO) << "Boot disk size is: " << size_result.value().InBytes()
             << " bytes.";
 
-  constexpr base::ByteCount kMinDiskSize = base::GiB(32);
+  constexpr base::ByteSize kMinDiskSize = base::GiBU(32);
   if (size_result.value() < kMinDiskSize) {
     return false;
   }

@@ -8,7 +8,7 @@
 #include <optional>
 #include <string>
 
-#include <base/byte_count.h>
+#include <base/byte_size.h>
 #include <base/files/file_path.h>
 
 namespace login_manager {
@@ -25,7 +25,7 @@ class ArcDlcPlatformInfo {
 
   // Returns the size of the block device in bytes.
   // Returns std::nullopt on failure.
-  virtual std::optional<base::ByteCount> GetDeviceSize(
+  virtual std::optional<base::ByteSize> GetDeviceSize(
       const base::FilePath& dev_path) = 0;
 };
 

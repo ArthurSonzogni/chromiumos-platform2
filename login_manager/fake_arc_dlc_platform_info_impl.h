@@ -9,7 +9,7 @@
 #include <string>
 #include <utility>
 
-#include <base/byte_count.h>
+#include <base/byte_size.h>
 #include <base/files/file_path.h>
 
 #include "login_manager/arc_dlc_platform_info.h"
@@ -29,7 +29,7 @@ class FakeArcDlcPlatformInfoImpl : public ArcDlcPlatformInfo {
     return root_device_name_;
   }
 
-  std::optional<base::ByteCount> GetDeviceSize(
+  std::optional<base::ByteSize> GetDeviceSize(
       const base::FilePath& dev_path) override {
     return device_size_bytes_;
   }
@@ -39,13 +39,13 @@ class FakeArcDlcPlatformInfoImpl : public ArcDlcPlatformInfo {
     root_device_name_ = std::move(name);
   }
 
-  void set_device_size_bytes(std::optional<base::ByteCount> size) {
+  void set_device_size_bytes(std::optional<base::ByteSize> size) {
     device_size_bytes_ = std::move(size);
   }
 
  private:
   std::optional<std::string> root_device_name_;
-  std::optional<base::ByteCount> device_size_bytes_;
+  std::optional<base::ByteSize> device_size_bytes_;
 };
 
 }  // namespace login_manager

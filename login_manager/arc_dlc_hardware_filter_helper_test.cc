@@ -7,6 +7,7 @@
 #include <optional>
 #include <string>
 
+#include <base/byte_size.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -113,13 +114,13 @@ TEST_F(ArcDlcHardwareFilterHelperTest, ParseIomemContent) {
       "20000000-21fffffff : System RAM\n";
   auto result_8gb =
       ArcDlcHardwareFilterHelper::ParseIomemContent(iomem_content_8gb);
-  EXPECT_EQ(base::GiB(8).InBytes(), result_8gb.value());
+  EXPECT_EQ(base::GiBU(8).InBytes(), result_8gb.value());
 
   // Test case for a valid /proc/iomem content with 4GB RAM.
   const std::string iomem_content_4gb = "00000000-0ffffffff : System RAM\n";
   auto result_4gb =
       ArcDlcHardwareFilterHelper::ParseIomemContent(iomem_content_4gb);
-  EXPECT_EQ(base::GiB(4).InBytes(), result_4gb.value());
+  EXPECT_EQ(base::GiBU(4).InBytes(), result_4gb.value());
 
   // Test case for an empty content string.
   auto empty_result = ArcDlcHardwareFilterHelper::ParseIomemContent("");

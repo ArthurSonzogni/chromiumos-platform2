@@ -13,7 +13,7 @@
 #include <string>
 #include <string_view>
 
-#include <base/byte_count.h>
+#include <base/byte_size.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -52,7 +52,7 @@ std::optional<std::string> ArcDlcPlatformInfoImpl::GetRootDeviceName() {
   return std::string(name_part);
 }
 
-std::optional<base::ByteCount> ArcDlcPlatformInfoImpl::GetDeviceSize(
+std::optional<base::ByteSize> ArcDlcPlatformInfoImpl::GetDeviceSize(
     const base::FilePath& dev_path) {
   base::ScopedFD fd(HANDLE_EINTR(
       open(dev_path.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC)));
@@ -68,6 +68,6 @@ std::optional<base::ByteCount> ArcDlcPlatformInfoImpl::GetDeviceSize(
     return std::nullopt;
   }
 
-  return base::ByteCount(size);
+  return base::ByteSize(size);
 }
 }  // namespace login_manager

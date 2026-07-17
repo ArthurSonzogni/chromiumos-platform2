@@ -8,7 +8,7 @@
 #include <string>
 #include <string_view>
 
-#include <base/byte_count.h>
+#include <base/byte_size.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>

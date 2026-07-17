@@ -8,7 +8,7 @@
 #include <optional>
 #include <string>
 
-#include <base/byte_count.h>
+#include <base/byte_size.h>
 #include <base/files/file_path.h>
 
 #include "login_manager/arc_dlc_platform_info.h"
@@ -25,7 +25,7 @@ class ArcDlcPlatformInfoImpl : public ArcDlcPlatformInfo {
 
   // ArcDlcPlatformInfo overrides:
   std::optional<std::string> GetRootDeviceName() override;
-  std::optional<base::ByteCount> GetDeviceSize(
+  std::optional<base::ByteSize> GetDeviceSize(
       const base::FilePath& dev_path) override;
 };
 
