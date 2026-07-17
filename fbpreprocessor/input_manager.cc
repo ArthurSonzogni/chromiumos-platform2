@@ -51,6 +51,18 @@ void InputManager::OnUserLoggedOut() {
 }
 
 bool InputManager::OnNewFirmwareDump(const FirmwareDump& fw_dump) const {
+  // Reject firmware dumps with empty or hyphen-prefixed basenames to prevent
+  // command-line option injection in downstream tools (e.g., debugd / tar).
+  // To avoid leaving malformed files in the spool directory, delete the dump.
+  if (fw_dump.BaseName().value().empty() ||
+      fw_dump.BaseName().value()[0] == '-') {
+    LOG(ERROR) << "Invalid firmware dump basename: "
+               << fw_dump.BaseName().value();
+    if (!fw_dump.Delete()) {
+      LOG(ERROR) << "Failed to delete invalid firmware dump.";
+    }
+    return false;
+  }
   if (!base::PathExists(fw_dump.DumpFile())) {
     LOG(ERROR) << "Can't find firmware dump on disk.";
     VLOG(kLocalOnlyDebugVerbosity)

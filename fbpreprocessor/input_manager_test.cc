@@ -131,5 +131,20 @@ TEST_F(InputManagerTest, OnNewFirmwareDumpRejectsWhenFeatureIsDisabled) {
   EXPECT_FALSE(base::PathExists(fw_dump.DumpFile()));
 }
 
+// Verify that OnNewFirmwareDump rejects files whose basenames start
+// with a hyphen, and deletes them.
+TEST_F(InputManagerTest, OnNewFirmwareDumpRejectsHyphenPrefixed) {
+  SimulateUserLogin();
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("-test.dmp"),
+                       FirmwareDump::Type::kWiFi);
+  base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+  EXPECT_TRUE(base::PathExists(fw_dump.DumpFile()));
+
+  // Basename starts with '-', expect the request to be rejected.
+  EXPECT_FALSE(input_manager()->OnNewFirmwareDump(fw_dump));
+  // Expect that the input file has been deleted.
+  EXPECT_FALSE(base::PathExists(fw_dump.DumpFile()));
+}
+
 }  // namespace
 }  // namespace fbpreprocessor
