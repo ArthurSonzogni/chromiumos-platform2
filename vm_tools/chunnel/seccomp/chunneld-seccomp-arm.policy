@@ -69,3 +69,4 @@ getpid: 1
 gettid: 1
 pipe2: 1
 ioctl: arg1 == FIONBIO
+madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL
