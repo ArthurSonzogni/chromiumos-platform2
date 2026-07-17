@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "debugd/src/binary_log_tool.h"
+
 #include <map>
 #include <memory>
 #include <set>
@@ -17,18 +19,15 @@
 #include <base/memory/scoped_refptr.h>
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
-#include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
 #include <chromeos/dbus/debugd/dbus-constants.h>
+#include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
 #include <dbus/mock_bus.h>
-#include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <fbpreprocessor-client-test/fbpreprocessor/dbus-proxy-mocks.h>
-#include <user_data_auth-client-test/user_data_auth/dbus-proxy-mocks.h>
-
+#include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <gtest/gtest.h>
-
-#include "debugd/src/binary_log_tool.h"
+#include <user_data_auth-client-test/user_data_auth/dbus-proxy-mocks.h>
 
 using testing::_;
 
@@ -594,6 +593,36 @@ TEST_F(BinaryLogToolTest, ValidCombinedInputWriteCompressedLogsToFD) {
   out_data.clear();
   ASSERT_TRUE(base::ReadFileToString(
       output_dir.GetPath().Append(bt_file.file_path.BaseName()), &out_data));
+  EXPECT_EQ(out_data, kDefaultTestData);
+}
+
+// This test verifies that files with option-like names (e.g., starting with
+// '-') are not interpreted as command-line flags by the tar utility when
+// compressing. This is achieved by ensuring that the '--' options sentinel is
+// correctly positioned before any file names in the tar argument list.
+TEST_F(BinaryLogToolTest, OptionLikeFileNameDoesNotInjectOptions) {
+  BinaryLogFile wifi_file(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP,
+                          base::FilePath(InputDirectory().Append("--help")));
+  std::set<BinaryLogFile> input_files = {wifi_file};
+
+  CreateFiles(input_files, kDefaultTestData);
+
+  SimulateDaemonDBusResponses(input_files, kDefaultUserhash);
+
+  std::set<FeedbackBinaryLogType> log_type = {
+      FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP};
+  WriteBinaryLogsToOutputFile(log_type);
+
+  // Extract the WiFiOutputFile() tarball in a new directory, verify that the
+  // --help file is in there and verify that its contents match the input.
+  base::ScopedTempDir output_dir;
+  ASSERT_TRUE(output_dir.CreateUniqueTempDir());
+
+  ASSERT_TRUE(DecompressFile(WiFiOutputFile(), output_dir.GetPath()));
+
+  std::string out_data;
+  ASSERT_TRUE(base::ReadFileToString(
+      output_dir.GetPath().Append(wifi_file.file_path.BaseName()), &out_data));
   EXPECT_EQ(out_data, kDefaultTestData);
 }
 

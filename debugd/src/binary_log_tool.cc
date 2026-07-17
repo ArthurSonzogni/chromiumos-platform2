@@ -16,14 +16,14 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
-#include <base/memory/scoped_refptr.h>
 #include <base/logging.h>
+#include <base/memory/scoped_refptr.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/debugd/dbus-constants.h>
-#include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <fbpreprocessor-client/fbpreprocessor/dbus-proxies.h>
+#include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 #include "debugd/src/sandboxed_process.h"
@@ -98,6 +98,9 @@ bool CompressFiles(const base::FilePath& outfile,
   p.AddArg(outfile.value());
   p.AddArg("-C");
   p.AddArg(files.cbegin()->DirName().value());
+  // Add '--' option sentinel to prevent options injection if any files start
+  // with '-'.
+  p.AddArg("--");
 
   for (auto file : files) {
     p.AddArg(file.BaseName().value());
