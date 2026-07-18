@@ -23,6 +23,12 @@ allow cros_rsyslogd cros_run_crosdns:dir search;
 
 allow cros_rsyslogd cros_log_type:file rw_file_perms;
 
+# glibc >= 2.42 calls tcgetattr()/isatty() to probe output log files with
+# TCGETS(2) ioctls. On ARC boards the Android policy restricts file ioctls
+# for all domains to a global allowlist, so grant these two explicitly. On
+# regular files they harmlessly return ENOTTY.
+allowxperm cros_rsyslogd { cros_log_type cros_var_log }:file ioctl { TCGETS TCGETS2 };
+
 allow cros_rsyslogd cros_passwd_file:file r_file_perms;
 
 allow cros_rsyslogd proc_kmsg:file r_file_perms;
