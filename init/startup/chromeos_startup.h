@@ -174,9 +174,6 @@ class ChromeosStartup {
   // Create directories inside run_ds based on etc_ds directory structure.
   void CreateDaemonStore(base::FilePath run_ds, base::FilePath etc_ds);
 
-  // Mount bpffs for loading and pinning ebpf objects.
-  void MountBpffs();
-
   raw_ptr<libstorage::Platform> platform_;
   std::unique_ptr<vpd::Vpd> vpd_;
   std::unique_ptr<Flags> flags_;
