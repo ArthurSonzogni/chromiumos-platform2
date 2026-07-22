@@ -505,6 +505,75 @@ class CrosConfigHostTest(unittest.TestCase):
         )
         self.assertEqual(set(touch_files), expected)
 
+    def testGetTouchFirmwareFilesCollision(self):
+        """Verify a warning is logged on symlink collisions."""
+        from unittest import mock
+        from cros_config_host import cros_config_host
+
+        mock_config = mock.MagicMock()
+        mock_config.GetTouchFirmwareFiles.return_value = [
+            SymlinkedFile(
+                symlink="/lib/firmware/fake_touch_hardware.bin",
+                dest="/opt/google/touch/firmware/fake_version_1.bin",
+                source="model_a/touch/fake/version_1.bin",
+            ),
+            SymlinkedFile(
+                symlink="/lib/firmware/fake_touch_hardware.bin",
+                dest="/opt/google/touch/firmware/fake_version_2.bin",
+                source="model_b/touch/fake/version_2.bin",
+            ),
+        ]
+
+        with self.assertLogs(level="WARNING") as cm:
+            with capture_sys_output():
+                cros_config_host.GetTouchFirmwareFiles(mock_config)
+
+        self.assertTrue(
+            any("Symlink collision" in output for output in cm.output)
+        )
+
+    def testGetTouchFirmwareFilesNoCollision(self):
+        """Verify no warning is logged when no collisions exist."""
+        from cros_config_host import cros_config_host
+
+        config = CrosConfig(self.filepath)
+        with self.assertNoLogs(level="WARNING"):
+            with capture_sys_output() as (stdout, _):
+                cros_config_host.GetTouchFirmwareFiles(config)
+        self.assertEqual(
+            len(stdout.getvalue().splitlines()),
+            3 * len(config.GetTouchFirmwareFiles()),
+        )
+
+    def testGetTouchFirmwareFilesSameDestNoCollision(self):
+        """Verify no warning is logged when dest is the same.
+
+        This happens when models claim the same symlink and dest but
+        different sources.
+        """
+        from unittest import mock
+        from cros_config_host import cros_config_host
+
+        mock_config = mock.MagicMock()
+        mock_config.GetTouchFirmwareFiles.return_value = [
+            SymlinkedFile(
+                symlink="/lib/firmware/fake_touch_hardware.bin",
+                dest="/opt/google/touch/firmware/fake_version_1.bin",
+                source="model_a/touch/fake/version_1.bin",
+            ),
+            SymlinkedFile(
+                symlink="/lib/firmware/fake_touch_hardware.bin",
+                dest="/opt/google/touch/firmware/fake_version_1.bin",
+                source="model_b/touch/fake/version_1.bin",
+            ),
+        ]
+
+        with self.assertNoLogs(level="WARNING"):
+            with capture_sys_output() as (stdout, _):
+                cros_config_host.GetTouchFirmwareFiles(mock_config)
+
+        self.assertEqual(len(stdout.getvalue().splitlines()), 6)
+
     def testGetAudioFiles(self):
         config = CrosConfig(self.filepath)
         audio_files = config.GetAudioFiles()

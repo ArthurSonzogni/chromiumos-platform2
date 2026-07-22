@@ -14,6 +14,7 @@ from __future__ import print_function
 
 import argparse
 import json
+import logging
 import os
 import re
 import sys
@@ -83,7 +84,29 @@ def GetTouchFirmwareFiles(config):
     Args:
         config: A CrosConfig instance
     """
-    for files in config.GetTouchFirmwareFiles():
+    touch_files = config.GetTouchFirmwareFiles()
+    symlink_targets = {}
+
+    for files in touch_files:
+        symlink_targets.setdefault(files.symlink, {}).setdefault(
+            files.dest, []
+        ).append(files.source)
+
+    for symlink, dest_map in symlink_targets.items():
+        if len(dest_map) > 1:
+            error_lines = [f"Symlink collision for '{symlink}':"]
+            for i, (dest, sources) in enumerate(dest_map.items(), 1):
+                sources_str = ", ".join(f"'{s}'" for s in sources)
+                error_lines.append(
+                    f"  Target {i}: '{dest}' (requested by {sources_str})"
+                )
+            error_lines.append(
+                "Please override 'symlink_name' for one of the models "
+                "in components_config.star."
+            )
+            logging.warning("\n".join(error_lines))
+
+    for files in touch_files:
         print(files.source)
         print(files.dest)
         print(files.symlink)
