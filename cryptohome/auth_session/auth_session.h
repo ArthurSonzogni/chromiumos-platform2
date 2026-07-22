@@ -601,8 +601,6 @@ class AuthSession final {
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
       const AuthInput& auth_input,
-      std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer,
       StatusCallback on_done,
       CryptohomeStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
@@ -670,8 +668,6 @@ class AuthSession final {
       const KeyData& key_data,
       const AuthInput& auth_input,
       const AuthFactorStorageType auth_factor_storage_type,
-      std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer,
       StatusCallback on_done);
 
   // Adds a credential verifier for the ephemeral user session.
@@ -688,8 +684,6 @@ class AuthSession final {
   void LoadUSSMainKeyAndFsKeyset(
       const AuthFactor& auth_factor,
       const AuthInput& auth_input,
-      std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer,
       const SerializedUserAuthFactorTypePolicy& user_policy,
       StatusCallback on_done,
       CryptohomeStatus callback_error,
@@ -702,8 +696,6 @@ class AuthSession final {
   void RecreateUssAuthFactor(AuthFactorType auth_factor_type,
                              const std::string& auth_factor_label,
                              AuthInput auth_input,
-                             std::unique_ptr<AuthSessionPerformanceTimer>
-                                 auth_session_performance_timer,
                              CryptohomeStatus original_status,
                              StatusCallback on_done);
 
@@ -733,8 +725,6 @@ class AuthSession final {
   void AuthenticateViaUserSecretStash(
       const std::string& auth_factor_label,
       const AuthInput auth_input,
-      std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer,
       const AuthFactor& auth_factor,
       const SerializedUserAuthFactorTypePolicy& user_policy,
       StatusCallback on_done);
@@ -745,8 +735,6 @@ class AuthSession final {
       const std::string& key_label,
       const AuthInput& auth_input,
       const AuthFactorMetadata& metadata,
-      std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer,
       const SerializedUserAuthFactorTypePolicy& user_policy,
       StatusCallback on_done);
 
@@ -756,8 +744,6 @@ class AuthSession final {
   void AuthenticateViaSelectedAuthFactor(
       const SerializedUserAuthFactorTypePolicy& user_policy,
       StatusCallback on_done,
-      std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer,
       CryptohomeStatus callback_error,
       std::optional<AuthInput> auth_input,
       std::optional<AuthFactor> auth_factor);
@@ -773,8 +759,6 @@ class AuthSession final {
       const AuthInput& auth_input,
       AuthBlockType auth_block_type,
       const AuthFactorMetadata& metadata,
-      std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer,
       const SerializedUserAuthFactorTypePolicy& user_policy,
       StatusCallback on_done,
       CryptohomeStatus error,
@@ -817,8 +801,6 @@ class AuthSession final {
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
       const AuthInput& auth_input,
-      std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer,
       StatusCallback on_done,
       CryptohomeStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
@@ -830,8 +812,6 @@ class AuthSession final {
                                   AuthFactor auth_factor,
                                   std::unique_ptr<KeyBlobs> key_blobs,
                                   const AuthInput& auth_input,
-                                  std::unique_ptr<AuthSessionPerformanceTimer>
-                                      auth_session_performance_timer,
                                   StatusCallback on_done,
                                   CryptohomeStatus status);
 

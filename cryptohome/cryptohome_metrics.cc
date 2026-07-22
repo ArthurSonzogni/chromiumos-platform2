@@ -120,22 +120,6 @@ constexpr TimerHistogramParams kTimerHistogramParams[] = {
     // The time to generate the ECC auth value in TpmEccAuthBlock.
     {kGenerateEccAuthValueTimer, "Cryptohome.TimeToGenerateEccAuthValue", 0,
      5000, 50},
-    // The time for AuthSession to add an auth factor with VaultKeyset.
-    {kAuthSessionAddAuthFactorVKTimer,
-     "Cryptohome.TimeToAuthSessionAddAuthFactorVK", 0, 6000, 60},
-    // The time for AuthSession to add an auth factor with USS.
-    {kAuthSessionAddAuthFactorUSSTimer,
-     "Cryptohome.TimeToAuthSessionAddAuthFactorUSS", 0, 6000, 60},
-    // The time for AuthSession to authenticate an auth factor with VaultKeyset.
-    {kAuthSessionAuthenticateAuthFactorVKTimer,
-     "Cryptohome.TimeToAuthSessionAuthenticateAuthFactorVK", 0, 6000, 60},
-    // The time for AuthSession to authenticate an auth factor with USS.
-    {kAuthSessionAuthenticateAuthFactorUSSTimer,
-     "Cryptohome.TimeToAuthSessionAuthenticateAuthFactorUSS", 0, 6000, 60},
-    {kAuthSessionUpdateAuthFactorVKTimer,
-     "Cryptohome.TimeToAuthSessionUpdateAuthFactorVK", 0, 6000, 60},
-    {kAuthSessionUpdateAuthFactorUSSTimer,
-     "Cryptohome.TimeToAuthSessionUpdateAuthFactorUSS", 0, 6000, 60},
     {kAuthSessionRemoveAuthFactorUSSTimer,
      "Cryptohome.TimeToAuthSessionRemoveAuthFactorUSS", 0, 6000, 60},
     // Time for User Data Auth class to create a persistent user.

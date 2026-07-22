@@ -792,7 +792,6 @@ void AuthSession::AuthenticateViaVaultKeysetAndMigrateToUss(
     const std::string& key_label,
     const AuthInput& auth_input,
     const AuthFactorMetadata& metadata,
-    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     const SerializedUserAuthFactorTypePolicy& auth_factor_type_user_policy,
     StatusCallback on_done) {
   // Identify the key via `key_label` instead of `key_data_.label()`, as the
@@ -831,15 +830,11 @@ void AuthSession::AuthenticateViaVaultKeysetAndMigrateToUss(
     return;
   }
 
-  // Parameterize the AuthSession performance timer by AuthBlockType
-  auth_session_performance_timer->auth_block_type = *auth_block_type;
-
   // Derive KeyBlobs from the existing VaultKeyset, using GetValidKeyset
   // as a callback that loads |vault_keyset_| and resaves if needed.
   AuthBlock::DeriveCallback derive_callback = base::BindOnce(
       &AuthSession::LoadVaultKeysetAndFsKeys, weak_factory_.GetWeakPtr(),
       request_auth_factor_type, auth_input, *auth_block_type, metadata,
-      std::move(auth_session_performance_timer),
       std::move(auth_factor_type_user_policy), std::move(on_done));
 
   auth_block_utility_->DeriveKeyBlobsWithAuthBlock(*auth_block_type, auth_input,
@@ -852,7 +847,6 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     const AuthInput& auth_input,
     AuthBlockType auth_block_type,
     const AuthFactorMetadata& metadata,
-    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     const SerializedUserAuthFactorTypePolicy& auth_factor_type_user_policy,
     StatusCallback on_done,
     CryptohomeStatus status,
@@ -947,8 +941,6 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   // Set the credential verifier for this credential.
   AddCredentialVerifier(request_auth_factor_type, vault_keyset_->GetLabel(),
                         auth_input, metadata);
-
-  ReportTimerDuration(auth_session_performance_timer.get());
 
   if (auth_for_decrypt_) {
     UssMigrator migrator(obfuscated_username_);
@@ -1520,17 +1512,12 @@ void AuthSession::AuthenticateAuthFactor(
       }
 
       // Record current time for timing for how long AuthenticateAuthFactor will
-      // take.
-      auto auth_session_performance_timer =
-          std::make_unique<AuthSessionPerformanceTimer>(
-              kAuthSessionAuthenticateAuthFactorUSSTimer);
       auth_block_utility_->SelectAuthFactorWithAuthBlock(
           auth_block_type.value(), auth_input.value(), std::move(auth_factors),
           base::BindOnce(&AuthSession::AuthenticateViaSelectedAuthFactor,
                          weak_factory_.GetWeakPtr(),
                          std::move(auth_factor_type_user_policy),
-                         std::move(on_done),
-                         std::move(auth_session_performance_timer)));
+                         std::move(on_done)));
       return;
     }
   }
@@ -1848,16 +1835,6 @@ void AuthSession::AuthForDecrypt::UpdateAuthFactor(
     return;
   }
 
-  // Report timer for how long UpdateAuthFactor operation takes.
-  auto auth_session_performance_timer =
-      std::make_unique<AuthSessionPerformanceTimer>(
-          stored_auth_factor->storage_type() ==
-                  AuthFactorStorageType::kUserSecretStash
-              ? kAuthSessionUpdateAuthFactorUSSTimer
-              : kAuthSessionUpdateAuthFactorVKTimer,
-          auth_block_type.value());
-  auth_session_performance_timer->auth_block_type = auth_block_type.value();
-
   KeyData key_data;
   // AuthFactorMetadata is needed for only smartcards. Since
   // UpdateAuthFactor doesn't operate on smartcards pass an empty metadata,
@@ -1876,7 +1853,7 @@ void AuthSession::AuthForDecrypt::UpdateAuthFactor(
   auto create_callback = session_->GetUpdateAuthFactorCallback(
       auth_factor_type, auth_factor_label, auth_factor_metadata, key_data,
       auth_input_status.value(), stored_auth_factor->storage_type(),
-      std::move(auth_session_performance_timer), std::move(on_done));
+      std::move(on_done));
 
   session_->CreateAuthBlockStateAndKeyBlobs(
       auth_factor_type, auth_block_type.value(), auth_input_status.value(),
@@ -1890,14 +1867,12 @@ AuthBlock::CreateCallback AuthSession::GetUpdateAuthFactorCallback(
     const KeyData& key_data,
     const AuthInput& auth_input,
     const AuthFactorStorageType auth_factor_storage_type,
-    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done) {
   switch (auth_factor_storage_type) {
     case AuthFactorStorageType::kUserSecretStash:
       return base::BindOnce(&AuthSession::UpdateAuthFactorViaUserSecretStash,
                             weak_factory_.GetWeakPtr(), auth_factor_type,
                             auth_factor_label, auth_factor_metadata, auth_input,
-                            std::move(auth_session_performance_timer),
                             std::move(on_done));
 
     case AuthFactorStorageType::kVaultKeyset:
@@ -1913,7 +1888,6 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
     const std::string& auth_factor_label,
     const AuthFactorMetadata& auth_factor_metadata,
     const AuthInput& auth_input,
-    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
     CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
@@ -1948,10 +1922,9 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
   // Update/persist the factor.
   auth_factor_manager_->UpdateAuthFactor(
       obfuscated_username_, auth_factor_label, auth_factor, auth_block_utility_,
-      base::BindOnce(
-          &AuthSession::ResaveUssWithFactorUpdated, weak_factory_.GetWeakPtr(),
-          auth_factor_type, auth_factor, std::move(key_blobs), auth_input,
-          std::move(auth_session_performance_timer), std::move(on_done)));
+      base::BindOnce(&AuthSession::ResaveUssWithFactorUpdated,
+                     weak_factory_.GetWeakPtr(), auth_factor_type, auth_factor,
+                     std::move(key_blobs), auth_input, std::move(on_done)));
 }
 
 void AuthSession::ResaveUssWithFactorUpdated(
@@ -1959,7 +1932,6 @@ void AuthSession::ResaveUssWithFactorUpdated(
     AuthFactor auth_factor,
     std::unique_ptr<KeyBlobs> key_blobs,
     const AuthInput& auth_input,
-    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
     CryptohomeStatus status) {
   if (!status.ok()) {
@@ -2016,7 +1988,6 @@ void AuthSession::ResaveUssWithFactorUpdated(
             << " in USS.";
   GetAuthFactorMap().Add(std::move(auth_factor),
                          AuthFactorStorageType::kUserSecretStash);
-  ReportTimerDuration(auth_session_performance_timer.get());
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
@@ -3548,14 +3519,13 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
     const std::string& auth_factor_label,
     const AuthFactorMetadata& auth_factor_metadata,
     const AuthInput& auth_input,
-    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
     CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_block_state) {
   CryptohomeStatus status = PersistAuthFactorToUserSecretStashImpl(
       auth_factor_type, auth_factor_label, auth_factor_metadata, auth_input,
-      std::move(auth_session_performance_timer), std::move(callback_error),
+      /*auth_session_performance_timer=*/nullptr, std::move(callback_error),
       std::move(key_blobs), std::move(auth_block_state));
 
   std::move(on_done).Run(std::move(status));
@@ -3702,7 +3672,9 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
                       AuthFactorStorageType::kUserSecretStash);
 
   // Report timer for how long AuthSession operation takes.
-  ReportTimerDuration(auth_session_performance_timer.get());
+  if (auth_session_performance_timer) {
+    ReportTimerDuration(auth_session_performance_timer.get());
+  }
   return OkStatus<CryptohomeError>();
 }
 
@@ -3848,11 +3820,6 @@ void AuthSession::AuthForDecrypt::AddAuthFactor(
     return;
   }
 
-  // Report timer for how long AddAuthFactor operation takes.
-  auto auth_session_performance_timer =
-      std::make_unique<AuthSessionPerformanceTimer>(
-          kAuthSessionAddAuthFactorUSSTimer);
-
   // Determine the auth block type to use.
   const AuthFactorDriver& factor_driver =
       session_->auth_factor_driver_manager_->GetDriver(auth_factor_type);
@@ -3867,9 +3834,6 @@ void AuthSession::AuthForDecrypt::AddAuthFactor(
             .Wrap(std::move(auth_block_type).status()));
     return;
   }
-
-  // Parameterize timer by AuthBlockType.
-  auth_session_performance_timer->auth_block_type = auth_block_type.value();
 
   KeyData key_data;
   user_data_auth::CryptohomeErrorCode error =
@@ -3887,11 +3851,10 @@ void AuthSession::AuthForDecrypt::AddAuthFactor(
   session_->CreateAuthBlockStateAndKeyBlobs(
       auth_factor_type, auth_block_type.value(), auth_input_status.value(),
       auth_factor_metadata,
-      base::BindOnce(
-          &AuthSession::PersistAuthFactorToUserSecretStash,
-          session_->weak_factory_.GetWeakPtr(), auth_factor_type,
-          auth_factor_label, auth_factor_metadata, auth_input_status.value(),
-          std::move(auth_session_performance_timer), std::move(on_done)));
+      base::BindOnce(&AuthSession::PersistAuthFactorToUserSecretStash,
+                     session_->weak_factory_.GetWeakPtr(), auth_factor_type,
+                     auth_factor_label, auth_factor_metadata,
+                     auth_input_status.value(), std::move(on_done)));
 }
 
 void AuthSession::AddAuthFactorForEphemeral(
@@ -3936,7 +3899,6 @@ void AuthSession::AddAuthFactorForEphemeral(
 void AuthSession::AuthenticateViaUserSecretStash(
     const std::string& auth_factor_label,
     const AuthInput auth_input,
-    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     const AuthFactor& auth_factor,
     const SerializedUserAuthFactorTypePolicy& auth_factor_type_user_policy,
     StatusCallback on_done) {
@@ -3955,14 +3917,11 @@ void AuthSession::AuthenticateViaUserSecretStash(
     return;
   }
 
-  // Parameterize timer by AuthBlockType.
-  auth_session_performance_timer->auth_block_type = *auth_block_type;
-
   // Derive the keyset and then use USS to complete the authentication.
-  auto derive_callback = base::BindOnce(
-      &AuthSession::LoadUSSMainKeyAndFsKeyset, weak_factory_.GetWeakPtr(),
-      auth_factor, auth_input, std::move(auth_session_performance_timer),
-      auth_factor_type_user_policy, std::move(on_done));
+  auto derive_callback =
+      base::BindOnce(&AuthSession::LoadUSSMainKeyAndFsKeyset,
+                     weak_factory_.GetWeakPtr(), auth_factor, auth_input,
+                     auth_factor_type_user_policy, std::move(on_done));
   auth_block_utility_->DeriveKeyBlobsWithAuthBlock(
       *auth_block_type, auth_input, auth_factor.metadata(),
       auth_factor.auth_block_state(), std::move(derive_callback));
@@ -3979,17 +3938,9 @@ void AuthSession::AuthenticateViaSingleFactor(
   // If this auth factor comes from USS, run the USS flow.
   if (stored_auth_factor.storage_type() ==
       AuthFactorStorageType::kUserSecretStash) {
-    // Record current time for timing for how long AuthenticateAuthFactor will
-    // take.
-    auto auth_session_performance_timer =
-        std::make_unique<AuthSessionPerformanceTimer>(
-            kAuthSessionAuthenticateAuthFactorUSSTimer);
-
-    AuthenticateViaUserSecretStash(auth_factor_label, auth_input,
-                                   std::move(auth_session_performance_timer),
-                                   stored_auth_factor.auth_factor(),
-                                   auth_factor_type_user_policy,
-                                   std::move(on_done));
+    AuthenticateViaUserSecretStash(
+        auth_factor_label, auth_input, stored_auth_factor.auth_factor(),
+        auth_factor_type_user_policy, std::move(on_done));
     return;
   }
 
@@ -4007,25 +3958,18 @@ void AuthSession::AuthenticateViaSingleFactor(
             .Wrap(std::move(populate_status)));
     return;
   }
-  // Record current time for timing for how long AuthenticateAuthFactor will
-  // take.
-  auto auth_session_performance_timer =
-      std::make_unique<AuthSessionPerformanceTimer>(
-          kAuthSessionAuthenticateAuthFactorVKTimer);
 
   // Note that we pass in the auth factor type derived from the client request,
   // instead of ones from the AuthFactor, because legacy VKs could not contain
   // the auth factor type.
   AuthenticateViaVaultKeysetAndMigrateToUss(
       request_auth_factor_type, auth_factor_label, auth_input, metadata,
-      std::move(auth_session_performance_timer), auth_factor_type_user_policy,
-      std::move(on_done));
+      auth_factor_type_user_policy, std::move(on_done));
 }
 
 void AuthSession::AuthenticateViaSelectedAuthFactor(
     const SerializedUserAuthFactorTypePolicy& auth_factor_type_user_policy,
     StatusCallback on_done,
-    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     CryptohomeStatus callback_error,
     std::optional<AuthInput> auth_input,
     std::optional<AuthFactor> auth_factor) {
@@ -4048,15 +3992,13 @@ void AuthSession::AuthenticateViaSelectedAuthFactor(
   }
 
   AuthenticateViaUserSecretStash(
-      auth_factor->label(), auth_input.value(),
-      std::move(auth_session_performance_timer), auth_factor.value(),
+      auth_factor->label(), auth_input.value(), auth_factor.value(),
       auth_factor_type_user_policy, std::move(on_done));
 }
 
 void AuthSession::LoadUSSMainKeyAndFsKeyset(
     const AuthFactor& auth_factor,
     const AuthInput& auth_input,
-    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     const SerializedUserAuthFactorTypePolicy& auth_factor_type_user_policy,
     StatusCallback on_done,
     CryptohomeStatus callback_error,
@@ -4224,21 +4166,17 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   // report anyway.
   if (suggested_action == AuthBlock::SuggestedAction::kRecreate) {
     RecreateUssAuthFactor(auth_factor_type, auth_factor_label, auth_input,
-                          std::move(auth_session_performance_timer),
                           std::move(prepare_status), std::move(on_done));
   } else {
-    ReportTimerDuration(auth_session_performance_timer.get());
     std::move(on_done).Run(std::move(prepare_status));
   }
 }
 
-void AuthSession::RecreateUssAuthFactor(
-    AuthFactorType auth_factor_type,
-    const std::string& auth_factor_label,
-    AuthInput auth_input,
-    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
-    CryptohomeStatus original_status,
-    StatusCallback on_done) {
+void AuthSession::RecreateUssAuthFactor(AuthFactorType auth_factor_type,
+                                        const std::string& auth_factor_label,
+                                        AuthInput auth_input,
+                                        CryptohomeStatus original_status,
+                                        StatusCallback on_done) {
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(auth_factor_type);
   CryptoStatusOr<AuthBlockType> auth_block_type =
@@ -4306,8 +4244,7 @@ void AuthSession::RecreateUssAuthFactor(
   auto create_callback = base::BindOnce(
       &AuthSession::UpdateAuthFactorViaUserSecretStash,
       weak_factory_.GetWeakPtr(), auth_factor.type(), auth_factor.label(),
-      auth_factor.metadata(), *auth_input_for_add,
-      std::move(auth_session_performance_timer), std::move(status_callback));
+      auth_factor.metadata(), *auth_input_for_add, std::move(status_callback));
   CreateAuthBlockStateAndKeyBlobs(auth_factor.type(), *auth_block_type,
                                   *auth_input_for_add, auth_factor.metadata(),
                                   std::move(create_callback));
