@@ -23,6 +23,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/hash/hash.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/strings/string_number_conversions.h>
@@ -671,13 +672,16 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
   Camera3CaptureDescriptor request_descriptor(req);
 
   for (const auto& output_buffer : request_descriptor.GetOutputBuffers()) {
+    const auto* stream_ptr = output_buffer.stream();
+    uint64_t stream_id = base::FastHash(base::span(
+        reinterpret_cast<const uint8_t*>(&stream_ptr), sizeof(stream_ptr)));
     TRACE_HAL_ADAPTER_BEGIN(
         ToString(HalAdapterTraceEvent::kCapture),
         GetTraceTrack(HalAdapterTraceEvent::kCapture,
                       request_descriptor.frame_number(),
-                      reinterpret_cast<uintptr_t>(output_buffer.stream())),
+                      static_cast<int>(stream_id)),
         "frame_number", request_descriptor.frame_number(), "stream",
-        reinterpret_cast<uintptr_t>(output_buffer.stream()), "width",
+        stream_id, "width",
         output_buffer.stream()->width, "height", output_buffer.stream()->height,
         "format", output_buffer.stream()->format);
   }
@@ -970,12 +974,16 @@ void CameraDeviceAdapter::ProcessCaptureResult(
     ctx.AddDebugAnnotation("partial_result", result->partial_result);
     ctx.AddDebugAnnotation("num_output_buffers", result->num_output_buffers);
     if (result->input_buffer != nullptr) {
-      perfetto::Flow::ProcessScoped(
-          reinterpret_cast<uintptr_t>(*result->input_buffer->buffer))(ctx);
+      uintptr_t ptr = reinterpret_cast<uintptr_t>(*result->input_buffer->buffer);
+      perfetto::Flow::ProcessScoped(base::FastHash(
+          base::span(reinterpret_cast<const uint8_t*>(&ptr), sizeof(ptr))))(
+          ctx);
     }
     for (int i = 0; i < result->num_output_buffers; ++i) {
-      perfetto::Flow::ProcessScoped(
-          reinterpret_cast<uintptr_t>(*result->output_buffers[i].buffer))(ctx);
+      uintptr_t ptr = reinterpret_cast<uintptr_t>(*result->output_buffers[i].buffer);
+      perfetto::Flow::ProcessScoped(base::FastHash(
+          base::span(reinterpret_cast<const uint8_t*>(&ptr), sizeof(ptr))))(
+          ctx);
     }
   });
 
@@ -1039,9 +1047,12 @@ void CameraDeviceAdapter::ReturnResultToClient(
   // ref:
   // https://android.googlesource.com/platform/hardware/libhardware/+/8a6fed0d280014d84fe0f6a802f1cf29600e5bae/include/hardware/camera3.h#284
   for (const auto& output_buffer : result_descriptor.GetOutputBuffers()) {
+    const auto* stream_ptr = output_buffer.stream();
+    uint64_t stream_id = base::FastHash(base::span(
+        reinterpret_cast<const uint8_t*>(&stream_ptr), sizeof(stream_ptr)));
     TRACE_HAL_ADAPTER_END(GetTraceTrack(
         HalAdapterTraceEvent::kCapture, result_descriptor.frame_number(),
-        reinterpret_cast<uintptr_t>(output_buffer.stream())));
+        static_cast<int>(stream_id)));
   }
 
   mojom::Camera3CaptureResultPtr result_ptr =
@@ -1074,12 +1085,17 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
         ctx.AddDebugAnnotation("shutter_timestamp",
                                msg->message.shutter.timestamp);
         break;
-      case CAMERA3_MSG_ERROR:
-        ctx.AddDebugAnnotation(
-            "error_stream",
-            reinterpret_cast<uintptr_t>(msg->message.error.error_stream));
+      case CAMERA3_MSG_ERROR: {
+        const auto* err_stream = msg->message.error.error_stream;
+        uint64_t err_stream_id =
+            err_stream ? base::FastHash(base::span(
+                             reinterpret_cast<const uint8_t*>(&err_stream),
+                             sizeof(err_stream)))
+                       : 0;
+        ctx.AddDebugAnnotation("error_stream", err_stream_id);
         ctx.AddDebugAnnotation("error_code", msg->message.error.error_code);
         break;
+      }
     }
   });
 

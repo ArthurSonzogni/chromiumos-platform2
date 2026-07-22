@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <base/containers/span.h>
+#include <base/hash/hash.h>
 #include <base/synchronization/lock.h>
 #include <camera/camera_metadata.h>
 #include <cutils/native_handle.h>
@@ -219,7 +220,11 @@ class CROS_CAMERA_EXPORT Camera3StreamBuffer {
   void EndTracing();
 
   // Used for creating a Perfetto flow to visualize the buffer lifecycle.
-  uint64_t flow_id() const { return reinterpret_cast<uintptr_t>(*buffer()); }
+  uint64_t flow_id() const {
+    uintptr_t ptr = reinterpret_cast<uintptr_t>(buffer() ? *buffer() : nullptr);
+    return base::FastHash(
+        base::span(reinterpret_cast<const uint8_t*>(&ptr), sizeof(ptr)));
+  }
 
   bool is_valid() const {
     return raw_buffer_.stream != nullptr && raw_buffer_.buffer != nullptr &&

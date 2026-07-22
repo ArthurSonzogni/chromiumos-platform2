@@ -11,6 +11,7 @@
 #include <optional>
 #include <utility>
 
+#include <base/hash/hash.h>
 #include <base/json/json_writer.h>
 #include <base/notreached.h>
 #include <base/values.h>
@@ -203,12 +204,13 @@ void Camera3StreamBuffer::StartTracing(int frame_number) {
   }
   TRACE_COMMON_EVENT("AttachBuffer", perfetto::Flow::ProcessScoped(flow_id()));
   TRACE_COMMON_BEGIN(
-      GetBufferEventStr(type_),
-      perfetto::Track(reinterpret_cast<uintptr_t>(*raw_buffer_.buffer)),
-      "frame_number", frame_number, "direction", GetBufferDirectionStr(dir_),
-      "stream", reinterpret_cast<uintptr_t>(raw_buffer_.stream), "width",
-      raw_buffer_.stream->width, "height", raw_buffer_.stream->height, "format",
-      raw_buffer_.stream->format);
+      GetBufferEventStr(type_), perfetto::Track(flow_id()), "frame_number",
+      frame_number, "direction", GetBufferDirectionStr(dir_), "stream",
+      base::FastHash(base::span(
+          reinterpret_cast<const uint8_t*>(&raw_buffer_.stream),
+          sizeof(raw_buffer_.stream))),
+      "width", raw_buffer_.stream->width, "height", raw_buffer_.stream->height,
+      "format", raw_buffer_.stream->format);
   trace_started_ = true;
 }
 
@@ -218,8 +220,7 @@ void Camera3StreamBuffer::EndTracing() {
   }
   TRACE_COMMON_EVENT("DetachBuffer",
                      perfetto::TerminatingFlow::ProcessScoped(flow_id()));
-  TRACE_COMMON_END(
-      perfetto::Track(reinterpret_cast<uintptr_t>(*raw_buffer_.buffer)));
+  TRACE_COMMON_END(perfetto::Track(flow_id()));
   trace_started_ = false;
 }
 

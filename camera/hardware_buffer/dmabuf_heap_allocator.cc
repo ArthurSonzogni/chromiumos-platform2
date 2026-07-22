@@ -15,6 +15,9 @@
 #include <string>
 #include <utility>
 
+#include <base/containers/span.h>
+#include <base/hash/hash.h>
+
 #include "cros-camera/common.h"
 #include "hardware_buffer/allocator.h"
 #include "hardware_buffer/minigbm_allocator.h"
@@ -158,7 +161,9 @@ void* DmaBufHeapAllocator::BufferObject::GetPlaneAddr(int plane) const {
 }
 
 uint64_t DmaBufHeapAllocator::BufferObject::GetId() const {
-  return reinterpret_cast<uint64_t>(this);
+  const auto* self = this;
+  return base::FastHash(
+      base::span(reinterpret_cast<const uint8_t*>(&self), sizeof(self)));
 }
 
 bool DmaBufHeapAllocator::BufferObject::IsMapped(int plane) const {

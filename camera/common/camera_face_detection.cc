@@ -11,8 +11,10 @@
 #include <optional>
 #include <string>
 
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/hash/hash.h>
 #include <base/memory/ptr_util.h>
 #include <base/posix/safe_strerror.h>
 
@@ -140,8 +142,10 @@ FaceDetectResult FaceDetector::Detect(
 void FaceDetector::DetectAsync(buffer_handle_t buffer,
                                std::optional<Size> active_sensor_array_size,
                                ResultCallback result_callback) {
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(buffer);
   TRACE_COMMON(
-      perfetto::Flow::ProcessScoped(reinterpret_cast<uintptr_t>(buffer)));
+      perfetto::Flow::ProcessScoped(base::FastHash(
+          base::span(reinterpret_cast<const uint8_t*>(&ptr), sizeof(ptr)))));
   ScopedMapping mapping(buffer);
   if (!mapping.is_valid()) {
     LOGF(ERROR) << "Failed to map buffer";

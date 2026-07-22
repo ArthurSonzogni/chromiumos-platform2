@@ -19,8 +19,10 @@
 
 #include <base/check.h>
 #include <base/containers/flat_set.h>
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/hash/hash.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
@@ -777,9 +779,11 @@ void EffectsStreamManipulatorImpl::OnProcessTask(ScopedProcessTask task) {
     CHECK_GT(entry.count, 0);
     return entry.data.i64[0] / 1000;
   }();
-  TRACE_EFFECTS(perfetto::Flow::ProcessScoped(
-                    reinterpret_cast<uintptr_t>(task->input_buffer())),
-                "frame_number", task->frame_number(), "timestamp", timestamp);
+  uintptr_t input_buf_ptr = reinterpret_cast<uintptr_t>(task->input_buffer());
+  TRACE_EFFECTS(
+      perfetto::Flow::ProcessScoped(base::FastHash(base::span(
+          reinterpret_cast<const uint8_t*>(&input_buf_ptr), sizeof(input_buf_ptr)))),
+      "frame_number", task->frame_number(), "timestamp", timestamp);
 
   // Mediapipe requires timestamps to be strictly increasing for a given
   // pipeline. If we receive non-monotonic timestamps or render the pipeline

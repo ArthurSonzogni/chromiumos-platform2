@@ -11,6 +11,9 @@
 #include <memory>
 #include <utility>
 
+#include <base/containers/span.h>
+#include <base/hash/hash.h>
+
 #include "cros-camera/common.h"
 #include "hardware_buffer/allocator.h"
 
@@ -134,7 +137,8 @@ void* MinigbmAllocator::BufferObject::GetPlaneAddr(int plane) const {
 
 uint64_t MinigbmAllocator::BufferObject::GetId() const {
   CHECK_NE(bo_, nullptr);
-  return reinterpret_cast<uint64_t>(bo_);
+  return base::FastHash(
+      base::span(reinterpret_cast<const uint8_t*>(&bo_), sizeof(bo_)));
 }
 
 bool MinigbmAllocator::BufferObject::MapInternal(SyncType sync_type,

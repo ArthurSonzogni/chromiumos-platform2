@@ -11,6 +11,8 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/span.h>
+#include <base/hash/hash.h>
 #include <base/posix/safe_strerror.h>
 #include <base/threading/platform_thread.h>
 #include <sync/sync.h>
@@ -1103,10 +1105,13 @@ int CameraClient::RequestHandler::StreamOnImpl(
     if (ret) {
       return ret;
     }
-    VLOGFID(1, device_id_) << "Buffer " << i << ", fd: " << frame->GetFd()
-                           << " address: " << std::hex
-                           << reinterpret_cast<uintptr_t>(frame->GetData())
-                           << std::dec;
+    const void* data_ptr = frame->GetData();
+    VLOGFID(1, device_id_)
+        << "Buffer " << i << ", fd: " << frame->GetFd() << " address_hash: "
+        << std::hex
+        << base::FastHash(base::span(
+               reinterpret_cast<const uint8_t*>(&data_ptr), sizeof(data_ptr)))
+        << std::dec;
     input_buffers_.push_back(std::move(frame));
   }
 
