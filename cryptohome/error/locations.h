@@ -2047,7 +2047,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorFpPrepareAuthGetNonceFailed = 3423,
   /* ./auth_factor/types/fingerprint.cc */
   kLocAuthFactorFpPrepareAuthStartBioAuthFailed = 3424,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthUserNonexistentInGetRecoverableKeyStores = 3425,
   /* =Obsolete= */
   kLocGenKeyStoreNotImplemented = 3426,

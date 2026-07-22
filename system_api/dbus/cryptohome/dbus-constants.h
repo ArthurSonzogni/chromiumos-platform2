@@ -30,7 +30,6 @@ inline constexpr char kGetVaultProperties[] = "GetVaultProperties";
 inline constexpr char kUnmount[] = "Unmount";
 inline constexpr char kRemove[] = "Remove";
 inline constexpr char kGetWebAuthnSecret[] = "GetWebAuthnSecret";
-inline constexpr char kGetRecoverableKeyStores[] = "GetRecoverableKeyStores";
 inline constexpr char kStartMigrateToDircrypto[] = "StartMigrateToDircrypto";
 inline constexpr char kNeedsDircryptoMigration[] = "NeedsDircryptoMigration";
 inline constexpr char kGetSupportedKeyPolicies[] = "GetSupportedKeyPolicies";

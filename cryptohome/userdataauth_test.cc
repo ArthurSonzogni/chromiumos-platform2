@@ -4466,47 +4466,6 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorBadTypeFailure) {
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
-TEST_F(UserDataAuthExTest, GetRecoverableKeyStores) {
-  const Username kUser("foo@example.com");
-  const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-
-  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
-      .WillRepeatedly(Return(true));
-
-  // Add uss auth factors, 1 with recoverable key store and 1 without.
-  auto password_factor = std::make_unique<AuthFactor>(
-      AuthFactorType::kPassword, "password-label",
-      AuthFactorMetadata{.metadata = PasswordMetadata()},
-      AuthBlockState{.state = TpmBoundToPcrAuthBlockState{}});
-  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
-                  kObfuscatedUser, *password_factor),
-              IsOk());
-  std::string key_store_proto;
-  EXPECT_TRUE(RecoverableKeyStore().SerializeToString(&key_store_proto));
-  auto pin_factor = std::make_unique<AuthFactor>(
-      AuthFactorType::kPin, "pin-label",
-      AuthFactorMetadata{.metadata = PinMetadata()},
-      AuthBlockState{
-          .state = PinWeaverAuthBlockState{},
-          .recoverable_key_store_state = RecoverableKeyStoreState{
-              .key_store_proto = brillo::BlobFromString(key_store_proto)}});
-  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
-                  kObfuscatedUser, *pin_factor),
-              IsOk());
-  MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
-
-  TestFuture<user_data_auth::GetRecoverableKeyStoresReply> reply_future;
-  user_data_auth::GetRecoverableKeyStoresRequest request;
-  request.mutable_account_id()->set_account_id(*kUser);
-  userdataauth_->GetRecoverableKeyStores(
-      request,
-      reply_future
-          .GetCallback<const user_data_auth::GetRecoverableKeyStoresReply&>());
-  RunUntilIdle();
-  user_data_auth::GetRecoverableKeyStoresReply reply = reply_future.Take();
-  EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-}
-
 // ================ Tests requiring fully threaded environment ================
 
 // Test fixture that implements fully threaded environment in UserDataAuth.

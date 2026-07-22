@@ -89,17 +89,6 @@ class UserDataAuthAdaptor
           user_data_auth::GetWebAuthnSecretHashReply>> response,
       const user_data_auth::GetWebAuthnSecretHashRequest& in_request);
 
-  void GetRecoverableKeyStores(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::GetRecoverableKeyStoresReply>> response,
-      const user_data_auth::GetRecoverableKeyStoresRequest& in_request)
-      override;
-
-  void DoGetRecoverableKeyStores(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::GetRecoverableKeyStoresReply>> response,
-      const user_data_auth::GetRecoverableKeyStoresRequest& in_request);
-
   void StartMigrateToDircrypto(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::StartMigrateToDircryptoReply>> response,

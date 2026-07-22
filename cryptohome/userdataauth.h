@@ -272,23 +272,11 @@ class UserDataAuth {
 
   // ============= WebAuthn / Passkey Related Public Methods ==============
 
-  // TODO(b/184393647): This api is not currently used because secret
-  // enforcement in the WebAuthn flow haven't been implemented yet. After
-  // implemented, u2fd calls this api to retrieve the WebAuthn secret to use in
-  // the sign command.
   user_data_auth::GetWebAuthnSecretReply GetWebAuthnSecret(
       const user_data_auth::GetWebAuthnSecretRequest& request);
 
   user_data_auth::GetWebAuthnSecretHashReply GetWebAuthnSecretHash(
       const user_data_auth::GetWebAuthnSecretHashRequest& request);
-
-  // Get all the recoverable key stores of the user. These key stores, for
-  // example, allow the user to recover their passkeys on other devices by
-  // providing this device's knowledge factors.
-  void GetRecoverableKeyStores(
-      user_data_auth::GetRecoverableKeyStoresRequest request,
-      base::OnceCallback<
-          void(const user_data_auth::GetRecoverableKeyStoresReply&)> on_done);
 
   // =============== Miscellaneous Public APIs ===============
 

@@ -1662,22 +1662,6 @@ message MountCompleted {
   CryptohomeErrorInfo error_info = 3;
 }
 
-// GetRecoverableKeyStores fetches all of the recoverable key stores of the
-// given user.
-
-// The request message of GetRecoverableKeyStores.
-message GetRecoverableKeyStoresRequest {
-  // The account of a user.
-  cryptohome.AccountIdentifier account_id = 1;
-}
-
-// The reply message of GetRecoverableKeyStores.
-message GetRecoverableKeyStoresReply {
-  CryptohomeErrorCode error = 1;
-  CryptohomeErrorInfo error_info = 2;
-  repeated cryptohome.RecoverableKeyStore key_stores = 3;
-}
-
 // GetPinWeaverInfo returns the device PinWeaver information.
 message GetPinWeaverInfoRequest {
   // No parameter is needed to retrieve PinWeaver info.

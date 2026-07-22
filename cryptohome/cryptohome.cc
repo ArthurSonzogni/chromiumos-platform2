@@ -246,7 +246,6 @@ constexpr const char* kActions[] = {"unmount",
                                     "prepare_and_authenticate_auth_factor",
                                     "prepare_recovery_auth_factor",
                                     "get_recovery_ids",
-                                    "get_recoverable_key_stores",
                                     "is_pw_pk_establishment_blocked",
                                     "lock_factor_until_reboot",
                                     "migrate_legacy_fingerprints",
@@ -300,7 +299,6 @@ enum ActionEnum {
   ACTION_PREPARE_AND_AUTHENTICATE_AUTH_FACTOR,
   ACTION_PREPARE_RECOVERY_AUTH_FACTOR,
   ACTION_GET_RECOVERY_IDS,
-  ACTION_GET_RECOVERABLE_KEY_STORES,
   ACTION_IS_PW_PK_ESTABLISHMENT_BLOCKED,
   ACTION_LOCK_FACTOR_UNTIL_REBOOT,
   ACTION_MIGRATE_LEGACY_FINGERPRINTS,
@@ -2625,35 +2623,6 @@ int main(int argc, char** argv) {
     }
 
     printer.PrintReplyProtobuf(reply.recovery_info_reply());
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_GET_RECOVERABLE_KEY_STORES],
-                     action.c_str())) {
-    user_data_auth::GetRecoverableKeyStoresRequest req;
-    user_data_auth::GetRecoverableKeyStoresReply reply;
-
-    cryptohome::Username account_id;
-
-    if (!GetAccountId(printer, cl, account_id)) {
-      return 1;
-    }
-    req.mutable_account_id()->set_account_id(*account_id);
-
-    brillo::ErrorPtr error;
-    if (!userdataauth_proxy.GetRecoverableKeyStores(req, &reply, &error,
-                                                    timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "GetRecoverableKeyStores call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-
-    printer.PrintReplyProtobuf(reply);
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput("Failed to get recoverable key stores.\n");
-      return static_cast<int>(reply.error());
-    }
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_IS_PW_PK_ESTABLISHMENT_BLOCKED],
                      action.c_str())) {

@@ -2304,61 +2304,6 @@ user_data_auth::GetWebAuthnSecretHashReply UserDataAuth::GetWebAuthnSecretHash(
   return reply;
 }
 
-void UserDataAuth::GetRecoverableKeyStores(
-    user_data_auth::GetRecoverableKeyStoresRequest request,
-    OnDoneCallback<user_data_auth::GetRecoverableKeyStoresReply> on_done) {
-  AssertOnMountThread();
-  user_data_auth::GetRecoverableKeyStoresReply reply;
-
-  // Check whether user exists.
-  // Compute the raw and sanitized user name from the request.
-  Username username = GetAccountId(request.account_id());
-  ObfuscatedUsername obfuscated_username = SanitizeUserName(username);
-  UserSession* user_session = sessions_->Find(username);  // May be null!
-  bool is_persistent_user =
-      (user_session && !user_session->IsEphemeral()) ||
-      platform_->DirectoryExists(UserPath(obfuscated_username));
-  bool is_ephemeral_user = user_session && user_session->IsEphemeral();
-  if (!is_persistent_user && !is_ephemeral_user) {
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocUserDataAuthUserNonexistentInGetRecoverableKeyStores),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_ERROR_INVALID_ARGUMENT));
-    return;
-  }
-  // Ephemeral users don't have AuthBlockStates, so they'll never have
-  // recoverable key stores generated.
-  if (!is_persistent_user) {
-    ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
-    return;
-  }
-
-  // Load the AuthFactorMap.
-  AuthFactorMap& auth_factor_map =
-      auth_factor_manager_->GetAuthFactorMap(obfuscated_username);
-
-  // Populate the response from the items in the AuthFactorMap.
-  for (AuthFactorMap::ValueView item : auth_factor_map) {
-    const AuthBlockState& state = item.auth_factor().auth_block_state();
-    if (!state.recoverable_key_store_state.has_value()) {
-      continue;
-    }
-    RecoverableKeyStore key_store;
-    if (!key_store.ParseFromString(brillo::BlobToString(
-            state.recoverable_key_store_state->key_store_proto))) {
-      LOG(WARNING) << "Failed to parse recoverable key store proto from auth "
-                      "block state.";
-      continue;
-    }
-    *reply.add_key_stores() = std::move(key_store);
-  }
-  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
-}
-
 const brillo::SecureBlob& UserDataAuth::GetSystemSalt() {
   AssertOnOriginThread();
   CHECK_NE(system_salt_.size(), 0)
