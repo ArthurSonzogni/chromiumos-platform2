@@ -11,6 +11,7 @@ lseek: 1
 faccessat: 1
 getrandom: arg2 in ~GRND_RANDOM
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL || arg2 == MADV_HUGEPAGE
 mseal: 1
 write: 1
 faccessat2: 1

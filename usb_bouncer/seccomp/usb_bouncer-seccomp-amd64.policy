@@ -62,6 +62,7 @@ gettimeofday: 1
 ioctl: arg1 == TCGETS || arg1 == TCGETS2
 lstat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL
 mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1

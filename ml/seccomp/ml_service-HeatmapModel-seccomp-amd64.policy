@@ -26,6 +26,7 @@ fstat: 1
 newfstatat: 1
 memfd_create: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL
 mseal: 1
 munmap: 1
 openat: 1

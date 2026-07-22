@@ -57,6 +57,7 @@ gettimeofday: 1
 # TCGETS is ok.
 ioctl: arg1 == TCGETS || arg1 == TCGETS2
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL || arg2 == MADV_HUGEPAGE
 mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1

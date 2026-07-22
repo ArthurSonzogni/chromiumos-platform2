@@ -9,6 +9,7 @@
 rseq: 1
 
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL
 mseal: 1
 stat: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

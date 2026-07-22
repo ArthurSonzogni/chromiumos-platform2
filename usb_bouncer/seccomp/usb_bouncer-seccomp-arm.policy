@@ -65,6 +65,7 @@ getpid: 1
 ioctl: arg1 == TCGETS || arg1 == TCGETS2
 lstat64: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL
 mseal: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1

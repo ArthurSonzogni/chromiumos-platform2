@@ -29,6 +29,7 @@ ftruncate64: 1
 fdatasync: 1
 arm_fadvise64_64: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL
 flock: 1
 fstatfs64: 1
 umask: 1
