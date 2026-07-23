@@ -4669,8 +4669,12 @@ def dsm_encode(dsm_config):
         mask <<= 1
         if dsm_config.unii_4 >= 0:
             supported_functions |= mask
+        # Function 8
+        mask <<= 1
+        if dsm_config.indoor_use_only >= 0:
+            supported_functions |= mask
         # Function 9
-        mask <<= 2
+        mask <<= 1
         if dsm_config.disable_wifi_bands >= 0:
             supported_functions |= mask
         # Function 10
@@ -4748,6 +4752,7 @@ def dsm_encode(dsm_config):
         + dsm_energy_detection_threshold_value(dsm_config)
         + dsm_energy_rfi_mitigation(dsm_config)
         + dsm_value(dsm_config.disable_wifi_bands)
+        + dsm_value(dsm_config.indoor_use_only)
     )
 
 
