@@ -310,6 +310,12 @@ std::string StorageTool::NvmeLog(const uint32_t& page_id,
                                  const uint32_t& length,
                                  bool raw_binary) {
   ProcessWithOutput process;
+  // NVME logs have the granularity of a DWORD (4 bytes).
+  const uint32_t kNvmeLogMinLen = 4;
+  // NVMe logs for SMART/Error information are usually < 64 KiB but telemetry
+  // logs can be much larger. Set the maximum to 1 MiB.
+  const uint32_t kNvmeLogMaxLen = 1048576;
+
   // Disabling sandboxing since nvme requires higher privileges.
   process.DisableSandbox();
   if (!process.Init()) {
@@ -326,11 +332,12 @@ std::string StorageTool::NvmeLog(const uint32_t& page_id,
     return "<Page ID invalid>";
   }
 
-  // Length of byte-data must be larger than 3.
-  if (length >= 4) {
+  if (length >= kNvmeLogMinLen && length <= kNvmeLogMaxLen) {
     process.AddArg(base::StringPrintf("--log-len=%u", length));
   } else {
-    return "<Length of byte-data invalid. At least 4 bytes for a request>";
+    return base::StringPrintf(
+        "<Length of byte-data invalid. Must be between %u and %u bytes>",
+        kNvmeLogMinLen, kNvmeLogMaxLen);
   }
 
   // Output in raw format.
