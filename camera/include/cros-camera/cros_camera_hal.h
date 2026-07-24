@@ -12,7 +12,10 @@
 
 #include <vector>
 
+#if !defined(CROS_CAMERA_DISABLE_HAL_CALLBACKS)
 #include <base/functional/callback.h>
+#endif
+
 #include <hardware/camera3.h>
 #include <hardware/camera_common.h>
 
@@ -51,11 +54,33 @@ struct FaceDetectionResult {
 #endif
 };
 
+// =========================================================================
+// HAL Callback Types & Libchrome Dependency
+// =========================================================================
+// The HAL callback types (FaceDetectionResultCallback and
+// PrivacySwitchStateChangeCallback) rely on base::RepeatingCallback from
+// libchrome (<base/functional/callback.h>).
+//
+// Because libchrome headers require C++23, standalone/external modules like
+// libcamera (which do not need these callbacks) define
+// CROS_CAMERA_DISABLE_HAL_CALLBACKS. This allows libcamera to use fallback
+// opaque pointer types to preserve the memory layout of cros_camera_hal_t
+// without pulling in libchrome headers.
+// =========================================================================
+#if !defined(CROS_CAMERA_DISABLE_HAL_CALLBACKS)
 using FaceDetectionResultCallback =
     base::RepeatingCallback<FaceDetectionResult()>;
 
 using PrivacySwitchStateChangeCallback =
     base::RepeatingCallback<void(int camera_id, PrivacySwitchState state)>;
+#else
+// Fallback for libcamera and standalone modules to break the libchrome
+// dependency. This preserves the exact memory layout of cros_camera_hal_t
+// because the size of a function pointer is constant regardless of its arguments.
+struct OpaqueCallback;
+using FaceDetectionResultCallback = OpaqueCallback*;
+using PrivacySwitchStateChangeCallback = OpaqueCallback*;
+#endif
 
 typedef struct cros_camera_hal {
   /**
