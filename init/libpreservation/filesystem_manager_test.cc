@@ -46,22 +46,33 @@ TEST_F(FilesystemManagerTest, CreateFileAndFixedGoalFallocate) {
   extent->set_length(4096);
   extent->set_goal(1024);
   EXPECT_TRUE(fs_manager_->CreateFileAndFixedGoalFallocate(
-      base::FilePath("/foo"), 4096, extents));
+      base::FilePath("/foo"), 4096, 0, 0, 0, extents));
   EXPECT_TRUE(fs_manager_->FileExists(base::FilePath("/foo")));
   EXPECT_FALSE(fs_manager_->CreateFileAndFixedGoalFallocate(
-      base::FilePath("/foo"), 4096, extents));
+      base::FilePath("/foo"), 4096, 0, 0, 0, extents));
   EXPECT_TRUE(fs_manager_->CreateDirectory(base::FilePath("/bar")));
 
   // /bar will not be created since it has overlapping extents.
   EXPECT_FALSE(fs_manager_->CreateFileAndFixedGoalFallocate(
-      base::FilePath("/bar"), 4096, extents));
+      base::FilePath("/bar"), 4096, 0, 0, 0, extents));
   EXPECT_FALSE(fs_manager_->FileExists(base::FilePath("/bar/baz")));
 
   // Invalid file names.
   EXPECT_FALSE(fs_manager_->CreateFileAndFixedGoalFallocate(base::FilePath("."),
-                                                            4096, extents));
+                                                            4096, 0, 0, 0, extents));
   EXPECT_FALSE(fs_manager_->CreateFileAndFixedGoalFallocate(
-      base::FilePath(".."), 4096, extents));
+      base::FilePath(".."), 4096, 0, 0, 0, extents));
+}
+
+TEST_F(FilesystemManagerTest, CreateFileAndFixedGoalFallocateWithHighUidGid) {
+  ExtentArray extents;
+  Extent* extent = extents.add_extent();
+  extent->set_start(0);
+  extent->set_length(4096);
+  extent->set_goal(1024);
+  EXPECT_TRUE(fs_manager_->CreateFileAndFixedGoalFallocate(
+      base::FilePath("/high_uid"), 4096, 100000 /* uid */, 200000 /* gid */, 0640, extents));
+  EXPECT_TRUE(fs_manager_->FileExists(base::FilePath("/high_uid")));
 }
 
 TEST_F(FilesystemManagerTest, UnlinkFile) {
@@ -71,7 +82,7 @@ TEST_F(FilesystemManagerTest, UnlinkFile) {
   extent->set_length(4096);
   extent->set_goal(1024);
   EXPECT_TRUE(fs_manager_->CreateFileAndFixedGoalFallocate(
-      base::FilePath("/foo"), 4096, extents));
+      base::FilePath("/foo"), 4096, 0, 0, 0, extents));
   EXPECT_TRUE(fs_manager_->FileExists(base::FilePath("/foo")));
   EXPECT_TRUE(fs_manager_->UnlinkFile(base::FilePath("/foo")));
   EXPECT_FALSE(fs_manager_->FileExists(base::FilePath("/foo")));
@@ -81,7 +92,7 @@ TEST_F(FilesystemManagerTest, UnlinkFile) {
   extent->set_length(4096);
   extent->set_goal(8192);
   EXPECT_TRUE(fs_manager_->CreateFileAndFixedGoalFallocate(
-      base::FilePath("/bar/baz"), 4096, extents));
+      base::FilePath("/bar/baz"), 4096, 0, 0, 0, extents));
   EXPECT_TRUE(fs_manager_->FileExists(base::FilePath("/bar/baz")));
   EXPECT_TRUE(fs_manager_->UnlinkFile(base::FilePath("/bar/baz")));
   EXPECT_FALSE(fs_manager_->FileExists(base::FilePath("/bar/baz")));
@@ -95,14 +106,14 @@ TEST_F(FilesystemManagerTest, FileExists) {
   extent->set_goal(1024);
   EXPECT_FALSE(fs_manager_->FileExists(base::FilePath("/foo")));
   EXPECT_TRUE(fs_manager_->CreateFileAndFixedGoalFallocate(
-      base::FilePath("/foo"), 4096, extents));
+      base::FilePath("/foo"), 4096, 0, 0, 0, extents));
   EXPECT_TRUE(fs_manager_->FileExists(base::FilePath("/foo")));
   EXPECT_TRUE(fs_manager_->CreateDirectory(base::FilePath("/bar")));
 
   // Overlapping extents.
   EXPECT_FALSE(fs_manager_->FileExists(base::FilePath("/bar/baz")));
   EXPECT_FALSE(fs_manager_->CreateFileAndFixedGoalFallocate(
-      base::FilePath("/bar/baz"), 4096, extents));
+      base::FilePath("/bar/baz"), 4096, 0, 0, 0, extents));
   EXPECT_FALSE(fs_manager_->FileExists(base::FilePath("/bar/baz")));
 }
 

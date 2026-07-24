@@ -40,6 +40,9 @@ message PreseededFile {
   bytes path = 1;
   uint64 size = 2;
   FileContents contents = 3;
+  optional uint32 uid = 4;
+  optional uint32 gid = 5;
+  optional uint32 mode = 6;
 }
 
 // List of all preseeded file structs.

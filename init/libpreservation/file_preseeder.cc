@@ -6,6 +6,7 @@
 #include <linux/fiemap.h>
 #include <linux/fs.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 
 #include <limits>
@@ -108,6 +109,15 @@ bool FilePreseeder::SaveFileState(const std::set<base::FilePath>& file_list) {
     PreseededFile* pfile = preseeded_files_.add_file_list();
     pfile->set_path(preseeded_file.value());
     pfile->set_size(*file_size);
+
+    struct stat st;
+    if (stat(file.value().c_str(), &st) == 0) {
+      pfile->set_uid(st.st_uid);
+      pfile->set_gid(st.st_gid);
+      pfile->set_mode(st.st_mode & 07777);
+    } else {
+      pfile->set_mode(0);
+    }
 
     if (*file_size < kInlineFileSizeLimit) {
       pfile->mutable_contents()->set_data(data);
@@ -222,8 +232,12 @@ bool FilePreseeder::RestoreExtentFiles(FilesystemManager* fs_manager) {
       return false;
     }
 
+    uint32_t uid = file.has_uid() ? file.uid() : 0;
+    uint32_t gid = file.has_gid() ? file.gid() : 0;
+    uint32_t mode = file.has_mode() ? file.mode() : 0;
+
     if (!fs_manager->CreateFileAndFixedGoalFallocate(
-            pfile, file.size(), file.contents().extents())) {
+            pfile, file.size(), uid, gid, mode, file.contents().extents())) {
       fs_manager->UnlinkFile(pfile);
     }
   }
@@ -264,6 +278,18 @@ bool FilePreseeder::RestoreInlineFiles() {
     std::string contents = file.size() != 0 ? file.contents().data() : "";
     if (!base::WriteFile(path, contents)) {
       LOG(ERROR) << "Failed to create file: " << path;
+    } else {
+      uint32_t uid = file.has_uid() ? file.uid() : 0;
+      uint32_t gid = file.has_gid() ? file.gid() : 0;
+      uint32_t mode = file.has_mode() ? file.mode() : 0;
+      if (mode != 0) {
+        if (chown(path.value().c_str(), uid, gid) != 0) {
+          PLOG(WARNING) << "Failed to chown " << path;
+        }
+        if (chmod(path.value().c_str(), mode) != 0) {
+          PLOG(WARNING) << "Failed to chmod " << path;
+        }
+      }
     }
   }
 

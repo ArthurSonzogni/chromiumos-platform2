@@ -73,7 +73,7 @@ bool FilesystemManager::CreateDirectory(const base::FilePath& path) {
 }
 
 bool FilesystemManager::CreateFileAndFixedGoalFallocate(
-    const base::FilePath& path, uint64_t size, const ExtentArray& extents) {
+    const base::FilePath& path, uint64_t size, uint32_t uid, uint32_t gid, uint32_t mode, const ExtentArray& extents) {
   if (!ValidatePath(path)) {
     return false;
   }
@@ -106,7 +106,11 @@ bool FilesystemManager::CreateFileAndFixedGoalFallocate(
   // Set up inode attributes.
   struct ext2_inode inode;
   memset(&inode, 0, sizeof(struct ext2_inode));
-  inode.i_mode = LINUX_S_IFREG | (0600 & ~fs_->GetUmask());
+  inode.i_mode = LINUX_S_IFREG | (mode != 0 ? mode : (0600 & ~fs_->GetUmask()));
+  inode.i_uid = uid & 0xFFFF;
+  inode.i_gid = gid & 0xFFFF;
+  inode.osd2.linux2.l_i_uid_high = static_cast<uint16_t>(uid >> 16);
+  inode.osd2.linux2.l_i_gid_high = static_cast<uint16_t>(gid >> 16);
   inode.i_size = size & 0xFFFFFFFF;
   inode.i_size_high = size >> 32;
   inode.i_atime = inode.i_ctime = inode.i_mtime = time(0);

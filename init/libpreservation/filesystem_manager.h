@@ -28,6 +28,9 @@ class FilesystemManager {
   // the file.
   virtual bool CreateFileAndFixedGoalFallocate(const base::FilePath& path,
                                                uint64_t size,
+                                               uint32_t uid,
+                                               uint32_t gid,
+                                               uint32_t mode,
                                                const ExtentArray& extents);
 
   // Unlink file.
