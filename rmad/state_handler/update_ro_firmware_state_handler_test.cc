@@ -169,14 +169,15 @@ TEST_F(UpdateRoFirmwareStateHandlerTest,
 }
 
 TEST_F(UpdateRoFirmwareStateHandlerTest,
-       InitializeState_Success_RmadConfig_SkipUpdateRoFirmwareFromRootfs_True) {
+       InitializeState_Success_SkipUpdateRoFirmwareFromRootfs_Deprecated) {
   std::string textproto = R"(
           skip_update_ro_firmware_from_rootfs: true
         )";
   auto handler = CreateStateHandler({.rmad_config_text = textproto});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   UpdateRoFirmwareState state = handler->GetState().update_ro_firmware();
-  EXPECT_EQ(state.skip_update_ro_firmware_from_rootfs(), true);
+  // b/524393555: Deprecated and always returns false.
+  EXPECT_EQ(state.skip_update_ro_firmware_from_rootfs(), false);
 }
 
 TEST_F(UpdateRoFirmwareStateHandlerTest,
@@ -193,23 +194,6 @@ TEST_F(UpdateRoFirmwareStateHandlerTest,
 TEST_F(UpdateRoFirmwareStateHandlerTest, InitializeState_HwwpEnabled_Failed) {
   auto handler = CreateStateHandler({.hwwp_enabled = true});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_WP_ENABLED);
-}
-
-TEST_F(UpdateRoFirmwareStateHandlerTest, RunState_SkipRootfs_WaitUsb) {
-  std::string textproto = R"(
-    skip_update_ro_firmware_from_rootfs: true
-  )";
-  auto handler = CreateStateHandler({.rmad_config_text = textproto,
-                                     .copy_success = true,
-                                     .update_success = true});
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  handler->RunState();
-  ExpectSignal(RMAD_UPDATE_RO_FIRMWARE_WAIT_USB);
-
-  bool firmware_updated;
-  EXPECT_FALSE(json_store_->GetValue(kFirmwareUpdated, &firmware_updated) &&
-               firmware_updated);
 }
 
 TEST_F(UpdateRoFirmwareStateHandlerTest, RunState_Rootfs_Success) {

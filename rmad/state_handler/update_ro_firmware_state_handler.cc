@@ -114,11 +114,8 @@ RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
     status_ = RMAD_UPDATE_RO_FIRMWARE_COMPLETE;
     RecordFirmwareUpdateStatusToLogs(json_store_,
                                      FirmwareUpdateStatus::kFirmwareComplete);
-  } else if (!state_.update_ro_firmware()
-                  .skip_update_ro_firmware_from_rootfs()) {
-    status_ = RMAD_UPDATE_RO_FIRMWARE_UPDATING;
   } else {
-    status_ = RMAD_UPDATE_RO_FIRMWARE_WAIT_USB;
+    status_ = RMAD_UPDATE_RO_FIRMWARE_UPDATING;
   }
   usb_detected_ = !GetRemovableBlockDevices().empty();
   return RMAD_ERROR_OK;
@@ -126,14 +123,11 @@ RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
 
 void UpdateRoFirmwareStateHandler::RunState() {
   StartSignalTimer();
-  if (status_ != RMAD_UPDATE_RO_FIRMWARE_COMPLETE &&
-      !state_.update_ro_firmware().skip_update_ro_firmware_from_rootfs()) {
+  if (status_ != RMAD_UPDATE_RO_FIRMWARE_COMPLETE) {
     LOG(INFO) << "Copying rootfs firmware.";
     daemon_callback_->GetExecuteCopyRootfsFirmwareUpdaterCallback().Run(
         base::BindOnce(&UpdateRoFirmwareStateHandler::OnCopyCompleted,
                        base::Unretained(this)));
-  } else {
-    StartPollingTimer();
   }
 }
 
@@ -225,16 +219,8 @@ bool UpdateRoFirmwareStateHandler::CanSkipUpdate() const {
 }
 
 bool UpdateRoFirmwareStateHandler::SkipUpdateFromRootfs() const {
-  auto rmad_config = rmad_config_utils_->GetConfig();
-
-  if (rmad_config.has_value() &&
-      rmad_config->skip_update_ro_firmware_from_rootfs()) {
-    LOG(ERROR)
-        << "Firmware update from rootfs is disabled by device rmad config.";
-
-    return true;
-  }
-
+  // Updating firmware from external USB drives is deprecated. Always use rootfs
+  // firmware updater.
   return false;
 }
 
