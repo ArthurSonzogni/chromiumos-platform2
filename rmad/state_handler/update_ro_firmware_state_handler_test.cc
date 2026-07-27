@@ -181,6 +181,45 @@ TEST_F(UpdateRoFirmwareStateHandlerTest,
 }
 
 TEST_F(UpdateRoFirmwareStateHandlerTest,
+       GetFirmwareUpdaterPath_UseSecondaryFirmwareUpdater_True) {
+  std::string textproto = R"(
+    use_secondary_firmware_updater: true
+  )";
+  auto handler = CreateStateHandler({.rmad_config_text = textproto});
+  if (base::PathExists(
+          base::FilePath("/usr/sbin/chromeos-firmwareupdate-rma"))) {
+    EXPECT_EQ(handler->GetFirmwareUpdaterPath(),
+              base::FilePath("/usr/sbin/chromeos-firmwareupdate-rma"));
+  } else {
+    EXPECT_EQ(handler->GetFirmwareUpdaterPath(),
+              base::FilePath("/var/lib/rmad/chromeos-firmwareupdate"));
+  }
+}
+
+TEST_F(UpdateRoFirmwareStateHandlerTest,
+       GetFirmwareUpdaterPath_UseSecondaryFirmwareUpdater_Fallback) {
+  std::string textproto = R"(
+    use_secondary_firmware_updater: true
+  )";
+  auto handler = CreateStateHandler({.rmad_config_text = textproto});
+  if (!base::PathExists(
+          base::FilePath("/usr/sbin/chromeos-firmwareupdate-rma"))) {
+    EXPECT_EQ(handler->GetFirmwareUpdaterPath(),
+              base::FilePath("/var/lib/rmad/chromeos-firmwareupdate"));
+  }
+}
+
+TEST_F(UpdateRoFirmwareStateHandlerTest,
+       GetFirmwareUpdaterPath_UseSecondaryFirmwareUpdater_False) {
+  std::string textproto = R"(
+    use_secondary_firmware_updater: false
+  )";
+  auto handler = CreateStateHandler({.rmad_config_text = textproto});
+  EXPECT_EQ(handler->GetFirmwareUpdaterPath(),
+            base::FilePath("/var/lib/rmad/chromeos-firmwareupdate"));
+}
+
+TEST_F(UpdateRoFirmwareStateHandlerTest,
        InitializeState_Success_RoVerificationV2Success) {
   auto handler = CreateStateHandler(
       {.ro_verified = false,
@@ -199,6 +238,24 @@ TEST_F(UpdateRoFirmwareStateHandlerTest, InitializeState_HwwpEnabled_Failed) {
 TEST_F(UpdateRoFirmwareStateHandlerTest, RunState_Rootfs_Success) {
   auto handler =
       CreateStateHandler({.copy_success = true, .update_success = true});
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  handler->RunState();
+  ExpectSignal(RMAD_UPDATE_RO_FIRMWARE_REBOOTING);
+
+  bool firmware_updated;
+  EXPECT_TRUE(json_store_->GetValue(kFirmwareUpdated, &firmware_updated) &&
+              firmware_updated);
+}
+
+TEST_F(UpdateRoFirmwareStateHandlerTest,
+       RunState_SecondaryFirmwareUpdater_Success) {
+  std::string textproto = R"(
+    use_secondary_firmware_updater: true
+  )";
+  auto handler = CreateStateHandler({.rmad_config_text = textproto,
+                                     .copy_success = true,
+                                     .update_success = true});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   handler->RunState();

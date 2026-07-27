@@ -35,6 +35,8 @@
 namespace {
 
 constexpr char kFirmwareUpdaterPath[] = "/var/lib/rmad/chromeos-firmwareupdate";
+constexpr char kSecondaryFirmwareUpdaterPath[] =
+    "/usr/sbin/chromeos-firmwareupdate-rma";
 
 bool GetDeviceIdFromRootfsDeviceFile(const std::string& device_file,
                                      char* device_id) {
@@ -124,10 +126,18 @@ RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
 void UpdateRoFirmwareStateHandler::RunState() {
   StartSignalTimer();
   if (status_ != RMAD_UPDATE_RO_FIRMWARE_COMPLETE) {
-    LOG(INFO) << "Copying rootfs firmware.";
-    daemon_callback_->GetExecuteCopyRootfsFirmwareUpdaterCallback().Run(
-        base::BindOnce(&UpdateRoFirmwareStateHandler::OnCopyCompleted,
-                       base::Unretained(this)));
+    if (GetFirmwareUpdaterPath() ==
+        base::FilePath(kSecondaryFirmwareUpdaterPath)) {
+      sequenced_task_runner_->PostTask(
+          FROM_HERE,
+          base::BindOnce(&UpdateRoFirmwareStateHandler::OnCopyCompleted,
+                         base::Unretained(this), /*copy_success=*/true));
+    } else {
+      LOG(INFO) << "Copying rootfs firmware.";
+      daemon_callback_->GetExecuteCopyRootfsFirmwareUpdaterCallback().Run(
+          base::BindOnce(&UpdateRoFirmwareStateHandler::OnCopyCompleted,
+                         base::Unretained(this)));
+    }
   }
 }
 
@@ -224,6 +234,21 @@ bool UpdateRoFirmwareStateHandler::SkipUpdateFromRootfs() const {
   return false;
 }
 
+base::FilePath UpdateRoFirmwareStateHandler::GetFirmwareUpdaterPath() const {
+  if (auto rmad_config = rmad_config_utils_->GetConfig();
+      rmad_config.has_value() &&
+      rmad_config->use_secondary_firmware_updater()) {
+    if (base::PathExists(base::FilePath(kSecondaryFirmwareUpdaterPath))) {
+      LOG(INFO) << "Using secondary firmware updater.";
+      return base::FilePath(kSecondaryFirmwareUpdaterPath);
+    }
+    LOG(WARNING) << "Secondary firmware updater requested but not found at "
+                 << kSecondaryFirmwareUpdaterPath
+                 << ". Falling back to primary firmware updater.";
+  }
+  return base::FilePath(kFirmwareUpdaterPath);
+}
+
 void UpdateRoFirmwareStateHandler::SendFirmwareUpdateSignal() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   daemon_callback_->GetUpdateRoFirmwareSignalCallback().Run(status_);
@@ -309,12 +334,14 @@ void UpdateRoFirmwareStateHandler::OnCopySuccess() {
     update_success = mock_update_success_;
   } else {
     // This is run in |updater_task_runner_|.
-    const base::FilePath updater_path(kFirmwareUpdaterPath);
+    const base::FilePath updater_path = GetFirmwareUpdaterPath();
     // Check again that the copied firmware updater exists.
     CHECK(base::PathExists(updater_path));
     update_success = RunFirmwareUpdater();
-    // Remove the copied firmware updater.
-    CHECK(brillo::DeleteFile(updater_path));
+    // Remove the copied firmware updater if using the default path.
+    if (updater_path == base::FilePath(kFirmwareUpdaterPath)) {
+      CHECK(brillo::DeleteFile(updater_path));
+    }
   }
 
   sequenced_task_runner_->PostTask(
@@ -377,8 +404,8 @@ bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater() {
   // All checks pass. Run the firmware updater.
   bool update_success = false;
   if (std::string output; cmd_utils_->GetOutputAndError(
-          {"futility", "update", "-a", kFirmwareUpdaterPath, "--mode=recovery",
-           "--force"},
+          {"futility", "update", "-a", GetFirmwareUpdaterPath().value(),
+           "--mode=recovery", "--force"},
           &output)) {
     DLOG(INFO) << "Firmware updater success";
     update_success = true;

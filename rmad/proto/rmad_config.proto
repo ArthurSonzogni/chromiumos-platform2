@@ -21,4 +21,8 @@ message RmadConfig {
   optional string customized_serial_number_naming = 5;
 
   optional bool hide_google_sku = 6;
+
+  // Whether or not to update firmware using the secondary firmware updater
+  // binary (/usr/sbin/chromeos-firmwareupdate-rma) for RMA flows (b/322326332).
+  optional bool use_secondary_firmware_updater = 7;
 }

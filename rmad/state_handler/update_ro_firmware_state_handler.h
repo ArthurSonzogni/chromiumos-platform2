@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/sequence_checker.h>
 #include <base/task/task_runner.h>
@@ -59,6 +60,8 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   void RunState() override;
   void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+  base::FilePath GetFirmwareUpdaterPath() const;
 
  protected:
   ~UpdateRoFirmwareStateHandler() override = default;
