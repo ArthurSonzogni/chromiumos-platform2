@@ -3342,6 +3342,104 @@ TEST_F(ManagerTest, PortalFallbackHttpsUrls) {
   EXPECT_EQ(kFallbackVec1, GetPortalFallbackHttpsUrls());
 }
 
+TEST_F(ManagerTest, PortalUrlPropertiesInDevMode) {
+  Error error;
+  std::string value;
+
+  manager()->mutable_store()->SetStringProperty(kPortalHttpUrlProperty,
+                                                "http://test.url", &error);
+  EXPECT_TRUE(error.IsSuccess());
+  error.Reset();
+  EXPECT_TRUE(manager()->store().GetStringProperty(kPortalHttpUrlProperty,
+                                                   &value, &error));
+  EXPECT_EQ(value, "http://test.url");
+  error.Reset();
+
+  manager()->mutable_store()->SetStringProperty(kPortalHttpsUrlProperty,
+                                                "https://test.url", &error);
+  EXPECT_TRUE(error.IsSuccess());
+  error.Reset();
+  EXPECT_TRUE(manager()->store().GetStringProperty(kPortalHttpsUrlProperty,
+                                                   &value, &error));
+  EXPECT_EQ(value, "https://test.url");
+  error.Reset();
+
+  manager()->mutable_store()->SetStringProperty(kPortalFallbackHttpUrlsProperty,
+                                                "http://fallback.url", &error);
+  EXPECT_TRUE(error.IsSuccess());
+  error.Reset();
+  EXPECT_TRUE(manager()->store().GetStringProperty(
+      kPortalFallbackHttpUrlsProperty, &value, &error));
+  EXPECT_EQ(value, "http://fallback.url");
+  error.Reset();
+
+  manager()->mutable_store()->SetStringProperty(
+      kPortalFallbackHttpsUrlsProperty, "https://fallback.url", &error);
+  EXPECT_TRUE(error.IsSuccess());
+  error.Reset();
+  EXPECT_TRUE(manager()->store().GetStringProperty(
+      kPortalFallbackHttpsUrlsProperty, &value, &error));
+  EXPECT_EQ(value, "https://fallback.url");
+}
+
+TEST_F(ManagerTest, PortalUrlPropertiesInNonDevMode) {
+  Manager non_dev_manager(control_interface(), dispatcher(), metrics(),
+                          run_path(), storage_path(), std::string(),
+                          /*is_dev_mode=*/false);
+  Error error;
+  std::string value;
+
+  // Reading properties should succeed in non-dev mode.
+  EXPECT_TRUE(non_dev_manager.store().GetStringProperty(kPortalHttpUrlProperty,
+                                                        &value, &error));
+  error.Reset();
+  EXPECT_TRUE(non_dev_manager.store().GetStringProperty(kPortalHttpsUrlProperty,
+                                                        &value, &error));
+  error.Reset();
+  EXPECT_TRUE(non_dev_manager.store().GetStringProperty(
+      kPortalFallbackHttpUrlsProperty, &value, &error));
+  error.Reset();
+  EXPECT_TRUE(non_dev_manager.store().GetStringProperty(
+      kPortalFallbackHttpsUrlsProperty, &value, &error));
+  error.Reset();
+
+  // Writing properties should fail in non-dev mode.
+  non_dev_manager.mutable_store()->SetStringProperty(kPortalHttpUrlProperty,
+                                                     "http://test.url", &error);
+  EXPECT_FALSE(error.IsSuccess());
+  error.Reset();
+  EXPECT_TRUE(non_dev_manager.store().GetStringProperty(kPortalHttpUrlProperty,
+                                                        &value, &error));
+  EXPECT_NE(value, "http://test.url");
+  error.Reset();
+
+  non_dev_manager.mutable_store()->SetStringProperty(
+      kPortalHttpsUrlProperty, "https://test.url", &error);
+  EXPECT_FALSE(error.IsSuccess());
+  error.Reset();
+  EXPECT_TRUE(non_dev_manager.store().GetStringProperty(kPortalHttpsUrlProperty,
+                                                        &value, &error));
+  EXPECT_NE(value, "https://test.url");
+  error.Reset();
+
+  non_dev_manager.mutable_store()->SetStringProperty(
+      kPortalFallbackHttpUrlsProperty, "http://fallback.url", &error);
+  EXPECT_FALSE(error.IsSuccess());
+  error.Reset();
+  EXPECT_TRUE(non_dev_manager.store().GetStringProperty(
+      kPortalFallbackHttpUrlsProperty, &value, &error));
+  EXPECT_NE(value, "http://fallback.url");
+  error.Reset();
+
+  non_dev_manager.mutable_store()->SetStringProperty(
+      kPortalFallbackHttpsUrlsProperty, "https://fallback.url", &error);
+  EXPECT_FALSE(error.IsSuccess());
+  error.Reset();
+  EXPECT_TRUE(non_dev_manager.store().GetStringProperty(
+      kPortalFallbackHttpsUrlsProperty, &value, &error));
+  EXPECT_NE(value, "https://fallback.url");
+}
+
 TEST_F(ManagerTest, ServiceStateChangeEmitsServices) {
   // Test to make sure that every service state-change causes the
   // Manager to emit a new service list.

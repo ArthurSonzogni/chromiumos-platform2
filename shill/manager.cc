@@ -261,14 +261,25 @@ Manager::Manager(ControlInterface* control_interface,
                                   &Manager::EnabledTechnologies);
   store_.RegisterString(kNoAutoConnectTechnologiesProperty,
                         &props_.no_auto_connect_technologies);
-  store_.RegisterString(kPortalHttpUrlProperty, &props_.portal_http_url);
-  store_.RegisterString(kPortalHttpsUrlProperty, &props_.portal_https_url);
-  HelpRegisterDerivedString(kPortalFallbackHttpUrlsProperty,
-                            &Manager::GetPortalFallbackHttpUrls,
-                            &Manager::SetPortalFallbackHttpUrls);
-  HelpRegisterDerivedString(kPortalFallbackHttpsUrlsProperty,
-                            &Manager::GetPortalFallbackHttpsUrls,
-                            &Manager::SetPortalFallbackHttpsUrls);
+  // b/516667314
+  if (is_dev_mode_) {
+    store_.RegisterString(kPortalHttpUrlProperty, &props_.portal_http_url);
+    store_.RegisterString(kPortalHttpsUrlProperty, &props_.portal_https_url);
+    HelpRegisterDerivedString(kPortalFallbackHttpUrlsProperty,
+                              &Manager::GetPortalFallbackHttpUrls,
+                              &Manager::SetPortalFallbackHttpUrls);
+    HelpRegisterDerivedString(kPortalFallbackHttpsUrlsProperty,
+                              &Manager::GetPortalFallbackHttpsUrls,
+                              &Manager::SetPortalFallbackHttpsUrls);
+  } else {
+    store_.RegisterConstString(kPortalHttpUrlProperty, &props_.portal_http_url);
+    store_.RegisterConstString(kPortalHttpsUrlProperty,
+                               &props_.portal_https_url);
+    HelpRegisterDerivedString(kPortalFallbackHttpUrlsProperty,
+                              &Manager::GetPortalFallbackHttpUrls, nullptr);
+    HelpRegisterDerivedString(kPortalFallbackHttpsUrlsProperty,
+                              &Manager::GetPortalFallbackHttpsUrls, nullptr);
+  }
   HelpRegisterConstDerivedRpcIdentifiers(kProfilesProperty,
                                          &Manager::EnumerateProfiles);
   HelpRegisterDerivedString(kProhibitedTechnologiesProperty,
