@@ -234,7 +234,7 @@ class BRILLO_EXPORT CIDR {
   static Address BitwiseNot(const Address& a) {
     DataType data = a.data();
     for (auto& byte : data) {
-      byte = ~byte;
+      byte = static_cast<typename DataType::value_type>(~byte);
     }
     return Address(data);
   }

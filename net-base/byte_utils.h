@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 #include <base/containers/span.h>
@@ -19,7 +20,7 @@ namespace net_base::byte_utils {
 // in host order.
 template <typename T>
 std::vector<uint8_t> ToBytes(const T& val) {
-  static_assert(std::is_pod<T>::value);
+  static_assert(std::is_trivially_copyable_v<T>);
 
   return {reinterpret_cast<const uint8_t*>(&val),
           reinterpret_cast<const uint8_t*>(&val) + sizeof(T)};
@@ -29,7 +30,7 @@ std::vector<uint8_t> ToBytes(const T& val) {
 // Returns std::nullopt if the buffer size is not the size of the type.
 template <typename T>
 std::optional<T> FromBytes(base::span<const uint8_t> bytes) {
-  static_assert(std::is_pod<T>::value);
+  static_assert(std::is_trivially_copyable_v<T>);
 
   if (bytes.size() != sizeof(T)) {
     return std::nullopt;
@@ -44,7 +45,7 @@ std::optional<T> FromBytes(base::span<const uint8_t> bytes) {
 // old data (e.g. uint32_t, struct).
 template <typename T>
 base::span<const uint8_t> AsBytes(const T& val) {
-  static_assert(std::is_pod<T>::value);
+  static_assert(std::is_trivially_copyable_v<T>);
   return {reinterpret_cast<const uint8_t*>(&val), sizeof(val)};
 }
 
@@ -52,7 +53,7 @@ base::span<const uint8_t> AsBytes(const T& val) {
 // old data (e.g. uint32_t, struct).
 template <typename T>
 base::span<uint8_t> AsMutBytes(T& val) {
-  static_assert(std::is_pod<T>::value);
+  static_assert(std::is_trivially_copyable_v<T>);
   return {reinterpret_cast<uint8_t*>(&val), sizeof(val)};
 }
 
