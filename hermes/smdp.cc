@@ -21,7 +21,8 @@
 namespace {
 
 constexpr auto kSmdxTimeout = base::Minutes(3);
-constexpr auto kSendNotificationsTimeout = base::Seconds(15);
+// increasing the timeout to handle low-responding GSMA servers
+constexpr auto kSendNotificationsTimeout = base::Seconds(60);
 constexpr std::string_view kHandleNotification = "handleNotification";
 
 void OnHttpsResponse(hermes::Smdp::LpaCallback cb,
