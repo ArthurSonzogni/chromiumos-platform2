@@ -8,7 +8,6 @@
 #include <optional>
 
 #include <base/time/time.h>
-#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_factor/label_arity.h"
@@ -33,9 +32,7 @@ class PinAuthFactorDriver final
                                              AuthIntentSequence<>>,
       public AfDriverNoCredentialVerifier,
       public AfDriverNoExpiration,
-      public AfDriverNoRateLimiter,
-      public AfDriverWithKnowledgeFactorType<
-          KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_PIN> {
+      public AfDriverNoRateLimiter {
  public:
   explicit PinAuthFactorDriver(Crypto* crypto) : crypto_(crypto) {}
 

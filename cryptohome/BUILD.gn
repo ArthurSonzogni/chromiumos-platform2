@@ -33,7 +33,6 @@ group("all") {
   }
   if (use.fuzzer) {
     deps += [
-      ":cryptohome_backend_cert_parser_fuzzer",
       ":cryptohome_cryptolib_blob_to_hex_fuzzer",
       ":cryptohome_recovery_id_fuzzer",
       ":cryptohome_user_secret_stash_parser_fuzzer",
@@ -347,7 +346,6 @@ if (use.test) {
       "auth_blocks/fp_service_test.cc",
       "auth_blocks/mock_auth_block_utility.cc",
       "auth_blocks/pin_weaver_auth_block_test.cc",
-      "auth_blocks/recoverable_key_store_test.cc",
       "auth_blocks/revocation_test.cc",
       "auth_blocks/scrypt_auth_block_test.cc",
       "auth_blocks/tpm_bound_to_pcr_auth_block_test.cc",
@@ -412,8 +410,6 @@ if (use.test) {
       "lockbox_test.cc",
       "namespace_mounter/mounter.cc",
       "namespace_mounter/mounter_test.cc",
-      "recoverable_key_store/backend_cert_verify_test.cc",
-      "recoverable_key_store/generate_test.cc",
       "signature_sealing/structures_proto_test.cc",
       "storage/cryptohome_vault_test.cc",
       "storage/dircrypto_migration_helper_delegate_test.cc",
@@ -499,16 +495,6 @@ if (use.test) {
 }
 
 if (use.fuzzer) {
-  executable("cryptohome_backend_cert_parser_fuzzer") {
-    sources = [ "fuzzers/backend_cert_parser_fuzzer.cc" ]
-    configs += [
-      "//common-mk/common_fuzzer",
-      "//common-mk:test",
-    ]
-    deps = [ "libs:libcryptohome" ]
-    pkg_deps = [ "libchrome-test" ]
-  }
-
   executable("cryptohome_cryptolib_blob_to_hex_fuzzer") {
     sources = [ "fuzzers/cryptolib_blob_to_hex_fuzzer.cc" ]
     libs = [ "hwsec-foundation" ]

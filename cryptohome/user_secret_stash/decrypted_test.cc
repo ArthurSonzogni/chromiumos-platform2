@@ -755,13 +755,5 @@ TEST_F(DecryptedUssTest, KeyDerivationSeedBackfilled) {
             redecrypted_uss->key_derivation_seed().to_string());
 }
 
-TEST_F(DecryptedUssTest, GetSecurityDomainKeys) {
-  auto decrypted_uss =
-      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
-  ASSERT_THAT(decrypted_uss, IsOk());
-  const auto* keys = decrypted_uss->GetSecurityDomainKeys();
-  EXPECT_NE(keys, nullptr);
-}
-
 }  // namespace
 }  // namespace cryptohome

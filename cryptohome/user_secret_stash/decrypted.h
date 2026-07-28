@@ -14,7 +14,6 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_factor/type.h"
-#include "cryptohome/recoverable_key_store/type.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash/encrypted.h"
 #include "cryptohome/user_secret_stash/storage.h"
@@ -233,9 +232,6 @@ class DecryptedUss {
   std::optional<brillo::SecureBlob> GetRateLimiterResetSecret(
       AuthFactorType auth_factor_type) const;
 
-  // The SecurityDomainKeys object derived from the key derivation seed.
-  const SecurityDomainKeys* GetSecurityDomainKeys() const;
-
   // Begin a transaction which can be used to modify this object.
   Transaction StartTransaction();
 
@@ -278,9 +274,6 @@ class DecryptedUss {
       rate_limiter_reset_secrets_;
   // The seed to derive other key materials.
   brillo::SecureBlob key_derivation_seed_;
-  // Cache the security domain keys after they're first calculated to prevent
-  // re-calculation.
-  mutable std::optional<SecurityDomainKeys> security_domain_keys_;
 };
 
 }  // namespace cryptohome

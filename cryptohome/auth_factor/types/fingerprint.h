@@ -38,8 +38,7 @@ class FingerprintAuthFactorDriver final
       public AfDriverWithConfigurableIntents<
           AuthIntentSequence<AuthIntent::kVerifyOnly>,
           AuthIntentSequence<AuthIntent::kDecrypt>>,
-      public AfDriverNoCredentialVerifier,
-      public AfDriverNoKnowledgeFactor {
+      public AfDriverNoCredentialVerifier {
  public:
   FingerprintAuthFactorDriver(
       libstorage::Platform* platform,

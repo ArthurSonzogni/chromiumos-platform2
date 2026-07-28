@@ -7,7 +7,6 @@
 #include <optional>
 
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
-#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 
 #include "cryptohome/key_objects.h"
 

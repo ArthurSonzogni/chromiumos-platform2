@@ -43,7 +43,6 @@
 #include <chaps/token_manager_client.h>
 #include <chromeos/constants/cryptohome.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
-#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <dbus_adaptors/org.chromium.UserDataAuth.h>
@@ -95,8 +94,6 @@
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/real_pkcs11_token_factory.h"
-#include "cryptohome/recoverable_key_store/backend_cert_provider.h"
-#include "cryptohome/recoverable_key_store/backend_cert_provider_impl.h"
 #include "cryptohome/signalling.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/mount.h"
@@ -854,13 +851,6 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
             return uda->biometrics_service_;
           },
           base::Unretained(this)));
-  AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>
-      async_key_store_cert_provider(base::BindRepeating(
-          [](UserDataAuth* uda) {
-            uda->AssertOnMountThread();
-            return uda->key_store_cert_provider_;
-          },
-          base::Unretained(this)));
   if (!auth_block_utility_) {
     default_auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_, crypto_, platform_, &async_init_features_,
@@ -890,8 +880,7 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
             crypto_, platform_, sessions_, keyset_management_,
             auth_block_utility_, auth_factor_driver_manager_,
             auth_factor_manager_, fp_migration_utility_, uss_storage_,
-            uss_manager_, &async_init_features_, async_signalling,
-            async_key_store_cert_provider},
+            uss_manager_, &async_init_features_, async_signalling},
         mount_task_runner_.get());
     auth_session_manager_ = default_auth_session_manager_.get();
   }
@@ -1021,12 +1010,6 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   PostTaskToMountThread(FROM_HERE,
                         base::BindOnce(&UserDataAuth::CreateBiometricsService,
                                        base::Unretained(this)));
-
-  PostTaskToMountThread(
-      FROM_HERE,
-      base::BindOnce(
-          &UserDataAuth::CreateRecoverableKeyStoreBackendCertProvider,
-          base::Unretained(this)));
 
   PostTaskToMountThread(
       FROM_HERE, base::BindOnce(&UserDataAuth::InitForChallengeResponseAuth,
@@ -1169,19 +1152,6 @@ void UserDataAuth::OnFingerprintAuthProgress(
   progress.set_purpose(user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
   *progress.mutable_auth_progress() = auth_progress;
   signalling_intf_->SendPrepareAuthFactorProgress(progress);
-}
-
-void UserDataAuth::CreateRecoverableKeyStoreBackendCertProvider() {
-  AssertOnMountThread();
-  if (!key_store_cert_provider_) {
-    if (!default_key_store_cert_provider_) {
-      default_key_store_cert_provider_ =
-          std::make_unique<RecoverableKeyStoreBackendCertProviderImpl>(
-              platform_, std::make_unique<org::chromium::RksAgentProxy>(
-                             mount_thread_bus_));
-    }
-    key_store_cert_provider_ = default_key_store_cert_provider_.get();
-  }
 }
 
 bool UserDataAuth::PostTaskToOriginThread(const base::Location& from_here,

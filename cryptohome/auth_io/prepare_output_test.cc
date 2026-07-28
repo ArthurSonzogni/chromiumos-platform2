@@ -8,7 +8,6 @@
 
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
-#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libstorage/platform/mock_platform.h>

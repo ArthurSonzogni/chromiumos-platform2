@@ -11,7 +11,6 @@
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
-#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 #include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_factor/type.h"

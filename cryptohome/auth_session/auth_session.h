@@ -20,7 +20,6 @@
 #include <base/unguessable_token.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
-#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
@@ -49,7 +48,6 @@
 #include "cryptohome/fp_migration/utility.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
-#include "cryptohome/recoverable_key_store/backend_cert_provider.h"
 #include "cryptohome/signalling.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash/decrypted.h"
@@ -134,8 +132,6 @@ class AuthSession final {
     UssManager* user_secret_stash_manager = nullptr;
     AsyncInitFeatures* features = nullptr;
     AsyncInitPtr<SignallingInterface> signalling{nullptr};
-    AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>
-        key_store_cert_provider{nullptr};
   };
 
   // Creates new auth session for account_id. This method returns a unique_ptr
@@ -854,21 +850,6 @@ class AuthSession final {
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
 
-  // Create the recoverable key store auth block state for the auth factor.
-  CryptohomeStatus CreateRecoverableKeyStore(
-      AuthFactorType auth_factor_type,
-      KnowledgeFactorType knowledge_factor_type,
-      const AuthFactorMetadata& auth_factor_metadata,
-      AuthInput auth_input,
-      AuthBlockState& auth_block_state);
-
-  // Check whether the recoverable key store state of |auth_factor| is outdated,
-  // and update it if so.
-  CryptohomeStatus MaybeUpdateRecoverableKeyStore(
-      const AuthFactor& auth_factor,
-      KnowledgeFactorType knowledge_factor_type,
-      AuthInput auth_input);
-
   Username username_;
   ObfuscatedUsername obfuscated_username_;
 
@@ -915,7 +896,6 @@ class AuthSession final {
   FpMigrationUtility* const fp_migration_utility_;
   AsyncInitFeatures* const features_;
   AsyncInitPtr<SignallingInterface> signalling_;
-  AsyncInitPtr<RecoverableKeyStoreBackendCertProvider> key_store_cert_provider_;
   // A stateless object to convert AuthFactor API to VaultKeyset KeyData and
   // VaultKeysets to AuthFactor API.
   AuthFactorVaultKeysetConverter converter_;

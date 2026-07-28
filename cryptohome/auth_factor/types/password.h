@@ -73,9 +73,7 @@ class PasswordAuthFactorDriver final
                                              AuthIntentSequence<>>,
       public AfDriverNoDelay,
       public AfDriverNoExpiration,
-      public AfDriverNoRateLimiter,
-      public AfDriverWithKnowledgeFactorType<
-          KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_PASSWORD> {
+      public AfDriverNoRateLimiter {
  public:
   PasswordAuthFactorDriver() = default;
 

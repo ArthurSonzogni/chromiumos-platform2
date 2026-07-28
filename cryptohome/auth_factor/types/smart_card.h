@@ -38,8 +38,7 @@ class SmartCardAuthFactorDriver final
                                              AuthIntentSequence<>>,
       public AfDriverNoDelay,
       public AfDriverNoExpiration,
-      public AfDriverNoRateLimiter,
-      public AfDriverNoKnowledgeFactor {
+      public AfDriverNoRateLimiter {
  public:
   SmartCardAuthFactorDriver(
       Crypto* crypto,

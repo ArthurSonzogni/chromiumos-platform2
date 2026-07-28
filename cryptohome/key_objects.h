@@ -10,14 +10,12 @@
 #include <vector>
 
 #include <brillo/secure_blob.h>
-#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 
 #include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/structures.h"
-#include "cryptohome/recoverable_key_store/type.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
@@ -138,8 +136,6 @@ struct AuthInput {
   std::optional<brillo::Blob> reset_salt;
   // The PinWeaver leaf label of the rate-limiter.
   std::optional<uint64_t> rate_limiter_label;
-  // security_domain_keys used to generate recoverable key stores.
-  std::optional<SecurityDomainKeys> security_domain_keys;
   // Data required for Cryptohome Recovery flow.
   std::optional<CryptohomeRecoveryAuthInput> cryptohome_recovery_auth_input;
   // Data required for Challenge Credential flow.

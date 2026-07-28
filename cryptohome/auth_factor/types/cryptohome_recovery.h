@@ -32,8 +32,7 @@ class CryptohomeRecoveryAuthFactorDriver final
                                              AuthIntentSequence<>>,
       public AfDriverNoCredentialVerifier,
       public AfDriverNoExpiration,
-      public AfDriverNoRateLimiter,
-      public AfDriverNoKnowledgeFactor {
+      public AfDriverNoRateLimiter {
  public:
   explicit CryptohomeRecoveryAuthFactorDriver(
       libstorage::Platform* platform,

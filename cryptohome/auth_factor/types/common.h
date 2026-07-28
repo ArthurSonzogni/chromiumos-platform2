@@ -30,7 +30,6 @@
 #include <base/containers/span.h>
 #include <base/time/time.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
-#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_factor/metadata.h"
@@ -260,24 +259,6 @@ class AfDriverNoRateLimiter : public virtual AuthFactorDriver {
   CryptohomeStatus TryCreateRateLimiter(const ObfuscatedUsername& username,
                                         DecryptedUss& decrypted_uss) final;
 };
-
-// Common implementation of GetKnowledgeFactorType(). Takes the
-// KnowledgeFactorType as template parameter, with the special case
-// that UNSPECIFIED is translated to nullopt. This is because returning an
-// optional that either contains a valid knowledge factor type or nullopt is
-// easier to handle than returning an enum that contains UNSPECIFIED.
-template <KnowledgeFactorType kType>
-class AfDriverWithKnowledgeFactorType : public virtual AuthFactorDriver {
- private:
-  std::optional<KnowledgeFactorType> GetKnowledgeFactorType() const final {
-    if (kType == KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_UNSPECIFIED) {
-      return std::nullopt;
-    }
-    return kType;
-  }
-};
-using AfDriverNoKnowledgeFactor = AfDriverWithKnowledgeFactorType<
-    KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_UNSPECIFIED>;
 
 }  // namespace cryptohome
 

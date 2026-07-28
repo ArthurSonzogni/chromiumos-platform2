@@ -15,13 +15,6 @@
 
 namespace cryptohome {
 
-// Control switch value for generating recoverable key stores.
-inline constexpr struct VariationsFeature
-    kCrOSLateBootGenerateRecoverableKeyStore = {
-        .name = "CrOSLateBootGenerateRecoverableKeyStore",
-        .default_state = FEATURE_DISABLED_BY_DEFAULT,
-};
-
 // Control switch value for legacy fingerprint migration.
 inline constexpr struct VariationsFeature kCrOSMigrateLegacyFingerprint = {
     .name = "CrOSLateBootMigrateLegacyFingerprint",
@@ -35,7 +28,6 @@ class Features {
   // ActiveFeature is an enum that defines active features that are being rolled
   // out via finch in cryptohome.
   enum ActiveFeature {
-    kGenerateRecoverableKeyStore,
     kMigrateLegacyFingerprint,
   };
 
