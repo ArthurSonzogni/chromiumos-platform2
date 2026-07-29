@@ -46,6 +46,7 @@ openat: 1
 fstat: 1
 statfs: 1
 newfstatat: 1
+fdatasync: 1
 getsockname: 1
 accept4: 1
 bind: 1

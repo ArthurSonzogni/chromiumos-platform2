@@ -675,6 +675,10 @@ int CrashCollector::WriteNewFile(const FilePath& filename,
     return -1;
   }
 
+  if (HANDLE_EINTR(fdatasync(fd.get())) < 0) {
+    PLOG(WARNING) << "WriteNewFile: Cannot sync " << filename.value();
+  }
+
   if (crash_sending_mode_ == CrashSendingMode::kCrashLoop) {
     if (InMemoryFileExists(filename)) {
       LOG(ERROR)
@@ -699,7 +703,11 @@ bool CrashCollector::CopyFdToNewFile(base::ScopedFD source_fd,
     return false;
   }
   base::File target = base::File(std::move(target_fd));
-  return base::CopyFileContents(source, target);
+  bool success = base::CopyFileContents(source, target);
+  if (success && !target.Flush()) {
+    PLOG(WARNING) << "CopyFdToNewFile: Cannot sync " << target_path.value();
+  }
+  return success;
 }
 
 std::optional<int> CrashCollector::CopyFirstNBytesOfFdToNewFile(
@@ -731,6 +739,11 @@ std::optional<int> CrashCollector::CopyFirstNBytesOfFdToNewFile(
     }
 
     bytes_written += res;
+  }
+
+  if (HANDLE_EINTR(fdatasync(target_fd.get())) < 0) {
+    PLOG(WARNING) << "CopyFirstNBytesOfFdToNewFile: Cannot sync "
+                  << target_path.value();
   }
 
   return bytes_written;
@@ -805,6 +818,11 @@ bool CrashCollector::CloseCompressedFileAndUpdateStats(
   if (result != Z_OK) {
     LOG(ERROR) << "gzclose_w failed with error code " << result;
     return false;
+  }
+
+  if (HANDLE_EINTR(fdatasync(fd_dup.get())) < 0) {
+    PLOG(WARNING) << "CloseCompressedFileAndUpdateStats: Cannot sync "
+                  << filename.value();
   }
 
   struct stat compressed_output_stats;
