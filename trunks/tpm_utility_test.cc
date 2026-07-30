@@ -2148,8 +2148,7 @@ TEST_F(TpmUtilityTest, LoadECPublicKey) {
 
   testing::Mock::VerifyAndClearExpectations(&mock_tpm_);
   EXPECT_EQ(0, in_private_arg.size);
-  EXPECT_EQ(kFixedTPM | kFixedParent,
-            in_public_arg.public_area.object_attributes);
+  EXPECT_EQ(0, in_public_arg.public_area.object_attributes);
   EXPECT_EQ(TPM_ALG_ECDSA, /* default algorithm */
             in_public_arg.public_area.parameters.ecc_detail.scheme.scheme);
   EXPECT_EQ(TPM_ALG_SHA256,

@@ -1478,6 +1478,9 @@ TPM_RC TpmUtilityImpl::LoadRSAPublicKey(AsymmetricKeyUsage key_type,
   public_area.parameters.rsa_detail.key_bits = modulus.size() * 8;
   public_area.parameters.rsa_detail.exponent = public_exponent;
   public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA(modulus);
+  // NOTE: kFixedTPM and kFixedParent are kept on RSA external keys as a legacy
+  // exception for backwards compatibility with existing sealed secrets
+  // (b/539379110).
   const TPM2B_PUBLIC public_data = Make_TPM2B_PUBLIC(public_area);
   TPM2B_SENSITIVE private_data;
   private_data.size = 0;
@@ -1509,6 +1512,8 @@ TPM_RC TpmUtilityImpl::LoadECPublicKey(AsymmetricKeyUsage key_type,
   public_area.parameters.ecc_detail.scheme.scheme = scheme;
   public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER(x);
   public_area.unique.ecc.y = Make_TPM2B_ECC_PARAMETER(y);
+  // External public keys MUST NOT have fixedTPM or fixedParent set.
+  public_area.object_attributes &= ~(kFixedTPM | kFixedParent);
   const TPM2B_PUBLIC public_data = Make_TPM2B_PUBLIC(public_area);
 
   // Empty sensitive area.
