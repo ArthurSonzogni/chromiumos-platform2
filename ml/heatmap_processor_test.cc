@@ -496,6 +496,17 @@ TEST(HeatmapProcessorTest, CanStartService) {
   EXPECT_EQ(result, LoadHeatmapPalmRejectionResult::OK);
 }
 
+TEST(HeatmapProcessorTest, RejectsInvalidModel) {
+  FakeClient client;
+  mojo::Receiver<HeatmapPalmRejectionClient> receiver(&client);
+  auto config = HeatmapPalmRejectionConfig::New();
+  config->tf_model_path = "/nonexistent/invalid_model.tflite";
+  auto* const instance = ml::HeatmapProcessor::GetInstance();
+  auto result =
+      instance->Start(receiver.BindNewPipeAndPassRemote(), std::move(config));
+  EXPECT_EQ(result, LoadHeatmapPalmRejectionResult::LOAD_MODEL_ERROR);
+}
+
 class HeatmapProcessorExecuteTest
     : public ::testing::TestWithParam<std::pair<std::vector<double>, bool>> {};
 

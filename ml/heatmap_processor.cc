@@ -43,7 +43,8 @@ LoadHeatmapPalmRejectionResult HeatmapProcessor::Start(
 
   // Attempt to load model.
   std::unique_ptr<tflite::FlatBufferModel> model =
-      tflite::FlatBufferModel::BuildFromFile(config->tf_model_path.c_str());
+      tflite::FlatBufferModel::VerifyAndBuildFromFile(
+          config->tf_model_path.c_str());
   if (model == nullptr) {
     LOG(ERROR) << "Failed to load model file '" << config->tf_model_path
                << "'.";
