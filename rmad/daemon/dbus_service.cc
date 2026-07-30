@@ -31,6 +31,7 @@
 #include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/futility_utils.h"
+#include "rmad/utils/gsc_utils_impl.h"
 #include "rmad/utils/mojo_service_utils.h"
 #include "rmad/utils/vpd_utils.h"
 #include "rmad/utils/vpd_utils_impl.h"
@@ -109,7 +110,8 @@ DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
                          std::unique_ptr<TpmManagerClient> tpm_manager_client,
                          std::unique_ptr<CrosConfigUtils> cros_config_utils,
                          std::unique_ptr<CrosSystemUtils> crossystem_utils,
-                         std::unique_ptr<VpdUtils> vpd_utils)
+                         std::unique_ptr<VpdUtils> vpd_utils,
+                         std::unique_ptr<GscUtils> gsc_utils)
     : brillo::DBusServiceDaemon(kRmadServiceName),
       rmad_interface_(rmad_interface),
       state_file_path_(state_file_path),
@@ -118,6 +120,7 @@ DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
       cros_config_utils_(std::move(cros_config_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       vpd_utils_(std::move(vpd_utils)),
+      gsc_utils_(std::move(gsc_utils)),
       is_external_utils_initialized_(true),
       is_interface_set_up_(false) {
   dbus_object_ = std::make_unique<DBusObject>(
@@ -135,6 +138,7 @@ int DBusService::OnEventLoopStarted() {
     cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
     crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
     vpd_utils_ = std::make_unique<VpdUtilsImpl>();
+    gsc_utils_ = std::make_unique<GscUtilsImpl>();
     is_external_utils_initialized_ = true;
   }
   is_rma_required_ = CheckRmaCriteria();
@@ -240,7 +244,7 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
 }
 
 bool DBusService::IsRMAAllowed() const {
-  // Allow Shimless RMA in FSI testing mode.
+  // Allow Shimless RMA in FSI testing mode if testlab mode is enabled.
   uint64_t shimless_mode = 0;
   std::string shimless_mode_str;
   if (vpd_utils_->GetShimlessMode(&shimless_mode_str) &&
@@ -249,7 +253,8 @@ bool DBusService::IsRMAAllowed() const {
     shimless_mode = 0;
   }
 
-  if (shimless_mode & kShimlessModeFlagsTriggerable) {
+  if (gsc_utils_->IsTestlabModeEnabled() &&
+      shimless_mode & kShimlessModeFlagsTriggerable) {
     LOG(INFO) << "Shimless RMA is allowed by VPD flags.";
     return true;
   }
