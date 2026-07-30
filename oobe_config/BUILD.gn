@@ -13,6 +13,7 @@ group("all") {
     ":liboobeconfig",
     ":oobe_config_restore",
     ":oobe_config_save",
+    ":oobe_config_save_init_metrics",
     ":rollback_cleanup",
     "metrics:all",
   ]
@@ -103,6 +104,16 @@ executable("oobe_config_save") {
     ":install_tmpfilesd_config_save",
     ":liboobeconfig",
     "features:features",
+  ]
+}
+
+executable("oobe_config_save_init_metrics") {
+  sources = [ "oobe_config_save_init_metrics_main.cc" ]
+  configs += [ ":target_defaults" ]
+  install_path = "sbin"
+  deps = [
+    ":liboobeconfig",
+    "metrics:libenterprise_rollback_metrics",
   ]
 }
 
