@@ -4,23 +4,23 @@
 
 #include "modemfwd/modem_sandbox.h"
 
-#include <string>
-#include <vector>
-
+#include <libminijail.h>
 #include <linux/securebits.h>
+#include <scoped_minijail.h>
 #include <signal.h>
 #include <stdio.h>
 
-#include <base/no_destructor.h>
+#include <string>
+#include <vector>
+
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/platform_file.h>
 #include <base/logging.h>
+#include <base/no_destructor.h>
 #include <base/process/process.h>
 #include <base/time/time.h>
-#include <libminijail.h>
-#include <scoped_minijail.h>
 
 #include "modemfwd/logging.h"
 
@@ -91,10 +91,13 @@ ScopedMinijail ConfigureSandbox(const base::FilePath& seccomp_file_path,
   }
 
   int logging_fd = GetLoggingFd();
-  minijail_preserve_fd(j.get(), logging_fd, logging_fd);
-  minijail_add_hook(j.get(), &SetupLogging,
-                    reinterpret_cast<void*>(static_cast<intptr_t>(logging_fd)),
-                    MINIJAIL_HOOK_EVENT_PRE_DROP_CAPS);
+  if (logging_fd >= 0) {
+    minijail_preserve_fd(j.get(), logging_fd, logging_fd);
+    minijail_add_hook(
+        j.get(), &SetupLogging,
+        reinterpret_cast<void*>(static_cast<intptr_t>(logging_fd)),
+        MINIJAIL_HOOK_EVENT_PRE_DROP_CAPS);
+  }
 
   return j;
 }
