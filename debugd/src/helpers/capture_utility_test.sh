@@ -321,7 +321,7 @@ test_get_monitor_phy_list ()
     fi
     echo -e 'Wiphy phy0\n\t* 1000 MHz\n\t\t * monitor'
     echo -e 'Wiphy phy1\n\t* 1000 MHz\n\t\t * station'
-    echo -e 'Wiphy phy2\n\t* 2000 MHz\n\t\t * monitor'
+    echo -e 'Wiphy phy2\n\t* 2000.0 MHz\n\t\t * monitor'
     echo -e 'Wiphy phy3\n\t* 2000 MHz\n\t\t * monitor'
   }
   expect_eq "phys for frequency 1000" "phy0" "$(get_monitor_phy_list 1000)"

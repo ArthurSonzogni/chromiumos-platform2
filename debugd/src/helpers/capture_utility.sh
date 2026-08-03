@@ -103,7 +103,7 @@ get_monitor_phy_list ()
   iw phy 2>/dev/null |
       awk -v search_frequency="${frequency}" \
           '/^Wiphy/ { phy=$2; has_frequency=0 };
-           /\* [0-9]+ MHz/ { if ($2 == search_frequency) has_frequency=1 };
+           /\* [0-9]+(\.[0-9]+)? MHz/ { if ($2 == search_frequency) has_frequency=1 };
            /^\t\t \* monitor/ { if (has_frequency) print phy }'
 }
 
