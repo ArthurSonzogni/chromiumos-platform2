@@ -25,8 +25,8 @@
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <google/protobuf/text_format.h>
-#include <mojo/core/core.h>
 #include <mojo/core/embedder/embedder.h>
+#include <mojo/core/ipcz_api.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "ml/benchmark.pb.h"
@@ -84,7 +84,16 @@ void InitializeOnce() {
   if (!base::CurrentThread::IsSet()) {
     (new brillo::BaseMessageLoop())->SetAsCurrent();
   }
-  if (!mojo::core::Core::Get()) {
+  // This shared library is loaded into two different executables. In
+  // `ml_service_test`, `testrunner.cc` has already initialized Mojo by the time
+  // `benchmark_start()` runs, so we must not do it again. The `ml_benchmark`
+  // executable, by contrast, doesn't set up Mojo before loading this library,
+  // so we bring it up here, but only if nobody else already has.
+  //
+  // TODO(b/359926651): Give each executable ownership of Mojo setup and
+  // shutdown so this library no longer has to initialize Mojo for the whole
+  // process.
+  if (mojo::core::GetIpczNode() == IPCZ_INVALID_HANDLE) {
     mojo::core::Init();
   }
 }

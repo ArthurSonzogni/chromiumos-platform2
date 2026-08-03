@@ -8,7 +8,6 @@
 #include <base/run_loop.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <gtest/gtest.h>
-#include <mojo/core/core.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
@@ -45,18 +44,11 @@ class ClientTest : public ::testing::Test {
   void SetUp() override {
     base::CommandLine::Init(0, nullptr);
     message_loop_.SetAsCurrent();
+    // TODO(b/359926651): Have the test runner set up and tear down Mojo once
+    // for the whole process. Each fixture currently initializes Mojo on its
+    // own, so there is no single Mojo environment shared across the suite.
     mojo::core::Init();
   }
-
-// No extra shutdown required for MojoIpcz.
-#if !defined(ENABLE_IPCZ_ON_CHROMEOS)
-  void TearDown() override {
-    auto core = mojo::core::Core::Get();
-    std::vector<MojoHandle> leaks;
-    core->GetActiveHandlesForTest(&leaks);
-    EXPECT_TRUE(leaks.empty());
-  }
-#endif  // !defined(ENABLE_IPCZ_ON_CHROMEOS)
 
  private:
   brillo::BaseMessageLoop message_loop_;
