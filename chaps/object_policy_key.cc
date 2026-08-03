@@ -16,10 +16,15 @@ namespace chaps {
 // read-only.modify - True if attribute cannot be set with C_SetAttributeValue.
 // required - True if attribute is required for a valid object.
 static const AttributePolicy kKeyPolicies[] = {
-    {CKA_KEY_TYPE, false, {false, false, true}, true},
+    {CKA_KEY_TYPE, false, {false, true, true}, true},
     {CKA_LOCAL, false, {true, true, true}, false},
     {CKA_KEY_GEN_MECHANISM, false, {true, true, true}, false},
-    {CKA_ALLOWED_MECHANISMS, false, {false, false, true}, false},
+    {CKA_ALLOWED_MECHANISMS, false, {false, true, true}, false},
+    // Key-usage flags must not be mutable post-creation.
+    {CKA_ENCRYPT, false, {false, false, true}, false},
+    {CKA_DECRYPT, false, {false, false, true}, false},
+    {CKA_SIGN, false, {false, false, true}, false},
+    {CKA_VERIFY, false, {false, false, true}, false},
 };
 
 ObjectPolicyKey::ObjectPolicyKey() {
