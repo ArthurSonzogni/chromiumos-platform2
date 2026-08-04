@@ -13,6 +13,7 @@
 
 #include <base/containers/span.h>
 #include <base/strings/strcat.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "libec/ec_command.h"
@@ -20,6 +21,35 @@
 namespace ec {
 
 namespace {
+static std::string DecodePanicFlags(uint8_t flags) {
+  std::vector<std::string> flag_names;
+  if (flags & PANIC_DATA_FLAG_FRAME_VALID) {
+    flag_names.push_back("FRAME_VALID");
+  }
+  if (flags & PANIC_DATA_FLAG_OLD_CONSOLE) {
+    flag_names.push_back("OLD_CONSOLE");
+  }
+  if (flags & PANIC_DATA_FLAG_OLD_HOSTCMD) {
+    flag_names.push_back("OLD_HOSTCMD");
+  }
+  if (flags & PANIC_DATA_FLAG_OLD_HOSTEVENT) {
+    flag_names.push_back("OLD_HOSTEVENT");
+  }
+  if (flags & PANIC_DATA_FLAG_TRUNCATED) {
+    flag_names.push_back("TRUNCATED");
+  }
+  if (flags & PANIC_DATA_FLAG_RO_IMAGE) {
+    flag_names.push_back("RO_IMAGE");
+  }
+  if (flags & PANIC_DATA_FLAG_RW_IMAGE) {
+    flag_names.push_back("RW_IMAGE");
+  }
+  if (flag_names.empty()) {
+    return "";
+  }
+  return " (" + base::JoinString(flag_names, " | ") + ")";
+}
+
 static std::string PrintPanicReg(int regnum, const uint32_t* regs, int index) {
   static const char* const regname[] = {
       "r0 ", "r1 ", "r2 ", "r3 ", "r4 ", "r5 ", "r6 ", "r7 ",
@@ -88,9 +118,8 @@ static std::string ParsePanicInfoCm(const struct panic_data* pdata) {
 
   std::string ret;
 
-  ret = base::StringPrintf(
-      "Saved panic data: %02x%s\n", pdata->flags,
-      (pdata->flags & PANIC_DATA_FLAG_OLD_HOSTCMD ? "" : " (NEW)"));
+  ret = base::StringPrintf("Saved panic data: %02x%s\n", pdata->flags,
+                           DecodePanicFlags(pdata->flags).c_str());
 
   if (pdata->struct_version == 2) {
     origin = ((lregs[11] & 0xf) == 1 || (lregs[11] & 0xf) == 9) ? ORIG_HANDLER
@@ -132,9 +161,8 @@ static std::string ParsePanicInfoNds32(const struct panic_data* pdata) {
 
   std::string ret;
 
-  ret = base::StringPrintf(
-      "Saved panic data: %02x%s\n", pdata->flags,
-      (pdata->flags & PANIC_DATA_FLAG_OLD_HOSTCMD ? "" : " (NEW)"));
+  ret = base::StringPrintf("Saved panic data: %02x%s\n", pdata->flags,
+                           DecodePanicFlags(pdata->flags).c_str());
 
   base::StrAppend(
       &ret,
@@ -163,7 +191,10 @@ static std::string ParsePanicInfoRv32i(const struct panic_data* pdata) {
 
   std::string ret;
 
-  ret = base::StringPrintf("=== EXCEPTION: MCAUSE=%x ===\n", mcause);
+  ret = base::StringPrintf("Saved panic data: %02x%s\n", pdata->flags,
+                           DecodePanicFlags(pdata->flags).c_str());
+  base::StrAppend(
+      &ret, {base::StringPrintf("=== EXCEPTION: MCAUSE=%x ===\n", mcause)});
   base::StrAppend(&ret,
                   {base::StringPrintf("S11 %08x S10 %08x  S9 %08x  S8   %08x\n",
                                       regs[0], regs[1], regs[2], regs[3]),
