@@ -17,8 +17,10 @@ using ResultCallback = base::OnceCallback<void(int)>;
 constexpr char bcd_chars[] = "0123456789\0\0\0\0\0\0";
 constexpr auto kLpaRetryDelay = base::Seconds(2);
 
-// Duration that Chrome waits for Hermes to return a DBus response
-constexpr auto kHermesTimeout = base::Minutes(4);
+// Duration that Chrome waits for Hermes to return a DBus response.
+// Increased to 6 minutes to accommodate slow eSIM certification test setups
+// (e.g. those with high network latency or DNS resolution timeouts).
+constexpr auto kHermesTimeout = base::Minutes(6);
 
 constexpr int kSuccess = 0;
 constexpr int kDefaultError = -1;
