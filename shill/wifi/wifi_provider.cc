@@ -1665,10 +1665,15 @@ void WiFiProvider::ProcessDeviceRequests() {
     auto ifaces_to_delete =
         phy->RequestNewIface((*request)->type, (*request)->priority);
     if (ifaces_to_delete && ifaces_to_delete->size() == 0) {
-      if ((*request)->create_device_cb) {
-        std::move((*request)->create_device_cb).Run();
-      }
+      // Move the callback out and erase the node *before* running it:
+      // |create_device_cb| can synchronously re-enter ProcessDeviceRequests()
+      // (via RegisterLocalDevice / DeregisterLocalDevice), which would
+      // otherwise erase the same multiset node and leave |request| dangling.
+      base::OnceClosure cb = std::move((*request)->create_device_cb);
       request_queue_.erase(request);
+      if (cb) {
+        std::move(cb).Run();
+      }
       return;
     }
     request++;
