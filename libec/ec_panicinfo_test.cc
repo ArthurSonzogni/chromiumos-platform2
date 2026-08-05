@@ -71,7 +71,8 @@ TEST(ParsePanicInfo, ParsePanicInfoNoFlags) {
       0x74, 0x00, 0x00, 0x00, 0x50, 0x6e, 0x63, 0x21};
   auto result = ParsePanicInfo(base::span{data});
   EXPECT_TRUE(result.has_value());
-  EXPECT_THAT(result.value(), testing::StartsWith("Saved panic data: 00\n"));
+  EXPECT_THAT(result.value(),
+              testing::StartsWith("Saved panic data: 00 (NONE)\n"));
 }
 
 TEST(ParsePanicInfo, ParsePanicInfoAllFlags) {

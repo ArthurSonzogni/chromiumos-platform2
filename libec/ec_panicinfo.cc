@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/containers/span.h>
@@ -21,8 +22,8 @@
 namespace ec {
 
 namespace {
-static std::string DecodePanicFlags(uint8_t flags) {
-  std::vector<std::string> flag_names;
+std::string DecodePanicFlags(uint8_t flags) {
+  std::vector<std::string_view> flag_names;
   if (flags & PANIC_DATA_FLAG_FRAME_VALID) {
     flag_names.push_back("FRAME_VALID");
   }
@@ -45,11 +46,10 @@ static std::string DecodePanicFlags(uint8_t flags) {
     flag_names.push_back("RW_IMAGE");
   }
   if (flag_names.empty()) {
-    return "";
+    return "(NONE)";
   }
-  return " (" + base::JoinString(flag_names, " | ") + ")";
+  return "(" + base::JoinString(flag_names, " | ") + ")";
 }
-
 static std::string PrintPanicReg(int regnum, const uint32_t* regs, int index) {
   static const char* const regname[] = {
       "r0 ", "r1 ", "r2 ", "r3 ", "r4 ", "r5 ", "r6 ", "r7 ",
@@ -118,7 +118,7 @@ static std::string ParsePanicInfoCm(const struct panic_data* pdata) {
 
   std::string ret;
 
-  ret = base::StringPrintf("Saved panic data: %02x%s\n", pdata->flags,
+  ret = base::StringPrintf("Saved panic data: %02x %s\n", pdata->flags,
                            DecodePanicFlags(pdata->flags).c_str());
 
   if (pdata->struct_version == 2) {
@@ -161,7 +161,7 @@ static std::string ParsePanicInfoNds32(const struct panic_data* pdata) {
 
   std::string ret;
 
-  ret = base::StringPrintf("Saved panic data: %02x%s\n", pdata->flags,
+  ret = base::StringPrintf("Saved panic data: %02x %s\n", pdata->flags,
                            DecodePanicFlags(pdata->flags).c_str());
 
   base::StrAppend(
@@ -191,7 +191,7 @@ static std::string ParsePanicInfoRv32i(const struct panic_data* pdata) {
 
   std::string ret;
 
-  ret = base::StringPrintf("Saved panic data: %02x%s\n", pdata->flags,
+  ret = base::StringPrintf("Saved panic data: %02x %s\n", pdata->flags,
                            DecodePanicFlags(pdata->flags).c_str());
   base::StrAppend(
       &ret, {base::StringPrintf("=== EXCEPTION: MCAUSE=%x ===\n", mcause)});
