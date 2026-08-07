@@ -89,6 +89,82 @@ class ConfigFSTests(unittest.TestCase):
 
         _CheckConfigRec(config, os.path.join(output_dir, "squashfs-root/v1"))
 
+    def testTarStreamingSquashFSValidity(self):
+        """Test SquashFS image properties and permissions with tar streaming."""
+        test_config = {
+            "chromeos": {
+                "configs": [
+                    {
+                        "name": "test_device",
+                        "identity": {
+                            "sku-id": 1,
+                            "platform-name": "TestPlatform",
+                        },
+                        "hardware-properties": {"is-lid-convertible": True},
+                    }
+                ]
+            }
+        }
+        with tempfile.TemporaryDirectory(prefix="test_squashfs.") as temp_dir:
+            img_path = os.path.join(temp_dir, "configfs.img")
+            configfs.GenerateConfigFSData(test_config, img_path)
+
+            # Test unsquashfs -l (listing)
+            list_res = subprocess.run(
+                ["unsquashfs", "-l", img_path],
+                check=True,
+                stdout=subprocess.PIPE,
+                text=True,
+            )
+            self.assertIn(
+                "squashfs-root/v1/chromeos/configs/0/name",
+                list_res.stdout,
+            )
+
+            # Test extraction and permissions
+            extract_dir = os.path.join(temp_dir, "extracted")
+            subprocess.run(
+                ["unsquashfs", "-d", extract_dir, img_path],
+                check=True,
+                stdout=subprocess.PIPE,
+            )
+            v1_dir = os.path.join(extract_dir, "v1")
+            self.assertTrue(os.path.isdir(v1_dir))
+            # Check directory permissions (0o755)
+            self.assertEqual(oct(os.stat(v1_dir).st_mode & 0o777), "0o755")
+            # Check file content and permissions (0o644)
+            name_file = os.path.join(v1_dir, "chromeos/configs/0/name")
+            self.assertTrue(os.path.isfile(name_file))
+            self.assertEqual(Path(name_file).read_bytes(), b"test_device")
+            self.assertEqual(oct(os.stat(name_file).st_mode & 0o777), "0o644")
+
+    @TestConfigs(
+        "test.json",
+        "test_arm.json",
+        "test_build.json",
+        "test_import.json",
+        "test_merge.json",
+    )
+    def testConfigFsEquivalence(self, filename, config, output_dir):
+        """Verify extracted SquashFS tree against expected configuration."""
+        def _VerifyNode(node, path):
+            if isinstance(node, dict):
+                self.assertTrue(os.path.isdir(path))
+                self.assertEqual(oct(os.stat(path).st_mode & 0o777), "0o755")
+                for k, v in node.items():
+                    _VerifyNode(v, os.path.join(path, str(k)))
+            elif isinstance(node, list):
+                self.assertTrue(os.path.isdir(path))
+                self.assertEqual(oct(os.stat(path).st_mode & 0o777), "0o755")
+                for idx, v in enumerate(node):
+                    _VerifyNode(v, os.path.join(path, str(idx)))
+            else:
+                self.assertTrue(os.path.isfile(path))
+                self.assertEqual(oct(os.stat(path).st_mode & 0o777), "0o644")
+                self.assertEqual(Path(path).read_bytes(), configfs.Serialize(node))
+
+        _VerifyNode(config, os.path.join(output_dir, "squashfs-root/v1"))
+
 
 if __name__ == "__main__":
     unittest.main(module=__name__)
