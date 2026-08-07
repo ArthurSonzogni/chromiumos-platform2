@@ -43,6 +43,11 @@ BaseFile = collections.namedtuple("BaseFile", ["source", "dest"])
 
 FirmwareHash = collections.namedtuple("FirmwareHash", ["digest", "algorithm"])
 
+FirmwareTargetConfig = collections.namedtuple(
+    "FirmwareTargetConfig",
+    ["target", "libpayload", "recovery_input", "detachable_ui"],
+)
+
 # Represents information needed to create firmware for a model:
 #   model: Name of model (e.g 'reef'). Also used as the signature ID for signing
 #   shared_model: Name of model containing the shared firmware used by this
@@ -733,6 +738,63 @@ class CrosConfigBaseImpl:
                     for extra_target in device_targets["ec-extras"]:
                         build_targets.append(extra_target)
         return sorted(set(build_targets))
+
+    def GetFirmwareBuildTargetConfigs(
+        self, target_type: str
+    ) -> List[FirmwareTargetConfig]:
+        """Returns all firmware build-target configs for the given target type.
+
+        Args:
+            target_type: A string type for the build-targets to return
+                (e.g. 'depthcharge')
+
+        Returns:
+            A list of FirmwareTargetConfig namedtuples sorted by target name.
+        """
+        firmware_filter = self._GetFirmwareFilter()
+        targets = collections.OrderedDict()
+        for device in self.GetDeviceConfigs():
+            device_targets = device.GetProperties("/firmware/build-targets")
+            if not device_targets or target_type not in device_targets:
+                continue
+
+            key = self.GetFirmwareGroupingName(device)
+            if firmware_filter and key not in firmware_filter:
+                continue
+
+            target = device_targets[target_type]
+            libpayload = device_targets.get("libpayload") or key
+            if target in targets and targets[target] != libpayload:
+                raise ValueError(
+                    f"Colliding libpayload target found for {target_type} "
+                    f"target {target}: {libpayload}, {targets[target]}"
+                )
+            targets[target] = libpayload
+
+        result = []
+        for target in sorted(targets.keys()):
+            libpayload = targets[target]
+            recovery_input = self.GetFirmwareRecoveryInput(target_type, target)
+            detachable_ui = (
+                self.GetKeyValue(
+                    "/firmware/build-targets",
+                    target_type,
+                    target,
+                    "/firmware",
+                    "detachable-ui",
+                    ignore_unset=True,
+                )
+                or ""
+            )
+            result.append(
+                FirmwareTargetConfig(
+                    target=target,
+                    libpayload=libpayload,
+                    recovery_input=recovery_input,
+                    detachable_ui=detachable_ui,
+                )
+            )
+        return result
 
     def GetFirmwareBuildCombinations(self, components):
         """Get named firmware build combinations for all devices.

@@ -294,6 +294,42 @@ class CrosConfigHostTest(unittest.TestCase):
         self.assertEqual(result, expected)
         del os.environ["FW_NAME"]
 
+    def testFirmwareBuildTargetConfigs(self):
+        """Test querying build-target configs for firmware."""
+        config = CrosConfig(self.filepath)
+
+        os.environ["FW_NAME"] = "another"
+        result = config.GetFirmwareBuildTargetConfigs("depthcharge")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].target, "another")
+        self.assertEqual(result[0].libpayload, "another")
+        self.assertEqual(result[0].recovery_input, "KEYBOARD")
+        self.assertEqual(result[0].detachable_ui, "True")
+        del os.environ["FW_NAME"]
+
+        os.environ["FW_NAME"] = "some"
+        result = config.GetFirmwareBuildTargetConfigs("depthcharge")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].target, "some")
+        self.assertEqual(result[0].libpayload, "some")
+        self.assertEqual(result[0].recovery_input, "RECOVERY_BUTTON")
+        self.assertEqual(result[0].detachable_ui, "")
+        del os.environ["FW_NAME"]
+
+        # Multiple targets in filter
+        os.environ["FW_NAME"] = "another,some"
+        result = config.GetFirmwareBuildTargetConfigs("depthcharge")
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].target, "another")
+        self.assertEqual(result[1].target, "some")
+        del os.environ["FW_NAME"]
+
+        # Non-existent target type returns empty list
+        os.environ["FW_NAME"] = "another"
+        result = config.GetFirmwareBuildTargetConfigs("nonexistent")
+        self.assertEqual(result, [])
+        del os.environ["FW_NAME"]
+
     def testFirmwareRecoveryInput(self):
         """Test querying and generating recovery-input modes"""
         config = CrosConfig(self.filepath)

@@ -23,6 +23,7 @@ import sys
 this_dir = os.path.dirname(__file__)
 sys.path.insert(0, this_dir)
 from libcros_config_host import CrosConfig  # pylint: disable=import-error
+from libcros_config_host_base import CrosConfigBaseImpl  # pylint: disable=import-error
 
 
 sys.path.pop(0)
@@ -248,6 +249,25 @@ def GetFirmwareBuildTargets(config, target_type):
     """
     for target in config.GetFirmwareBuildTargets(target_type):
         print(target)
+
+
+def GetFirmwareBuildTargetConfigs(
+    config: CrosConfigBaseImpl, target_type: str
+) -> None:
+    """Lists firmware build-target configs for given type across all models.
+
+    Prints tab-separated lines containing:
+        <target> <libpayload> <recovery_input> <detachable_ui>
+
+    Args:
+        config: A CrosConfig instance to load data from.
+        target_type: String name of what target type to get build-targets for.
+    """
+    for item in config.GetFirmwareBuildTargetConfigs(target_type):
+        print(
+            f"{item.target}\t{item.libpayload}\t{item.recovery_input}\t"
+            f"{item.detachable_ui}"
+        )
 
 
 def GetFirmwareVersion(config, project_name, image_type):
@@ -607,6 +627,18 @@ def GetParser(description):
         "type",
         help="The build-targets type to get (ex. coreboot, ec, depthcharge)",
     )
+    # Parser: get-firmware-build-target-configs
+    build_target_configs_parser = subparsers.add_parser(
+        "get-firmware-build-target-configs",
+        help="Lists firmware build-target configs for the given type, for all "
+        "models.",
+        epilog="Each build-target config will be printed as tab-separated "
+        "fields: <target>\\t<libpayload>\\t<recovery_input>\\t<detachable_ui>",
+    )
+    build_target_configs_parser.add_argument(
+        "type",
+        help="The build-targets type to get (ex. depthcharge)",
+    )
     # Parser: get-firmware-version
     build_version_parser = subparsers.add_parser(
         "get-firmware-version",
@@ -810,6 +842,8 @@ def main(argv=None):
         GetCameraFiles(config)
     elif opts.subcommand == "get-firmware-build-targets":
         GetFirmwareBuildTargets(config, opts.type)
+    elif opts.subcommand == "get-firmware-build-target-configs":
+        GetFirmwareBuildTargetConfigs(config, opts.type)
     elif opts.subcommand == "get-firmware-version":
         GetFirmwareVersion(config, opts.project, opts.type)
     elif opts.subcommand == "get-fpmcu-firmware-ro-version":
