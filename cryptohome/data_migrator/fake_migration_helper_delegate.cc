@@ -11,13 +11,6 @@
 
 namespace cryptohome::data_migrator {
 
-namespace {
-
-constexpr char kMtimeXattrName[] = "user.mtime";
-constexpr char kAtimeXattrName[] = "user.atime";
-
-}  // namespace
-
 FakeMigrationHelperDelegate::FakeMigrationHelperDelegate(
     libstorage::Platform* platform, const base::FilePath& to_dir)
     : platform_(platform), to_dir_(to_dir) {}
@@ -27,16 +20,6 @@ FakeMigrationHelperDelegate::~FakeMigrationHelperDelegate() = default;
 void FakeMigrationHelperDelegate::AddDenylistedPath(
     const base::FilePath& path) {
   denylisted_paths_.insert(path);
-}
-
-void FakeMigrationHelperDelegate::AddXattrMapping(const std::string& name_from,
-                                                  const std::string& name_to) {
-  xattr_mappings_[name_from] = name_to;
-}
-
-void FakeMigrationHelperDelegate::AddUidMapping(
-    uid_t uid_from, const std::optional<uid_t>& uid_to) {
-  uid_mappings_[uid_from] = uid_to;
 }
 
 void FakeMigrationHelperDelegate::SetFreeDiskSpaceForMigrator(
@@ -49,46 +32,8 @@ bool FakeMigrationHelperDelegate::ShouldMigrateFile(
   return !denylisted_paths_.contains(child);
 }
 
-bool FakeMigrationHelperDelegate::ShouldCopyQuotaProjectId() {
-  return true;
-}
-
-bool FakeMigrationHelperDelegate::ShouldSkipVerityFileOnErrors() {
-  return true;
-}
-
 bool FakeMigrationHelperDelegate::ShouldSkipFileOnIOErrors() {
   return true;
-}
-
-std::string FakeMigrationHelperDelegate::GetMtimeXattrName() {
-  return kMtimeXattrName;
-}
-
-std::string FakeMigrationHelperDelegate::GetAtimeXattrName() {
-  return kAtimeXattrName;
-}
-
-bool FakeMigrationHelperDelegate::ConvertFileMetadata(
-    base::stat_wrapper_t* stat) {
-  auto iter = uid_mappings_.find(stat->st_uid);
-  if (iter != uid_mappings_.end()) {
-    if (iter->second.has_value()) {
-      stat->st_uid = iter->second.value();
-      return true;
-    }
-    return false;
-  }
-  return true;
-}
-
-std::string FakeMigrationHelperDelegate::ConvertXattrName(
-    const std::string& name) {
-  auto iter = xattr_mappings_.find(name);
-  if (iter != xattr_mappings_.end()) {
-    return iter->second;
-  }
-  return name;
 }
 
 std::optional<int64_t> FakeMigrationHelperDelegate::FreeSpaceForMigrator() {

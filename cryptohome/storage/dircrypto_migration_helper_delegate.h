@@ -12,7 +12,6 @@
 #include <base/files/file_path.h>
 #include <libstorage/platform/platform.h>
 
-#include "cryptohome/data_migrator/metrics.h"
 #include "cryptohome/data_migrator/migration_helper_delegate.h"
 #include "cryptohome/migration_type.h"
 
@@ -36,10 +35,7 @@ class DircryptoMigrationHelperDelegate
   // data_migrator::MigrationHelperDelegate overrides:
   bool ShouldReportProgress() override;
   bool ShouldMigrateFile(const base::FilePath& child) override;
-  bool ShouldCopyQuotaProjectId() override;
   bool ShouldSkipFileOnIOErrors() override;
-  std::string GetMtimeXattrName() override;
-  std::string GetAtimeXattrName() override;
   void RecordSkippedFile(const base::FilePath& path) override;
   std::optional<int64_t> FreeSpaceForMigrator() override;
 

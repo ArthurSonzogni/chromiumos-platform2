@@ -94,8 +94,8 @@ TEST_F(MigrationHelperTest, EmptyTest) {
 }
 
 TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
-  // Test that UID/GID, mtime, permission, xattr, ext2 attributes and
-  // project quota ID of a directory are migrated.
+  // Test that UID/GID, mtime, permission, xattr and ext2 attributes of a
+  // directory are migrated.
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
 
@@ -121,10 +121,6 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
   // Set ext2 attributes
   int ext2_attrs = FS_SYNC_FL | FS_NODUMP_FL;
   ASSERT_TRUE(platform_.SetExtFileAttributes(kFromDirPath, ext2_attrs, 0));
-
-  // Set project quota ID.
-  constexpr int from_project_id = 12345;
-  ASSERT_TRUE(platform_.SetQuotaProjectId(kFromDirPath, from_project_id));
 
   base::stat_wrapper_t from_stat;
   ASSERT_TRUE(platform_.Stat(kFromDirPath, &from_stat));
@@ -160,10 +156,6 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
   int new_ext2_attrs;
   ASSERT_TRUE(platform_.GetExtFileAttributes(kToDirPath, &new_ext2_attrs));
   EXPECT_EQ(ext2_attrs, new_ext2_attrs);
-
-  int to_project_id = 0;
-  ASSERT_TRUE(platform_.GetQuotaProjectId(kToDirPath, &to_project_id));
-  EXPECT_EQ(from_project_id, to_project_id);
 }
 
 TEST_F(MigrationHelperTest, DirectoryPartiallyMigrated) {
@@ -176,11 +168,11 @@ TEST_F(MigrationHelperTest, DirectoryPartiallyMigrated) {
   constexpr struct timespec kMtime = {123, 456};
   constexpr struct timespec kAtime = {234, 567};
   ASSERT_TRUE(platform_.SetExtendedFileAttribute(
-      to_dir_, delegate_.GetMtimeXattrName(),
-      reinterpret_cast<const char*>(&kMtime), sizeof(kMtime)));
+      to_dir_, kMtimeXattrName, reinterpret_cast<const char*>(&kMtime),
+      sizeof(kMtime)));
   ASSERT_TRUE(platform_.SetExtendedFileAttribute(
-      to_dir_, delegate_.GetAtimeXattrName(),
-      reinterpret_cast<const char*>(&kAtime), sizeof(kAtime)));
+      to_dir_, kAtimeXattrName, reinterpret_cast<const char*>(&kAtime),
+      sizeof(kAtime)));
 
   EXPECT_TRUE(helper.Migrate(base::BindRepeating(
       &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
@@ -315,8 +307,8 @@ TEST_F(MigrationHelperTest, UnreadableFile) {
 }
 
 TEST_F(MigrationHelperTest, CopyAttributesFile) {
-  // Test that UID/GID, mtime/atime, permission, xattr, ext2 attributes and
-  // project quota ID of a file are migrated.
+  // Test that UID/GID, mtime/atime, permission, xattr and ext2 attributes of a
+  // file are migrated.
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
 
@@ -349,10 +341,6 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   int ext2_attrs = FS_SYNC_FL | FS_NODUMP_FL | EXT4_EOFBLOCKS_FL;
   ASSERT_TRUE(platform_.SetExtFileAttributes(kFromFilePath, ext2_attrs, 0));
 
-  // Set project quota ID.
-  constexpr int from_project_id = 12345;
-  ASSERT_TRUE(platform_.SetQuotaProjectId(kFromFilePath, from_project_id));
-
   base::stat_wrapper_t from_stat;
   ASSERT_TRUE(platform_.Stat(kFromFilePath, &from_stat));
   EXPECT_TRUE(helper.Migrate(base::BindRepeating(
@@ -380,11 +368,11 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   EXPECT_STREQ(value.c_str(), kValue);
 
   // The temporary xattrs for storing mtime/atime should be removed.
-  ASSERT_FALSE(platform_.GetExtendedFileAttribute(
-      kToFilePath, delegate_.GetMtimeXattrName(), nullptr, 0));
+  ASSERT_FALSE(platform_.GetExtendedFileAttribute(kToFilePath, kMtimeXattrName,
+                                                  nullptr, 0));
   ASSERT_EQ(ENODATA, errno);
-  ASSERT_FALSE(platform_.GetExtendedFileAttribute(
-      kToFilePath, delegate_.GetAtimeXattrName(), nullptr, 0));
+  ASSERT_FALSE(platform_.GetExtendedFileAttribute(kToFilePath, kAtimeXattrName,
+                                                  nullptr, 0));
   ASSERT_EQ(ENODATA, errno);
 
   // Quarantine xattrs storing the origin and referrer of downloaded files
@@ -400,10 +388,6 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   int new_ext2_attrs;
   ASSERT_TRUE(platform_.GetExtFileAttributes(kToFilePath, &new_ext2_attrs));
   EXPECT_EQ(ext2_attrs & ~EXT4_EOFBLOCKS_FL, new_ext2_attrs);
-
-  int to_project_id = 0;
-  ASSERT_TRUE(platform_.GetQuotaProjectId(kToFilePath, &to_project_id));
-  EXPECT_EQ(from_project_id, to_project_id);
 }
 
 TEST_F(MigrationHelperTest, CopyAttributesSymlink) {
@@ -447,107 +431,6 @@ TEST_F(MigrationHelperTest, CopyAttributesSymlink) {
   EXPECT_STREQ(value.c_str(), kValue);
 }
 
-TEST_F(MigrationHelperTest, ConvertFileMetadata) {
-  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
-                         status_files_dir_, kDefaultChunkSize);
-  constexpr uid_t kFromErrorUid = 0;
-  constexpr uid_t kFromFileUid = 10001;
-  constexpr uid_t kFromDirUid = 10002;
-  constexpr uid_t kToFileUid = 20001;
-  constexpr uid_t kToDirUid = 20002;
-  constexpr gid_t kGid = 1000;
-
-  // Map |kFromErrorUid| to null so that files with this UID won't be migrated.
-  delegate_.AddUidMapping(kFromErrorUid, /*uid_to=*/std::nullopt);
-  // Map |kFromFileUid| to |kToFileUid|, and |kFromDirUid| to |kToDirUid|.
-  delegate_.AddUidMapping(kFromFileUid, kToFileUid);
-  delegate_.AddUidMapping(kFromDirUid, kToDirUid);
-
-  ASSERT_TRUE(platform_.TouchFileDurable(from_dir_.Append("file1")));
-  ASSERT_TRUE(platform_.TouchFileDurable(from_dir_.Append("file2")));
-  ASSERT_TRUE(platform_.CreateDirectory(from_dir_.Append("dir1")));
-  ASSERT_TRUE(platform_.TouchFileDurable(from_dir_.Append("dir1/file")));
-  ASSERT_TRUE(platform_.CreateDirectory(from_dir_.Append("dir2")));
-  ASSERT_TRUE(platform_.TouchFileDurable(from_dir_.Append("dir2/file")));
-
-  // file1 and dir1 have UID |kFromErrorUid|.
-  ASSERT_TRUE(platform_.SetOwnership(from_dir_.Append("file1"), kFromErrorUid,
-                                     kGid, /*follow_links=*/false));
-  ASSERT_TRUE(platform_.SetOwnership(from_dir_.Append("dir1"), kFromErrorUid,
-                                     kGid, /*follow_links=*/false));
-
-  // file2, dir2 and dir2/file all have UID that can be converted.
-  ASSERT_TRUE(platform_.SetOwnership(from_dir_.Append("file2"), kFromFileUid,
-                                     kGid, /*follow_links=*/false));
-  ASSERT_TRUE(platform_.SetOwnership(from_dir_.Append("dir2"), kFromDirUid,
-                                     kGid, /*follow_links=*/false));
-  ASSERT_TRUE(platform_.SetOwnership(from_dir_.Append("dir2/file"),
-                                     kFromFileUid, kGid,
-                                     /*follow_links=*/false));
-
-  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
-      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
-
-  // file1 and dir1 are not migrated because their UID cannot be converted.
-  EXPECT_FALSE(platform_.FileExists(to_dir_.Append("file1")));
-  EXPECT_FALSE(platform_.DirectoryExists(to_dir_.Append("dir1")));
-
-  // file2 and dir2 are migrated because their UID can be converted.
-  EXPECT_TRUE(platform_.FileExists(to_dir_.Append("file2")));
-  EXPECT_TRUE(platform_.DirectoryExists(to_dir_.Append("dir2")));
-  EXPECT_TRUE(platform_.FileExists(to_dir_.Append("dir2/file")));
-
-  // Check that the UID of file2 and dir2 are correctly converted.
-  uid_t to_file2_uid = 0, to_dir2_uid = 0;
-  gid_t to_gid = 0;
-  EXPECT_TRUE(platform_.GetOwnership(to_dir_.Append("file2"), &to_file2_uid,
-                                     &to_gid, /*follow_links=*/false));
-  EXPECT_EQ(to_file2_uid, kToFileUid);
-  EXPECT_TRUE(platform_.GetOwnership(to_dir_.Append("dir2"), &to_dir2_uid,
-                                     &to_gid, /*follow_links=*/false));
-  EXPECT_EQ(to_dir2_uid, kToDirUid);
-}
-
-TEST_F(MigrationHelperTest, ConvertXattrName) {
-  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
-                         status_files_dir_, kDefaultChunkSize);
-
-  constexpr char kFileName[] = "file";
-  const FilePath kFromFilePath = from_dir_.Append(kFileName);
-  const FilePath kToFilePath = to_dir_.Append(kFileName);
-  ASSERT_TRUE(platform_.TouchFileDurable(kFromFilePath));
-
-  constexpr char kValue1[] = "value1";
-  constexpr char kValue2[] = "value2";
-
-  // Convert user.from1 to user.to1.
-  delegate_.AddXattrMapping("user.from1", "user.to1");
-
-  ASSERT_TRUE(platform_.SetExtendedFileAttribute(kFromFilePath, "user.from1",
-                                                 kValue1, sizeof(kValue1)));
-  ASSERT_TRUE(platform_.SetExtendedFileAttribute(kFromFilePath, "user.from2",
-                                                 kValue2, sizeof(kValue2)));
-
-  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
-      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
-
-  // user.from1 is converted to user.to1.
-  ASSERT_FALSE(platform_.GetExtendedFileAttributeAsString(
-      kToFilePath, "user.from1", nullptr));
-  ASSERT_EQ(ENODATA, errno);
-
-  std::string value1;
-  ASSERT_TRUE(platform_.GetExtendedFileAttributeAsString(kToFilePath,
-                                                         "user.to1", &value1));
-  EXPECT_STREQ(kValue1, value1.c_str());
-
-  // user.from2 is not converted.
-  std::string value2;
-  ASSERT_TRUE(platform_.GetExtendedFileAttributeAsString(
-      kToFilePath, "user.from2", &value2));
-  EXPECT_STREQ(kValue2, value2.c_str());
-}
-
 TEST_F(MigrationHelperTest, SkipCopyingTimeOnMtimeENOSPC) {
   // Test the case where mtime and atime of a file were not migrated because
   // setting time xattr for mtime resulted in ENOSPC failure.
@@ -561,8 +444,8 @@ TEST_F(MigrationHelperTest, SkipCopyingTimeOnMtimeENOSPC) {
   // Storing mtime in xattr fails with ENOSPC.
   EXPECT_CALL(platform_, SetExtendedFileAttribute(_, _, _, _))
       .WillRepeatedly(DoDefault());
-  EXPECT_CALL(platform_, SetExtendedFileAttribute(
-                             kToFile, delegate_.GetMtimeXattrName(), _, _))
+  EXPECT_CALL(platform_,
+              SetExtendedFileAttribute(kToFile, kMtimeXattrName, _, _))
       .WillOnce(SetErrnoAndReturn(ENOSPC, false));
 
   base::stat_wrapper_t from_stat;
@@ -577,8 +460,8 @@ TEST_F(MigrationHelperTest, SkipCopyingTimeOnMtimeENOSPC) {
   EXPECT_FALSE(platform_.FileExists(kFromFile));
 
   // The temporary xattr for storing atime should not exist.
-  ASSERT_FALSE(platform_.GetExtendedFileAttribute(
-      kToFile, delegate_.GetAtimeXattrName(), nullptr, 0));
+  ASSERT_FALSE(
+      platform_.GetExtendedFileAttribute(kToFile, kAtimeXattrName, nullptr, 0));
   ASSERT_EQ(ENODATA, errno);
 }
 
@@ -595,8 +478,8 @@ TEST_F(MigrationHelperTest, SkipCopyingTimeOnAtimeENOSPC) {
   // Storing atime in xattr fails with ENOSPC.
   EXPECT_CALL(platform_, SetExtendedFileAttribute(_, _, _, _))
       .WillRepeatedly(DoDefault());
-  EXPECT_CALL(platform_, SetExtendedFileAttribute(
-                             kToFile, delegate_.GetAtimeXattrName(), _, _))
+  EXPECT_CALL(platform_,
+              SetExtendedFileAttribute(kToFile, kAtimeXattrName, _, _))
       .WillOnce(SetErrnoAndReturn(ENOSPC, false));
 
   base::stat_wrapper_t from_stat;
@@ -611,8 +494,8 @@ TEST_F(MigrationHelperTest, SkipCopyingTimeOnAtimeENOSPC) {
   EXPECT_FALSE(platform_.FileExists(kFromFile));
 
   // The temporary xattr for storing mtime should not exist.
-  ASSERT_FALSE(platform_.GetExtendedFileAttribute(
-      kToFile, delegate_.GetMtimeXattrName(), nullptr, 0));
+  ASSERT_FALSE(
+      platform_.GetExtendedFileAttribute(kToFile, kMtimeXattrName, nullptr, 0));
   ASSERT_EQ(ENODATA, errno);
 }
 
@@ -855,30 +738,6 @@ TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
   EXPECT_TRUE(platform_.DirectoryExists(kToSQLiteShm.DirName()));
   EXPECT_FALSE(platform_.FileExists(kToSQLiteShm));
   EXPECT_FALSE(platform_.FileExists(kFromSQLiteShm));
-}
-
-TEST_F(MigrationHelperTest, SkipVerityFiles) {
-  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
-                         status_files_dir_, kDefaultChunkSize);
-  const char kVerityFilePath[] =
-      "fonts/files/~~ATfHTsv9OXRRFC12GR4H6g==/NotoColorEmoji.ttf";
-  const FilePath kFromVerityFile = from_dir_.Append(kVerityFilePath);
-  const FilePath kToVerityFile = to_dir_.Append(kVerityFilePath);
-  ASSERT_TRUE(platform_.CreateDirectory(kFromVerityFile.DirName()));
-  ASSERT_TRUE(platform_.TouchFileDurable(kFromVerityFile));
-  ASSERT_TRUE(platform_.SetExtFileAttributes(kFromVerityFile, FS_VERITY_FL, 0));
-  EXPECT_CALL(platform_, InitializeFile(_, _, _)).WillRepeatedly(DoDefault());
-  EXPECT_CALL(platform_, InitializeFile(_, kFromVerityFile, _))
-      .WillOnce(
-          Invoke([](base::File* file, const FilePath& path, uint32_t mode) {
-            *file = base::File(base::File::FILE_ERROR_ACCESS_DENIED);
-          }));
-
-  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
-      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
-  EXPECT_TRUE(platform_.DirectoryExists(kToVerityFile.DirName()));
-  EXPECT_FALSE(platform_.FileExists(kToVerityFile));
-  EXPECT_FALSE(platform_.FileExists(kFromVerityFile));
 }
 
 TEST_F(MigrationHelperTest, AllJobThreadsFailing) {

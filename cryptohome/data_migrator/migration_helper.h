@@ -20,7 +20,6 @@
 #include <brillo/brillo_export.h>
 #include <libstorage/platform/platform.h>
 
-#include "cryptohome/data_migrator/metrics.h"
 #include "cryptohome/data_migrator/migration_helper_delegate.h"
 
 namespace base {
@@ -29,6 +28,8 @@ class Thread;
 
 namespace cryptohome::data_migrator {
 
+BRILLO_EXPORT extern const char kMtimeXattrName[];
+BRILLO_EXPORT extern const char kAtimeXattrName[];
 BRILLO_EXPORT extern const char kSkippedFileListFileName[];
 BRILLO_EXPORT extern const char kSourceURLXattrName[];
 BRILLO_EXPORT extern const char kReferrerURLXattrName[];
@@ -142,24 +143,6 @@ class BRILLO_EXPORT MigrationHelper final {
                                         const std::string& xattr,
                                         const char* value,
                                         ssize_t size);
-  // Record the latest file error happened during the migration.
-  // |operation| is the type of the operation cause the |error|,
-  // |child| is the path of the file from the migration root, and
-  // |location_type| is the type of location of the failed file (whether it is
-  // in the migration source, the destination, or both).
-  //
-  // We should record the error immediately after the failed low-level
-  // file operations (|platform_| methods or base:: functions), not after
-  // the batched file operation utility to keep the granularity of the stat
-  // and to avoid unintended duplicated logging.
-  void RecordFileError(MigrationFailedOperationType operation,
-                       const base::FilePath& child,
-                       base::File::Error error,
-                       FailureLocationType location_type);
-  void RecordFileErrorWithCurrentErrno(MigrationFailedOperationType operation,
-                                       const base::FilePath& child,
-                                       FailureLocationType location_type);
-
   // Processes the job.
   // Must be called on a job thread.
   bool ProcessJob(const Job& job);
@@ -172,10 +155,6 @@ class BRILLO_EXPORT MigrationHelper final {
   // becomes empty, deletes the directory and recursively cleans up the parent.
   // Can be called on any thread.
   bool DecrementChildCountAndDeleteIfNecessary(const base::FilePath& child);
-
-  // Calculates the total size of existing xattrs on |path| and reports the sum
-  // of that total and failed_xattr_size to UMA.
-  void ReportTotalXattrSize(const base::FilePath& path, int failed_xattr_size);
 
   libstorage::Platform* const platform_;
   MigrationHelperDelegate* const delegate_;
@@ -197,14 +176,6 @@ class BRILLO_EXPORT MigrationHelper final {
   base::TimeTicks next_report_;
   // Lock for migrated_byte_count_ and next_report_.
   base::Lock migrated_byte_count_lock_;
-
-  MigrationFailedOperationType failed_operation_type_ =
-      kMigrationFailedAtOtherOperation;
-  base::File::Error failed_error_type_ = base::File::FILE_OK;
-  std::optional<int64_t> no_space_failure_free_space_bytes_ = 0;
-  // Lock for |failed_operation_type_|, |failed_error_type_| and
-  // |no_space_failure_free_space_bytes_|.
-  base::Lock failure_info_lock_;
 
   size_t num_job_threads_ = 0;
   size_t max_job_list_size_;

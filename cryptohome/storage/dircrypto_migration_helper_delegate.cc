@@ -17,8 +17,6 @@ namespace cryptohome {
 
 namespace {
 
-constexpr char kMtimeXattrName[] = "trusted.CrosDirCryptoMigrationMtime";
-constexpr char kAtimeXattrName[] = "trusted.CrosDirCryptoMigrationAtime";
 // This lives in root/ of the destination directory so that it is encrypted.
 constexpr char kSkippedFileListFileName[] =
     "root/crypto-migration.files-skipped";
@@ -56,11 +54,6 @@ const char* const kMinimalMigrationUserPathsAllowlist[] = {
     // chrome services (sign-in OAuth2 token).
     "Web Data",
     "Web Data-journal",
-};
-
-struct PathTypeMapping {
-  const char* path;
-  DircryptoMigrationFailedPathType type;
 };
 
 }  // namespace
@@ -125,23 +118,11 @@ bool DircryptoMigrationHelperDelegate::ShouldMigrateFile(
   }
 }
 
-bool DircryptoMigrationHelperDelegate::ShouldCopyQuotaProjectId() {
-  return false;
-}
-
 bool DircryptoMigrationHelperDelegate::ShouldSkipFileOnIOErrors() {
   // b/37444422 causes IO errors when opening this file in some cases. User had
   // an unreadable file, skipping this file means user will no longer have a
   // file but not worse off.
   return true;
-}
-
-std::string DircryptoMigrationHelperDelegate::GetMtimeXattrName() {
-  return kMtimeXattrName;
-}
-
-std::string DircryptoMigrationHelperDelegate::GetAtimeXattrName() {
-  return kAtimeXattrName;
 }
 
 void DircryptoMigrationHelperDelegate::RecordSkippedFile(
