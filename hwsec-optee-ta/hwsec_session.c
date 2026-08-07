@@ -147,15 +147,54 @@ static TEE_Result GenerateSalt(uint8_t salt[SHA256_DIGEST_SIZE],
     return TEE_ERROR_BAD_FORMAT;
   }
 
+  // Validate the TPM public key template fields.
+  // This logical check is functionally and cryptographically equivalent to the
+  // 50-byte raw template memcmp performed by depthcharge in:
+  // platform/depthcharge/src/vboot/widevine/tpm_auth_pubkey.c
   if (pub.type != TPM_ALG_ECC) {
     EMSG("Invalid salting key type.");
     return TEE_ERROR_NOT_SUPPORTED;
   }
 
-  if (pub.nameAlg != TPM_ALG_SHA256 ||
-      pub.unique.ecc.x.t.size != SHA256_DIGEST_SIZE ||
+  if (pub.nameAlg != TPM_ALG_SHA256) {
+    EMSG("Invalid ECC salting key nameAlg.");
+    return TEE_ERROR_NOT_SUPPORTED;
+  }
+
+  if (!pub.objectAttributes.fixedTPM || !pub.objectAttributes.fixedParent ||
+      !pub.objectAttributes.decrypt ||
+      !pub.objectAttributes.sensitiveDataOrigin ||
+      !pub.objectAttributes.adminWithPolicy || !pub.objectAttributes.noDA ||
+      pub.objectAttributes.stClear || pub.objectAttributes.userWithAuth ||
+      pub.objectAttributes.restricted || pub.objectAttributes.sign ||
+      pub.objectAttributes.encryptedDuplication) {
+    EMSG("Invalid ECC salting key objectAttributes.");
+    return TEE_ERROR_NOT_SUPPORTED;
+  }
+
+  static const uint8_t expected_auth_policy[SHA256_DIGEST_SIZE] = {
+      0xe1, 0x47, 0xbf, 0x27, 0xe1, 0x74, 0x30, 0xc8, 0x16, 0xab, 0x72,
+      0x4d, 0x5c, 0x77, 0xe1, 0x5c, 0x61, 0x2d, 0x56, 0x81, 0xb3, 0x35,
+      0xcd, 0x9d, 0xeb, 0x67, 0x41, 0x37, 0x69, 0xf0, 0x32, 0x41,
+  };
+  if (pub.authPolicy.t.size != SHA256_DIGEST_SIZE ||
+      memcmp(pub.authPolicy.t.buffer, expected_auth_policy,
+             SHA256_DIGEST_SIZE) != 0) {
+    EMSG("Invalid ECC salting key authPolicy.");
+    return TEE_ERROR_NOT_SUPPORTED;
+  }
+
+  if (pub.parameters.eccDetail.symmetric.algorithm != TPM_ALG_NULL ||
+      pub.parameters.eccDetail.scheme.scheme != TPM_ALG_NULL ||
+      pub.parameters.eccDetail.curveID != TPM_ECC_NIST_P256 ||
+      pub.parameters.eccDetail.kdf.scheme != TPM_ALG_NULL) {
+    EMSG("Invalid ECC salting key parameters.");
+    return TEE_ERROR_NOT_SUPPORTED;
+  }
+
+  if (pub.unique.ecc.x.t.size != SHA256_DIGEST_SIZE ||
       pub.unique.ecc.y.t.size != SHA256_DIGEST_SIZE) {
-    EMSG("Invalid ECC salting key attributes.");
+    EMSG("Invalid ECC salting key unique coordinates size.");
     return TEE_ERROR_NOT_SUPPORTED;
   }
 
