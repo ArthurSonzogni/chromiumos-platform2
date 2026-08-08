@@ -16,6 +16,7 @@
 #include <utility>
 
 #include <base/compiler_specific.h>
+#include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
@@ -219,7 +220,29 @@ bool PermissionBroker::OpenPathImpl(brillo::ErrorPtr* error,
                                     bool to_detach,
                                     base::ScopedFD* out_fd,
                                     std::string* client_id) {
-  Rule::Result rule_result = rule_engine_.ProcessPath(in_path);
+  // Lock the target file immediately with O_PATH to prevent TOCTOU swaps.
+  base::ScopedFD path_fd(
+      HANDLE_EINTR(open(in_path.c_str(), O_PATH | O_NOFOLLOW | O_CLOEXEC)));
+  if (!path_fd.is_valid()) {
+    brillo::errors::system::AddSystemError(error, FROM_HERE, errno);
+    brillo::Error::AddToPrintf(error, FROM_HERE, kErrorDomainPermissionBroker,
+                               kOpenFailedError, "Failed to open path '%s'",
+                               in_path.c_str());
+    return false;
+  }
+
+  // Build the /proc/self/fd wrapper path
+  std::string safe_proc_path = base::StringPrintf("/proc/self/fd/%d", path_fd.get());
+
+  base::FilePath resolved_path;
+  if (!base::ReadSymbolicLink(base::FilePath(safe_proc_path), &resolved_path)) {
+    brillo::Error::AddToPrintf(error, FROM_HERE, kErrorDomainPermissionBroker,
+                               kOpenFailedError, "Failed to resolve pinned path '%s'",
+                               in_path.c_str());
+    return false;
+  }
+
+  Rule::Result rule_result = rule_engine_.ProcessPath(resolved_path.value());
   if (rule_result != Rule::ALLOW && rule_result != Rule::ALLOW_WITH_LOCKDOWN &&
       rule_result != Rule::ALLOW_WITH_DETACH) {
     brillo::Error::AddToPrintf(
@@ -228,12 +251,13 @@ bool PermissionBroker::OpenPathImpl(brillo::ErrorPtr* error,
     return false;
   }
 
+  // Upgrade the locked file to Read/Write access.
   base::ScopedFD fd(
-      HANDLE_EINTR(open(in_path.c_str(), O_RDWR | O_NOFOLLOW | O_CLOEXEC)));
+      HANDLE_EINTR(open(safe_proc_path.c_str(), O_RDWR | O_CLOEXEC)));
   if (!fd.is_valid()) {
     brillo::errors::system::AddSystemError(error, FROM_HERE, errno);
     brillo::Error::AddToPrintf(error, FROM_HERE, kErrorDomainPermissionBroker,
-                               kOpenFailedError, "Failed to open path '%s'",
+                               kOpenFailedError, "Failed to upgrade path '%s' to RW",
                                in_path.c_str());
     return false;
   }
