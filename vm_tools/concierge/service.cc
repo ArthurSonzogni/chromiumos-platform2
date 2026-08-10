@@ -756,29 +756,29 @@ std::optional<internal::VmStartImageFds> GetVmStartImageFds(
   struct internal::VmStartImageFds result;
   size_t count = 0;
   for (const auto& fdType : fds) {
-    std::optional<base::ScopedFD> fd(dup(file_handles[count++].get()));
-    if (!fd) {
+    base::ScopedFD fd(dup(file_handles[count++].get()));
+    if (!fd.is_valid()) {
       LOG(ERROR) << "Failed to get VM start image file descriptor";
       return std::nullopt;
     }
     switch (fdType) {
       case StartVmRequest_FdType_KERNEL:
-        result.kernel_fd = std::move(*fd);
+        result.kernel_fd = std::move(fd);
         break;
       case StartVmRequest_FdType_ROOTFS:
-        result.rootfs_fd = std::move(*fd);
+        result.rootfs_fd = std::move(fd);
         break;
       case StartVmRequest_FdType_INITRD:
-        result.initrd_fd = std::move(*fd);
+        result.initrd_fd = std::move(fd);
         break;
       case StartVmRequest_FdType_STORAGE:
-        result.storage_fd = std::move(*fd);
+        result.storage_fd = std::move(fd);
         break;
       case StartVmRequest_FdType_BIOS:
-        result.bios_fd = std::move(*fd);
+        result.bios_fd = std::move(fd);
         break;
       case StartVmRequest_FdType_PFLASH:
-        result.pflash_fd = std::move(*fd);
+        result.pflash_fd = std::move(fd);
         break;
       default:
         LOG(WARNING) << "received request with unknown FD type " << fdType

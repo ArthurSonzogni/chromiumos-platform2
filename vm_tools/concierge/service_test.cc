@@ -214,7 +214,7 @@ TEST_F(ServiceTest, CreateDiskImageRejectsCustomTune2fsOpts) {
   loop.Run();
 }
 
-TEST(ServiceInternalTest, TestGetVmStartImageFds2) {
+TEST(ServiceInternalTest, TestGetVmStartImageFds) {
   google::protobuf::RepeatedField<int> fds;
   fds.Add(StartVmRequest_FdType_KERNEL);
   fds.Add(StartVmRequest_FdType_ROOTFS);
@@ -239,6 +239,17 @@ TEST(ServiceInternalTest, TestGetVmStartImageFds2) {
   EXPECT_STREQ(buf, "kernel");
   ASSERT_EQ(7, read(vm_start_image_fds->rootfs_fd->get(), buf, 7));
   EXPECT_STREQ(buf, "rootfs");
+}
+
+TEST(ServiceInternalTest, TestGetVmStartImageFds_InvalidFd) {
+  google::protobuf::RepeatedField<int> fds;
+  fds.Add(StartVmRequest_FdType_KERNEL);
+  std::vector<base::ScopedFD> file_handles;
+  file_handles.push_back(base::ScopedFD(-1));
+
+  std::optional<internal::VmStartImageFds> vm_start_image_fds =
+      internal::GetVmStartImageFds(fds, file_handles);
+  EXPECT_FALSE(vm_start_image_fds.has_value());
 }
 
 }  // namespace vm_tools::concierge
