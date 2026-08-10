@@ -45,7 +45,7 @@ FirmwareHash = collections.namedtuple("FirmwareHash", ["digest", "algorithm"])
 
 FirmwareTargetConfig = collections.namedtuple(
     "FirmwareTargetConfig",
-    ["target", "libpayload", "recovery_input", "detachable_ui"],
+    ["target", "fw_name", "libpayload", "recovery_input", "detachable_ui"],
 )
 
 # Represents information needed to create firmware for a model:
@@ -764,16 +764,16 @@ class CrosConfigBaseImpl:
 
             target = device_targets[target_type]
             libpayload = device_targets.get("libpayload") or key
-            if target in targets and targets[target] != libpayload:
+            if target in targets and targets[target][0] != libpayload:
                 raise ValueError(
                     f"Colliding libpayload target found for {target_type} "
-                    f"target {target}: {libpayload}, {targets[target]}"
+                    f"target {target}: {libpayload}, {targets[target][0]}"
                 )
-            targets[target] = libpayload
+            targets[target] = (libpayload, key)
 
         result = []
         for target in sorted(targets.keys()):
-            libpayload = targets[target]
+            libpayload, fw_name = targets[target]
             recovery_input = self.GetFirmwareRecoveryInput(target_type, target)
             detachable_ui = (
                 self.GetKeyValue(
@@ -789,6 +789,7 @@ class CrosConfigBaseImpl:
             result.append(
                 FirmwareTargetConfig(
                     target=target,
+                    fw_name=fw_name,
                     libpayload=libpayload,
                     recovery_input=recovery_input,
                     detachable_ui=detachable_ui,

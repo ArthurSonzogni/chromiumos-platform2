@@ -257,7 +257,7 @@ def GetFirmwareBuildTargetConfigs(
     """Lists firmware build-target configs for given type across all models.
 
     Prints tab-separated lines containing:
-        <target> <libpayload> <recovery_input> <detachable_ui>
+        <target> <fw_name> <libpayload> <recovery_input> <detachable_ui>
 
     Args:
         config: A CrosConfig instance to load data from.
@@ -265,8 +265,8 @@ def GetFirmwareBuildTargetConfigs(
     """
     for item in config.GetFirmwareBuildTargetConfigs(target_type):
         print(
-            f"{item.target}\t{item.libpayload}\t{item.recovery_input}\t"
-            f"{item.detachable_ui}"
+            f"{item.target}\t{item.fw_name}\t{item.libpayload}\t"
+            f"{item.recovery_input}\t{item.detachable_ui}"
         )
 
 
@@ -633,7 +633,7 @@ def GetParser(description):
         help="Lists firmware build-target configs for the given type, for all "
         "models.",
         epilog="Each build-target config will be printed as tab-separated "
-        "fields: <target>\\t<libpayload>\\t<recovery_input>\\t<detachable_ui>",
+        "fields: <target>\\t<fw_name>\\t<libpayload>\\t<recovery_input>\\t<detachable_ui>",
     )
     build_target_configs_parser.add_argument(
         "type",

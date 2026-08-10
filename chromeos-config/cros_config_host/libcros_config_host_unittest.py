@@ -302,6 +302,7 @@ class CrosConfigHostTest(unittest.TestCase):
         result = config.GetFirmwareBuildTargetConfigs("depthcharge")
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].target, "another")
+        self.assertEqual(result[0].fw_name, "another")
         self.assertEqual(result[0].libpayload, "another")
         self.assertEqual(result[0].recovery_input, "KEYBOARD")
         self.assertEqual(result[0].detachable_ui, "True")
@@ -311,6 +312,7 @@ class CrosConfigHostTest(unittest.TestCase):
         result = config.GetFirmwareBuildTargetConfigs("depthcharge")
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].target, "some")
+        self.assertEqual(result[0].fw_name, "some")
         self.assertEqual(result[0].libpayload, "some")
         self.assertEqual(result[0].recovery_input, "RECOVERY_BUTTON")
         self.assertEqual(result[0].detachable_ui, "")
@@ -321,7 +323,9 @@ class CrosConfigHostTest(unittest.TestCase):
         result = config.GetFirmwareBuildTargetConfigs("depthcharge")
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].target, "another")
+        self.assertEqual(result[0].fw_name, "another")
         self.assertEqual(result[1].target, "some")
+        self.assertEqual(result[1].fw_name, "some")
         del os.environ["FW_NAME"]
 
         # Non-existent target type returns empty list

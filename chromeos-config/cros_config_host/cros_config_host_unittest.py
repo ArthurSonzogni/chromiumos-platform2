@@ -145,11 +145,12 @@ class CrosConfigHostTest(unittest.TestCase):
         lines = output.strip().split("\n")
         self.assertEqual(len(lines), 1)
         fields = lines[0].split("\t")
-        self.assertEqual(len(fields), 4)
+        self.assertEqual(len(fields), 5)
         self.assertEqual(fields[0], "another")
         self.assertEqual(fields[1], "another")
-        self.assertEqual(fields[2], "KEYBOARD")
-        self.assertEqual(fields[3], "True")
+        self.assertEqual(fields[2], "another")
+        self.assertEqual(fields[3], "KEYBOARD")
+        self.assertEqual(fields[4], "True")
 
     def testGetFirmwareBuildTargetConfigsNonexistent(self):
         output = self._check_output(
