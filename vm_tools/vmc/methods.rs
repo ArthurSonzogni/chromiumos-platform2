@@ -2704,6 +2704,9 @@ impl Methods {
         )?;
 
         if let Some(file_name) = file_name {
+            if Path::new(file_name).is_absolute() {
+                return Err("Absolute paths are not permitted".into());
+            }
             let file_path = Path::new(CRYPTOHOME_USER)
                 .join(user_id_hash)
                 .join(MY_FILES_DIR)
