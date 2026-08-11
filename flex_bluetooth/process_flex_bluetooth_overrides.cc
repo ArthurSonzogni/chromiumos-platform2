@@ -95,6 +95,18 @@ const std::set<flex_bluetooth::BluetoothAdapter> kAdapterBlocklist = {
     {0x413c, 0x8156},
     {0x413c, 0x8160},
     {0x413c, 0x8187},
+
+    // b/510930579: failed in WRITE_LE_HOST_SUPPORT
+    {0x044e, 0x3001},
+    {0x04ca, 0x300b},
+    {0x05ac, 0x8205},
+    {0x05ac, 0x8206},
+    {0x0930, 0x0508},
+    {0x13d3, 0x3314},
+    {0x148f, 0x1000},
+
+    // b/510930579: failed in READ_ENCRYPTION_KEY_SIZE
+    {0x0489, 0xe036},
 };
 
 const std::map<flex_bluetooth::BluetoothAdapter,
@@ -201,8 +213,6 @@ const std::map<flex_bluetooth::BluetoothAdapter,
         {flex_bluetooth::BluetoothAdapter{0x413c, 0x8140},
          {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
         {flex_bluetooth::BluetoothAdapter{0x044e, 0x301d},
-         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
-        {flex_bluetooth::BluetoothAdapter{0x05ac, 0x8205},
          {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
 };
 }  // namespace
