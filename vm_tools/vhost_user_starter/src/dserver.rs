@@ -193,6 +193,20 @@ fn validate_syslog_tag(s: &str) -> Result<(), dbus::MethodErr> {
     Ok(())
 }
 
+const ALLOWED_SHARED_DIRS: &[&str] = &["/run/arcvm/media"];
+
+fn validate_shared_dir(shared_dir: &str) -> Result<(), dbus::MethodErr> {
+    if shared_dir.is_empty() {
+        error!("shared_dir is empty");
+        return Err(dbus::MethodErr::failed("shared_dir is empty"));
+    }
+    if !ALLOWED_SHARED_DIRS.contains(&shared_dir) {
+        error!("Unauthorized shared_dir: {}", shared_dir);
+        return Err(dbus::MethodErr::failed("Unauthorized shared_dir"));
+    }
+    Ok(())
+}
+
 // Parses a StartVhostUserFsRequest request and constructs arguments for starting vhost-user-fs.
 fn prepare_vhost_user_fs_args(
     request: Vec<u8>,
@@ -211,6 +225,7 @@ fn prepare_vhost_user_fs_args(
     } = parse_dbus_request_from_bytes::<StartVhostUserFsRequest>(&request)?;
 
     validate_syslog_tag(&syslog_tag)?;
+    validate_shared_dir(&shared_dir)?;
 
     let uid_map = parse_ugid_map_to_string(uid_map)?;
     let gid_map = parse_ugid_map_to_string(gid_map)?;
@@ -601,5 +616,14 @@ mod tests {
                 "--gid=0",
             ]
         );
+    }
+
+    #[test]
+    fn test_validate_shared_dir() {
+        assert!(validate_shared_dir("/run/arcvm/media").is_ok());
+        assert!(validate_shared_dir("/").is_err());
+        assert!(validate_shared_dir("/tmp").is_err());
+        assert!(validate_shared_dir("/home/chronos/user").is_err());
+        assert!(validate_shared_dir("").is_err());
     }
 }
