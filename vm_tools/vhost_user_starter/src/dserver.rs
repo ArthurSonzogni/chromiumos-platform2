@@ -207,6 +207,30 @@ fn validate_shared_dir(shared_dir: &str) -> Result<(), dbus::MethodErr> {
     Ok(())
 }
 
+fn validate_id_maps(uid_map: &[IdMapItem], gid_map: &[IdMapItem]) -> Result<(), dbus::MethodErr> {
+    if uid_map.is_empty() {
+        error!("uid map is empty");
+        return Err(dbus::MethodErr::failed("uid map is empty"));
+    }
+    if gid_map.is_empty() {
+        error!("gid map is empty");
+        return Err(dbus::MethodErr::failed("gid map is empty"));
+    }
+    if uid_map.iter().any(|item| item.out_id == 0) {
+        error!("Mapping out_id=0 is forbidden in uid_map");
+        return Err(dbus::MethodErr::failed(
+            "Mapping out_id=0 is forbidden in uid_map",
+        ));
+    }
+    if gid_map.iter().any(|item| item.out_id == 0) {
+        error!("Mapping out_id=0 is forbidden in gid_map");
+        return Err(dbus::MethodErr::failed(
+            "Mapping out_id=0 is forbidden in gid_map",
+        ));
+    }
+    Ok(())
+}
+
 // Parses a StartVhostUserFsRequest request and constructs arguments for starting vhost-user-fs.
 fn prepare_vhost_user_fs_args(
     request: Vec<u8>,
@@ -226,6 +250,7 @@ fn prepare_vhost_user_fs_args(
 
     validate_syslog_tag(&syslog_tag)?;
     validate_shared_dir(&shared_dir)?;
+    validate_id_maps(&uid_map, &gid_map)?;
 
     let uid_map = parse_ugid_map_to_string(uid_map)?;
     let gid_map = parse_ugid_map_to_string(gid_map)?;
@@ -625,5 +650,44 @@ mod tests {
         assert!(validate_shared_dir("/tmp").is_err());
         assert!(validate_shared_dir("/home/chronos/user").is_err());
         assert!(validate_shared_dir("").is_err());
+    }
+
+    #[test]
+    fn test_validate_id_maps() {
+        let valid_uid_map = vec![IdMapItem {
+            in_id: 0,
+            out_id: 1000,
+            range: 1,
+            special_fields: protobuf::SpecialFields::new(),
+        }];
+        let valid_gid_map = vec![IdMapItem {
+            in_id: 0,
+            out_id: 1001,
+            range: 1,
+            special_fields: protobuf::SpecialFields::new(),
+        }];
+
+        assert!(validate_id_maps(&valid_uid_map, &valid_gid_map).is_ok());
+
+        // Empty maps should be rejected
+        assert!(validate_id_maps(&[], &valid_gid_map).is_err());
+        assert!(validate_id_maps(&valid_uid_map, &[]).is_err());
+
+        // Mapping to host root (out_id == 0) must be rejected
+        let root_uid_map = vec![IdMapItem {
+            in_id: 0,
+            out_id: 0,
+            range: 1,
+            special_fields: protobuf::SpecialFields::new(),
+        }];
+        assert!(validate_id_maps(&root_uid_map, &valid_gid_map).is_err());
+
+        let root_gid_map = vec![IdMapItem {
+            in_id: 0,
+            out_id: 0,
+            range: 1,
+            special_fields: protobuf::SpecialFields::new(),
+        }];
+        assert!(validate_id_maps(&valid_uid_map, &root_gid_map).is_err());
     }
 }
