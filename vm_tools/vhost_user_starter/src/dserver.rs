@@ -148,22 +148,20 @@ fn try_reap_children(children: &mut Vec<Child>) {
         match child.try_wait() {
             Ok(Some(status)) if status.success() => {
                 info!("Child({}) exits successfully", pid);
-                retain_child = false
+                retain_child = false;
             }
             Ok(Some(status)) => {
-                // on failure
+                // On failure, log warning and do not panic to prevent DoS.
                 if let Some(code) = status.code() {
-                    // vhost_user backend device exit with error code
-                    panic!("Child({}) exit with error: {}", pid, code);
+                    warn!("Child({}) exited with error code: {}", pid, code);
                 } else {
-                    // The spawned child process of vhost_user
-                    // backend device is killed by signal.
-                    panic!("Child({}) killed by {:?}", pid, status.signal());
+                    warn!("Child({}) killed by signal: {:?}", pid, status.signal());
                 }
+                retain_child = false;
             }
             Ok(None) => {}
             Err(e) => {
-                warn!("error attempting to wait: {}", e);
+                warn!("error attempting to wait on child {}: {}", pid, e);
             }
         }
         retain_child
