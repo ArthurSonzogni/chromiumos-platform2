@@ -90,6 +90,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/cros_camera_diagnostics_service    u:object_r:cros_camera_diagnostics_service_exec:s0
 /usr/bin/cros_healthd           u:object_r:cros_healthd_exec:s0
 /usr/bin/cros_installer         u:object_r:cros_installer_exec:s0
+/usr/bin/crosvm                 u:object_r:cros_crosvm_exec:s0
 /usr/bin/crossystem             u:object_r:cros_crossystem_exec:s0
 /usr/bin/dbus-daemon            u:object_r:cros_dbus_daemon_exec:s0
 /usr/bin/dbus-monitor           u:object_r:cros_dbus_monitor_exec:s0

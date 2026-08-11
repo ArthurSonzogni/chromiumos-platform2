@@ -1,0 +1,4 @@
+type cros_crosvm, domain, chromeos_domain;
+permissive cros_crosvm;
+
+domain_auto_trans({ cros_vm_concierge cros_vhost_user_starter minijail chromeos }, cros_crosvm_exec, cros_crosvm)
