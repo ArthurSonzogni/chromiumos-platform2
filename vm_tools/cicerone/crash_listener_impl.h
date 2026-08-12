@@ -13,6 +13,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <grpcpp/grpcpp.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <vm_applications/apps.pb.h>
 #include <vm_protos/proto_bindings/vm_crash.grpc.pb.h>
 
 #include "metrics/metrics_library.h"
@@ -20,7 +21,6 @@
 namespace vm_tools::cicerone {
 
 class Service;
-class VirtualMachine;
 
 class CrashListenerImpl : public CrashListener::Service {
  public:
@@ -43,22 +43,15 @@ class CrashListenerImpl : public CrashListener::Service {
                                  EmptyMessage* response) override;
 
  private:
+  struct VmInfo {
+    pid_t pid;
+    vm_tools::apps::VmType type;
+    bool is_stopping;
+  };
+
   FRIEND_TEST(CrashListenerImplTest, CorrectMetadataChanged);
-  std::optional<pid_t> GetPidFromPeerAddress(grpc::ServerContext* ctx);
-  VirtualMachine* GetVirtualMachineForContext(grpc::ServerContext* ctx);
-
-  void GetVirtualMachineForCidOrToken(const uint32_t cid,
-                                      VirtualMachine** vm_out,
-                                      std::string* owner_id_out,
-                                      std::string* name_out,
-                                      bool* ret_value,
-                                      base::WaitableEvent* event);
-
-  bool ShouldRecordFailures(grpc::ServerContext* ctx);
-
-  void GetVmStoppingOnDBusThread(const uint32_t cid,
-                                 bool* is_stopping_or_stopped,
-                                 base::WaitableEvent* event);
+  std::optional<VmInfo> GetVmInfoForContext(grpc::ServerContext* ctx);
+  std::optional<VmInfo> GetVmInfoForCid(uint32_t cid);
 
   // Returns a modified copy of crash_report with channel and milestone
   CrashReport ModifyCrashReport(const CrashReport* crash_report);

@@ -120,8 +120,8 @@ grpc::Status CrashListenerImpl::SendCrashReport(grpc::ServerContext* ctx,
   brillo::ProcessImpl crash_reporter;
   crash_reporter.AddArg("/sbin/crash_reporter");
   crash_reporter.AddArg("--vm_crash");
-  if (auto pid = GetPidFromPeerAddress(ctx)) {
-    crash_reporter.AddArg(base::StringPrintf("--vm_pid=%d", *pid));
+  if (auto vm_info = GetVmInfoForContext(ctx)) {
+    crash_reporter.AddArg(base::StringPrintf("--vm_pid=%d", vm_info->pid));
   }
   crash_reporter.BindFd(read.get(), 0 /* stdin */);
   crash_reporter.SetCloseUnusedFileDescriptors(true);
@@ -182,75 +182,75 @@ std::string CrashListenerImpl::GetLsbReleaseValue(std::string key) {
   return output;
 }
 
-std::optional<pid_t> CrashListenerImpl::GetPidFromPeerAddress(
-    grpc::ServerContext* ctx) {
-  VirtualMachine* vm = GetVirtualMachineForContext(ctx);
-  return vm ? std::optional<pid_t>(vm->pid()) : std::nullopt;
-}
-
-VirtualMachine* CrashListenerImpl::GetVirtualMachineForContext(
+std::optional<CrashListenerImpl::VmInfo> CrashListenerImpl::GetVmInfoForContext(
     grpc::ServerContext* ctx) {
   uint32_t cid = 0;
   std::string peer_address = ctx->peer();
   if (sscanf(peer_address.c_str(), "vsock:%u", &cid) != 1) {
     LOG(WARNING) << "Failed to parse peer address " << peer_address;
-    return nullptr;
+    return std::nullopt;
   }
 
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
 
-  VirtualMachine* vm = nullptr;
-  std::string owner_id;
-  std::string vm_name;
-  bool result;
+  std::optional<VmInfo> vm_info;
   task_runner_->PostTask(
       FROM_HERE,
-      base::BindOnce(&CrashListenerImpl::GetVirtualMachineForCidOrToken,
-                     base::Unretained(this), cid, &vm, &owner_id, &vm_name,
-                     &result, &event));
+      base::BindOnce(
+          [](CrashListenerImpl* self, uint32_t cid,
+             std::optional<VmInfo>* info_out, base::WaitableEvent* event) {
+            *info_out = self->GetVmInfoForCid(cid);
+            event->Signal();
+          },
+          base::Unretained(this), cid, &vm_info, &event));
 
   event.Wait();
-  if (!result) {
-    LOG(ERROR) << "Failed to get VM for peer address " << peer_address;
-    return nullptr;
+  if (!vm_info) {
+    LOG(ERROR) << "Failed to get VM info for peer address " << peer_address;
   }
 
-  return vm;
+  return vm_info;
 }
 
-void CrashListenerImpl::GetVirtualMachineForCidOrToken(
-    const uint32_t cid,
-    VirtualMachine** vm_out,
-    std::string* owner_id_out,
-    std::string* name_out,
-    bool* ret_value,
-    base::WaitableEvent* event) {
-  *ret_value = service_->GetVirtualMachineForCidOrToken(cid, "", vm_out,
-                                                        owner_id_out, name_out);
-  event->Signal();
+std::optional<CrashListenerImpl::VmInfo> CrashListenerImpl::GetVmInfoForCid(
+    const uint32_t cid) {
+  if (service_) {
+    VirtualMachine* vm = nullptr;
+    std::string owner_id;
+    std::string name;
+    if (service_->GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id,
+                                                 &name) &&
+        vm) {
+      return VmInfo{
+          .pid = vm->pid(),
+          .type = vm->GetType(),
+          .is_stopping = vm->is_stopping(),
+      };
+    }
+  }
+  return std::nullopt;
 }
 
 grpc::Status CrashListenerImpl::SendFailureReport(
     grpc::ServerContext* ctx,
     const FailureReport* failure_report,
     EmptyMessage* response) {
-  VirtualMachine* vm = GetVirtualMachineForContext(ctx);
-  const std::string histogram =
-      vm && vm->GetType() == VirtualMachine::VmType::BOREALIS
-          ? "Borealis.Stability"
-          : "Crostini.Stability";
-  const std::string service = failure_report->failed_process();
-  FailureClasses sample;
-
-  if (!ShouldRecordFailures(ctx)) {
+  std::optional<VmInfo> vm_info = GetVmInfoForContext(ctx);
+  if (!vm_info || vm_info->is_stopping) {
     // VM couldn't be found, or is shutting down. This isn't an error, but it
     // means we shouldn't record this service stopping because it's not a
     // failure.
     return grpc::Status::OK;
   }
-  // Report is from a running VM, so no services should be stopping.
 
+  const std::string histogram =
+      vm_info->type == vm_tools::apps::VmType::BOREALIS ? "Borealis.Stability"
+                                                        : "Crostini.Stability";
+  const std::string service = failure_report->failed_process();
+  FailureClasses sample;
+
+  // Report is from a running VM, so no services should be stopping.
   if (service == "vm_syslog") {
     sample = FailureClasses::VmSyslogStopped;
   } else if (service == "vshd") {
@@ -284,43 +284,6 @@ grpc::Status CrashListenerImpl::SendFailureReport(
   } else {
     return {grpc::UNKNOWN, "Failed to record event in stability histogram"};
   }
-}
-
-bool CrashListenerImpl::ShouldRecordFailures(grpc::ServerContext* ctx) {
-  uint32_t cid = 0;
-  std::string peer_address = ctx->peer();
-  if (sscanf(peer_address.c_str(), "vsock:%u", &cid) != 1) {
-    LOG(WARNING) << "Failed to parse peer address " << peer_address;
-    return false;
-  }
-
-  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
-                            base::WaitableEvent::InitialState::NOT_SIGNALED);
-  bool is_stopping_or_stopped;
-  task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&CrashListenerImpl::GetVmStoppingOnDBusThread,
-                                base::Unretained(this), cid,
-                                &is_stopping_or_stopped, &event));
-
-  event.Wait();
-
-  return !is_stopping_or_stopped;
-}
-
-void CrashListenerImpl::GetVmStoppingOnDBusThread(const uint32_t cid,
-                                                  bool* is_stopping_or_stopped,
-                                                  base::WaitableEvent* event) {
-  VirtualMachine* vm = nullptr;
-  std::string owner_id, name;
-  bool ret =
-      service_->GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &name);
-  if (ret) {
-    *is_stopping_or_stopped = vm->is_stopping();
-  } else {
-    // VM couldn't be found, so it must have stopped.
-    *is_stopping_or_stopped = true;
-  }
-  event->Signal();
 }
 
 }  // namespace vm_tools::cicerone
