@@ -1338,7 +1338,7 @@ LogTool::LogTool(scoped_refptr<dbus::Bus> bus, const bool perf_logging)
 
 bool LogTool::IsUserHashValid(const std::string& userhash) {
   return brillo::cryptohome::home::IsSanitizedUserName(userhash) &&
-         base::PathExists(daemon_store_base_dir_.Append(userhash));
+         base::DirectoryExists(daemon_store_base_dir_.Append(userhash));
 }
 
 void LogTool::CreateConnectivityReport(bool wait_for_results) {
@@ -1517,6 +1517,13 @@ std::string GetSanitizedUsername(
   if (!cryptohome_proxy->GetSanitizedUsername(request, &reply, &error)) {
     LOG(ERROR) << "Failed to call GetSanitizedUsername, error: "
                << error->GetMessage();
+    return std::string();
+  }
+
+  if (!brillo::cryptohome::home::IsSanitizedUserName(
+          reply.sanitized_username())) {
+    LOG(ERROR) << "Retrieved invalid sanitized username: "
+               << reply.sanitized_username();
     return std::string();
   }
 

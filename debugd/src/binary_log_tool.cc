@@ -18,6 +18,7 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
+#include <brillo/cryptohome.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
@@ -188,8 +189,10 @@ std::optional<base::FilePath> GetDaemonStorePath(
                << error->GetMessage();
     return std::nullopt;
   }
-  if (reply.sanitized_username().empty()) {
-    LOG(ERROR) << "Retrieved emtpy sanitized username.";
+  if (!brillo::cryptohome::home::IsSanitizedUserName(
+          reply.sanitized_username())) {
+    LOG(ERROR) << "Retrieved invalid sanitized username: "
+               << reply.sanitized_username();
     return std::nullopt;
   }
   return daemon_store_base_dir.Append(reply.sanitized_username());

@@ -44,7 +44,8 @@ struct BinaryLogFile {
   base::FilePath file_path;
 };
 
-constexpr std::string_view kDefaultUserhash("0abcdef1230abcdef1230abcdef123");
+constexpr std::string_view kDefaultUserhash(
+    "0abcdef1230abcdef1230abcdef1230abcdef123");
 constexpr std::string_view kDefaultTestData("test data");
 constexpr std::string_view kDefaultWiFiOutputFile("wifi_output.tar.zst");
 constexpr std::string_view kDefaultBtOutputFile("bt_output.tar.zst");
@@ -298,8 +299,34 @@ TEST_F(BinaryLogToolTest, IncorrectUserhashDirDoesNotWriteToFD) {
 
   CreateFiles(input_files, kDefaultTestData);
 
-  // Use incorrect userhash
-  SimulateDaemonDBusResponses(input_files, "test_userhash");
+  // Use a different valid userhash that does not match the input directory
+  SimulateDaemonDBusResponses(input_files,
+                              "1abcdef1230abcdef1230abcdef1230abcdef123");
+
+  std::set<FeedbackBinaryLogType> log_type = {
+      FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP,
+      FeedbackBinaryLogType::BLUETOOTH_FIRMWARE_DUMP};
+  WriteBinaryLogsToOutputFile(log_type);
+
+  std::set<base::FilePath> output_files = {WiFiOutputFile(), BtOutputFile()};
+  ASSERT_NO_FATAL_FAILURE(VerifyEmptyFiles(output_files));
+}
+
+// GetSanitizedUsername() returns an invalid formatted userhash to
+// GetBinaryLogs(). Verify that nothing is written to the file descriptor.
+TEST_F(BinaryLogToolTest, InvalidUserhashDoesNotWriteToFD) {
+  BinaryLogFile wifi_file(
+      FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP,
+      base::FilePath(InputDirectory().Append("test_wifi_dump.txt")));
+  BinaryLogFile bt_file(
+      FeedbackBinaryLogType::BLUETOOTH_FIRMWARE_DUMP,
+      base::FilePath(InputDirectory().Append("test_bt_dump.txt")));
+  std::set<BinaryLogFile> input_files = {wifi_file, bt_file};
+
+  CreateFiles(input_files, kDefaultTestData);
+
+  // Use an invalid formatted userhash
+  SimulateDaemonDBusResponses(input_files, "invalid_userhash");
 
   std::set<FeedbackBinaryLogType> log_type = {
       FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP,

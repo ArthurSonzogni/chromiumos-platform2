@@ -4,6 +4,8 @@
 
 #include "debugd/src/bluetooth_tool.h"
 
+#include <linux/capability.h>
+
 #include <memory>
 #include <optional>
 #include <string>
@@ -16,7 +18,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-#include <linux/capability.h>
 
 #include "debugd/src/sandboxed_process.h"
 
@@ -95,11 +96,21 @@ bool BluetoothTool::GetCurrentUserObfuscatedName(std::string* out_name) {
     return false;
   }
 
+  if (!brillo::cryptohome::home::IsSanitizedUserName(obfuscated_name)) {
+    LOG(ERROR) << "Retrieved invalid obfuscated username: " << obfuscated_name;
+    return false;
+  }
+
   *out_name = obfuscated_name;
   return true;
 }
 
 bool BluetoothTool::StartSandboxedBtsnoop(const std::string& obfuscated_name) {
+  if (!brillo::cryptohome::home::IsSanitizedUserName(obfuscated_name)) {
+    LOG(ERROR) << "Invalid obfuscated username: " << obfuscated_name;
+    return false;
+  }
+
   // Allow write access to the daemon-store.
   base::FilePath daemon_store_path =
       brillo::cryptohome::home::GetDaemonStorePath(

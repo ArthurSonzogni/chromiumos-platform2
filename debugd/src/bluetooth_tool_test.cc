@@ -22,7 +22,7 @@ using testing::Return;
 namespace {
 
 constexpr char kMockUserName[] = "mockName";
-constexpr char kObfuscatedName[] = "obfuscatedName";
+constexpr char kObfuscatedName[] = "0abcdef1230abcdef1230abcdef1230abcdef123";
 
 }  // namespace
 
@@ -84,6 +84,16 @@ class BluetoothToolTest : public testing::Test {
     return resp;
   }
 
+  std::unique_ptr<dbus::Response> CreateUsernameResponseInvalid(
+      dbus::MethodCall* method_call, int timeout_ms) {
+    std::unique_ptr<dbus::Response> resp = dbus::Response::CreateEmpty();
+    dbus::MessageWriter writer(resp.get());
+    writer.AppendString(std::string(kMockUserName));
+    writer.AppendString(std::string("invalid_obfuscated_name"));
+
+    return resp;
+  }
+
   std::unique_ptr<SandboxedProcess> CreateSandboxedProcessValid() {
     std::unique_ptr<MockSandboxedProcess> mock =
         std::make_unique<MockSandboxedProcess>();
@@ -121,6 +131,16 @@ TEST_F(BluetoothToolTest, StartBtsnoop_Success) {
 TEST_F(BluetoothToolTest, StartBtsnoop_NotSignedIn_Fail) {
   EXPECT_CALL(*proxy_, CallMethodAndBlock(_, _))
       .WillOnce(Invoke(this, &BluetoothToolTest::CreateUsernameResponseEmpty));
+
+  EXPECT_FALSE(bluetooth_tool_->StartBtsnoop());
+  EXPECT_FALSE(bluetooth_tool_->IsBtsnoopRunning());
+}
+
+// Fail when obfuscated username has invalid format
+TEST_F(BluetoothToolTest, StartBtsnoop_InvalidObfuscatedName_Fail) {
+  EXPECT_CALL(*proxy_, CallMethodAndBlock(_, _))
+      .WillOnce(
+          Invoke(this, &BluetoothToolTest::CreateUsernameResponseInvalid));
 
   EXPECT_FALSE(bluetooth_tool_->StartBtsnoop());
   EXPECT_FALSE(bluetooth_tool_->IsBtsnoopRunning());

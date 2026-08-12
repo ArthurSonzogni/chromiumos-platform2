@@ -166,6 +166,35 @@ TEST_F(LogToolTest, DeleteArcBugReportBackup) {
   EXPECT_FALSE(base::PathExists(logPath));
 }
 
+TEST_F(LogToolTest, GetArcBugReport_InvalidUserhash_DoesNotReadOrDelete) {
+  EXPECT_CALL(*GetFakeLog(), GetLogData);
+  EXPECT_CALL(*GetCryptHomeProxy(),
+              GetSanitizedUsername(GetSanitizedUsernameEq("username"), _, _, _))
+      .WillOnce(WithArg<1>(
+          Invoke([](user_data_auth::GetSanitizedUsernameReply* reply) {
+            reply->set_sanitized_username("invalid_userhash");
+            return true;
+          })));
+
+  bool is_backup;
+  std::string report = GetArcBugReport("username", &is_backup);
+
+  EXPECT_EQ(report, "fake");
+  EXPECT_FALSE(is_backup);
+}
+
+TEST_F(LogToolTest, DeleteArcBugReportBackup_InvalidUserhash_DoesNothing) {
+  EXPECT_CALL(*GetCryptHomeProxy(),
+              GetSanitizedUsername(GetSanitizedUsernameEq("username"), _, _, _))
+      .WillOnce(WithArg<1>(
+          Invoke([](user_data_auth::GetSanitizedUsernameReply* reply) {
+            reply->set_sanitized_username("invalid_userhash");
+            return true;
+          })));
+
+  log_tool_->DeleteArcBugReportBackup("username");
+}
+
 TEST_F(LogToolTest, EncodeString) {
   // U+1F600 GRINNING FACE
   constexpr const char kGrinningFaceUTF8[] = "\xF0\x9F\x98\x80";
