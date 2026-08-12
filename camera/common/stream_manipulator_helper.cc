@@ -1454,6 +1454,8 @@ void StreamManipulatorHelper::Reset() {
                   << num_requesting << " requesting, " << num_pending
                   << " pending, " << num_processing << " processing buffers";
   }
+
+  still_capture_processor_->Reset();
   capture_contexts_.clear();
 
   client_stream_to_type_.clear();
@@ -1474,7 +1476,6 @@ void StreamManipulatorHelper::Reset() {
   fake_still_process_output_format_.reset();
   fake_video_process_output_format_.reset();
 
-  still_capture_processor_->Reset();
   result_sequencer_->Reset();
 }
 
