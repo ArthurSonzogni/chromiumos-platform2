@@ -15,8 +15,11 @@ use std::sync::Mutex;
 use std::vec::Vec;
 
 use dbus::arg;
+use dbus::arg::PropMap;
+use dbus::arg::RefArg;
 use dbus::blocking::SyncConnection;
 use dbus::channel::MatchingReceiver;
+use dbus::channel::Sender as DBusSender;
 use dbus_crossroads::Crossroads;
 use log::error;
 use log::info;
@@ -320,6 +323,60 @@ impl OrgChromiumVhostUserStarter for StarterService {
     }
 }
 
+const ALLOWED_SELINUX_DOMAIN: &str = "u:r:cros_vm_concierge:s0";
+
+fn check_sender_security_context(
+    conn: &SyncConnection,
+    sender: &str,
+) -> Result<(), dbus::MethodErr> {
+    let proxy = conn.with_proxy(
+        "org.freedesktop.DBus",
+        "/org/freedesktop/DBus",
+        std::time::Duration::from_millis(500),
+    );
+    let (credentials,): (PropMap,) = proxy
+        .method_call(
+            "org.freedesktop.DBus",
+            "GetConnectionCredentials",
+            (sender,),
+        )
+        .map_err(|e| {
+            error!("Failed to get sender credentials for {}: {}", sender, e);
+            dbus::MethodErr::failed("Failed to get security credentials")
+        })?;
+
+    let label_variant = credentials.get("LinuxSecurityLabel").ok_or_else(|| {
+        error!("LinuxSecurityLabel not found in credentials for {}", sender);
+        dbus::MethodErr::failed("LinuxSecurityLabel not found in credentials")
+    })?;
+
+    let context = match label_variant.0.as_iter() {
+        Some(iter) => {
+            let bytes: Vec<u8> = iter
+                .filter_map(|item| item.as_u64().map(|b| b as u8))
+                .collect();
+            String::from_utf8_lossy(&bytes)
+                .trim_end_matches('\0')
+                .to_string()
+        }
+        None => match label_variant.0.as_str() {
+            Some(s) => s.trim_end_matches('\0').to_string(),
+            None => {
+                error!("Invalid LinuxSecurityLabel format for {}", sender);
+                return Err(dbus::MethodErr::failed("Invalid LinuxSecurityLabel format"));
+            }
+        },
+    };
+
+    if context != ALLOWED_SELINUX_DOMAIN {
+        error!("Unauthorized SELinux domain: {}", context);
+        return Err(dbus::MethodErr::failed(
+            "Access denied: unauthorized domain",
+        ));
+    }
+    Ok(())
+}
+
 /// Serve the D-Bus SyncConnection.
 ///
 /// This function is forked from Crossroads::serve(), because Crossroads::serve() only accepts
@@ -332,6 +389,17 @@ fn serve_sync_connection(
     connection.start_receive(
         dbus::message::MatchRule::new_method_call(),
         Box::new(move |msg, conn| {
+            if msg.interface().as_deref() == Some("org.chromium.VhostUserStarter")
+                && msg.member().as_deref() == Some("StartVhostUserFs")
+            {
+                if let Some(sender) = msg.sender() {
+                    if let Err(e) = check_sender_security_context(conn, &sender) {
+                        let reply = e.to_message(&msg);
+                        let _ = DBusSender::send(conn, reply);
+                        return true;
+                    }
+                }
+            }
             cr.lock()
                 .expect("Fail to lock crossroads")
                 .handle_message(msg, conn)
