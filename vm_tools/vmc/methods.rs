@@ -2704,15 +2704,16 @@ impl Methods {
         )?;
 
         if let Some(file_name) = file_name {
-            if Path::new(file_name).is_absolute() {
-                return Err("Absolute paths are not permitted".into());
-            }
-            let file_path = Path::new(CRYPTOHOME_USER)
-                .join(user_id_hash)
-                .join(MY_FILES_DIR)
-                .join(DOWNLOADS_DIR)
-                .join(file_name);
-            let mut file = File::create(&file_path)?;
+            let (mut file, _) = open_user_path(
+                user_id_hash,
+                file_name,
+                None,
+                OpenSafelyOptions::new()
+                    .write(true)
+                    .create(true)
+                    .truncate(true)
+                    .mode(0o600),
+            )?;
             file.write_all(response.log.as_bytes())?;
             return Ok(String::new());
         }
@@ -2819,5 +2820,24 @@ impl Methods {
         }
 
         Err("No vm_type found in backup".into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_open_user_path_traversal_rejected() {
+        let mut options = OpenSafelyOptions::new();
+        options.read(true);
+
+        // Disallow ".."
+        assert!(open_user_path("dummy", "../test.txt", None, &options).is_err());
+        assert!(open_user_path("dummy", "sub/../../test.txt", None, &options).is_err());
+
+        // Disallow absolute path outside allowed roots
+        assert!(open_user_path("dummy", "/etc/passwd", None, &options).is_err());
+        assert!(open_user_path("dummy", "/tmp/malicious.txt", None, &options).is_err());
     }
 }
