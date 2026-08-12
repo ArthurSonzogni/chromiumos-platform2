@@ -24,6 +24,7 @@
 #include <base/files/scoped_file.h>
 #include <base/functional/callback_helpers.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/memory/weak_ptr.h>
 #include <base/sequence_checker.h>
 #include <base/task/sequenced_task_runner.h>
 
@@ -352,6 +353,8 @@ class CROS_CAMERA_EXPORT StreamManipulatorHelper {
       capture_contexts_;
 
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
+
+  base::WeakPtrFactory<StreamManipulatorHelper> weak_factory_{this};
 };
 
 // A ProcessTask is sent to the StreamManipulator via OnProcessTaskCallback when

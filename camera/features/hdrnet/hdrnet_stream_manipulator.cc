@@ -190,7 +190,7 @@ HdrNetStreamManipulator::~HdrNetStreamManipulator() {
   config_.StopOverrideFileWatcher();
 
   hdrnet_gpu_resources_->PostGpuTaskSync(
-      FROM_HERE, base::BindOnce(&HdrNetStreamManipulator::ResetStateOnGpuThread,
+      FROM_HERE, base::BindOnce(&HdrNetStreamManipulator::ShutdownOnGpuThread,
                                 base::Unretained(this)));
 }
 
@@ -406,7 +406,9 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
              options_.log_frame_metadata ? &metadata_logger_ : nullptr});
   }
 
-  helper_->HandleRequest(request, skip_hdrnet_processing, nullptr);
+  if (helper_) {
+    helper_->HandleRequest(request, skip_hdrnet_processing, nullptr);
+  }
 
   for (auto& buffer : request->GetOutputBuffers()) {
     if (!hdrnet_stream_context_.contains(buffer.stream())) {
@@ -432,7 +434,9 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
   DCHECK(hdrnet_gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_HDRNET("frame_number", result.frame_number());
 
-  helper_->HandleResult(std::move(result));
+  if (helper_) {
+    helper_->HandleResult(std::move(result));
+  }
   return true;
 }
 
@@ -552,7 +556,9 @@ bool HdrNetStreamManipulator::NotifyOnGpuThread(camera3_notify_msg_t* msg) {
     ++hdrnet_metrics_.errors[HdrnetError::kCameraHal3Error];
   }
 
-  helper_->Notify(*msg);
+  if (helper_) {
+    helper_->Notify(*msg);
+  }
   return true;
 }
 
@@ -560,7 +566,9 @@ bool HdrNetStreamManipulator::FlushOnGpuThread() {
   DCHECK(hdrnet_gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_HDRNET();
 
-  helper_->Flush();
+  if (helper_) {
+    helper_->Flush();
+  }
   return true;
 }
 
@@ -693,6 +701,12 @@ void HdrNetStreamManipulator::ResetStateOnGpuThread() {
 
   UploadMetrics();
   hdrnet_metrics_ = HdrnetMetrics();
+}
+
+void HdrNetStreamManipulator::ShutdownOnGpuThread() {
+  CHECK(hdrnet_gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  ResetStateOnGpuThread();
+  helper_.reset();
 }
 
 void HdrNetStreamManipulator::OnOptionsUpdated(

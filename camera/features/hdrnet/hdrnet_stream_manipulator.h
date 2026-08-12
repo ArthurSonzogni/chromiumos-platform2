@@ -89,6 +89,7 @@ class HdrNetStreamManipulator : public StreamManipulator {
   bool SetUpPipelineOnGpuThread();
 
   void ResetStateOnGpuThread();
+  void ShutdownOnGpuThread();
 
   void OnOptionsUpdated(const base::DictValue& json_values);
   void UpdateOptionsOnGpuThread(base::DictValue json_values);

@@ -293,7 +293,7 @@ bool StreamManipulatorHelper::PreConfigure(
         base::BindPostTask(
             task_runner_,
             base::BindRepeating(&StreamManipulatorHelper::OnStillCaptureResult,
-                                base::Unretained(this))));
+                                weak_factory_.GetWeakPtr())));
     std::vector<camera3_stream_t*> still_streams = {blob_stream};
     if (still_yuv_stream != nullptr) {
       still_streams.push_back(still_yuv_stream);
@@ -968,7 +968,7 @@ void StreamManipulatorHelper::HandleResult(Camera3CaptureDescriptor result) {
               &capture_ctx->feature_metadata,
               capture_ctx->private_context.get(),
               base::BindOnce(&StreamManipulatorHelper::OnProcessTaskDone,
-                             base::Unretained(this))),
+                             weak_factory_.GetWeakPtr())),
           base::OnTaskRunnerDeleter(task_runner_)));
     }
   }
