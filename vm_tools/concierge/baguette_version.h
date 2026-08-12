@@ -11,7 +11,7 @@
 // URL when new images are available.
 
 // clang-format off
-constexpr char kBaguetteVersion[] = "2026-08-11-000129_029032b04170a7b469494833c6e0215cccf5f196";  // NOLINT
+constexpr char kBaguetteVersion[] = "2026-08-12-000022_39a0c61001c30c01406b25a9d4c49772771fb63d";  // NOLINT
 constexpr char kBaguetteSHA256X86[] = "18872739acf257c8ae263bd64f55808b6392b30cc03c6480eec4cd36f737d2a4";  // NOLINT
 constexpr char kBaguetteSHA256Arm[] = "94401d6602513943efe45bfefb6d23eda39f88faf8d34626442d97ee30640aa9";  // NOLINT
 // cpplint:enable
