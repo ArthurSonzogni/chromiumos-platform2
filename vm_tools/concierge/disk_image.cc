@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <cstring>
 #include <memory>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -1147,8 +1148,18 @@ bool TerminaVmImportOperation::PrepareInput(apps::VmType* vm_type_out) {
         break;
       }
 
-      const char* vm_type_str = reinterpret_cast<const char*>(
-          content_buffer.data() + magic_len + key_len);
+      size_t offset = magic_len + key_len;
+      size_t remaining_len = metadata_frame_content_size - offset;
+      std::string_view raw_slice(
+          reinterpret_cast<const char*>(content_buffer.data() + offset),
+          remaining_len);
+
+      // Truncate at null terminator if present.
+      size_t null_pos = raw_slice.find('\0');
+      std::string_view vm_type_str = (null_pos != std::string_view::npos)
+                                         ? raw_slice.substr(0, null_pos)
+                                         : raw_slice;
+
       int vm_type_int;
       if (!base::StringToInt(vm_type_str, &vm_type_int)) {
         LOG(WARNING) << "VM import: could not parse vm type: " << vm_type_str;
