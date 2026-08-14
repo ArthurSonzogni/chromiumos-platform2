@@ -82,6 +82,12 @@ DeviceIdentifierGenerator::DeviceIdentifierGenerator(SystemUtils* system_utils,
 DeviceIdentifierGenerator::~DeviceIdentifierGenerator() {}
 
 // static
+int64_t DeviceIdentifierGenerator::ComputeTimeQuantumIndex(
+    int64_t time_seconds) {
+  return time_seconds >> kDeviceStateKeyTimeQuantumPower;
+}
+
+// static
 bool DeviceIdentifierGenerator::ParseMachineInfo(
     const std::string& data,
     const std::map<std::string, std::string>& ro_vpd,
@@ -146,7 +152,7 @@ bool DeviceIdentifierGenerator::InitMachineInfo(
   LOG_IF(INFO, disk_serial_number_.empty()) << "Disk serial number missing!";
 
   // Fire all pending state_keys callbacks.
-  const base::expected<StateKeysList, StateKeysComputationError> state_keys =
+  const base::expected<StateKeysData, StateKeysComputationError> state_keys =
       ComputeKeys();
   std::vector<StateKeyCallback> callbacks;
   callbacks.swap(pending_callbacks_);
@@ -176,14 +182,17 @@ void DeviceIdentifierGenerator::RequestStateKeys(StateKeyCallback callback) {
   std::move(callback).Run(ComputeKeys());
 }
 
-base::expected<DeviceIdentifierGenerator::StateKeysList,
+base::expected<DeviceIdentifierGenerator::StateKeysData,
                DeviceIdentifierGenerator::StateKeysComputationError>
 DeviceIdentifierGenerator::ComputeKeys() {
-  StateKeysList state_keys;
+  StateKeysData data;
 
   // Get the current time in quantized form.
+  const int64_t current_time = system_utils_->time(nullptr);
+  data.current_time_quantum_index = ComputeTimeQuantumIndex(current_time);
   const int64_t quantum_size = 1 << kDeviceStateKeyTimeQuantumPower;
-  int64_t quantized_time = system_utils_->time(nullptr) & ~(quantum_size - 1);
+  int64_t quantized_time = data.current_time_quantum_index
+                           << kDeviceStateKeyTimeQuantumPower;
 
   // Prioritize using the pre-Flex keys as a simple way to prevent enrollment
   // escapes by injecting a Flex key in a ChromeOS device's VPD (b/452649563).
@@ -213,18 +222,18 @@ DeviceIdentifierGenerator::ComputeKeys() {
     }
 
     for (int i = 0; i < kDeviceStateKeyFutureQuanta; ++i) {
-      state_keys.push_back(std::vector<uint8_t>(hmac.DigestLength()));
+      data.state_keys.push_back(std::vector<uint8_t>(hmac.DigestLength()));
       std::string data_to_sign;
       data_to_sign.append(kDeviceSecretUsageContext);
       data_to_sign.append(1, '\0');
       data_to_sign.append(reinterpret_cast<char*>(&quantized_time),
                           sizeof(quantized_time));
-      if (!hmac.Sign(data_to_sign, state_keys.back().data(),
-                     state_keys.back().size())) {
+      if (!hmac.Sign(data_to_sign, data.state_keys.back().data(),
+                     data.state_keys.back().size())) {
         metrics_->SendStateKeyGenerationStatus(
             LoginMetrics::STATE_KEY_STATUS_HMAC_SIGN_FAILURE);
         LOG(ERROR) << "Failed to compute HMAC, no state keys generated.";
-        state_keys.clear();
+        data.state_keys.clear();
         return base::unexpected(
             StateKeysComputationError::kHmacComputationError);
       }
@@ -235,13 +244,13 @@ DeviceIdentifierGenerator::ComputeKeys() {
   } else if (!machine_serial_number_.empty() && !disk_serial_number_.empty()) {
     // Fallback for old models that do not have a stable device secret.
     for (int i = 0; i < kDeviceStateKeyFutureQuanta; ++i) {
-      state_keys.push_back(StateKey(crypto::kSHA256Length));
+      data.state_keys.push_back(StateKey(crypto::kSHA256Length));
       crypto::SHA256HashString(
           crypto::SHA256HashString(group_code_key_) +
               crypto::SHA256HashString(disk_serial_number_) +
               crypto::SHA256HashString(machine_serial_number_) +
               crypto::SHA256HashString(base::NumberToString(quantized_time)),
-          state_keys.back().data(), state_keys.back().size());
+          data.state_keys.back().data(), data.state_keys.back().size());
       quantized_time += quantum_size;
     }
     metrics_->SendStateKeyGenerationStatus(
@@ -262,7 +271,7 @@ DeviceIdentifierGenerator::ComputeKeys() {
           StateKeysComputationError::kMalformedReEnrollmentKey);
     }
 
-    state_keys.push_back(key_bytes);
+    data.state_keys.push_back(key_bytes);
     metrics_->SendStateKeyGenerationStatus(
         LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_RE_ENROLLMENT_KEY);
   } else {
@@ -289,9 +298,10 @@ DeviceIdentifierGenerator::ComputeKeys() {
   }
 
   LOG(WARNING) << "State keys successfully generated. Number of keys: "
-               << state_keys.size() << ".";
+               << data.state_keys.size() << ", current time quantum index: "
+               << data.current_time_quantum_index << ".";
 
-  return state_keys;
+  return data;
 }
 
 void DeviceIdentifierGenerator::RequestPsmDeviceActiveSecret(

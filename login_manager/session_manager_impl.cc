@@ -425,7 +425,7 @@ class SessionManagerImpl::DBusService {
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           std::vector<std::vector<uint8_t>>>> response,
       const base::expected<
-          DeviceIdentifierGenerator::StateKeysList,
+          DeviceIdentifierGenerator::StateKeysData,
           DeviceIdentifierGenerator::StateKeysComputationError>& state_keys) {
     if (!state_keys.has_value()) {
       const auto error_message_it =
@@ -438,7 +438,7 @@ class SessionManagerImpl::DBusService {
       return response->ReplyWithError(error.get());
     }
 
-    return response->Return(state_keys.value());
+    return response->Return(state_keys.value().state_keys);
   }
 
   void HandlePsmDeviceActiveSecretCallback(

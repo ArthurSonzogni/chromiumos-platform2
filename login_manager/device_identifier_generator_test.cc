@@ -112,10 +112,24 @@ TEST(DeviceIdentifierGeneratorStaticTest, ParseMachineInfoFailure) {
       DeviceIdentifierGenerator::ParseMachineInfo("bad!", ro_vpd, &params));
 }
 
+TEST(DeviceIdentifierGeneratorStaticTest, ComputeTimeQuantumIndex) {
+  const int64_t quantum_size =
+      1 << DeviceIdentifierGenerator::kDeviceStateKeyTimeQuantumPower;
+  EXPECT_EQ(0, DeviceIdentifierGenerator::ComputeTimeQuantumIndex(0));
+  EXPECT_EQ(
+      0, DeviceIdentifierGenerator::ComputeTimeQuantumIndex(quantum_size - 1));
+  EXPECT_EQ(1,
+            DeviceIdentifierGenerator::ComputeTimeQuantumIndex(quantum_size));
+  const int64_t quantum_index = 212;
+  const int64_t sample_time = quantum_index * quantum_size + 12345;
+  EXPECT_EQ(quantum_index,
+            DeviceIdentifierGenerator::ComputeTimeQuantumIndex(sample_time));
+}
+
 class DeviceIdentifierGeneratorTest : public testing::Test {
  public:
   using StateKeysResult =
-      base::expected<DeviceIdentifierGenerator::StateKeysList,
+      base::expected<DeviceIdentifierGenerator::StateKeysData,
                      DeviceIdentifierGenerator::StateKeysComputationError>;
 
   DeviceIdentifierGeneratorTest()
@@ -337,7 +351,7 @@ TEST_P(DeviceIdentifierGeneratorTestP, PendingMachineInfo) {
   ASSERT_TRUE(state_keys_future.IsReady());
   StateKeysResult state_keys = state_keys_future.Get();
   ASSERT_TRUE(state_keys.has_value());
-  EXPECT_EQ(GetParam().num_state_keys, state_keys.value().size());
+  EXPECT_EQ(GetParam().num_state_keys, state_keys.value().state_keys.size());
 
   // Pending callbacks are fired and discarded.
   EXPECT_TRUE(generator_.GetPendingCallbacksForTesting().empty());
@@ -353,7 +367,7 @@ TEST_P(DeviceIdentifierGeneratorTestP, RequestStateKeys) {
 
   EXPECT_EQ(GetParam().generation_status, last_state_key_generation_status_);
   ASSERT_TRUE(state_keys.has_value());
-  EXPECT_EQ(GetParam().num_state_keys, state_keys.value().size());
+  EXPECT_EQ(GetParam().num_state_keys, state_keys.value().state_keys.size());
 }
 
 TEST_P(DeviceIdentifierGeneratorTestP,
@@ -392,14 +406,20 @@ TEST_P(DeviceIdentifierGeneratorTestP, TimedStateKeys) {
 
   EXPECT_EQ(GetParam().generation_status, last_state_key_generation_status_);
   ASSERT_TRUE(initial_state_keys.has_value());
-  EXPECT_EQ(GetParam().num_state_keys, initial_state_keys.value().size());
+  EXPECT_EQ(GetParam().num_state_keys,
+            initial_state_keys.value().state_keys.size());
+  EXPECT_EQ(DeviceIdentifierGenerator::ComputeTimeQuantumIndex(
+                system_utils_.time(nullptr)),
+            initial_state_keys.value().current_time_quantum_index);
 
   // All state keys are different.
-  std::set<DeviceIdentifierGenerator::StateKeysList::value_type> state_key_set(
-      initial_state_keys.value().begin(), initial_state_keys.value().end());
-  EXPECT_EQ(GetParam().num_state_keys, initial_state_keys.value().size());
+  std::set<DeviceIdentifierGenerator::StateKey> state_key_set(
+      initial_state_keys.value().state_keys.begin(),
+      initial_state_keys.value().state_keys.end());
+  EXPECT_EQ(GetParam().num_state_keys,
+            initial_state_keys.value().state_keys.size());
 
-  // Moving forward just a little yields the same keys.
+  // Moving forward just a little yields the same keys and quantum.
   system_utils_.forward_time(base::Days(1).InSeconds());
 
   StateKeysResult second_state_keys;
@@ -435,10 +455,13 @@ TEST_P(DeviceIdentifierGeneratorTestP, TimedStateKeys) {
 
   EXPECT_EQ(GetParam().generation_status, last_state_key_generation_status_);
   ASSERT_TRUE(future_state_keys.has_value());
-  EXPECT_EQ(GetParam().num_state_keys, future_state_keys.value().size());
-  EXPECT_TRUE(std::equal(initial_state_keys.value().begin() + 2,
-                         initial_state_keys.value().end(),
-                         future_state_keys.value().begin()));
+  EXPECT_EQ(GetParam().num_state_keys,
+            future_state_keys.value().state_keys.size());
+  EXPECT_EQ(initial_state_keys.value().current_time_quantum_index + 2,
+            future_state_keys.value().current_time_quantum_index);
+  EXPECT_TRUE(std::equal(initial_state_keys.value().state_keys.begin() + 2,
+                         initial_state_keys.value().state_keys.end(),
+                         future_state_keys.value().state_keys.begin()));
 }
 
 INSTANTIATE_TEST_SUITE_P(
