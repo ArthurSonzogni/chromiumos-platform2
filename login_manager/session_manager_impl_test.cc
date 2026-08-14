@@ -1057,6 +1057,24 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSyncAfterFail) {
   std::move(time_sync_callback).Run(response.get());
 }
 
+TEST_F(SessionManagerImplTest, GetStateKeysWithTimeQuantumIndex_TimeSync) {
+  EXPECT_CALL(device_identifier_generator_, RequestStateKeys(_));
+
+  ResponseCapturer capturer;
+  impl_->GetStateKeysWithTimeQuantumIndex(
+      capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>,
+                                    int64_t>());
+  ASSERT_NO_FATAL_FAILURE(GotLastSyncInfo(true));
+}
+
+TEST_F(SessionManagerImplTest, GetStateKeysWithTimeQuantumIndex_NoTimeSync) {
+  EXPECT_CALL(device_identifier_generator_, RequestStateKeys(_)).Times(0);
+  ResponseCapturer capturer;
+  impl_->GetStateKeysWithTimeQuantumIndex(
+      capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>,
+                                    int64_t>());
+}
+
 TEST_F(SessionManagerImplTest, GetPsmDeviceActiveSecretSuccess) {
   EXPECT_CALL(device_identifier_generator_, RequestPsmDeviceActiveSecret(_));
   ResponseCapturer capturer;

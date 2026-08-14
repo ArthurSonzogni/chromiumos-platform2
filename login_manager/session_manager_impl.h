@@ -293,6 +293,10 @@ class SessionManagerImpl
   void GetServerBackedStateKeys(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           std::vector<std::vector<uint8_t>>>> response) override;
+  void GetStateKeysWithTimeQuantumIndex(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          std::vector<std::vector<uint8_t>>,
+          int64_t>> response) override;
 
   void GetPsmDeviceActiveSecret(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::string>>

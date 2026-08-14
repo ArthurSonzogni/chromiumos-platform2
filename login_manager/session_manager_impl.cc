@@ -399,6 +399,19 @@ class SessionManagerImpl::DBusService {
                           weak_ptr_factory_.GetWeakPtr(), std::move(response));
   }
 
+  // Adaptor from DBusMethodResponse to
+  // DeviceIdentifierGenerator::StateKeyCallback callback returning state keys
+  // and current time quantum index.
+  DeviceIdentifierGenerator::StateKeyCallback
+  CreateStateKeyWithQuantumIndexCallback(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          std::vector<std::vector<uint8_t>>,
+          int64_t>> response) {
+    return base::BindOnce(
+        &DBusService::HandleStateKeyWithQuantumIndexCallback,
+        weak_ptr_factory_.GetWeakPtr(), std::move(response));
+  }
+
   // Adaptor for DBusMethodResponse to
   // DeviceIdentifierGenerator::PsmDeviceActiveSecretCallback callback.
   DeviceIdentifierGenerator::PsmDeviceActiveSecretCallback
@@ -439,6 +452,28 @@ class SessionManagerImpl::DBusService {
     }
 
     return response->Return(state_keys.value().state_keys);
+  }
+
+  void HandleStateKeyWithQuantumIndexCallback(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          std::vector<std::vector<uint8_t>>,
+          int64_t>> response,
+      const base::expected<
+          DeviceIdentifierGenerator::StateKeysData,
+          DeviceIdentifierGenerator::StateKeysComputationError>& state_keys) {
+    if (!state_keys.has_value()) {
+      const auto error_message_it =
+          kStateKeysComputationErrorMessages.find(state_keys.error());
+      const brillo::ErrorPtr error = CreateError(
+          dbus_error::kStateKeysRequestFail,
+          error_message_it != kStateKeysComputationErrorMessages.end()
+              ? std::string(error_message_it->second)
+              : "Unknown error");
+      return response->ReplyWithError(error.get());
+    }
+
+    return response->Return(state_keys.value().state_keys,
+                            state_keys.value().current_time_quantum_index);
   }
 
   void HandlePsmDeviceActiveSecretCallback(
@@ -1289,6 +1324,21 @@ void SessionManagerImpl::GetServerBackedStateKeys(
   DCHECK(dbus_service_);
   DeviceIdentifierGenerator::StateKeyCallback callback =
       dbus_service_->CreateStateKeyCallback(std::move(response));
+  if (system_clock_synchronized_) {
+    device_identifier_generator_->RequestStateKeys(std::move(callback));
+  } else {
+    pending_state_key_callbacks_.push_back(std::move(callback));
+  }
+}
+
+void SessionManagerImpl::GetStateKeysWithTimeQuantumIndex(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        std::vector<std::vector<uint8_t>>,
+        int64_t>> response) {
+  DCHECK(dbus_service_);
+  DeviceIdentifierGenerator::StateKeyCallback callback =
+      dbus_service_->CreateStateKeyWithQuantumIndexCallback(
+          std::move(response));
   if (system_clock_synchronized_) {
     device_identifier_generator_->RequestStateKeys(std::move(callback));
   } else {

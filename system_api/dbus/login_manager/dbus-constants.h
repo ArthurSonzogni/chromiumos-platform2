@@ -46,6 +46,8 @@ const char kSessionManagerSetFlagsForUser[] = "SetFlagsForUser";
 const char kSessionManagerSetFeatureFlagsForUser[] = "SetFeatureFlagsForUser";
 const char kSessionManagerGetServerBackedStateKeys[] =
     "GetServerBackedStateKeys";
+const char kSessionManagerGetStateKeysWithTimeQuantumIndex[] =
+    "GetStateKeysWithTimeQuantumIndex";
 const char kSessionManagerGetPsmDeviceActiveSecret[] =
     "GetPsmDeviceActiveSecret";
 const char kSessionManagerInitMachineInfo[] = "InitMachineInfo";

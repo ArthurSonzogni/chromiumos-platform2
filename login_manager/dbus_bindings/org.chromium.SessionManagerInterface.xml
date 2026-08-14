@@ -547,6 +547,28 @@
     </method>
 
     <!--
+        GetStateKeysWithTimeQuantumIndex:
+        @state_keys: The array of currently valid state keys.
+        @current_time_quantum_index: The time quantum index for the first state
+                                     key in @state_keys.
+
+        Requests state keys to be computed and returned along with the
+        current time quantum index. A state key is an opaque client-determined
+        identifier that's used to stage state on the server to be retrieved
+        after device recovery. The keys are time-dependent, with each key being
+        valid only for a window of time, and based on system time this call
+        returns the currently valid state key plus a number of subsequent state
+        keys (all sorted by time in ascending order) that span approximately a
+        year of time in coverage. It is the responsibility of the caller to
+        ensure that the system time is accurate before starting the request!
+    -->
+    <method name="GetStateKeysWithTimeQuantumIndex">
+      <arg type="aay" name="state_keys" direction="out" />
+      <arg type="x" name="current_time_quantum_index" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    </method>
+
+    <!--
         GetPsmDeviceActiveSecret:
         @derived_secret: The secret is used to generate PSM plaintext_id.
 
