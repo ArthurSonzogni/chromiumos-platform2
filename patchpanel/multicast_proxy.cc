@@ -68,7 +68,7 @@ void MulticastProxy::ProcessMulticastForwardingControlMessage(
   auto dir = msg.dir();
   bool inbound = dir == MulticastForwardingControlMessage::INBOUND_ONLY ||
                  dir == MulticastForwardingControlMessage::TWO_WAYS;
-  bool outbound = dir == MulticastForwardingControlMessage::INBOUND_ONLY ||
+  bool outbound = dir == MulticastForwardingControlMessage::OUTBOUND_ONLY ||
                   dir == MulticastForwardingControlMessage::TWO_WAYS;
 
   MulticastForwarder::Direction mcast_fwd_dir;
