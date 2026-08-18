@@ -23,6 +23,9 @@ bool PrepareRecoveryFiles(
   if (!files.recovery_directory.has_value()) {
     return true;
   }
+  if (!helper || !firmware_dir) {
+    return false;
+  }
 
   auto recovery_dir = std::make_unique<FirmwareFile>();
   if (!recovery_dir->PrepareFrom(firmware_dir->GetFirmwarePath(),
