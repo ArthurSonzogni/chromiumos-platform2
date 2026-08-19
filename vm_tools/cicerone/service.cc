@@ -262,7 +262,7 @@ std::string TranslateUrlForHost(const std::string& url,
     }
   }
 
-  return url;
+  return "";
 }
 
 void SetTimezoneForContainer(VirtualMachine* vm,
@@ -1147,6 +1147,14 @@ void Service::OpenUrl(const std::string& container_token,
     }
     std::string translated_url = TranslateUrlForHost(
         url, container_ip_str, owner_id, vm_name, *container);
+
+    // Catch the empty string and abort the request.
+    if (translated_url.empty()) {
+      LOG(ERROR) << "Blocked OpenUrl request for host-absolute path: " << url;
+      event->Signal();
+      return;
+    }
+
     writer.AppendString(translated_url);
   } else {
     writer.AppendString(url);
