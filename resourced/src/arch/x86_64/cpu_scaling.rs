@@ -187,8 +187,7 @@ impl DeviceCpuStatus {
         let cpus: Result<Vec<_>, _> = glob(&self.cpu_max_freq_path_pattern)?.collect();
         let cpus = cpus?;
         for curr_cpu in cpus {
-            let cpu_min_path =
-                PathBuf::from(str::replace(&curr_cpu.display().to_string(), "max", "min"));
+            let cpu_min_path = curr_cpu.with_file_name("scaling_min_freq");
             let val_min: u64 = read_from_file(&cpu_min_path)
                 .with_context(|| format!("couldn't read {}", cpu_min_path.display()))?;
             if (val_max - val_min) > threshold {
@@ -223,8 +222,7 @@ impl DeviceCpuStatus {
         let cpus = cpus?;
 
         for curr_cpu in cpus {
-            let cpu_max_path =
-                PathBuf::from(str::replace(&curr_cpu.display().to_string(), "min", "max"));
+            let cpu_max_path = curr_cpu.with_file_name("scaling_max_freq");
             let val_max: u64 = read_from_file(&cpu_max_path)
                 .with_context(|| format!("couldn't read {}", cpu_max_path.display()))?;
             if (val_max - val_min) > threshold {
@@ -355,23 +353,24 @@ impl DeviceCpuStatus {
             .join(DEVICE_POWER_LIMIT_PATH)
             .join("max_energy_range_uj");
 
-        let cpu_max_freq_path = root
-            .join(DEVICE_CPUFREQ_PATH)
-            .join("policy*/scaling_max_freq");
+        let cpu_n_max_path = |pattern| {
+            root.join(DEVICE_CPUFREQ_PATH)
+                .join(format!("policy{pattern}/scaling_max_freq"))
+        };
+        let cpu_0_max_path = cpu_n_max_path('0');
+        let cpu_max_freq_path = cpu_n_max_path('*');
         let cpu_max_freq_path_pattern = cpu_max_freq_path.to_str().unwrap_or_default();
-        let cpu_0_max_path = PathBuf::from(str::replace(cpu_max_freq_path_pattern, "*", "0"));
         // always latch baseline max, since local max may have already been modified.
-        let cpu_min_freq_path = root
-            .join(DEVICE_CPUFREQ_PATH)
-            .join("policy*/scaling_min_freq");
+        let cpu_n_min_path = |pattern| {
+            root.join(DEVICE_CPUFREQ_PATH)
+                .join(format!("policy{pattern}/scaling_min_freq"))
+        };
+        let cpu_0_min_path = cpu_n_min_path('0');
+        let cpu_min_freq_path = cpu_n_min_path('*');
         let cpu_min_freq_path_pattern = cpu_min_freq_path.to_str().unwrap_or_default();
-        let cpu_0_min_path = PathBuf::from(str::replace(cpu_min_freq_path_pattern, "*", "0"));
-        let cpuinfo_min_freq_path = root
+        let cpuinfo_0_min_path = root
             .join(DEVICE_CPUFREQ_PATH)
-            .join("policy*/cpuinfo_min_freq");
-        let cpuinfo_min_freq_path_pattern = cpuinfo_min_freq_path.to_str().unwrap_or_default();
-        let cpuinfo_0_min_path =
-            PathBuf::from(str::replace(cpuinfo_min_freq_path_pattern, "*", "0"));
+            .join("policy0/cpuinfo_min_freq");
         // always latch baseline min, since local min may have already been modified.
         if power_limit_0_current_path.exists()
             && power_limit_0_max_path.exists()
@@ -645,6 +644,32 @@ mod tests {
         assert_eq!(get_cpu0_freq_max(root.path()), 1600000);
 
         mock_cpu_dev.set_all_max_cpu_freq(2800000).unwrap();
+        assert_eq!(get_cpu0_freq_min(root.path()), 1000000);
+    }
+
+    #[test]
+    fn test_cpu_read_write_reset_with_min_max_in_path() {
+        let root = tempfile::Builder::new()
+            .prefix("test_min_max_dir")
+            .tempdir()
+            .unwrap();
+        setup_mock_cpu_dev_dirs(root.path()).unwrap();
+        setup_mock_cpu_files(root.path()).unwrap();
+        for cpu in 0..MOCK_NUM_CPU {
+            write_mock_cpu(root.path(), cpu, 3200000, 3000000, 400000, 1000000).unwrap();
+        }
+
+        let mock_cpu_dev = DeviceCpuStatus::new(PathBuf::from(root.path())).unwrap();
+        assert_eq!(get_cpu0_freq_max(root.path()), 3000000);
+
+        mock_cpu_dev.set_all_max_cpu_freq(2000000).unwrap();
+        assert_eq!(get_cpu0_freq_max(root.path()), 2000000);
+
+        mock_cpu_dev.set_all_min_cpu_freq(1200000).unwrap();
+        assert_eq!(get_cpu0_freq_min(root.path()), 1200000);
+
+        mock_cpu_dev.reset_all_max_min_cpu_freq().unwrap();
+        assert_eq!(get_cpu0_freq_max(root.path()), 3000000);
         assert_eq!(get_cpu0_freq_min(root.path()), 1000000);
     }
 
