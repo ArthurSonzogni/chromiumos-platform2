@@ -162,14 +162,9 @@ void VafConnection::InitializeOnIpcThread(bool* init_success) {
   }
 
   // Setup the mojo pipe.
-#if defined(ENABLE_IPCZ_ON_CHROMEOS)
   mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
       mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))),
       MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
-#else
-  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
-      mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))));
-#endif
   mojo::PendingRemote<arc::mojom::VideoAcceleratorFactory> pending_factory(
       invitation.ExtractMessagePipe(pipe_name),
       kRequiredVideoAcceleratorFactoryMojoVersion);

@@ -15,11 +15,7 @@ int main(int argc, char** argv) {
 
   (new brillo::BaseMessageLoop())->SetAsCurrent();
 
-  mojo::core::Init(
-#if defined(ENABLE_IPCZ_ON_CHROMEOS)
-      mojo::core::Configuration{.is_broker_process = true}
-#endif
-  );
+  mojo::core::Init(mojo::core::Configuration{.is_broker_process = true});
   mojo::core::ScopedIPCSupport _(
       base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);

@@ -114,16 +114,10 @@ std::string OcrDaemon::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
     }
 
     // Connect to Mojo in the requesting process.
-#if defined(ENABLE_IPCZ_ON_CHROMEOS)
     mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
         mojo::PlatformChannelEndpoint(
             mojo::PlatformHandle(std::move(mojo_fd_copy))),
         MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
-#else
-    mojo::IncomingInvitation invitation =
-        mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
-            mojo::PlatformHandle(std::move(mojo_fd_copy))));
-#endif
     mojo_message_pipe =
         invitation.ExtractMessagePipe(kBootstrapMojoConnectionChannelToken);
     mojo_service_bind_attempted_ = true;
@@ -133,9 +127,7 @@ std::string OcrDaemon::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
     mojo::OutgoingInvitation invitation;
     token = base::UnguessableToken::Create().ToString();
     mojo_message_pipe = invitation.AttachMessagePipe(token);
-#if defined(ENABLE_IPCZ_ON_CHROMEOS)
     invitation.set_extra_flags(MOJO_SEND_INVITATION_FLAG_SHARE_BROKER);
-#endif
     mojo::OutgoingInvitation::Send(
         std::move(invitation), base::kNullProcessHandle,
         mojo::PlatformChannelEndpoint(

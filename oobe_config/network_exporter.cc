@@ -96,16 +96,10 @@ mojo::Remote<RollbackNetworkConfig> BootstrapMojoConnection(dbus::Bus* bus) {
     return mojo::Remote<RollbackNetworkConfig>();
   }
 
-#if defined(ENABLE_IPCZ_ON_CHROMEOS)
   mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
       mojo::PlatformChannelEndpoint(
           mojo::PlatformHandle(std::move(file_handle))),
       MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
-#else
-  mojo::IncomingInvitation invitation =
-      mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
-          mojo::PlatformHandle(std::move(file_handle))));
-#endif
 
   return mojo::Remote<RollbackNetworkConfig>(
       mojo::PendingRemote<RollbackNetworkConfig>(

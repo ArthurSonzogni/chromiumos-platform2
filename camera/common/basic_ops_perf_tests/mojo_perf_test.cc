@@ -115,11 +115,7 @@ int main(int argc, char** argv) {
   // If we are not the child, we are the parent (broker).
   bool is_child = mojo::PlatformChannel::CommandLineHasPassedEndpoint(
       *base::CommandLine::ForCurrentProcess());
-  mojo::core::Init(
-#if defined(ENABLE_IPCZ_ON_CHROMEOS)
-      mojo::core::Configuration{.is_broker_process = !is_child}
-#endif
-  );
+  mojo::core::Init(mojo::core::Configuration{.is_broker_process = !is_child});
 
   base::Thread ipc_thread("ipc_thread");
   ipc_thread.StartWithOptions(

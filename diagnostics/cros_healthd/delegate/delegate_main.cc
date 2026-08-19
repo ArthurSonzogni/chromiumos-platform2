@@ -31,16 +31,11 @@ class DelegateDaemon : public brillo::Daemon {
                                 GetCurrentDefault() /* io_thread_task_runner */,
                             mojo::core::ScopedIPCSupport::ShutdownPolicy::
                                 CLEAN /* blocking shutdown */) {
-#if defined(ENABLE_IPCZ_ON_CHROMEOS)
     // IPCz requires an application to explicitly opt in to broker sharing
     // and inheritance when establishing a direct connection between two
     // non-broker nodes.
     mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
         std::move(endpoint), MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
-#else
-    mojo::IncomingInvitation invitation =
-        mojo::IncomingInvitation::Accept(std::move(endpoint));
-#endif
     mojo::ScopedMessagePipeHandle pipe = invitation.ExtractMessagePipe(0);
     receiver_.Bind(mojo::PendingReceiver<mojom::Delegate>(std::move(pipe)));
   }

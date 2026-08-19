@@ -26,13 +26,8 @@ ExecutorDaemon::ExecutorDaemon(mojo::PlatformChannelEndpoint endpoint) {
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
 
   // Accept invitation from rmad.
-#if defined(ENABLE_IPCZ_ON_CHROMEOS)
   mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
       std::move(endpoint), MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
-#else
-  mojo::IncomingInvitation invitation =
-      mojo::IncomingInvitation::Accept(std::move(endpoint));
-#endif
   mojo::ScopedMessagePipeHandle pipe =
       invitation.ExtractMessagePipe(kRmadInternalMojoPipeName);
 

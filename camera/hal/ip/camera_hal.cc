@@ -168,12 +168,10 @@ void CameraHal::InitOnIpcThread(scoped_refptr<Future<int>> return_val) {
 
   mojo::OutgoingInvitation invitation;
   mojo::ScopedMessagePipeHandle pipe = invitation.AttachMessagePipe(0);
-#if defined(ENABLE_IPCZ_ON_CHROMEOS)
   // IPCz requires an application to explicitly opt in to broker sharing
   // and inheritance when establishing a direct connection between two
   // non-broker nodes.
   invitation.set_extra_flags(MOJO_SEND_INVITATION_FLAG_SHARE_BROKER);
-#endif
   mojo::OutgoingInvitation::Send(std::move(invitation),
                                  base::kNullProcessHandle,
                                  channel.TakeLocalEndpoint());

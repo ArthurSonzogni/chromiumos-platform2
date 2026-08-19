@@ -10,10 +10,6 @@
 // test process.
 int main(int argc, char** argv) {
   auto runner = platform2::TestRunner(argc, argv);
-  mojo::core::Init(
-#if defined(ENABLE_IPCZ_ON_CHROMEOS)
-      mojo::core::Configuration{.is_broker_process = true}
-#endif
-  );
+  mojo::core::Init(mojo::core::Configuration{.is_broker_process = true});
   return runner.Run();
 }
