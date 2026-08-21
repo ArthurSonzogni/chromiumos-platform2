@@ -139,6 +139,7 @@ _IUSE = [
     "input_devices_himax",
     "input_devices_ilitek_its",
     "input_devices_ilitek_tddi",
+    "input_devices_lxs",
     "input_devices_melfas",
     "input_devices_nvt_ts",
     "input_devices_paradetech",
