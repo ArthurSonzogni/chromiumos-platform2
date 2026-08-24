@@ -118,13 +118,9 @@ void Daemon::AcceptProxyConnection(base::ScopedFD fd) {
       std::make_unique<CertStoreInstance>(keymint_server->GetWeakPtr());
 
   {
-    mojo::ScopedMessagePipeHandle child_pipe;
-    if (mojo::core::IsMojoIpczEnabled()) {
-      constexpr uint64_t kKeyMintPipeAttachment = 0;
-      child_pipe = invitation.ExtractMessagePipe(kKeyMintPipeAttachment);
-    } else {
-      child_pipe = invitation.ExtractMessagePipe("arc-keymint-pipe");
-    }
+    constexpr uint64_t kKeyMintPipeAttachment = 0;
+    mojo::ScopedMessagePipeHandle child_pipe =
+        invitation.ExtractMessagePipe(kKeyMintPipeAttachment);
     if (!child_pipe.is_valid()) {
       LOG(ERROR) << "Could not extract KeyMintServer pipe.";
       return;
@@ -135,13 +131,9 @@ void Daemon::AcceptProxyConnection(base::ScopedFD fd) {
             std::move(child_pipe)));
   }
   {
-    mojo::ScopedMessagePipeHandle child_pipe;
-    if (mojo::core::IsMojoIpczEnabled()) {
-      constexpr uint64_t kCertStorePipeAttachment = 1;
-      child_pipe = invitation.ExtractMessagePipe(kCertStorePipeAttachment);
-    } else {
-      child_pipe = invitation.ExtractMessagePipe("arc-cert-store-keymint-pipe");
-    }
+    constexpr uint64_t kCertStorePipeAttachment = 1;
+    mojo::ScopedMessagePipeHandle child_pipe =
+        invitation.ExtractMessagePipe(kCertStorePipeAttachment);
 
     if (!child_pipe.is_valid()) {
       LOG(ERROR) << "Could not extract CertStoreInstance pipe.";
