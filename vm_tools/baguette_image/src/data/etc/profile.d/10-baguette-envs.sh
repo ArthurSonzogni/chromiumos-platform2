@@ -25,11 +25,11 @@ if [[ -z "${USER}" ]]; then
 fi
 
 # Wait until sommelier starts before give the shell to user, max 4 seconds
-SECONDS=0
+BAGUETTE_SOMMELIER_WAIT_SECONDS=0
 while ! pgrep -f "sommelier" > /dev/null; do
   sleep 1
-  SECONDS=$((SECONDS+1))
-  if [[ ${SECONDS} -ge 4 ]]; then
+  BAGUETTE_SOMMELIER_WAIT_SECONDS=$((BAGUETTE_SOMMELIER_WAIT_SECONDS+1))
+  if [[ ${BAGUETTE_SOMMELIER_WAIT_SECONDS} -ge 4 ]]; then
     break
   fi
 done
@@ -38,4 +38,4 @@ sleep 0.2
 
 unset IDU_RESULT
 unset IDUN_RESULT
-unset SECONDS
+unset BAGUETTE_SOMMELIER_WAIT_SECONDS
