@@ -4,10 +4,10 @@
 
 #include "power_manager/powerd/system/thermal/thermal_device_stub.h"
 
+#include <base/check.h>
+
 #include "power_manager/powerd/system/thermal/device_thermal_state.h"
 #include "power_manager/powerd/system/thermal/thermal_device.h"
-
-#include <base/check.h>
 
 namespace power_manager::system {
 
@@ -33,6 +33,14 @@ void ThermalDeviceStub::NotifyObservers() {
 
 ThermalDeviceType ThermalDeviceStub::GetType() const {
   return type_;
+}
+
+double ThermalDeviceStub::GetWeight() const {
+  return weight_;
+}
+
+double ThermalDeviceStub::GetThrottleRatio() const {
+  return throttle_ratio_;
 }
 
 }  // namespace power_manager::system

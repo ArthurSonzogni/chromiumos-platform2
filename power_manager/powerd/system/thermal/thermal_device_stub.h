@@ -28,6 +28,8 @@ class ThermalDeviceStub : public ThermalDeviceInterface {
   void RemoveObserver(ThermalDeviceObserver* observer) override;
   DeviceThermalState GetThermalState() const override;
   ThermalDeviceType GetType() const override;
+  double GetWeight() const override;
+  double GetThrottleRatio() const override;
 
   // Sets new thermal state, do not notify observers.
   void set_thermal_state(DeviceThermalState new_state) {
@@ -35,6 +37,9 @@ class ThermalDeviceStub : public ThermalDeviceInterface {
   }
 
   void set_type(ThermalDeviceType new_type) { type_ = new_type; }
+
+  void set_weight(double weight) { weight_ = weight; }
+  void set_throttle_ratio(double ratio) { throttle_ratio_ = ratio; }
 
   // Notifies |observers_| for thermal state change.
   void NotifyObservers();
@@ -46,6 +51,10 @@ class ThermalDeviceStub : public ThermalDeviceInterface {
   DeviceThermalState current_state_ = DeviceThermalState::kUnknown;
 
   ThermalDeviceType type_ = ThermalDeviceType::kUnknown;
+
+  double weight_ = 1.0;
+
+  double throttle_ratio_ = 0.0;
 };
 
 }  // namespace power_manager::system

@@ -108,14 +108,22 @@ void ThermalDevice::ErrorCallback() {
 }
 
 void ThermalDevice::UpdateThermalState(DeviceThermalState new_state) {
-  if (current_state_ == new_state) {
+  bool state_changed = (current_state_ != new_state);
+  if (type_ == ThermalDeviceType::kSocCooling &&
+      previous_throttle_ratio_ != throttle_ratio_) {
+    state_changed = true;
+    previous_throttle_ratio_ = throttle_ratio_;
+  }
+  if (!state_changed) {
     return;
   }
+  if (current_state_ != new_state) {
+    TRACE_COUNTER("power", "ThermalDevice::DeviceThermalState",
+                  static_cast<int>(new_state));
+    LOG(INFO) << "UpdateThermalState device: " << device_path_
+              << " new_state: " << DeviceThermalStateToString(new_state);
+  }
   current_state_ = new_state;
-  TRACE_COUNTER("power", "ThermalDevice::DeviceThermalState",
-                static_cast<int>(new_state));
-  LOG(INFO) << "UpdateThermalState device: " << device_path_
-            << " new_state: " << DeviceThermalStateToString(new_state);
   for (auto& observer : observers_) {
     observer.OnThermalChanged(this);
   }
@@ -123,6 +131,14 @@ void ThermalDevice::UpdateThermalState(DeviceThermalState new_state) {
 
 ThermalDeviceType ThermalDevice::GetType() const {
   return type_;
+}
+
+double ThermalDevice::GetWeight() const {
+  return weight_;
+}
+
+double ThermalDevice::GetThrottleRatio() const {
+  return throttle_ratio_;
 }
 
 }  // namespace power_manager::system

@@ -35,6 +35,21 @@ std::string DeviceThermalStateToString(DeviceThermalState state);
 ThermalEvent::ThermalState DeviceThermalStateToProto(
     system::DeviceThermalState state);
 
+// Proportion of current state compared to max state to have device thermal
+// state at Fair/Serious/Critical for each cooling device type.
+struct CoolingStateScale {
+  double fair;
+  double serious;
+  double critical;
+};
+
+// Default scale for SoC cooling devices and processor cooling devices.
+inline constexpr CoolingStateScale kDefaultSocCoolingScale = {
+    .fair = 0.1,
+    .serious = 0.5,
+    .critical = 0.8,
+};
+
 }  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_THERMAL_DEVICE_THERMAL_STATE_H_

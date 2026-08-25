@@ -9,8 +9,8 @@
 
 #include <base/files/file_path.h>
 #include <base/observer_list.h>
-#include <base/timer/timer.h>
 #include <base/time/time.h>
+#include <base/timer/timer.h>
 
 #include "power_manager/powerd/system/async_file_reader.h"
 #include "power_manager/powerd/system/thermal/device_thermal_state.h"
@@ -23,7 +23,8 @@ enum class ThermalDeviceType {
   kProcessorCooling,
   kFanCooling,
   kChargerCooling,
-  kOtherCooling
+  kOtherCooling,
+  kSocCooling,
 };
 
 class ThermalDeviceInterface {
@@ -43,6 +44,12 @@ class ThermalDeviceInterface {
 
   // Return type of thermal device.
   virtual ThermalDeviceType GetType() const = 0;
+
+  // Return the weight of the thermal device (used for Whole-SoC aggregation).
+  virtual double GetWeight() const = 0;
+
+  // Return the throttling ratio (cur_state / max_state) of the device.
+  virtual double GetThrottleRatio() const = 0;
 };
 
 class ThermalDevice : public ThermalDeviceInterface {
@@ -65,6 +72,8 @@ class ThermalDevice : public ThermalDeviceInterface {
   void RemoveObserver(ThermalDeviceObserver* observer) override;
   DeviceThermalState GetThermalState() const override;
   ThermalDeviceType GetType() const override;
+  double GetWeight() const override;
+  double GetThrottleRatio() const override;
 
   // Starts polling. If |read_immediately| is true, ReadDeviceState() will also
   // immediately be called synchronously. This is separate from c'tor so that
@@ -98,6 +107,12 @@ class ThermalDevice : public ThermalDeviceInterface {
   // Type of thermal device.
   ThermalDeviceType type_;
 
+  // Weight of the thermal device for Whole-SoC aggregation.
+  double weight_ = 1.0;
+
+  // Throttling ratio (cur_state / max_state).
+  double throttle_ratio_ = 0.0;
+
  private:
   // Starts |poll_timer_|.
   void StartTimer();
@@ -123,6 +138,9 @@ class ThermalDevice : public ThermalDeviceInterface {
 
   // Cached value of current thermal state.
   DeviceThermalState current_state_;
+
+  // Previous throttling ratio for detecting ratio changes.
+  double previous_throttle_ratio_ = -1.0;
 };
 
 }  // namespace power_manager::system

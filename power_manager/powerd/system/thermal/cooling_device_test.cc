@@ -44,8 +44,8 @@ class TestObserver : public ThermalDeviceObserver {
   ~TestObserver() override = default;
 
   // Runs |loop_| until OnThermalChanged() is called.
-  bool RunUntilThermalChanged() {
-    return loop_runner_.StartLoop(kUpdateTimeout);
+  bool RunUntilThermalChanged(base::TimeDelta timeout = kUpdateTimeout) {
+    return loop_runner_.StartLoop(timeout);
   }
 
   void OnThermalChanged(ThermalDeviceInterface* sensor) override {
@@ -148,6 +148,51 @@ TEST_F(CoolingDeviceTest, ProcessorScaling) {
   }
 }
 
+TEST_F(CoolingDeviceTest, SocThrottleRatioChangeNotifiesObserver) {
+  WriteType("cpufreq-cpu0");
+  WriteMaxState(100);
+  WriteCurState(0);
+  cooling_device_->Init(true /* read_immediately */);
+  ASSERT_TRUE(observer_.RunUntilThermalChanged());
+  EXPECT_EQ(ThermalDeviceType::kSocCooling, cooling_device_->GetType());
+
+  // Set cur_state to 10 -> Fair state (ratio = 0.10).
+  WriteCurState(10);
+  ASSERT_TRUE(observer_.RunUntilThermalChanged());
+  EXPECT_EQ(DeviceThermalState::kFair, cooling_device_->GetThermalState());
+  EXPECT_DOUBLE_EQ(0.1, cooling_device_->GetThrottleRatio());
+
+  // Set cur_state to 20 -> Still Fair state (ratio = 0.20), but throttle ratio
+  // changed on SoC device, so observers should receive OnThermalChanged.
+  WriteCurState(20);
+  ASSERT_TRUE(observer_.RunUntilThermalChanged());
+  EXPECT_EQ(DeviceThermalState::kFair, cooling_device_->GetThermalState());
+  EXPECT_DOUBLE_EQ(0.2, cooling_device_->GetThrottleRatio());
+}
+
+TEST_F(CoolingDeviceTest, NonSocThrottleRatioChangeDoesNotNotifyObserver) {
+  WriteType("Processor");
+  WriteMaxState(100);
+  WriteCurState(0);
+  cooling_device_->Init(true /* read_immediately */);
+  ASSERT_TRUE(observer_.RunUntilThermalChanged());
+  EXPECT_EQ(ThermalDeviceType::kProcessorCooling, cooling_device_->GetType());
+
+  // Set cur_state to 10 -> Fair state (ratio = 0.10).
+  WriteCurState(10);
+  ASSERT_TRUE(observer_.RunUntilThermalChanged());
+  EXPECT_EQ(DeviceThermalState::kFair, cooling_device_->GetThermalState());
+  EXPECT_DOUBLE_EQ(0.1, cooling_device_->GetThrottleRatio());
+
+  // Set cur_state to 20 -> Still Fair state (ratio = 0.20).
+  // Because this is a non-SoC cooling device, ratio changes within the same
+  // discrete thermal state should NOT trigger observer notifications.
+  WriteCurState(20);
+  EXPECT_FALSE(observer_.RunUntilThermalChanged(base::Milliseconds(250)));
+  EXPECT_EQ(DeviceThermalState::kFair, cooling_device_->GetThermalState());
+  EXPECT_DOUBLE_EQ(0.2, cooling_device_->GetThrottleRatio());
+}
+
 TEST_F(CoolingDeviceTest, FanScaling) {
   WriteType("TFN1");
   WriteMaxState(100);
@@ -244,22 +289,31 @@ TEST_F(CoolingDeviceTest, TypeClassification) {
       {"fn2", ThermalDeviceType::kFanCooling},
       {"unknown", ThermalDeviceType::kOtherCooling},
       {"Fan", ThermalDeviceType::kFanCooling},
-      {"cpu0", ThermalDeviceType::kProcessorCooling},
+      {"Processor", ThermalDeviceType::kProcessorCooling},
+      {"Processor 0", ThermalDeviceType::kProcessorCooling},
+      {"cpu0", ThermalDeviceType::kSocCooling},
       {"FAN", ThermalDeviceType::kFanCooling},
       {"TFN1", ThermalDeviceType::kFanCooling},
       {"rear_fan", ThermalDeviceType::kFanCooling},
-      {"cpu_freq", ThermalDeviceType::kProcessorCooling},
+      {"cpu_freq", ThermalDeviceType::kSocCooling},
       {"wifi_freq", ThermalDeviceType::kOtherCooling},
       {"cpu_fan", ThermalDeviceType::kFanCooling},
       {"fn", ThermalDeviceType::kFanCooling},
+      {"cpufreq-cpu0", ThermalDeviceType::kSocCooling},
+      {"thermal-cpufreq-0", ThermalDeviceType::kSocCooling},
+      {"devfreq-48000000.gpu", ThermalDeviceType::kSocCooling},
+      {"devfreq-19001000.remoteproc.mtk_apu_pwr_ipi_tx.6.-1",
+       ThermalDeviceType::kSocCooling},
+      {"thermal-devfreq-0", ThermalDeviceType::kSocCooling},
   };
 
-  for (size_t i = 0; i < std::size(test_data); ++i) {
-    std::string dir_name = "cooling_device" + std::to_string(i + 2);
-    base::FilePath dev_dir = temp_dir_.GetPath().Append(dir_name);
+  int dev_idx = 2;
+  for (const auto& [type_str, expected_type] : test_data) {
+    base::FilePath dev_dir = temp_dir_.GetPath().Append(
+        "cooling_device" + base::NumberToString(dev_idx++));
     CHECK(base::CreateDirectory(dev_dir));
 
-    WriteTypeTo(dev_dir.Append("type"), test_data[i].first);
+    WriteTypeTo(dev_dir.Append("type"), type_str);
     WriteMaxStateTo(dev_dir.Append("max_state"), 100);
     WriteCurStateTo(dev_dir.Append("cur_state"), 0);
 
@@ -267,8 +321,132 @@ TEST_F(CoolingDeviceTest, TypeClassification) {
     device->set_poll_interval_for_testing(kPollInterval);
     device->Init(true /* read_immediately */);
 
-    EXPECT_EQ(test_data[i].second, device->GetType());
+    EXPECT_EQ(expected_type, device->GetType());
   }
+}
+
+TEST_F(CoolingDeviceTest, DtsThermalWeightDiscovery) {
+  base::FilePath cdev_dir = temp_dir_.GetPath().Append("cooling_device0");
+  CHECK(base::CreateDirectory(cdev_dir));
+  WriteTypeTo(cdev_dir.Append("type"), "cpufreq-cpu7");
+  WriteMaxStateTo(cdev_dir.Append("max_state"), 29);
+  WriteCurStateTo(cdev_dir.Append("cur_state"), 15);
+
+  // Create a mock thermal zone with cdev symlink and weight file.
+  base::FilePath tz_dir = temp_dir_.GetPath().Append("thermal_zone31");
+  CHECK(base::CreateDirectory(tz_dir));
+  CHECK(base::CreateSymbolicLink(cdev_dir, tz_dir.Append("cdev4")));
+  CHECK(base::WriteFile(tz_dir.Append("cdev4_weight"), "768\n"));
+
+  TestObserver observer;
+  auto device = std::make_unique<CoolingDevice>(cdev_dir);
+  device->AddObserver(&observer);
+  device->set_poll_interval_for_testing(kPollInterval);
+  device->Init(true /* read_immediately */);
+  ASSERT_TRUE(observer.RunUntilThermalChanged());
+
+  EXPECT_EQ(ThermalDeviceType::kSocCooling, device->GetType());
+  EXPECT_DOUBLE_EQ(768.0, device->GetWeight());
+  EXPECT_DOUBLE_EQ(15.0 / 29.0, device->GetThrottleRatio());
+}
+
+TEST_F(CoolingDeviceTest, DtsThermalWeightZeroFallsThrough) {
+  base::FilePath cdev_dir = temp_dir_.GetPath().Append("cooling_device1");
+  CHECK(base::CreateDirectory(cdev_dir));
+  WriteTypeTo(cdev_dir.Append("type"), "cpufreq-cpu0");
+  WriteMaxStateTo(cdev_dir.Append("max_state"), 20);
+  WriteCurStateTo(cdev_dir.Append("cur_state"), 5);
+
+  // Mock EAS sysfs topology: cpu0 with 4 related cores (0 1 2 3) and capacity
+  // 472.
+  base::FilePath cpu_dir = temp_dir_.GetPath()
+                               .Append("sys")
+                               .Append("devices")
+                               .Append("system")
+                               .Append("cpu");
+  base::FilePath cpu0_cpufreq = cpu_dir.Append("cpu0").Append("cpufreq");
+  CHECK(base::CreateDirectory(cpu0_cpufreq));
+  CHECK(base::WriteFile(cpu0_cpufreq.Append("related_cpus"), "0 1 2 3\n"));
+  CHECK(
+      base::WriteFile(cpu_dir.Append("cpu0").Append("cpu_capacity"), "472\n"));
+
+  // Create a mock thermal zone with cdev symlink and weight 0 (default on
+  // Qualcomm platforms like Trogdor where DTS does not define governor
+  // weights).
+  base::FilePath tz_dir = temp_dir_.GetPath().Append("thermal_zone32");
+  CHECK(base::CreateDirectory(tz_dir));
+  CHECK(base::CreateSymbolicLink(cdev_dir, tz_dir.Append("cdev0")));
+  CHECK(base::WriteFile(tz_dir.Append("cdev0_weight"), "0\n"));
+
+  TestObserver observer;
+  auto device = std::make_unique<CoolingDevice>(cdev_dir);
+  device->set_sys_cpu_dir_for_testing(cpu_dir);
+  device->AddObserver(&observer);
+  device->set_poll_interval_for_testing(kPollInterval);
+  device->Init(true /* read_immediately */);
+  ASSERT_TRUE(observer.RunUntilThermalChanged());
+
+  EXPECT_EQ(ThermalDeviceType::kSocCooling, device->GetType());
+  // Falls through to EAS calculation: 4 cores * 472 capacity = 1888.0.
+  EXPECT_DOUBLE_EQ(1888.0, device->GetWeight());
+  EXPECT_DOUBLE_EQ(5.0 / 20.0, device->GetThrottleRatio());
+}
+
+TEST_F(CoolingDeviceTest, EasWeightDefaultFallback) {
+  base::FilePath cdev_dir = temp_dir_.GetPath().Append("cooling_device3");
+  CHECK(base::CreateDirectory(cdev_dir));
+  WriteTypeTo(cdev_dir.Append("type"), "cpufreq-cpu0");
+  WriteMaxStateTo(cdev_dir.Append("max_state"), 20);
+  WriteCurStateTo(cdev_dir.Append("cur_state"), 5);
+
+  // Empty mock CPU dir without related_cpus or cpu_capacity.
+  base::FilePath cpu_dir = temp_dir_.GetPath()
+                               .Append("sys_empty")
+                               .Append("devices")
+                               .Append("system")
+                               .Append("cpu");
+  CHECK(base::CreateDirectory(cpu_dir));
+
+  TestObserver observer;
+  auto device = std::make_unique<CoolingDevice>(cdev_dir);
+  device->set_sys_cpu_dir_for_testing(cpu_dir);
+  device->AddObserver(&observer);
+  device->set_poll_interval_for_testing(kPollInterval);
+  device->Init(true /* read_immediately */);
+  ASSERT_TRUE(observer.RunUntilThermalChanged());
+
+  EXPECT_EQ(ThermalDeviceType::kSocCooling, device->GetType());
+  // 1 core * default 1024 capacity = 1024.0.
+  EXPECT_DOUBLE_EQ(1024.0, device->GetWeight());
+  EXPECT_DOUBLE_EQ(5.0 / 20.0, device->GetThrottleRatio());
+}
+
+TEST_F(CoolingDeviceTest, DtsThermalWeightSymlinkedThermalZone) {
+  base::FilePath cdev_dir = temp_dir_.GetPath().Append("cooling_device2");
+  CHECK(base::CreateDirectory(cdev_dir));
+  WriteTypeTo(cdev_dir.Append("type"), "cpufreq-cpu7");
+  WriteMaxStateTo(cdev_dir.Append("max_state"), 29);
+  WriteCurStateTo(cdev_dir.Append("cur_state"), 10);
+
+  // In real Linux sysfs, thermal_zone* in /sys/class/thermal are symlinks.
+  base::FilePath real_tz_dir =
+      temp_dir_.GetPath().Append("devices").Append("thermal_zone33");
+  CHECK(base::CreateDirectory(real_tz_dir));
+  CHECK(base::CreateSymbolicLink(real_tz_dir,
+                                 temp_dir_.GetPath().Append("thermal_zone33")));
+  CHECK(base::CreateSymbolicLink(cdev_dir, real_tz_dir.Append("cdev1")));
+  CHECK(base::WriteFile(real_tz_dir.Append("cdev1_weight"), "512\n"));
+
+  TestObserver observer;
+  auto device = std::make_unique<CoolingDevice>(cdev_dir);
+  device->AddObserver(&observer);
+  device->set_poll_interval_for_testing(kPollInterval);
+  device->Init(true /* read_immediately */);
+  ASSERT_TRUE(observer.RunUntilThermalChanged());
+
+  EXPECT_EQ(ThermalDeviceType::kSocCooling, device->GetType());
+  EXPECT_DOUBLE_EQ(512.0, device->GetWeight());
+  EXPECT_DOUBLE_EQ(10.0 / 29.0, device->GetThrottleRatio());
 }
 
 }  // namespace power_manager::system
