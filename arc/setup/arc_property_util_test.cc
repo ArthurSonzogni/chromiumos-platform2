@@ -1177,5 +1177,50 @@ TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesMtkLegacyMT8186) {
   }
 }
 
+// Verify that an explicit /arc/uniform-display-scale-factor value is used.
+TEST_F(ArcPropertyUtilTest, TestUsfExplicit) {
+  config()->SetString("/arc/build-properties", "brand", "test");
+  config()->SetString("/arc", "uniform-display-scale-factor", "1.5");
+
+  std::string expanded;
+  std::string modified;
+  EXPECT_TRUE(ExpandPropertyContentsForTesting(
+      "ro.a={brand}", config(), /*debuggable=*/false, &expanded, &modified));
+  EXPECT_THAT(expanded,
+              HasSubstr("persist.sys.ui.uniform_display_scale_factor=1.5"));
+  EXPECT_THAT(modified,
+              HasSubstr("persist.sys.ui.uniform_display_scale_factor=1.5"));
+}
+
+// Verify that USF=2.667 is set for deku model with /arc/scale=320.
+TEST_F(ArcPropertyUtilTest, TestUsfFallbackDeku) {
+  config()->SetString("/arc/build-properties", "brand", "test");
+  config()->SetString("/", "name", "deku");
+  config()->SetString("/arc", "scale", "320");
+
+  std::string expanded;
+  std::string modified;
+  EXPECT_TRUE(ExpandPropertyContentsForTesting(
+      "ro.a={brand}", config(), /*debuggable=*/false, &expanded, &modified));
+  EXPECT_THAT(expanded,
+              HasSubstr("persist.sys.ui.uniform_display_scale_factor=2.667"));
+  EXPECT_THAT(modified,
+              HasSubstr("persist.sys.ui.uniform_display_scale_factor=2.667"));
+}
+
+// Verify that USF is NOT set for non-deku models even with /arc/scale=320.
+TEST_F(ArcPropertyUtilTest, TestUsfFallbackNonDeku) {
+  config()->SetString("/arc/build-properties", "brand", "test");
+  config()->SetString("/", "name", "other_model");
+  config()->SetString("/arc", "scale", "320");
+
+  std::string expanded;
+  std::string modified;
+  EXPECT_TRUE(ExpandPropertyContentsForTesting(
+      "ro.a={brand}", config(), /*debuggable=*/false, &expanded, &modified));
+  EXPECT_THAT(expanded,
+              testing::Not(HasSubstr("uniform_display_scale_factor")));
+}
+
 }  // namespace
 }  // namespace arc

@@ -586,6 +586,7 @@ TEST_F(ChromeSetupTest, TestSquidFlagsEnabled) {
   EXPECT_THAT(result, testing::Contains("FastDrmMasterDrop"));
   EXPECT_THAT(argv, testing::Contains(
                         "--load-extension=/opt/starbase/token_extension"));
+  EXPECT_THAT(argv, testing::Contains("--arc-scale=320"));
 }
 
 TEST_F(ChromeSetupTest, TestSquidFlagsDisabled) {
@@ -600,6 +601,7 @@ TEST_F(ChromeSetupTest, TestSquidFlagsDisabled) {
   EXPECT_THAT(result, testing::Not(testing::Contains("FastDrmMasterDrop")));
   EXPECT_THAT(argv, testing::Not(testing::Contains(
                         "--load-extension=/opt/starbase/token_extension")));
+  EXPECT_THAT(argv, testing::Not(testing::Contains("--arc-scale=320")));
 }
 
 }  // namespace login_manager

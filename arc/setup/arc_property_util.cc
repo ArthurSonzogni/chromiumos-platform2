@@ -172,6 +172,34 @@ bool IsForwardDeclaration(const std::string& term) {
   return false;
 }
 
+// Appends the uniform display scale factor (USF) property if configured.
+// First checks for an explicit USF value in /arc/uniform-display-scale-factor.
+// Falls back to computing USF=2.667 when /arc/scale is 320 (needed for
+// DP-connected displays that ARC misclassifies as external, see b/546622363).
+void AppendUniformDisplayScaleFactor(brillo::CrosConfigInterface* config,
+                                     std::string* new_properties,
+                                     std::string* modified_properties) {
+  std::string usf_str;
+  if (config->GetString("/arc", "uniform-display-scale-factor", &usf_str)) {
+    const std::string prop_line =
+        "persist.sys.ui.uniform_display_scale_factor=" + usf_str + "\n";
+    *new_properties += prop_line;
+    *modified_properties += prop_line;
+  } else {
+    // Guard: only apply the hardcoded USF for the Selphie (deku) model
+    // where the STARBURST DP-connected display is misclassified as external.
+    std::string model_name;
+    std::string scale_str;
+    if (config->GetString("/", "name", &model_name) && model_name == "deku" &&
+        config->GetString("/arc", "scale", &scale_str) && scale_str == "320") {
+      constexpr char kStarburstUsfProp[] =
+          "persist.sys.ui.uniform_display_scale_factor=2.667\n";
+      *new_properties += kStarburstUsfProp;
+      *modified_properties += kStarburstUsfProp;
+    }
+  }
+}
+
 bool ExpandPropertyContents(const std::string& content,
                             brillo::CrosConfigInterface* config,
                             scoped_refptr<::dbus::Bus> bus,
@@ -337,6 +365,9 @@ bool ExpandPropertyContents(const std::string& content,
       modified_properties += extra_properties;
       break;
   }
+
+  AppendUniformDisplayScaleFactor(config, &new_properties,
+                                  &modified_properties);
 
   *expanded_content = new_properties;
   *modified_content = modified_properties;
