@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include <base/containers/hashing_lru_cache.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>

@@ -7,7 +7,7 @@
 #include <memory>
 #include <unordered_set>
 
-#include <base/containers/lru_cache.h>
+#include <base/containers/hashing_lru_cache.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>

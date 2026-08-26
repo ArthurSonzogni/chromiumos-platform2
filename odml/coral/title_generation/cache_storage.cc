@@ -9,6 +9,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include <base/containers/hashing_lru_cache.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <brillo/files/file_util.h>

@@ -16,7 +16,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <base/containers/lru_cache.h>
+#include <base/containers/hashing_lru_cache.h>
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>

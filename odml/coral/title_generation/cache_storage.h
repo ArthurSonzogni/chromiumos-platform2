@@ -11,7 +11,7 @@
 #include <unordered_set>
 #include <utility>
 
-#include <base/containers/lru_cache.h>
+#include <base/containers/hashing_lru_cache.h>
 #include <base/files/file_path.h>
 #include <base/memory/raw_ref.h>
 #include <metrics/cumulative_metrics.h>
