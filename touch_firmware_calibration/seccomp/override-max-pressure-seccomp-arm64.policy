@@ -17,3 +17,4 @@ restart_syscall: 1
 exit: 1
 exit_group: 1
 rt_sigreturn: 1
+madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL || arg2 == MADV_HUGEPAGE

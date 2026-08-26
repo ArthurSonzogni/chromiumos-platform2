@@ -38,6 +38,7 @@ signalfd4: 1
 uname: 1
 write: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL || arg2 == MADV_HUGEPAGE
 mseal: 1
 close: 1
 openat: 1

@@ -39,3 +39,4 @@ unlinkat: 1
 socket: arg0 == AF_UNIX
 connect: 1
 sendto: 1
+madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL || arg2 == MADV_HUGEPAGE

@@ -47,5 +47,6 @@ socket: arg0 == AF_UNIX
 socketpair: arg0 == AF_UNIX
 connect: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL || arg2 == MADV_HUGEPAGE
 mseal: 1
 process_vm_readv: 1
