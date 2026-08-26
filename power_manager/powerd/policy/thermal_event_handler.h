@@ -59,11 +59,23 @@ class ThermalEventHandler : public system::ThermalDeviceObserver {
   void HandlePowerSourceChange(PowerSource source);
 
  private:
+  // Helper methods to calculate thermal state for SoC and non-SoC devices.
+  system::DeviceThermalState CalculateSocThermalState() const;
+  system::DeviceThermalState CalculateNonSocThermalState() const;
+
   system::DBusWrapperInterface* dbus_wrapper_ = nullptr;          //  Not owned.
   std::vector<system::ThermalDeviceInterface*> thermal_devices_;  //  Not owned.
+  std::vector<system::ThermalDeviceInterface*> soc_devices_;      //  Not owned.
+  std::vector<system::ThermalDeviceInterface*> non_soc_devices_;  //  Not owned.
 
   // Clock for current timestamp.
   std::unique_ptr<Clock> clock_;
+
+  // Cached thermal state for SoC and non-SoC devices.
+  system::DeviceThermalState last_soc_state_ =
+      system::DeviceThermalState::kUnknown;
+  system::DeviceThermalState last_non_soc_state_ =
+      system::DeviceThermalState::kUnknown;
 
   // Last DeviceThermalState sent to Chrome.
   system::DeviceThermalState last_state_ = system::DeviceThermalState::kUnknown;

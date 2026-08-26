@@ -228,4 +228,90 @@ TEST_F(ThermalEventHandlerTest, GetThermalState) {
   }
 }
 
+TEST_F(ThermalEventHandlerTest, WholeSocAggregation) {
+  // Test a tri-cluster SoC setup (like Navi: Little, Mid, Prime, GPU, NPU).
+  system::ThermalDeviceStub little_cpu;
+  little_cpu.set_type(system::ThermalDeviceType::kSocCooling);
+  little_cpu.set_weight(2048.0);
+  little_cpu.set_throttle_ratio(0.0);
+
+  system::ThermalDeviceStub mid_cpu;
+  mid_cpu.set_type(system::ThermalDeviceType::kSocCooling);
+  mid_cpu.set_weight(1024.0);
+  mid_cpu.set_throttle_ratio(0.0);
+
+  system::ThermalDeviceStub prime_cpu;
+  prime_cpu.set_type(system::ThermalDeviceType::kSocCooling);
+  prime_cpu.set_weight(768.0);
+  prime_cpu.set_throttle_ratio(0.0);
+
+  system::ThermalDeviceStub gpu;
+  gpu.set_type(system::ThermalDeviceType::kSocCooling);
+  gpu.set_weight(1024.0);
+  gpu.set_throttle_ratio(0.0);
+
+  system::ThermalDeviceStub npu;
+  npu.set_type(system::ThermalDeviceType::kSocCooling);
+  npu.set_weight(384.0);
+  npu.set_throttle_ratio(0.0);
+
+  system::DBusWrapperStub dbus_wrapper;
+  ThermalEventHandler soc_handler(
+      {&little_cpu, &mid_cpu, &prime_cpu, &gpu, &npu}, &dbus_wrapper);
+  soc_handler.clock_for_testing()->set_current_time_for_testing(
+      base::TimeTicks() + base::Microseconds(1000));
+  soc_handler.Init();
+  dbus_wrapper.ClearSentSignals();
+
+  // 1. NPU throttles 100% alone (weight: 384 / 5248 = 7.3%).
+  // Ratio = 0.073 -> kNominal.
+  npu.set_throttle_ratio(1.0);
+  npu.NotifyObservers();
+  EXPECT_EQ(0, dbus_wrapper.num_sent_signals());
+
+  // 2. Prime throttles 100% and Mid throttles 22% during Meet call
+  // (NPU remains throttled at 100% from step 1).
+  // Ratio = (Prime: 768*1.0 + NPU: 384*1.0 + Mid: 1024*0.22) / 5248
+  //       = 1377.28 / 5248 = 26.2% -> kFair.
+  prime_cpu.set_throttle_ratio(1.0);
+  mid_cpu.set_throttle_ratio(0.22);
+  prime_cpu.NotifyObservers();
+  EXPECT_EQ(1, dbus_wrapper.num_sent_signals());
+  ThermalEvent proto;
+  EXPECT_TRUE(
+      dbus_wrapper.GetSentSignal(0, kThermalEventSignal, &proto, nullptr));
+  EXPECT_EQ(DeviceThermalStateToProto(system::DeviceThermalState::kFair),
+            proto.thermal_state());
+  dbus_wrapper.ClearSentSignals();
+
+  // 3. Moderate thermal saturation: All SoC devices throttle at 60%.
+  // Ratio = 0.60 -> kSerious.
+  little_cpu.set_throttle_ratio(0.6);
+  mid_cpu.set_throttle_ratio(0.6);
+  prime_cpu.set_throttle_ratio(0.6);
+  gpu.set_throttle_ratio(0.6);
+  npu.set_throttle_ratio(0.6);
+  little_cpu.NotifyObservers();
+  EXPECT_EQ(1, dbus_wrapper.num_sent_signals());
+  EXPECT_TRUE(
+      dbus_wrapper.GetSentSignal(0, kThermalEventSignal, &proto, nullptr));
+  EXPECT_EQ(DeviceThermalStateToProto(system::DeviceThermalState::kSerious),
+            proto.thermal_state());
+  dbus_wrapper.ClearSentSignals();
+
+  // 4. Heavy thermal saturation: Little 90%, Mid 90%, Prime 90%, GPU 90%,
+  // NPU 90%. Ratio = 0.90 -> kCritical.
+  little_cpu.set_throttle_ratio(0.9);
+  mid_cpu.set_throttle_ratio(0.9);
+  prime_cpu.set_throttle_ratio(0.9);
+  gpu.set_throttle_ratio(0.9);
+  npu.set_throttle_ratio(0.9);
+  little_cpu.NotifyObservers();
+  EXPECT_EQ(1, dbus_wrapper.num_sent_signals());
+  EXPECT_TRUE(
+      dbus_wrapper.GetSentSignal(0, kThermalEventSignal, &proto, nullptr));
+  EXPECT_EQ(DeviceThermalStateToProto(system::DeviceThermalState::kCritical),
+            proto.thermal_state());
+}
+
 }  // namespace power_manager::policy

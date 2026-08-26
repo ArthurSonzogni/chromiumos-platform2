@@ -5,6 +5,7 @@
 #include "power_manager/powerd/policy/thermal_event_handler.h"
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -24,15 +25,6 @@
 
 namespace power_manager::policy {
 
-namespace {
-
-system::DeviceThermalState max(system::DeviceThermalState a,
-                               system::DeviceThermalState b) {
-  return static_cast<int>(a) >= static_cast<int>(b) ? a : b;
-}
-
-}  // namespace
-
 ThermalEventHandler::ThermalEventHandler(
     std::vector<system::ThermalDeviceInterface*> thermal_devices,
     system::DBusWrapperInterface* dbus_wrapper)
@@ -43,6 +35,11 @@ ThermalEventHandler::ThermalEventHandler(
   for (auto& device : thermal_devices) {
     DCHECK(device);
     device->AddObserver(this);
+    if (device->GetType() == system::ThermalDeviceType::kSocCooling) {
+      soc_devices_.push_back(device);
+    } else {
+      non_soc_devices_.push_back(device);
+    }
   }
 }
 
@@ -76,25 +73,70 @@ void ThermalEventHandler::OnGetThermalStateMethodCall(
   std::move(response_sender).Run(std::move(response));
 }
 
+system::DeviceThermalState ThermalEventHandler::CalculateSocThermalState()
+    const {
+  if (soc_devices_.empty()) {
+    return system::DeviceThermalState::kUnknown;
+  }
+  double soc_weighted_throttle = 0.0;
+  double total_soc_weight = 0.0;
+  for (const auto* dev : soc_devices_) {
+    const double weight = dev->GetWeight();
+    soc_weighted_throttle += weight * dev->GetThrottleRatio();
+    total_soc_weight += weight;
+  }
+  if (total_soc_weight <= 0.0) {
+    return system::DeviceThermalState::kUnknown;
+  }
+  double ratio = soc_weighted_throttle / total_soc_weight;
+  if (std::isnan(ratio)) {
+    return system::DeviceThermalState::kUnknown;
+  }
+  if (ratio >= system::kDefaultSocCoolingScale.critical) {
+    return system::DeviceThermalState::kCritical;
+  }
+  if (ratio >= system::kDefaultSocCoolingScale.serious) {
+    return system::DeviceThermalState::kSerious;
+  }
+  if (ratio >= system::kDefaultSocCoolingScale.fair) {
+    return system::DeviceThermalState::kFair;
+  }
+  return system::DeviceThermalState::kNominal;
+}
+
+system::DeviceThermalState ThermalEventHandler::CalculateNonSocThermalState()
+    const {
+  system::DeviceThermalState state = system::DeviceThermalState::kUnknown;
+  for (const auto* dev : non_soc_devices_) {
+    auto dev_state = dev->GetThermalState();
+    if (power_source_ == PowerSource::BATTERY &&
+        dev->GetType() == system::ThermalDeviceType::kChargerCooling) {
+      dev_state = system::DeviceThermalState::kUnknown;
+    }
+    state = std::max(state, dev_state);
+  }
+  return state;
+}
+
 void ThermalEventHandler::OnThermalChanged(
     system::ThermalDeviceInterface* device) {
-  if (device && device->GetThermalState() == last_state_) {
-    return;
+  if (!device) {
+    last_soc_state_ = CalculateSocThermalState();
+    last_non_soc_state_ = CalculateNonSocThermalState();
+  } else if (device->GetType() == system::ThermalDeviceType::kSocCooling) {
+    const auto new_soc_state = CalculateSocThermalState();
+    if (new_soc_state == last_soc_state_) {
+      return;
+    }
+    last_soc_state_ = new_soc_state;
+  } else {
+    if (device->GetThermalState() == last_non_soc_state_) {
+      return;
+    }
+    last_non_soc_state_ = CalculateNonSocThermalState();
   }
 
-  // Query all devices and send max_state.
-  system::DeviceThermalState new_state = system::DeviceThermalState::kUnknown;
-  for (const auto& thermal_device : thermal_devices_) {
-    auto state = thermal_device->GetThermalState();
-    // Charger cooling device may report bogus thermal state when device is on
-    // battery, ignore it in this case.
-    if (power_source_ == PowerSource::BATTERY &&
-        thermal_device->GetType() ==
-            system::ThermalDeviceType::kChargerCooling) {
-      state = system::DeviceThermalState::kUnknown;
-    }
-    new_state = max(new_state, state);
-  }
+  const auto new_state = std::max(last_soc_state_, last_non_soc_state_);
   if (new_state == last_state_) {
     return;
   }
@@ -114,13 +156,6 @@ void ThermalEventHandler::HandlePowerSourceChange(PowerSource source) {
   }
 
   power_source_ = source;
-
-  // No need to recalculate thermal state if it is already at nominal.
-  if (last_state_ == system::DeviceThermalState::kNominal ||
-      last_state_ == system::DeviceThermalState::kUnknown) {
-    return;
-  }
-
   OnThermalChanged(nullptr);
 }
 
