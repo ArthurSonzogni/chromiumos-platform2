@@ -1210,6 +1210,14 @@ TEST(AnomalyDetectorTest, ServiceFailureCupsd) {
   ParserTest("TEST_SERVICE_FAILURE", {service_failure}, &parser);
 }
 
+TEST(AnomalyDetectorTest, ServiceFailureTrunksd) {
+  ParserRun service_failure = {.find_this = "crash-crash",
+                               .replace_with = "trunksd",
+                               .expected_size = 0};
+  ServiceParser parser(true);
+  ParserTest("TEST_SERVICE_FAILURE", {service_failure}, &parser);
+}
+
 TEST(AnomalyDetectorTest, SELinuxViolation) {
   ParserRun selinux_violation = {
       .expected_substr =

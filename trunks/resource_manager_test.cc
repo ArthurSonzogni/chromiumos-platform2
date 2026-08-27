@@ -17,6 +17,7 @@
 #include "trunks/error_codes.h"
 #include "trunks/mock_command_transceiver.h"
 #include "trunks/mock_tpm.h"
+#include "trunks/mock_tpm_utility.h"
 #include "trunks/tpm_generated.h"
 #include "trunks/trunks_factory_for_test.h"
 
@@ -25,6 +26,7 @@ using testing::DoAll;
 using testing::Eq;
 using testing::Field;
 using testing::InSequence;
+using testing::NiceMock;
 using testing::Return;
 using testing::ReturnPointee;
 using testing::SetArgPointee;
@@ -63,7 +65,10 @@ class ResourceManagerTest : public testing::Test {
   ResourceManagerTest() : resource_manager_(factory_, &transceiver_) {}
   ~ResourceManagerTest() override {}
 
-  void SetUp() override { factory_.set_tpm(&tpm_); }
+  void SetUp() override {
+    factory_.set_tpm(&tpm_);
+    factory_.set_tpm_utility(&tpm_utility_);
+  }
 
   struct CommandResponsePair {
     std::string name;
@@ -268,6 +273,7 @@ class ResourceManagerTest : public testing::Test {
 
  protected:
   StrictMock<MockTpm> tpm_;
+  NiceMock<MockTpmUtility> tpm_utility_;
   TrunksFactoryForTest factory_;
   StrictMock<MockCommandTransceiver> transceiver_;
   ResourceManager resource_manager_;
@@ -1106,4 +1112,65 @@ TEST_F(ResourceManagerTest, ResponseErrorPropogated) {
   std::string actual_response = resource_manager_.SendCommandAndWait(command);
   EXPECT_EQ(actual_response, response);
 }
+
+TEST_F(ResourceManagerTest, InitializeSuccess) {
+  EXPECT_CALL(tpm_utility_, CheckState()).WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(tpm_, GetCapabilitySync(TPM_CAP_HANDLES, _, _, _, _, _))
+      .Times(3)
+      .WillRepeatedly(DoAll(SetArgPointee<3>(NO), Return(TPM_RC_SUCCESS)));
+  resource_manager_.Initialize();
+}
+
+TEST_F(ResourceManagerTest, InitializeSuccessWithHandlesToFlush) {
+  EXPECT_CALL(tpm_utility_, CheckState()).WillOnce(Return(TPM_RC_SUCCESS));
+  TPMS_CAPABILITY_DATA cap_data = {};
+  cap_data.capability = TPM_CAP_HANDLES;
+  cap_data.data.handles.count = 1;
+  cap_data.data.handles.handle[0] = HR_TRANSIENT;
+  EXPECT_CALL(tpm_,
+              GetCapabilitySync(TPM_CAP_HANDLES, HR_TRANSIENT, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(NO), SetArgPointee<4>(cap_data),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(tpm_, FlushContextSync(HR_TRANSIENT, nullptr))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(tpm_,
+              GetCapabilitySync(TPM_CAP_HANDLES, HR_HMAC_SESSION, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(NO), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(tpm_,
+              GetCapabilitySync(TPM_CAP_HANDLES, HR_POLICY_SESSION, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(NO), Return(TPM_RC_SUCCESS)));
+  resource_manager_.Initialize();
+}
+
+TEST_F(ResourceManagerTest, InitializeCheckStateFailure) {
+  EXPECT_EXIT(
+      {
+        NiceMock<MockTpmUtility> local_tpm_utility;
+        StrictMock<MockCommandTransceiver> local_transceiver;
+        TrunksFactoryForTest local_factory;
+        local_factory.set_tpm_utility(&local_tpm_utility);
+        ResourceManager local_resource_manager(local_factory,
+                                               &local_transceiver);
+        EXPECT_CALL(local_tpm_utility, CheckState())
+            .WillOnce(Return(TRUNKS_RC_WRITE_ERROR));
+        testing::Mock::AllowLeak(&local_tpm_utility);
+        local_resource_manager.Initialize();
+      },
+      testing::ExitedWithCode(1), "");
+}
+
+TEST_F(ResourceManagerTest, InitializeHandleFlushFailure) {
+  EXPECT_CALL(tpm_utility_, CheckState()).WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(tpm_,
+              GetCapabilitySync(TPM_CAP_HANDLES, HR_TRANSIENT, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_CALL(tpm_,
+              GetCapabilitySync(TPM_CAP_HANDLES, HR_HMAC_SESSION, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(NO), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(tpm_,
+              GetCapabilitySync(TPM_CAP_HANDLES, HR_POLICY_SESSION, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(NO), Return(TPM_RC_SUCCESS)));
+  resource_manager_.Initialize();
+}
+
 }  // namespace trunks

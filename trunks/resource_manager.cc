@@ -5,6 +5,7 @@
 #include "trunks/resource_manager.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <map>
 #include <memory>
 #include <set>
@@ -71,9 +72,15 @@ ResourceManager::ResourceManager(const TrunksFactory& factory,
 ResourceManager::~ResourceManager() {}
 
 void ResourceManager::Initialize() {
-  // Abort if the TPM is not in a reasonable state and we can't get it into one.
+  // Check the TPM state. If it fails, exit with error so upstart can restart
+  // us.
   std::unique_ptr<TpmUtility> tpm_utility = factory_.GetTpmUtility();
-  CHECK_EQ(tpm_utility->CheckState(), TPM_RC_SUCCESS);
+  TPM_RC result = tpm_utility->CheckState();
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Failed to check TPM state: " << GetErrorString(result);
+    exit(1);
+  }
 
   // Full control of the TPM is assumed and required. Existing transient object
   // and session handles are mercilessly flushed.

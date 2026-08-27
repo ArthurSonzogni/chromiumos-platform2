@@ -110,6 +110,13 @@ MaybeCrashReport ServiceParser::ParseLogEntry(const std::string& line) {
     return std::nullopt;
   }
 
+  if (service_name == "trunksd") {
+    // trunksd uses non-zero exit status on TPM initialization failure so
+    // upstart can rebind the TPM driver and respawn. This should not be
+    // reported as a service failure.
+    return std::nullopt;
+  }
+
   // We only want to report a limited number of service failures due to noise.
   if (!testonly_send_all_ &&
       base::RandGenerator(util::GetServiceFailureWeight()) != 0) {
