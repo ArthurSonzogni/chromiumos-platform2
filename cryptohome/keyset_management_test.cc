@@ -76,7 +76,9 @@ constexpr char kCredDirName[] = "low_entropy_creds";
 constexpr char kPasswordLabel[] = "password";
 constexpr char kPinLabel[] = "lecred1";
 
+#if USE_TPM2
 constexpr char kNewPasskey[] = "new pass";
+#endif
 constexpr char kNewLabel[] = "new_label";
 constexpr char kSalt[] = "salt";
 
@@ -543,6 +545,7 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestRegularCreds) {
       keyset_management_->ShouldReSaveKeyset(vk0_status.value().get()));
 }
 
+#if USE_TPM2
 TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
   // SETUP
   hwsec::Tpm2SimulatorFactoryForTest factory;
@@ -633,6 +636,7 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
                                                  key_blobs_, kPasswordLabel);
   ASSERT_THAT(vk_status, IsOk());
 }
+#endif  // USE_TPM2
 
 TEST_F(KeysetManagementTest, GetValidKeysetNoValidKeyset) {
   // No valid keyset for GetValidKeyset to load.

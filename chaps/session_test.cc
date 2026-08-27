@@ -41,7 +41,9 @@
 #include "chaps/object_pool_mock.h"
 #include "chaps/proto_conversion.h"
 #include "chaps/session_impl.h"
+#if USE_TPM2
 #include "libhwsec/factory/tpm2_simulator_factory_for_test.h"
+#endif
 #include "libhwsec/frontend/chaps/frontend.h"
 
 using ::hwsec::TPMError;
@@ -179,11 +181,13 @@ const char kChapsSessionSign[] = "Platform.Chaps.Session.Sign";
 const char kChapsSessionVerify[] = "Platform.Chaps.Session.Verify";
 const char kChapsSessionDeriveKey[] = "Platform.Chaps.Session.DeriveKey";
 const char kChapsSessionWrapKey[] = "Platform.Chaps.Session.WrapKey";
+const char kChapsSessionUnwrapKey[] = "Platform.Chaps.Session.UnwrapKey";
+#if USE_TPM2
 const char kChapsSessionWrapKeyWithChaps[] =
     "Platform.Chaps.Session.WrapKeyWithChaps";
-const char kChapsSessionUnwrapKey[] = "Platform.Chaps.Session.UnwrapKey";
 const char kChapsSessionUnwrapKeyWithChaps[] =
     "Platform.Chaps.Session.UnwrapKeyWithChaps";
+#endif  // USE_TPM2
 const char kChapsRandomSeed[] = "random_seed";
 
 // Test fixture for an initialized SessionImpl instance.
@@ -386,6 +390,7 @@ class TestSessionWithRealObject : public TestSession {
   }
 };
 
+#if USE_TPM2
 // Session Test that uses real Object implementation (ObjectImpl)
 class TestSessionWithTpmSimulator : public TestSessionWithRealObject {
  public:
@@ -403,6 +408,7 @@ class TestSessionWithTpmSimulator : public TestSessionWithRealObject {
   std::unique_ptr<const hwsec::ChapsFrontend> hwsec_simulator_ =
       hwsec_simulator_factory_.GetChapsFrontend();
 };
+#endif  // USE_TPM2
 
 typedef TestSession TestSession_DeathTest;
 
@@ -2200,6 +2206,7 @@ TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPSoftware) {
             aeskey_new->GetAttributeString(CKA_VALUE));
 }
 
+#if USE_TPM2
 TEST_F(TestSessionWithTpmSimulator, WrapKeyRSAOAEPWithHWSec) {
   CK_BBOOL no = CK_FALSE;
   CK_BBOOL yes = CK_TRUE;
@@ -2261,6 +2268,7 @@ TEST_F(TestSessionWithTpmSimulator, WrapKeyRSAOAEPWithHWSec) {
   EXPECT_EQ(aeskey->GetAttributeString(CKA_VALUE),
             aeskey_new->GetAttributeString(CKA_VALUE));
 }
+#endif  // USE_TPM2
 
 TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPInvalidAttributes) {
   CK_BBOOL no = CK_FALSE;
@@ -2414,6 +2422,7 @@ TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPInvalidAttributes) {
                                 attr, std::size(attr), &handle));
 }
 
+#if USE_TPM2
 TEST_F(TestSessionWithTpmSimulator, WrapKeyWithChaps) {
   const Object *rsapub, *rsapriv;
   GenerateRSAKeyPair(true, 1024, &rsapub, &rsapriv);
@@ -2460,6 +2469,7 @@ TEST_F(TestSessionWithTpmSimulator, WrapKeyWithChaps) {
   EXPECT_EQ(rsapriv->GetAttributeString(kKeyBlobAttribute),
             rsapriv_new->GetAttributeString(kKeyBlobAttribute));
 }
+#endif  // USE_TPM2
 
 TEST_F(TestSession, CreateObjectsNoPrivate) {
   EXPECT_CALL(token_pool_, Insert(_))

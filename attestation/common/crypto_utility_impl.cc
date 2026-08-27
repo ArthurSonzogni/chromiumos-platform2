@@ -104,10 +104,7 @@ CryptoUtilityImpl::CryptoUtilityImpl(const hwsec::AttestationFrontend* hwsec)
   ERR_load_crypto_strings();
 }
 
-CryptoUtilityImpl::~CryptoUtilityImpl() {
-  EVP_cleanup();
-  ERR_free_strings();
-}
+CryptoUtilityImpl::~CryptoUtilityImpl() = default;
 
 bool CryptoUtilityImpl::GetRandom(size_t num_bytes,
                                   std::string* random_data) const {

@@ -16,6 +16,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
+#include <dbus/chaps/dbus-constants.h>
 #include <libhwsec-foundation/crypto/openssl.h>
 #include <openssl/bio.h>
 #include <openssl/core_names.h>
@@ -25,7 +26,6 @@
 #include <openssl/kdf.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
-#include <dbus/chaps/dbus-constants.h>
 
 #include "chaps/attributes.h"
 #include "chaps/chaps.h"
@@ -686,10 +686,7 @@ ScopedOpenSSL::ScopedOpenSSL() {
   ERR_load_crypto_strings();
 }
 
-ScopedOpenSSL::~ScopedOpenSSL() {
-  EVP_cleanup();
-  ERR_free_strings();
-}
+ScopedOpenSSL::~ScopedOpenSSL() = default;
 
 std::string GetOpenSSLError() {
   BIO* bio = BIO_new(BIO_s_mem());

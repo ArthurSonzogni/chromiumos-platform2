@@ -18,10 +18,10 @@ group("all") {
     "metrics:all",
   ]
   if (use.test) {
-    deps += [
-      ":oobe_config_test",
-      "filesystem:filesystem_test",
-    ]
+    deps += [ "filesystem:filesystem_test" ]
+    if (use.tpm2) {
+      deps += [ ":oobe_config_test" ]
+    }
   }
   if (use.fuzzer) {
     deps += [
@@ -215,7 +215,7 @@ proto_library("oobe_config_proto") {
   sources = [ "rollback_data.proto" ]
 }
 
-if (use.test) {
+if (use.test && use.tpm2) {
   pkg_config("test_config") {
     pkg_deps = [ "libchrome-test" ]
   }

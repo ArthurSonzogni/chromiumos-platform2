@@ -14,13 +14,11 @@ group("all") {
     ":install_headers_structures",
     ":libhwsec",
     ":libhwsec_client",
+    ":libhwsec_test",
     ":pinweaver_manager_client",
   ]
   if (use.test) {
-    deps += [
-      ":hwsec_testrunner",
-      ":libhwsec_test",
-    ]
+    deps += [ ":hwsec_testrunner" ]
   }
   if (use.fuzzer) {
     deps += [
@@ -54,8 +52,8 @@ pkg_config("target_defaults") {
     "BUILD_LIBHWSEC",
     "ENABLE_PROFILING=${use.profiling}",
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
-    "USE_TPM1=${use.tpm}||${use.test}",
-    "USE_TPM2=${use.tpm2}||${use.test}",
+    "USE_TPM1=${use.tpm}",
+    "USE_TPM2=${use.tpm2}",
     "USE_FUZZER=${use.fuzzer}",
     "USE_CR50_ONBOARD=${use.cr50_onboard}",
     "USE_TI50_ONBOARD=${use.ti50_onboard}",
@@ -94,11 +92,11 @@ source_set("error_library") {
     "error/tpm_retry_action.cc",
   ]
   deps = []
-  if (use.tpm2 || use.fuzzer || use.test) {
+  if (use.tpm2 || use.fuzzer) {
     sources += [ "error/tpm2_error.cc" ]
     deps += [ ":install_tpm2_error_h" ]
   }
-  if (use.tpm || use.fuzzer || use.test) {
+  if (use.tpm || use.fuzzer) {
     sources += [ "error/tpm1_error.cc" ]
     deps += [ ":install_tpm1_error_h" ]
   }
@@ -122,43 +120,44 @@ install_config("install_tpm2_error_h") {
   sources = [ "error/tpm2_error.h" ]
   install_path = "/usr/include/chromeos/libhwsec/error"
 }
-
-if (use.test) {
-  shared_library("libhwsec_test") {
-    sources = [
+shared_library("libhwsec_test") {
+  sources = [ "test_utils/fake_tpm_nvram_for_test.cc" ]
+  if (use.tpm) {
+    sources += [ "test_utils/tpm1/test_fixture.cc" ]
+  }
+  pkg_deps = [
+    "libcrossystem-test",
+    "libstorage_fake_platform",
+  ]
+  if (use.tpm2) {
+    sources += [
       "factory/tpm2_simulator_factory_for_test.cc",
       "proxy/tpm2_simulator_proxy_for_test.cc",
-      "test_utils/fake_tpm_nvram_for_test.cc",
     ]
-    if (use.tpm) {
-      sources += [ "test_utils/tpm1/test_fixture.cc" ]
-    }
-    pkg_deps = [
-      "libcrossystem-test",
-      "libstorage_fake_platform",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
+    pkg_deps += [ "libtpm2_simulator_executor" ]
+  }
+  configs += [
+    "//common-mk:test",
+    ":target_defaults",
+  ]
+  if (use.tpm2) {
     libs = [
       "tpm2",
-      "tpm2_simulator_executor",
       "trunks",
       "trunks_test",
       "trunksd_lib",
       "pinweaver",
     ]
-    if (use.cros_host) {
-      install_path = "lib"
-    } else {
-      install_path = "/build/lib"
-    }
-    deps = [
-      ":hardware_abstraction_internal_library",
-      ":libhwsec",
-    ]
   }
+  if (use.cros_host) {
+    install_path = "lib"
+  } else {
+    install_path = "/build/lib"
+  }
+  deps = [
+    ":hardware_abstraction_internal_library",
+    ":libhwsec",
+  ]
 }
 
 config("libhwsec_tpm1_config") {
@@ -320,7 +319,7 @@ source_set("hardware_abstraction_internal_library") {
     "//common-mk:pic",
   ]
 
-  if (use.tpm || use.test) {
+  if (use.tpm) {
     sources += [
       "backend/tpm1/attestation.cc",
       "backend/tpm1/backend.cc",
@@ -346,12 +345,12 @@ source_set("hardware_abstraction_internal_library") {
     libs += [ "tspi" ]
   }
 
-  if (use.tpm || use.test || use.fuzzer) {
+  if (use.tpm || use.fuzzer) {
     sources += [ "backend/tpm1/static_utils.cc" ]
     libs += [ "tspi" ]
   }
 
-  if (use.tpm2 || use.test) {
+  if (use.tpm2) {
     sources += [
       "backend/tpm2/attestation.cc",
       "backend/tpm2/backend.cc",
@@ -396,10 +395,10 @@ shared_library("libhwsec") {
     ":hardware_abstraction_external_library",
     ":hardware_abstraction_internal_library",
   ]
-  if (use.tpm2 || use.fuzzer || use.test) {
+  if (use.tpm2 || use.fuzzer) {
     all_dependent_configs += [ ":libhwsec_tpm2_config" ]
   }
-  if (use.tpm || use.fuzzer || use.test) {
+  if (use.tpm || use.fuzzer) {
     all_dependent_configs += [ ":libhwsec_tpm1_config" ]
     deps += [ ":overalls_library" ]
   }
@@ -510,10 +509,6 @@ if (use.test) {
       "error/tpm_error_test.cc",
       "error/tpm_manager_error_test.cc",
       "error/tpm_nvram_error_test.cc",
-      "frontend/chaps/frontend_impl_test.cc",
-      "frontend/oobe_config/frontend_impl_test.cc",
-      "frontend/optee-plugin/frontend_impl_test.cc",
-      "frontend/pinweaver_manager/frontend_impl_test.cc",
       "middleware/function_name_test.cc",
       "middleware/metrics_test.cc",
       "proxy/proxy_for_test.cc",
@@ -530,7 +525,7 @@ if (use.test) {
       ":libhwsec_test",
       "//common-mk/testrunner",
     ]
-    if (use.tpm || use.test) {
+    if (use.tpm) {
       sources += [
         "backend/tpm1/attestation_test.cc",
         "backend/tpm1/backend_test_base.cc",
@@ -557,7 +552,7 @@ if (use.test) {
       ]
       deps += [ ":overalls_library" ]
     }
-    if (use.tpm2 || use.test) {
+    if (use.tpm2) {
       sources += [
         "backend/pinweaver_manager/persistent_lookup_table_test.cc",
         "backend/pinweaver_manager/sign_in_hash_tree_test.cc",
@@ -582,6 +577,10 @@ if (use.test) {
         "backend/tpm2/vendor_test.cc",
         "backend/tpm2/version_attestation_test.cc",
         "error/tpm2_error_test.cc",
+        "frontend/chaps/frontend_impl_test.cc",
+        "frontend/oobe_config/frontend_impl_test.cc",
+        "frontend/optee-plugin/frontend_impl_test.cc",
+        "frontend/pinweaver_manager/frontend_impl_test.cc",
       ]
       libs = [ "trunks_test" ]
     }

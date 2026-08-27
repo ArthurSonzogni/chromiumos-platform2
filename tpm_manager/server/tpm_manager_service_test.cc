@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "tpm_manager/server/tpm_manager_service.h"
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -18,7 +20,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
-#include <trunks/tpm_utility.h>
 
 #include "tpm_manager/server/mock_local_data_store.h"
 #include "tpm_manager/server/mock_tpm_allowlist.h"
@@ -27,7 +28,6 @@
 #include "tpm_manager/server/mock_tpm_nvram.h"
 #include "tpm_manager/server/mock_tpm_status.h"
 #include "tpm_manager/server/tpm_manager_metrics_names.h"
-#include "tpm_manager/server/tpm_manager_service.h"
 
 using testing::_;
 using testing::AtLeast;

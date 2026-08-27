@@ -9,6 +9,8 @@ group("all") {
     ":install_init_scripts",
     ":install_seccomp_policy",
     ":install_tmpfiles_config",
+    ":libtpm2_simulator_executor",
+    ":libtpm2_simulator_executor_pc",
     ":tpm2-simulator",
     ":tpm2-simulator-init",
     ":tpm2-simulator-stop",
@@ -63,7 +65,7 @@ static_library("libtpm2_simulator_executor") {
     # To link with tpm2 library.
     configs += [ "//common-mk:test" ]
   }
-  if (use.tpm2 || use.test) {
+  if (use.tpm2) {
     sources += [
       "pinweaver_eal.cc",
       "tpm_executor_tpm2_impl.cc",
@@ -78,6 +80,15 @@ static_library("libtpm2_simulator_executor") {
   if (use.ti50_onboard && !use.test) {
     sources += [ "tpm_executor_ti50_impl.cc" ]
   }
+}
+
+generate_pkg_config("libtpm2_simulator_executor_pc") {
+  name = "libtpm2_simulator_executor"
+  output_name = "libtpm2_simulator_executor"
+  description = "TPM2 Simulator Executor static library for test helpers"
+  version = "0.0.1"
+  libs = [ "-ltpm2_simulator_executor" ]
+  install = true
 }
 
 executable("tpm2-simulator") {

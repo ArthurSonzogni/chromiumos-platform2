@@ -90,13 +90,15 @@ using AuthenticateTestFuture =
 
 constexpr char kUsername[] = "foo@example.com";
 constexpr char kPassword[] = "password";
-constexpr char kPin[] = "1234";
-constexpr char kWrongPin[] = "4321";
 constexpr char kPasswordLabel[] = "password_label";
 constexpr char kPassword2[] = "password2";
 constexpr char kPasswordLabel2[] = "password_label2";
 constexpr char kDefaultLabel[] = "legacy-0";
+#if USE_TPM2
+constexpr char kPin[] = "1234";
+constexpr char kWrongPin[] = "4321";
 constexpr char kPinLabel[] = "pin_label";
+#endif  // USE_TPM2
 constexpr char kSalt[] = "salt";
 constexpr char kPublicHash[] = "public key hash";
 constexpr int kAuthValueRounds = 5;
@@ -690,6 +692,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   AuthenticatePasswordFactor(auth_session4, kPasswordLabel2, kPassword2);
 }
 
+#if USE_TPM2
 // This test tests successful removal of the backup keysets.
 // Initial USS migration code converted the migrated VaultKeysets to backup
 // keysets rather than removing them.
@@ -882,6 +885,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
               AttemptAuthWithPinFactor(auth_session, kPinLabel, kPin));
   }
 }
+#endif  // USE_TPM2
 
 // Test that we can authenticate an old-style kiosk VK, and migrate it to USS
 // correctly. These old VKs show up as password VKs and so we need the

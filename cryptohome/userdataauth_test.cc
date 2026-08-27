@@ -4547,6 +4547,7 @@ TEST_F(UserDataAuthTestThreaded, ShutdownTask) {
 // cases from an API usage perspective. This differs from other unit tests in
 // which it is written in more of a integration test style and verifies the
 // behaviour of cryptohomed APIs rather than the UserDataAuth class.
+#if USE_TPM2
 class UserDataAuthApiTest : public UserDataAuthTest {
  public:
   UserDataAuthApiTest() = default;
@@ -5730,4 +5731,5 @@ TEST_F(UserDataAuthApiTest, GenerateFreshRecoveryIdFailure) {
                        POSSIBLY_DEV_CHECK_UNEXPECTED_STATE})));
 }
 
+#endif  // USE_TPM2
 }  // namespace cryptohome

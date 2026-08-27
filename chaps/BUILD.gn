@@ -46,6 +46,7 @@ group("all") {
 
 pkg_config("target_defaults") {
   defines = [
+    "USE_TPM2=${use.tpm2}",
     "USE_TPM_INSECURE_FALLBACK=${use.tpm_insecure_fallback}",
     "USE_FUZZER=${use.fuzzer}",
   ]

@@ -701,9 +701,15 @@ bool FakePlatform::SetSELinuxContext(const base::FilePath& path,
   return real_platform_.SetSELinuxContext(TestFilePath(path), context);
 }
 
+// Unlike SetSELinuxContext (which sets an explicit context string via xattr),
+// RestoreSELinuxContexts queries system SELinux policy files via
+// selinux_restorecon. In the unit test environment, system policy files are
+// not loaded in the chroot and randomized test paths in /tmp do not exist in
+// SELinux policy rules, causing selinux_restorecon to fail. Therefore,
+// restoring SELinux contexts is a no-op in FakePlatform.
 bool FakePlatform::RestoreSELinuxContexts(const base::FilePath& path,
                                           bool recursive) {
-  return real_platform_.RestoreSELinuxContexts(TestFilePath(path), recursive);
+  return true;
 }
 
 bool FakePlatform::SafeDirChown(const base::FilePath& path,
