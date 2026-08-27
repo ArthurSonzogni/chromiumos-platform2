@@ -400,25 +400,21 @@ class VmStartChecker {
     SIGNAL_RECEIVED
   };
 
-  // Create an instance of |VmStartChecker|. |signal_fd| is owned by the client.
-  static std::unique_ptr<VmStartChecker> Create(int32_t signal_fd);
+  // Create an instance of |VmStartChecker|.
+  static std::unique_ptr<VmStartChecker> Create();
   ~VmStartChecker() = default;
 
   VmStartChecker(const VmStartChecker&) = delete;
   VmStartChecker& operator=(const VmStartChecker&) = delete;
 
   // Wait for the VM to start with |timeout|.
-  Status Wait(base::TimeDelta timeout);
+  Status Wait(base::TimeDelta timeout,
+              std::optional<pid_t> expected_pid = std::nullopt);
 
   int32_t GetEventFd() const;
 
  private:
-  VmStartChecker(int32_t signal_fd,
-                 base::ScopedFD event_fd,
-                 base::ScopedFD epoll_fd);
-
-  // Signal fd associated with the client that constructs this object.
-  int32_t signal_fd_;
+  VmStartChecker(base::ScopedFD event_fd, base::ScopedFD epoll_fd);
 
   // Event fd created to monitor VM start up.
   base::ScopedFD event_fd_;

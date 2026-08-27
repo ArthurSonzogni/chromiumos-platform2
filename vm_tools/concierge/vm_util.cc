@@ -12,6 +12,7 @@
 #include <sys/eventfd.h>
 #include <sys/signalfd.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -1218,7 +1219,7 @@ std::ostream& operator<<(std::ostream& os, const VmStartChecker::Status& e) {
   return os;
 }
 
-std::unique_ptr<VmStartChecker> VmStartChecker::Create(int32_t signal_fd) {
+std::unique_ptr<VmStartChecker> VmStartChecker::Create() {
   // Create an event fd that will  be signalled when a VM is ready.
   base::ScopedFD vm_start_event_fd(eventfd(0, EFD_CLOEXEC));
   if (!vm_start_event_fd.is_valid()) {
@@ -1240,18 +1241,27 @@ std::unique_ptr<VmStartChecker> VmStartChecker::Create(int32_t signal_fd) {
     return nullptr;
   }
 
-  // Add the signal fd to the epoll set to see if a signal is received while
-  // waiting for the VM.
-  if (!EpollCtlAdd(vm_start_epoll_fd.get(), signal_fd)) {
-    PLOG(ERROR) << "Failed to epoll add signal fd";
-    return nullptr;
-  }
-
-  return base::WrapUnique(new VmStartChecker(
-      signal_fd, std::move(vm_start_event_fd), std::move(vm_start_epoll_fd)));
+  return base::WrapUnique(new VmStartChecker(std::move(vm_start_event_fd),
+                                             std::move(vm_start_epoll_fd)));
 }
 
-VmStartChecker::Status VmStartChecker::Wait(base::TimeDelta timeout) {
+VmStartChecker::Status VmStartChecker::Wait(base::TimeDelta timeout,
+                                            std::optional<pid_t> expected_pid) {
+  base::ScopedFD pidfd;
+  if (expected_pid.has_value()) {
+    pidfd.reset(syscall(SYS_pidfd_open, expected_pid.value(), 0));
+    if (pidfd.is_valid()) {
+      if (!EpollCtlAdd(epoll_fd_.get(), pidfd.get())) {
+        PLOG(ERROR) << "Failed to epoll add pidfd";
+        // It's safer to proceed without pidfd than to abort VM startup
+        // completely
+        pidfd.reset();
+      }
+    } else {
+      PLOG(WARNING) << "Failed to get pidfd for VM process via pidfd_open";
+    }
+  }
+
   struct epoll_event ep_event;
   if (HANDLE_EINTR(epoll_wait(epoll_fd_.get(), &ep_event, 1,
                               timeout.InMilliseconds())) <= 0) {
@@ -1266,39 +1276,27 @@ VmStartChecker::Status VmStartChecker::Wait(base::TimeDelta timeout) {
     return Status::EPOLL_INVALID_EVENT;
   }
 
-  if ((ep_event.data.u32 != static_cast<uint32_t>(event_fd_.get())) &&
-      (ep_event.data.u32 != static_cast<uint32_t>(signal_fd_))) {
-    LOG(ERROR) << "Got invalid fd while waiting for VM to start: "
-               << ep_event.data.u32;
-    return Status::EPOLL_INVALID_FD;
+  if (ep_event.data.u32 == static_cast<uint32_t>(event_fd_.get())) {
+    return Status::READY;
   }
 
-  if (ep_event.data.u32 == static_cast<uint32_t>(signal_fd_)) {
-    struct signalfd_siginfo siginfo;
-    if (read(signal_fd_, &siginfo, sizeof(siginfo)) != sizeof(siginfo)) {
-      PLOG(ERROR) << "Failed to read signal info";
-      return Status::INVALID_SIGNAL_INFO;
-    }
-
-    LOG(ERROR) << "Received signal: " << siginfo.ssi_signo
-               << " while waiting to start the VM";
+  if (pidfd.is_valid() &&
+      ep_event.data.u32 == static_cast<uint32_t>(pidfd.get())) {
+    LOG(ERROR) << "Received exit notification from VM process";
     return Status::SIGNAL_RECEIVED;
   }
 
-  // At this point |event_fd_| has been successfully signalled.
-  return Status::READY;
+  LOG(ERROR) << "Got invalid fd while waiting for VM to start: "
+             << ep_event.data.u32;
+  return Status::EPOLL_INVALID_FD;
 }
 
 int32_t VmStartChecker::GetEventFd() const {
   return event_fd_.get();
 }
 
-VmStartChecker::VmStartChecker(int32_t signal_fd,
-                               base::ScopedFD event_fd,
-                               base::ScopedFD epoll_fd)
-    : signal_fd_(signal_fd),
-      event_fd_(std::move(event_fd)),
-      epoll_fd_(std::move(epoll_fd)) {}
+VmStartChecker::VmStartChecker(base::ScopedFD event_fd, base::ScopedFD epoll_fd)
+    : event_fd_(std::move(event_fd)), epoll_fd_(std::move(epoll_fd)) {}
 
 VmInfo_VmType ToConciergeServiceVmType(apps::VmType type) {
   switch (type) {

@@ -1777,8 +1777,7 @@ StartVmResponse Service::StartVmInternal(
 
   // Set up a "checker" that will wait until the VM is ready or a signal is
   // received while waiting for the VM to start or we timeout.
-  std::unique_ptr<VmStartChecker> vm_start_checker =
-      VmStartChecker::Create(signal_fd_);
+  std::unique_ptr<VmStartChecker> vm_start_checker = VmStartChecker::Create();
   if (!vm_start_checker) {
     LOG(ERROR) << "Failed to create VM start checker";
     response.set_failure_reason("Failed to create VM start checker");
@@ -1941,7 +1940,7 @@ StartVmResponse Service::StartVmInternal(
   }
 
   VmStartChecker::Status vm_start_checker_status =
-      vm_start_checker->Wait(timeout);
+      vm_start_checker->Wait(timeout, vm->pid());
   if (vm_start_checker_status != VmStartChecker::Status::READY) {
     LOG(ERROR) << "Error starting VM. VmStartCheckerStatus="
                << vm_start_checker_status;
