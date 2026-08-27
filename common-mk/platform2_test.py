@@ -783,11 +783,13 @@ class Platform2Test:
             # Switch to using gtest-parallel instead to run tests parallelly.
             # Introduces a dependency on python while running tests, which
             # means that for some cross compilations this maybe slower.
-            cmd = os.path.join(
+            gtest_parallel = os.path.join(
                 constants.CHROOT_SOURCE_ROOT,
                 "src/third_party/gtest-parallel/gtest-parallel",
             )
-            argv.insert(0, cmd)
+            argv.insert(0, gtest_parallel)
+            argv.insert(0, sys.executable)
+            cmd = sys.executable
             # Special value 0 is used to indicate “use all available CPU cores".
             # If the invocation specifies any number other than zero or one, use
             # that. The default for gtest-parallel is to use all available
