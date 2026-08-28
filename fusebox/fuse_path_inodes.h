@@ -6,7 +6,6 @@
 #define FUSEBOX_FUSE_PATH_INODES_H_
 
 #include <fuse_lowlevel.h>
-
 #include <stdint.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -16,7 +15,7 @@
 #include <string>
 #include <unordered_map>
 
-#include <base/containers/lru_cache.h>
+#include <base/containers/hashing_lru_cache.h>
 
 namespace fusebox {
 
