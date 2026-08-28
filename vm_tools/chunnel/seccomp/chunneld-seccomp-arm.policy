@@ -12,6 +12,7 @@ mseal: 1
 stat64: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 close: 1
+lseek: 1
 epoll_wait: 1
 recvmsg: 1
 recv: 1

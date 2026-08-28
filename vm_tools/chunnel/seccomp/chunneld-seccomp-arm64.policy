@@ -13,6 +13,7 @@ read: 1
 sendto: 1
 fstat: 1
 close: 1
+lseek: 1
 recvmsg: 1
 write: 1
 rt_sigaction: 1
