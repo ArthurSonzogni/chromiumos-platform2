@@ -121,6 +121,13 @@ std::optional<mojom::CpuTemperatureChannelPtr> ReadThermalZoneInfo(
   int32_t temperature_int = 0;
   if (temperature) {
     if (base::StringToInt(temperature, &temperature_int)) {
+      // Skip invalid readings from inactive or broken sensors, which would
+      // otherwise corrupt the downstream average temperature calculation.
+      if (temperature_int <= kThermalTempInvalidMilliDegrees) {
+        LOG(WARNING) << "Ignoring invalid temperature " << temperature
+                     << " from " << udevice->GetSysPath();
+        return std::nullopt;
+      }
       temperature_int /= 1000;
       channel->label = device_type_str;
       channel->temperature_celsius = temperature_int;

@@ -59,6 +59,11 @@ const char kThermalPattern[] = "thermal_zone*";
 constexpr char kThermalAttributeTemperature[] = "temp";
 constexpr char kThermalAttributeType[] = "type";
 
+// Kernel sentinel for an invalid/uninitialized temperature reading, in
+// millidegrees Celsius (THERMAL_TEMP_INVALID in include/linux/thermal.h). It is
+// below absolute zero, so any reading at or below it is invalid.
+inline constexpr int32_t kThermalTempInvalidMilliDegrees = -274000;
+
 // // The pattern of the CPU's device type
 constexpr char kThermalDeviceTypeX86[] = "x86_pkg_temp";
 constexpr char kThermalDeviceTypeArm[] = "cpu";

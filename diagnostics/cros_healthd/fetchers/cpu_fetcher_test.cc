@@ -379,7 +379,8 @@ class CpuFetcherTest : public BaseFileTest {
   // Customize UdevDevice's behavior.
   std::function<std::unique_ptr<FakeUdevDevice>(const char*)>
   MockUdevDeviceFunc(bool without_lable = false,
-                     bool incorrect_format = false) {
+                     bool incorrect_format = false,
+                     bool invalid_temp = false) {
     return [=, this](const char* syspath) {
       base::FilePath sys_file_path = base::FilePath{syspath};
       if (sys_file_path == GetPathUnderRoot(kFirstFakeCpuTemperatureDir)) {
@@ -394,6 +395,12 @@ class CpuFetcherTest : public BaseFileTest {
           return std::make_unique<FakeUdevDevice>(kFirstFakeCpuTemperatureLabel,
                                                   kNonIntegralFileContents,
                                                   sys_file_path);
+        } else if (invalid_temp) {
+          // return one thermal zone with the kernel invalid-temperature
+          // sentinel (THERMAL_TEMP_INVALID).
+          return std::make_unique<FakeUdevDevice>(
+              kFirstFakeCpuTemperatureLabel,
+              std::to_string(kThermalTempInvalidMilliDegrees), sys_file_path);
         } else {
           return std::make_unique<FakeUdevDevice>(
               kFirstFakeCpuTemperatureLabel,
@@ -432,6 +439,11 @@ class CpuFetcherTest : public BaseFileTest {
   void MockUdevDeviceWithOneMissingType() {
     EXPECT_CALL(*mock_context_.mock_udev(), CreateDeviceFromSysPath)
         .WillRepeatedly(MockUdevDeviceFunc(true, false));
+  }
+
+  void MockUdevDeviceWithOneInvalidTemperature() {
+    EXPECT_CALL(*mock_context_.mock_udev(), CreateDeviceFromSysPath)
+        .WillRepeatedly(MockUdevDeviceFunc(false, false, true));
   }
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
@@ -1119,6 +1131,31 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedTemperature) {
 
   // We shouldn't have data corresponding to the first fake temperature values,
   // because it was formatted incorrectly.
+  const auto& cpu_temps = cpu_info->temperature_channels;
+  ASSERT_EQ(cpu_temps.size(), 1);
+  const auto& second_temp = cpu_temps[0];
+  ASSERT_FALSE(second_temp.is_null());
+  ASSERT_TRUE(second_temp->label.has_value());
+  EXPECT_EQ(second_temp->label.value(), kSecondFakeCpuTemperatureLabel);
+  EXPECT_EQ(second_temp->temperature_celsius, kSecondFakeCpuTemperature);
+}
+
+// Test that we drop invalid CPU temperature readings reported by the kernel
+// (THERMAL_TEMP_INVALID), so they don't corrupt downstream calculations.
+TEST_F(CpuFetcherTest, InvalidTemperatureIsFiltered) {
+  SetFile({kFirstFakeCpuTemperatureDir, kThermalAttributeTemperature},
+          base::NumberToString(kThermalTempInvalidMilliDegrees));
+  MockUdevDeviceWithOneInvalidTemperature();
+  auto cpu_result = FetchCpuInfoSync();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  const auto& cpu_info = cpu_result->get_cpu_info();
+  EXPECT_EQ(cpu_info->num_total_threads, kExpectedNumTotalThreads);
+  EXPECT_EQ(cpu_info->architecture, mojom::CpuArchitectureEnum::kX86_64);
+  VerifyPhysicalCpus(cpu_info->physical_cpus);
+
+  // We shouldn't have data corresponding to the first fake temperature values,
+  // because it was an invalid reading from the kernel.
   const auto& cpu_temps = cpu_info->temperature_channels;
   ASSERT_EQ(cpu_temps.size(), 1);
   const auto& second_temp = cpu_temps[0];
