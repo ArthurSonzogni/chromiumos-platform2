@@ -312,6 +312,7 @@ class UpdateAttempter : public ActionProcessorDelegate,
   FRIEND_TEST(UpdateAttempterTest, ActionCompletedOmahaRequestTest);
   FRIEND_TEST(UpdateAttempterTest, ActionCompletedSkipApplying);
   FRIEND_TEST(UpdateAttempterTest, ActionCompletedNewVersionSet);
+  FRIEND_TEST(UpdateAttempterTest, ApplyDeferredUpdateActionChainTest);
   FRIEND_TEST(UpdateAttempterTest, BootTimeInUpdateMarkerFile);
   FRIEND_TEST(UpdateAttempterTest, BroadcastCompleteDownloadTest);
   FRIEND_TEST(UpdateAttempterTest, CalculateDlcParamsInstallTest);

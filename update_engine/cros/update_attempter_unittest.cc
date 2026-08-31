@@ -864,6 +864,13 @@ vector<string> GetRollbackActionTypes() {
           PostinstallRunnerAction::StaticType()};
 }
 
+// Actions that will be built as part of applying a deferred update.
+vector<string> GetDeferredUpdateActionTypes() {
+  return {InstallPlanAction::StaticType(),
+          FilesystemVerifierAction::StaticType(),
+          PostinstallRunnerAction::StaticType()};
+}
+
 const StagingSchedule kValidStagingSchedule = {
     {4, 10}, {10, 40}, {19, 70}, {26, 100}};
 
@@ -971,6 +978,23 @@ void UpdateAttempterTest::RollbackTestVerify() {
 TEST_F(UpdateAttempterTest, UpdateTest) {
   UpdateTestStart();
   loop_.Run();
+}
+
+TEST_F(UpdateAttempterTest, ApplyDeferredUpdateActionChainTest) {
+  FakeSystemState::Get()->fake_boot_control()->SetPartitionDevice("root", 0,
+                                                                  "/dev/sdz3");
+  FakeSystemState::Get()->fake_boot_control()->SetPartitionDevice("root", 1,
+                                                                  "/dev/sdz5");
+  attempter_.status_ = UpdateStatus::UPDATED_BUT_DEFERRED;
+  InSequence s;
+  for (const auto& action_type : GetDeferredUpdateActionTypes()) {
+    EXPECT_CALL(
+        *processor_,
+        EnqueueAction(Pointee(Property(&AbstractAction::Type, action_type))));
+  }
+  EXPECT_CALL(*processor_, StartProcessing());
+
+  EXPECT_TRUE(attempter_.ApplyDeferredUpdate(false));
 }
 
 TEST_F(UpdateAttempterTest, RollbackTest) {

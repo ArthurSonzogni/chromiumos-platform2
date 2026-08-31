@@ -1225,11 +1225,16 @@ bool UpdateAttempter::ApplyDeferredUpdate(bool shutdown) {
 
   auto install_plan_action =
       std::make_unique<InstallPlanAction>(*install_plan_);
+  auto filesystem_verifier_action = std::make_unique<FilesystemVerifierAction>(
+      boot_control->GetDynamicPartitionControl());
   auto postinstall_runner_action = std::make_unique<PostinstallRunnerAction>(
       boot_control, SystemState::Get()->hardware());
   postinstall_runner_action->set_delegate(this);
-  BondActions(install_plan_action.get(), postinstall_runner_action.get());
+  BondActions(install_plan_action.get(), filesystem_verifier_action.get());
+  BondActions(filesystem_verifier_action.get(),
+              postinstall_runner_action.get());
   processor_->EnqueueAction(std::move(install_plan_action));
+  processor_->EnqueueAction(std::move(filesystem_verifier_action));
   processor_->EnqueueAction(std::move(postinstall_runner_action));
   processor_->set_delegate(this);
 
