@@ -1,13 +1,16 @@
-// Copyright 2022 The ChromiumOS Authors.
+// Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "foomatic_shell/parser.h"
-#include "foomatic_shell/scanner.h"
 #include "foomatic_shell/verifier.h"
-#include <gtest/gtest.h>
+
 #include <string>
 #include <utility>
+
+#include <gtest/gtest.h>
+
+#include "foomatic_shell/parser.h"
+#include "foomatic_shell/scanner.h"
 
 namespace foomatic_shell {
 
@@ -68,6 +71,10 @@ TEST(Verifier, gsFail) {
   EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- -dNOSAFER somefile.ps"));
 }
 
+TEST(Verifier, gsFail1) {
+  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- -dDELAYSAFER file.ps"));
+}
+
 TEST(Verifier, gsFail2) {
   EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- -dALLOWPSTRANSPARENCY"));
 }
@@ -82,6 +89,30 @@ TEST(Verifier, gsFail4) {
 
 TEST(Verifier, gsFail5) {
   EXPECT_FALSE(VerifyScript("gs -sOutputFile=- somefile.ps"));
+}
+
+TEST(Verifier, gsFail6) {
+  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- -dNOSAFER=true"));
+}
+
+TEST(Verifier, gsFail7) {
+  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- -o somefile"));
+}
+
+TEST(Verifier, gsFail8) {
+  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- -c"));
+}
+
+TEST(Verifier, gsFail9) {
+  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- --permit-file-write=x"));
+}
+
+TEST(Verifier, gsFail10) {
+  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- -Ixxx"));
+}
+
+TEST(Verifier, gsOK) {
+  EXPECT_TRUE(VerifyScript("gs -dPARANOIDSAFER -sOutputFile=%stdout"));
 }
 
 TEST(Verifier, pdftops) {

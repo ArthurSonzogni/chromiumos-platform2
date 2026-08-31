@@ -5,6 +5,7 @@
 #include "foomatic_shell/verifier.h"
 
 #include <set>
+#include <string_view>
 
 #include <base/check.h>
 #include <base/logging.h>
@@ -20,7 +21,7 @@ const std::set<std::string> AllowedVariables() {
   return *variables;
 }
 
-bool HasPrefix(const std::string& str, const std::string& prefix) {
+bool HasPrefix(const std::string& str, const std::string_view& prefix) {
   if (prefix.size() > str.size()) {
     return false;
   }
@@ -185,8 +186,12 @@ bool Verifier::VerifyCommand(Command* command) {
 
 // Parameters “-dSAFER” and “-sOutputFile=-” must be present.
 // No other “-sOutputFile=” parameters are allowed.
-// Parameters “-dNOSAFER” and “-dALLOWPSTRANSPARENCY” are disallowed.
+// All other parameters cannot start from prefixes defined in the array below.
 bool Verifier::VerifyGs(const std::vector<StringAtom>& parameters) {
+  static constexpr std::array<std::string_view, 9> kBannedPrefixes = {
+      "--permit-file-", "-I",        "-c", "-dALLOWPSTRANSPARENCY",
+      "-dDELAYSAFER",   "-dNOSAFER", "-o", "-sOutputFile=",
+      "-sstdout="};
   bool safer = false;
   bool output_file = false;
   for (auto& parameter : parameters) {
@@ -199,10 +204,11 @@ bool Verifier::VerifyGs(const std::vector<StringAtom>& parameters) {
       output_file = true;
       continue;
     }
-    if (HasPrefix(param, "-sOutputFile=") || param == "-dNOSAFER" ||
-        param == "-dALLOWPSTRANSPARENCY") {
-      message_ = "gs: disallowed parameter";
-      return false;
+    for (auto& banned : kBannedPrefixes) {
+      if (HasPrefix(param, banned)) {
+        message_ = "gs: disallowed parameter";
+        return false;
+      }
     }
   }
   if (!safer) {
