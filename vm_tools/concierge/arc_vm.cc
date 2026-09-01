@@ -101,7 +101,7 @@ constexpr char kReadonlySharedDirTag[] = "ro";
 // because the physical memory size of 6GB devices is
 // usually slightly less than 6000MB.
 // It can be changed with the Finch feature.
-constexpr base::ByteSize kDefaultHighMemDeviceThreshold = base::MiBU(5500);
+constexpr base::ByteSize kDefaultHighMemDeviceThreshold = base::MiB(5500);
 
 // For |kOemEtcSharedDir|, map host's crosvm to guest's root, also arc-camera
 // (603) to vendor_arc_camera (5003).

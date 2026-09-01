@@ -101,7 +101,7 @@ class ArcDlcHardwareFilterImplTest : public testing::Test {
   // Sets up the environment to simulate the boot disk's rotational status.
   bool SetBootDevice(const std::string& is_rotational, uint64_t size_in_gib) {
     fake_platform_info_.set_root_device_name(kDirSdaDevice);
-    fake_platform_info_.set_device_size_bytes(base::GiBU(size_in_gib));
+    fake_platform_info_.set_device_size_bytes(base::GiB(size_in_gib));
     base::FilePath queue_path = test_path_.Append(kDirSdaQueue);
     if (!base::CreateDirectory(queue_path)) {
       return false;

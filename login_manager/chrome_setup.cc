@@ -1228,7 +1228,7 @@ void AddMlFlags(ChromiumCommandBuilder* builder,
     // practice, we compare against 3GiB not 4GiB.
     // Theoretically: this will match devices with RAM > (3GiB + something).
     // In practice:   all such devices have 4GB+.
-    constexpr base::ByteSize kSodaLibraryMinRam = base::MiBU(3072);
+    constexpr base::ByteSize kSodaLibraryMinRam = base::MiB(3072);
     if (base::SysInfo::AmountOfTotalPhysicalMemory() >= kSodaLibraryMinRam) {
       builder->AddFeatureEnableOverride("OnDeviceSpeechRecognition");
     }

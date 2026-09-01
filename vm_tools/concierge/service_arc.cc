@@ -638,7 +638,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   vm_builder.SetMemory(std::to_string(memory_mib));
 
   /* Enable THP if the VM has at least 7G of memory */
-  if (base::SysInfo::AmountOfTotalPhysicalMemory() >= base::GiBU(7)) {
+  if (base::SysInfo::AmountOfTotalPhysicalMemory() >= base::GiB(7)) {
     vm_builder.AppendCustomParam("--hugepages", "");
   }
 

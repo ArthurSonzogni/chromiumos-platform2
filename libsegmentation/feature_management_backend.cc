@@ -263,7 +263,7 @@ bool FeatureManagementImpl::Check_HW_Requirement(
   // DRAM >= 8GiB. But since not all the physical RAM is available (PCI hole),
   // settle for 7GiB.
   // Obtain the size of the physical memory of the system.
-  if (base::SysInfo::AmountOfTotalPhysicalMemory() < base::GiBU(7)) {
+  if (base::SysInfo::AmountOfTotalPhysicalMemory() < base::GiB(7)) {
     return false;
   }
 

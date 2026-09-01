@@ -1877,7 +1877,7 @@ StartVmResponse Service::StartVmInternal(
   vm_builder.SetVmCpuArgs(vm_cpu_args);
 
   /* Enable hugepages on devices with > 7 GB memory */
-  if (base::SysInfo::AmountOfTotalPhysicalMemory() >= base::GiBU(7)) {
+  if (base::SysInfo::AmountOfTotalPhysicalMemory() >= base::GiB(7)) {
     vm_builder.AppendCustomParam("--hugepages", "");
   }
 
