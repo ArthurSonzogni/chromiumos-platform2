@@ -199,7 +199,14 @@ SodaRecognizerImpl::SodaRecognizerImpl(
         *(multi_lang_cfg_proto->mutable_multilang_language_pack_directory());
     for (auto& mojo_map_item :
          multi_lang_config_mojo.locale_to_language_pack_map) {
-      directory[mojo_map_item.first] = mojo_map_item.second;
+      const std::optional<base::FilePath> real_lp_path =
+          ValidateAndGetRealDlcPath(base::FilePath(mojo_map_item.second));
+      if (!real_lp_path) {
+        LOG(ERROR) << "Bad multilang language pack path "
+                   << mojo_map_item.second;
+        return;
+      }
+      directory[mojo_map_item.first] = real_lp_path->value();
     }
   }
 
