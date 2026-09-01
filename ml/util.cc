@@ -21,7 +21,7 @@ namespace ml {
 
 namespace {
 
-constexpr char kDlcBasePath[] = "/run/imageloader";
+constexpr char kDlcBasePath[] = "/run/imageloader/";
 
 // Extracts the value from a value string of /proc/[pid]/status.
 // Only works for value strings in the form of "value kB".

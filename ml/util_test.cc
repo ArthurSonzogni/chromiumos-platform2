@@ -273,5 +273,17 @@ TEST(ValidateAndGetRealDlcPathTest, MissingFile) {
   EXPECT_FALSE(result.has_value());
 }
 
+TEST(ValidateAndGetRealDlcPathTest, InvalidPrefixSiblingDir) {
+  // A sibling directory starting with "/run/imageloader" but not under it.
+  const base::FilePath invalid_path(
+      "/run/imageloader_fake/fake-dlc-foo/package/root/");
+  base::ScopedTempDir temp_dir;
+  EXPECT_TRUE(temp_dir.CreateUniqueTempDirUnderPath(invalid_path));
+
+  const std::optional<base::FilePath> result =
+      ValidateAndGetRealDlcPath(temp_dir.GetPath());
+  EXPECT_FALSE(result.has_value());
+}
+
 }  // namespace
 }  // namespace ml
