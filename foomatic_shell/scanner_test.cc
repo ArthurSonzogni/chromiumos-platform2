@@ -2,12 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "foomatic_shell/grammar.h"
 #include "foomatic_shell/scanner.h"
 
-#include <gtest/gtest.h>
+#include <algorithm>
 #include <string>
 #include <vector>
+
+#include <gtest/gtest.h>
+
+#include "foomatic_shell/grammar.h"
 
 namespace foomatic_shell {
 
@@ -74,6 +77,18 @@ TEST(Scanner, StringTypes) {
   std::vector<Token> tokens;
   EXPECT_TRUE(scanner.ParseWholeInput(&tokens));
   EXPECT_EQ(types, CreateTokensRepresentation(input, tokens));
+}
+
+TEST(Scanner, StringTypesWithZeroByte) {
+  const std::string input = "com0and 'lit0str' `exe0str`  2int0str2";
+  const std::string types = "NNNBNNNS LLLLLLL S EEEEEEE SS IIIIIII ";
+  std::string input2(input);
+  std::replace(input2.begin(), input2.end(), '0', '\0');
+  std::replace(input2.begin(), input2.end(), '2', '"');
+  Scanner scanner(input2);
+  std::vector<Token> tokens;
+  EXPECT_TRUE(scanner.ParseWholeInput(&tokens));
+  EXPECT_EQ(types, CreateTokensRepresentation(input2, tokens));
 }
 
 TEST(Scanner, ExecutedStringInsideInterpretedString) {

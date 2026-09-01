@@ -63,6 +63,20 @@ TEST(Verifier, echo) {
   EXPECT_TRUE(VerifyScript("echo something"));
 }
 
+TEST(Verifier, echoFail) {
+  using std::string_literals::operator""s;
+  EXPECT_FALSE(VerifyScript("echo some\0thing"s));
+}
+
+TEST(Verifier, echoWithVariable) {
+  EXPECT_TRUE(VerifyScript("NOPDF=abc echo something"));
+}
+
+TEST(Verifier, echoWithVariableFail) {
+  using std::string_literals::operator""s;
+  EXPECT_FALSE(VerifyScript("NOPDF=ab\0c echo something"s));
+}
+
 TEST(Verifier, gs) {
   EXPECT_TRUE(VerifyScript("gs -dSAFER -sOutputFile=- somefile.ps"));
 }

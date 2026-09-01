@@ -17,7 +17,7 @@ namespace foomatic_shell {
 namespace {
 
 // A set of allowed environment variables that may be set for executed commands.
-const std::set<std::string> AllowedVariables() {
+const std::set<std::string>& AllowedVariables() {
   static const base::NoDestructor<std::set<std::string>> variables({"NOPDF"});
   return *variables;
 }
@@ -69,9 +69,21 @@ bool Verifier::VerifyCommand(Command* command) {
       message_ = "variable " + var.variable.value + " is not allowed";
       return false;
     }
+    if (var.new_value.value.find('\0') != std::string::npos) {
+      message_ = "variable " + var.variable.value + " has banned character";
+      return false;
+    }
   }
 
   const std::string& cmd = command->application.value;
+
+  // Make sure that parameters do not contain C end-of-string character.
+  for (auto& parameter : command->parameters) {
+    if (parameter.value.find('\0') != std::string::npos) {
+      message_ = "command " + cmd + " has parameter with banned character";
+      return false;
+    }
+  }
 
   // The "cat" command is allowed <=> it has no parameters or it has only a
   // single parameter "-".
