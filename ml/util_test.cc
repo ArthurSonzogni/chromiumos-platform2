@@ -285,5 +285,40 @@ TEST(ValidateAndGetRealDlcPathTest, InvalidPrefixSiblingDir) {
   EXPECT_FALSE(result.has_value());
 }
 
+TEST(ValidateAndGetRealBuiltinModelPathTest, ValidModelPath) {
+  const base::FilePath real_path("/opt/google/chrome/ml_models/");
+  base::ScopedTempDir temp_dir;
+  if (temp_dir.CreateUniqueTempDirUnderPath(real_path)) {
+    const std::optional<base::FilePath> result =
+        ValidateAndGetRealBuiltinModelPath(temp_dir.GetPath());
+    EXPECT_TRUE(result.has_value());
+  }
+}
+
+TEST(ValidateAndGetRealBuiltinModelPathTest, InvalidPrefix) {
+  const base::FilePath invalid_path("/tmp/fake-model.tflite");
+  const std::optional<base::FilePath> result =
+      ValidateAndGetRealBuiltinModelPath(invalid_path);
+  EXPECT_FALSE(result.has_value());
+}
+
+TEST(ValidateAndGetRealBuiltinModelPathTest, MissingFile) {
+  const base::FilePath missing_path(
+      "/opt/google/chrome/ml_models/missing_model.tflite");
+  const std::optional<base::FilePath> result =
+      ValidateAndGetRealBuiltinModelPath(missing_path);
+  EXPECT_FALSE(result.has_value());
+}
+
+TEST(ValidateAndGetRealBuiltinModelPathTest, InvalidPrefixSiblingDir) {
+  // A sibling directory starting with "/opt/google/chrome/ml_models" but not
+  // under it.
+  const base::FilePath invalid_path(
+      "/opt/google/chrome/ml_models_fake/model.tflite");
+  const std::optional<base::FilePath> result =
+      ValidateAndGetRealBuiltinModelPath(invalid_path);
+  EXPECT_FALSE(result.has_value());
+}
+
 }  // namespace
 }  // namespace ml

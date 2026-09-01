@@ -47,6 +47,11 @@ bool GetTotalProcessMemoryUsage(size_t* total_memory);
 std::optional<base::FilePath> ValidateAndGetRealDlcPath(
     const base::FilePath& path);
 
+// Gives and validates resolved built-in model path using realpath(3), or empty
+// Optional upon error. Leaves realpath's errno unchanged.
+std::optional<base::FilePath> ValidateAndGetRealBuiltinModelPath(
+    const base::FilePath& path);
+
 // "dlopen() with RTLD_DEEPBIND" does not work with ASAN. So currently we
 // only support services using this (e.g. HandwritingLibrary) when the
 // "sanitizer" is not enabled (see https://crbug.com/1082632).

@@ -22,6 +22,7 @@ namespace ml {
 namespace {
 
 constexpr char kDlcBasePath[] = "/run/imageloader/";
+constexpr char kBuiltinModelBasePath[] = "/opt/google/chrome/ml_models/";
 
 // Extracts the value from a value string of /proc/[pid]/status.
 // Only works for value strings in the form of "value kB".
@@ -38,11 +39,6 @@ bool GetValueFromProcStatusValueStr(const std::string& value_str,
   return base::StringToSizeT(split_value_str[0], value);
 }
 
-// Validates that a DLC file path contains the DLC base path prefix.
-bool IsDlcPathValid(const base::FilePath& path) {
-  return base::StartsWith(path.value(), kDlcBasePath);
-}
-
 // Gives resolved path using realpath(3), or empty Optional upon error. Leaves
 // realpath's errno unchanged.
 std::optional<base::FilePath> GetRealPath(const base::FilePath& path) {
@@ -52,6 +48,23 @@ std::optional<base::FilePath> GetRealPath(const base::FilePath& path) {
     return {};
   }
   return base::FilePath(result.get());
+}
+
+// Gives and validates resolved path using realpath(3), ensuring it begins with
+// `base_path_prefix`, or empty Optional upon error.
+std::optional<base::FilePath> ValidateAndGetRealPathUnder(
+    const base::FilePath& path, std::string_view base_path_prefix) {
+  const std::optional<base::FilePath> real_path = GetRealPath(path);
+  if (!real_path) {
+    LOG(ERROR) << "Cannot resolve real path: " << path;
+    return {};
+  }
+  if (!base::StartsWith(real_path->value(), base_path_prefix)) {
+    LOG(ERROR) << "Path " << path << " does not reside under "
+               << base_path_prefix;
+    return {};
+  }
+  return real_path;
 }
 
 }  // namespace
@@ -131,16 +144,14 @@ bool GetTotalProcessMemoryUsage(size_t* total_memory) {
 // upon error. Leaves realpath's errno unchanged.
 std::optional<base::FilePath> ValidateAndGetRealDlcPath(
     const base::FilePath& path) {
-  const std::optional<base::FilePath> real_path = GetRealPath(path);
-  if (!real_path) {
-    LOG(ERROR) << "Cannot resolve real path: " << path;
-    return {};
-  }
-  if (!IsDlcPathValid(real_path.value())) {
-    LOG(ERROR) << "Not a valid DLC path: " << path;
-    return {};
-  }
-  return real_path;
+  return ValidateAndGetRealPathUnder(path, kDlcBasePath);
+}
+
+// Gives and validates resolved built-in model path using realpath(3), or empty
+// Optional upon error. Leaves realpath's errno unchanged.
+std::optional<base::FilePath> ValidateAndGetRealBuiltinModelPath(
+    const base::FilePath& path) {
+  return ValidateAndGetRealPathUnder(path, kBuiltinModelBasePath);
 }
 
 }  // namespace ml

@@ -5,12 +5,15 @@
 #include "ml/heatmap_processor.h"
 
 #include <map>
+#include <optional>
 #include <string>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 
 #include "ml/request_metrics.h"
+#include "ml/util.h"
 
 using ::chromeos::machine_learning::mojom::ExecuteResult;
 using ::chromeos::machine_learning::mojom::FloatList;
@@ -41,12 +44,20 @@ LoadHeatmapPalmRejectionResult HeatmapProcessor::Start(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   ready_ = false;
 
+  // Validate model path.
+  const std::optional<base::FilePath> real_model_path =
+      ValidateAndGetRealBuiltinModelPath(base::FilePath(config->tf_model_path));
+  if (!real_model_path) {
+    LOG(ERROR) << "Invalid model path: " << config->tf_model_path;
+    return LoadHeatmapPalmRejectionResult::LOAD_MODEL_ERROR;
+  }
+
   // Attempt to load model.
   std::unique_ptr<tflite::FlatBufferModel> model =
       tflite::FlatBufferModel::VerifyAndBuildFromFile(
-          config->tf_model_path.c_str());
+          real_model_path->value().c_str());
   if (model == nullptr) {
-    LOG(ERROR) << "Failed to load model file '" << config->tf_model_path
+    LOG(ERROR) << "Failed to load model file '" << real_model_path->value()
                << "'.";
     return LoadHeatmapPalmRejectionResult::LOAD_MODEL_ERROR;
   }
