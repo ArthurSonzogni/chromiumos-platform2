@@ -45,6 +45,8 @@ constexpr char kInternalMojoPrimordialPipeName[] = "cros_ml";
 
 constexpr char kModelNameSwitchName[] = "model-name";
 
+constexpr char kHeatmapModelName[] = "HeatmapModel";
+
 constexpr char kDisableSeccompForTestSwitchName[] = "disable-seccomp-for-test";
 
 constexpr char kDefaultMlServiceBinaryPath[] = "/usr/bin/ml_service";
@@ -155,6 +157,12 @@ bool Process::SpawnWorkerProcessAndGetPid(const mojo::PlatformChannel& channel,
     // This is needed for DLC to become visible in child subprocesses
     // if the DLC is mounted after the child process starts.
     minijail_remount_mode(jail.get(), MS_SLAVE);
+    // Drop supplementary groups (e.g. `hidraw`) for all worker types that do
+    // not require them.
+    if (model_name != kHeatmapModelName) {
+      const gid_t dummy_gid = 0;
+      minijail_set_supplementary_gids(jail.get(), 0, &dummy_gid);
+    }
   }
 
   // This is the file descriptor used to bootstrap mojo connection between
