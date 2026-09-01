@@ -10,6 +10,7 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/numerics/checked_math.h>
 
 #include "ml/mojom/tensor.mojom.h"
 #include "ml/request_metrics.h"
@@ -43,7 +44,12 @@ ExecuteResult PopulateInput(const TensorPtr& tensor,
 
   // Check that given input shape matches that expected by TF lite.
 
-  const TfLiteIntArray& expected_dims = *interpreter->tensor(index)->dims;
+  const TfLiteTensor* const target_tensor = interpreter->tensor(index);
+  if (!target_tensor) {
+    return ExecuteResult::EXECUTION_ERROR;
+  }
+
+  const TfLiteIntArray& expected_dims = *target_tensor->dims;
   const std::vector<int64_t>& actual_dims = tensor_view.GetShape();
 
   bool shape_matches = expected_dims.size == actual_dims.size();
@@ -55,8 +61,18 @@ ExecuteResult PopulateInput(const TensorPtr& tensor,
     return ExecuteResult::INPUT_SHAPE_ERROR;
   }
 
-  MemoryType* const input_memory = interpreter->typed_tensor<MemoryType>(index);
   const std::vector<TensorType>& tensor_values = tensor_view.GetValues();
+  base::CheckedNumeric<size_t> required_bytes =
+      base::CheckedNumeric<size_t>(tensor_values.size()) * sizeof(MemoryType);
+  if (!required_bytes.IsValid() ||
+      target_tensor->bytes < required_bytes.ValueOrDie()) {
+    return ExecuteResult::INPUT_SHAPE_ERROR;
+  }
+
+  MemoryType* const input_memory = interpreter->typed_tensor<MemoryType>(index);
+  if (!input_memory) {
+    return ExecuteResult::EXECUTION_ERROR;
+  }
   for (int i = 0; i < tensor_values.size(); ++i) {
     input_memory[i] = tensor_values[i];
   }
@@ -99,14 +115,18 @@ ExecuteResult PopulateOutput(const int index,
   tensor_view.Allocate();
 
   // Empty output is not valid.
-  const TfLiteIntArray& dims = *interpreter.tensor(index)->dims;
+  const TfLiteTensor* const target_tensor = interpreter.tensor(index);
+  if (!target_tensor) {
+    return ExecuteResult::EXECUTION_ERROR;
+  }
+  const TfLiteIntArray& dims = *target_tensor->dims;
   if (dims.size == 0) {
     return ExecuteResult::EXECUTION_ERROR;
   }
 
   // Copy across size information and calculate the number of elements being
   // output.
-  int64_t num_entries = 1;
+  base::CheckedNumeric<int64_t> checked_num_entries = 1;
   std::vector<int64_t>& tensor_dims = tensor_view.GetShape();
   tensor_dims.resize(dims.size);
   for (int i = 0; i < dims.size; ++i) {
@@ -117,12 +137,27 @@ ExecuteResult PopulateOutput(const int index,
     }
 
     tensor_dims[i] = dim_length;
-    num_entries *= dim_length;
+    checked_num_entries *= dim_length;
+  }
+
+  if (!checked_num_entries.IsValid()) {
+    return ExecuteResult::EXECUTION_ERROR;
+  }
+  const int64_t num_entries = checked_num_entries.ValueOrDie();
+
+  base::CheckedNumeric<size_t> required_bytes =
+      base::CheckedNumeric<size_t>(num_entries) * sizeof(MemoryType);
+  if (!required_bytes.IsValid() ||
+      target_tensor->bytes < required_bytes.ValueOrDie()) {
+    return ExecuteResult::EXECUTION_ERROR;
   }
 
   // Populate tensor values.
   const MemoryType* const output_memory =
       interpreter.typed_tensor<MemoryType>(index);
+  if (!output_memory) {
+    return ExecuteResult::EXECUTION_ERROR;
+  }
   std::vector<TensorType>& tensor_values = tensor_view.GetValues();
   tensor_values.resize(num_entries);
   for (int i = 0; i < num_entries; ++i) {

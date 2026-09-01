@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "ml/graph_executor_impl.h"
+
 #include <map>
 #include <memory>
 #include <optional>
@@ -21,7 +23,6 @@
 #include <tensorflow/lite/context.h>
 #include <tensorflow/lite/interpreter.h>
 
-#include "ml/graph_executor_impl.h"
 #include "ml/mojom/graph_executor.mojom.h"
 #include "ml/mojom/tensor.mojom.h"
 #include "ml/tensor_view.h"
@@ -713,6 +714,84 @@ TEST(GraphExecutorTest, TestInvalidOutputNodeShape) {
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Populate input.
+  base::flat_map<std::string, TensorPtr> inputs;
+  inputs.emplace("in_tensor", NewTensor<double>({1}, {0.5}));
+  std::vector<std::string> outputs({"out_tensor"});
+
+  bool callback_done = false;
+  graph_executor->Execute(
+      std::move(inputs), std::move(outputs),
+      base::BindOnce(
+          [](bool* callback_done, const ExecuteResult result,
+             std::optional<std::vector<TensorPtr>> outputs) {
+            EXPECT_EQ(result, ExecuteResult::EXECUTION_ERROR);
+            EXPECT_FALSE(outputs.has_value());
+
+            *callback_done = true;
+          },
+          &callback_done));
+
+  base::RunLoop().RunUntilIdle();
+  EXPECT_TRUE(callback_done);
+}
+
+// Test graph execution where the input tensor buffer is smaller than the shape
+// requires.
+TEST(GraphExecutorTest, TestInputBufferSizeTooSmall) {
+  auto interpreter = IdentityInterpreter();
+  // Simulate an inconsistent tensor where bytes is smaller than expected.
+  interpreter->tensor(0)->bytes = 0;
+
+  mojo::Remote<GraphExecutor> graph_executor;
+  const std::map<std::string, int> input_names = {{"in_tensor", 0}};
+  const std::map<std::string, int> output_names = {{"out_tensor", 1}};
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate =
+      std::make_unique<GraphExecutorDelegate>(
+          input_names, output_names, std::move(interpreter), "TestModel");
+  const GraphExecutorImpl graph_executor_impl(
+      std::move(graph_executor_delegate),
+      graph_executor.BindNewPipeAndPassReceiver());
+  ASSERT_TRUE(graph_executor.is_bound());
+
+  base::flat_map<std::string, TensorPtr> inputs;
+  inputs.emplace("in_tensor", NewTensor<double>({1}, {0.5}));
+  std::vector<std::string> outputs({"out_tensor"});
+
+  bool callback_done = false;
+  graph_executor->Execute(
+      std::move(inputs), std::move(outputs),
+      base::BindOnce(
+          [](bool* callback_done, const ExecuteResult result,
+             std::optional<std::vector<TensorPtr>> outputs) {
+            EXPECT_EQ(result, ExecuteResult::INPUT_SHAPE_ERROR);
+            EXPECT_FALSE(outputs.has_value());
+
+            *callback_done = true;
+          },
+          &callback_done));
+
+  base::RunLoop().RunUntilIdle();
+  EXPECT_TRUE(callback_done);
+}
+
+// Test graph execution where the output tensor buffer is smaller than the shape
+// requires.
+TEST(GraphExecutorTest, TestOutputBufferSizeTooSmall) {
+  auto interpreter = IdentityInterpreter();
+  // Simulate an inconsistent tensor where bytes is smaller than expected.
+  interpreter->tensor(1)->bytes = 0;
+
+  mojo::Remote<GraphExecutor> graph_executor;
+  const std::map<std::string, int> input_names = {{"in_tensor", 0}};
+  const std::map<std::string, int> output_names = {{"out_tensor", 1}};
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate =
+      std::make_unique<GraphExecutorDelegate>(
+          input_names, output_names, std::move(interpreter), "TestModel");
+  const GraphExecutorImpl graph_executor_impl(
+      std::move(graph_executor_delegate),
+      graph_executor.BindNewPipeAndPassReceiver());
+  ASSERT_TRUE(graph_executor.is_bound());
+
   base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace("in_tensor", NewTensor<double>({1}, {0.5}));
   std::vector<std::string> outputs({"out_tensor"});
