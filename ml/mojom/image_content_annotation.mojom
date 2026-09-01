@@ -65,11 +65,11 @@ struct ImageAnnotationResult {
 // Used to annotate images with image annotations (context).
 [Stable]
 interface ImageContentAnnotator {
-  // Annotate image contents from raw RGB image bytes.
-  AnnotateRawImage@0(mojo_base.mojom.ReadOnlySharedMemoryRegion rgb_bytes,
-                     uint32 width,
-                     uint32 height,
-                     uint32 line_stride) => (ImageAnnotationResult result);
+  // Deprecated.
+  REMOVED_0@0(mojo_base.mojom.ReadOnlySharedMemoryRegion rgb_bytes,
+              uint32 width,
+              uint32 height,
+              uint32 line_stride) => (ImageAnnotationResult result);
 
   // Annotate image contents from encoded image bytes.
   // Image will be decoded in ml service sandbox.

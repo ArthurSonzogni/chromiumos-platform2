@@ -55,24 +55,16 @@ class ImageContentAnnotatorImpl
   ~ImageContentAnnotatorImpl() override;
 
   // chromeos::machine_learning::mojom::ImageContentAnnotator:
-  void AnnotateRawImage(
-      mojo_base::mojom::ReadOnlySharedMemoryRegionPtr rgb_bytes,
-      uint32_t width,
-      uint32_t height,
-      uint32_t line_stride,
-      AnnotateRawImageCallback callback) override;
+  void REMOVED_0(mojo_base::mojom::ReadOnlySharedMemoryRegionPtr rgb_bytes,
+                 uint32_t width,
+                 uint32_t height,
+                 uint32_t line_stride,
+                 REMOVED_0Callback callback) override;
   void AnnotateEncodedImage(
       ::mojo_base::mojom::ReadOnlySharedMemoryRegionPtr encoded_image,
       AnnotateEncodedImageCallback callback) override;
 
-  void ErrorCallback(AnnotateRawImageCallback& callback,
-                     RequestMetrics& request_metrics);
-
-  void AnnotateImage(const uint8_t* rgb_bytes,
-                     uint32_t width,
-                     uint32_t height,
-                     uint32_t line_stride,
-                     AnnotateRawImageCallback callback,
+  void ErrorCallback(AnnotateEncodedImageCallback& callback,
                      RequestMetrics& request_metrics);
 
 #if USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION

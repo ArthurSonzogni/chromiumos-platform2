@@ -22,11 +22,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
-#if USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION
-#include <opencv2/core.hpp>
-#include <opencv2/imgcodecs/imgcodecs.hpp>
-#include <opencv2/imgproc.hpp>
-#endif
 
 #include "ml/handwriting.h"
 #include "ml/machine_learning_service_impl.h"
@@ -338,16 +333,11 @@ TEST(ImageAnnotationMultiProcessTest, DISABLED_LoadAndAnnotate) {
   std::string image_encoded;
   ASSERT_TRUE(base::ReadFileToString(
       base::FilePath("/build/share/ml_core/moon_big.jpg"), &image_encoded));
-  auto matrix =
-      cv::imdecode(cv::_InputArray(image_encoded.data(), image_encoded.size()),
-                   cv::IMREAD_COLOR);
-  cv::cvtColor(matrix, matrix, cv::COLOR_BGR2RGB);
-  std::vector<uint8_t> buf;
-  buf.assign(matrix.data, matrix.data + matrix.step * matrix.rows);
+  std::vector<uint8_t> buf(image_encoded.begin(), image_encoded.end());
   ImageAnnotationResultPtr results;
   bool annotate_callback_done = false;
-  annotator->AnnotateRawImage(
-      ToSharedMemory(buf), matrix.cols, matrix.rows, matrix.step,
+  annotator->AnnotateEncodedImage(
+      ToSharedMemory(buf),
       base::BindLambdaForTesting([&](ImageAnnotationResultPtr p) {
         results.Swap(&p);
         // Post a task to disconnect the mojom connection to test whether

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "ml/machine_learning_service_impl.h"
+
 #include <iterator>
 #include <memory>
 #include <optional>
@@ -19,18 +21,12 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/system/platform_handle.h>
-#if USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION
-#include <opencv2/core.hpp>
-#include <opencv2/imgcodecs/imgcodecs.hpp>
-#include <opencv2/imgproc.hpp>
-#endif
 
 #include "ml/document_scanner_library.h"
 #include "ml/grammar_library.h"
 #include "ml/grammar_proto_mojom_conversion.h"
 #include "ml/handwriting.h"
 #include "ml/handwriting_proto_mojom_conversion.h"
-#include "ml/machine_learning_service_impl.h"
 #include "ml/mojom/document_scanner.mojom.h"
 #include "ml/mojom/grammar_checker.mojom.h"
 #include "ml/mojom/graph_executor.mojom.h"
@@ -2204,58 +2200,6 @@ class ImageContentAnnotationTest : public ::testing::Test {
       annotator_;
   base::FilePath dlc_path_;
 };
-
-TEST_F(ImageContentAnnotationTest, AnnotateRawImage) {
-  Connect();
-
-  std::string image_encoded;
-  ASSERT_TRUE(base::ReadFileToString(
-      base::FilePath("/build/share/ml_core/moon_big.jpg"), &image_encoded));
-  auto matrix =
-      cv::imdecode(cv::_InputArray(image_encoded.data(), image_encoded.size()),
-                   cv::IMREAD_COLOR);
-  cv::cvtColor(matrix, matrix, cv::COLOR_BGR2RGB);
-  std::vector<uint8_t> buf;
-  buf.assign(matrix.data, matrix.data + matrix.step * matrix.rows);
-
-  ImageAnnotationResultPtr results;
-  annotator_->AnnotateRawImage(
-      ToSharedMemory(buf), matrix.cols, matrix.rows, matrix.step,
-      base::BindOnce([](ImageAnnotationResultPtr* results,
-                        ImageAnnotationResultPtr p) { results->Swap(&p); },
-                     &results));
-  base::RunLoop().RunUntilIdle();
-  ASSERT_NE(results.get(), nullptr);
-  ASSERT_EQ(results->status, ImageAnnotationResult::Status::OK);
-  ASSERT_GE(results->annotations.size(), 1);
-}
-
-TEST_F(ImageContentAnnotationTest, AnnotateRawImageRegionTooSmall) {
-  Connect();
-
-  std::string image_encoded;
-  ASSERT_TRUE(base::ReadFileToString(
-      base::FilePath("/build/share/ml_core/moon_big.jpg"), &image_encoded));
-  auto matrix =
-      cv::imdecode(cv::_InputArray(image_encoded.data(), image_encoded.size()),
-                   cv::IMREAD_COLOR);
-  cv::cvtColor(matrix, matrix, cv::COLOR_BGR2RGB);
-  std::vector<uint8_t> buf;
-  buf.assign(matrix.data, matrix.data + matrix.step * matrix.rows);
-  // Truncate buffer so memory region wont fit the provided params.
-  buf.resize(buf.size() / 2);
-
-  ImageAnnotationResultPtr results;
-  annotator_->AnnotateRawImage(
-      ToSharedMemory(buf), matrix.cols, matrix.rows, matrix.step,
-      base::BindOnce([](ImageAnnotationResultPtr* results,
-                        ImageAnnotationResultPtr p) { results->Swap(&p); },
-                     &results));
-  base::RunLoop().RunUntilIdle();
-  ASSERT_NE(results.get(), nullptr);
-  ASSERT_EQ(results->status, ImageAnnotationResult::Status::ERROR);
-  ASSERT_EQ(results->annotations.size(), 0);
-}
 
 TEST_F(ImageContentAnnotationTest, AnnotateEncodedImage) {
   Connect();

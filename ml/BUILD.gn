@@ -355,7 +355,6 @@ if (use.test) {
     }
     if (use.ondevice_image_content_annotation) {
       sources += [ "image_content_annotation_test.cc" ]
-      pkg_deps += [ "opencv4" ]
     }
     if (use.ml_benchmark_drivers) {
       sources += [ "benchmark_test.cc" ]

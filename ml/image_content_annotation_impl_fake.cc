@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "ml/image_content_annotation_impl.h"
-
 #include <utility>
 
 #include <base/check.h>
+#include <base/notimplemented.h>
 #include <brillo/message_loops/message_loop.h>
 
 #include "base/debug/leak_annotations.h"
+#include "ml/image_content_annotation_impl.h"
 #include "ml/mojom/image_content_annotation.mojom.h"
 #include "ml/request_metrics.h"
 
@@ -56,15 +56,13 @@ ImageContentAnnotatorImpl::ImageContentAnnotatorImpl(
 
 ImageContentAnnotatorImpl::~ImageContentAnnotatorImpl() = default;
 
-void ImageContentAnnotatorImpl::AnnotateRawImage(
+void ImageContentAnnotatorImpl::REMOVED_0(
     mojo_base::mojom::ReadOnlySharedMemoryRegionPtr rgb_bytes,
     uint32_t width,
     uint32_t height,
     uint32_t line_stride,
-    AnnotateRawImageCallback callback) {
-  ImageAnnotationResultPtr result = ImageAnnotationResult::New();
-  result->status = ImageAnnotationResult::Status::ERROR;
-  std::move(callback).Run(std::move(result));
+    REMOVED_0Callback callback) {
+  NOTIMPLEMENTED();
 }
 
 void ImageContentAnnotatorImpl::AnnotateEncodedImage(

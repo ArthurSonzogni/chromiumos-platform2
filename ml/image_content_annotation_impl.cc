@@ -10,6 +10,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/memory/read_only_shared_memory_region.h>
+#include <base/notimplemented.h>
 #include <brillo/message_loops/message_loop.h>
 
 #include "base/debug/leak_annotations.h"
@@ -106,63 +107,20 @@ ImageContentAnnotatorImpl::~ImageContentAnnotatorImpl() {
 }
 
 void ImageContentAnnotatorImpl::ErrorCallback(
-    AnnotateRawImageCallback& callback, RequestMetrics& request_metrics) {
+    AnnotateEncodedImageCallback& callback, RequestMetrics& request_metrics) {
   ImageAnnotationResultPtr result = ImageAnnotationResult::New();
   result->status = ImageAnnotationResult::Status::ERROR;
   request_metrics.RecordRequestEvent(result->status);
   std::move(callback).Run(std::move(result));
 }
 
-void ImageContentAnnotatorImpl::AnnotateImage(const uint8_t* rgb_bytes,
-                                              uint32_t width,
-                                              uint32_t height,
-                                              uint32_t line_stride,
-                                              AnnotateRawImageCallback callback,
-                                              RequestMetrics& request_metrics) {
-  chrome_knowledge::DetectionResultList annotation_scores;
-  if (!library_->Detect(annotator_, rgb_bytes, width, height,
-                        &annotation_scores)) {
-    LOG(ERROR) << "Failed to annotate image.";
-    ErrorCallback(callback, request_metrics);
-    return;
-  }
-
-  ImageAnnotationResultPtr result = ImageAnnotationResult::New();
-  result->status = ImageAnnotationResult::Status::OK;
-  for (const auto& detection : annotation_scores.detection()) {
-    result->annotations.push_back(AnnotationScorePtrFromProto(detection));
-  }
-  request_metrics.FinishRecordingPerformanceMetrics();
-  request_metrics.RecordRequestEvent(result->status);
-  std::move(callback).Run(std::move(result));
-}
-
-void ImageContentAnnotatorImpl::AnnotateRawImage(
+void ImageContentAnnotatorImpl::REMOVED_0(
     mojo_base::mojom::ReadOnlySharedMemoryRegionPtr rgb_bytes,
     uint32_t width,
     uint32_t height,
     uint32_t line_stride,
-    AnnotateRawImageCallback callback) {
-  RequestMetrics request_metrics("ImageAnnotator", "AnnotateRawImage");
-  request_metrics.StartRecordingPerformanceMetrics();
-
-  base::ReadOnlySharedMemoryMapping mapping;
-  if (!MapRegion(
-          mojo::UnwrapReadOnlySharedMemoryRegion(std::move(rgb_bytes->buffer)),
-          &mapping)) {
-    LOG(ERROR) << "Failed to map region";
-    ErrorCallback(callback, request_metrics);
-    return;
-  }
-  base::span<const uint8_t> bytes = mapping.GetMemoryAsSpan<uint8_t>();
-  if (line_stride * height > bytes.size_bytes()) {
-    LOG(ERROR) << "Memory region too small";
-    ErrorCallback(callback, request_metrics);
-    return;
-  }
-
-  AnnotateImage(bytes.data(), width, height, line_stride, std::move(callback),
-                request_metrics);
+    REMOVED_0Callback callback) {
+  NOTIMPLEMENTED();
 }
 
 void ImageContentAnnotatorImpl::AnnotateEncodedImage(
