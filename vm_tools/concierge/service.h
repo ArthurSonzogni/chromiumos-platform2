@@ -38,6 +38,7 @@
 #include <dbus/message.h>
 #include <featured/feature_library.h>
 #include <grpcpp/grpcpp.h>
+#include <gtest/gtest_prod.h>
 #include <metrics/metrics_library.h>
 #include <spaced/disk_usage_proxy.h>
 #include <vm_cicerone/cicerone_service.pb.h>
@@ -715,6 +716,9 @@ class Service final : public org::chromium::VmConciergeInterface,
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   void VmInstallStateSignal(VmInstallState state);
+
+  FRIEND_TEST(ServiceTest, CreateDiskImageRejectsCustomMkfsOpts);
+  FRIEND_TEST(ServiceTest, CreateDiskImageRejectsCustomTune2fsOpts);
 
   // This should be the last member of the class.
   base::WeakPtrFactory<Service> weak_ptr_factory_;

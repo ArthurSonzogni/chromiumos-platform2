@@ -46,6 +46,8 @@ dbus::Bus::Options GetDbusOptions() {
   return options;
 }
 
+}  // namespace
+
 class ServiceTest : public testing::Test {
  public:
   ServiceTest() {
@@ -104,8 +106,6 @@ class ServiceTest : public testing::Test {
           dbus::ObjectPath("/fake/object/path"));
 };
 
-}  // namespace
-
 TEST_F(ServiceTest, InitializationSuccess) {
   EXPECT_CALL(*mock_bus_, RequestOwnership(Eq(kVmConciergeInterface), _, _))
       .WillOnce(
@@ -141,6 +141,74 @@ TEST_F(ServiceTest, InitializationFailureToOwnInterface) {
       mock_bus_.get(), -1, base::BindOnce(&FakeMmServiceFactory),
       base::BindLambdaForTesting([&](std::unique_ptr<Service> service) {
         EXPECT_FALSE(service);
+        loop.Quit();
+      }));
+  loop.Run();
+}
+
+TEST_F(ServiceTest, CreateDiskImageRejectsCustomMkfsOpts) {
+  EXPECT_CALL(*mock_bus_, RequestOwnership(Eq(kVmConciergeInterface), _, _))
+      .WillOnce(
+          Invoke([](const std::string& service_name,
+                    dbus::Bus::ServiceOwnershipOptions options,
+                    dbus::Bus::OnOwnershipCallback on_ownership_callback) {
+            std::move(on_ownership_callback)
+                .Run(service_name, /*success=*/true);
+          }));
+
+  base::RunLoop loop;
+  Service::CreateAndHost(
+      mock_bus_.get(), -1, base::BindOnce(&FakeMmServiceFactory),
+      base::BindLambdaForTesting([&](std::unique_ptr<Service> service) {
+        ASSERT_TRUE(service);
+
+        CreateDiskImageRequest request;
+        request.set_cryptohome_id("0123456789abcdef0123456789abcdef01234567");
+        request.set_vm_name("test_vm");
+        request.set_image_type(DISK_IMAGE_RAW);
+        request.set_filesystem_type(FilesystemType::EXT4);
+        request.add_mkfs_opts("-Ocasefold");
+
+        CreateDiskImageResponse response =
+            service->CreateDiskImageInternal(request, base::ScopedFD());
+        EXPECT_EQ(response.status(), DISK_STATUS_FAILED);
+        EXPECT_EQ(response.failure_reason(),
+                  "Custom mkfs_opts and tune2fs_opts are not supported");
+
+        loop.Quit();
+      }));
+  loop.Run();
+}
+
+TEST_F(ServiceTest, CreateDiskImageRejectsCustomTune2fsOpts) {
+  EXPECT_CALL(*mock_bus_, RequestOwnership(Eq(kVmConciergeInterface), _, _))
+      .WillOnce(
+          Invoke([](const std::string& service_name,
+                    dbus::Bus::ServiceOwnershipOptions options,
+                    dbus::Bus::OnOwnershipCallback on_ownership_callback) {
+            std::move(on_ownership_callback)
+                .Run(service_name, /*success=*/true);
+          }));
+
+  base::RunLoop loop;
+  Service::CreateAndHost(
+      mock_bus_.get(), -1, base::BindOnce(&FakeMmServiceFactory),
+      base::BindLambdaForTesting([&](std::unique_ptr<Service> service) {
+        ASSERT_TRUE(service);
+
+        CreateDiskImageRequest request;
+        request.set_cryptohome_id("0123456789abcdef0123456789abcdef01234567");
+        request.set_vm_name("test_vm");
+        request.set_image_type(DISK_IMAGE_RAW);
+        request.set_filesystem_type(FilesystemType::EXT4);
+        request.add_tune2fs_opts("-Ocasefold");
+
+        CreateDiskImageResponse response =
+            service->CreateDiskImageInternal(request, base::ScopedFD());
+        EXPECT_EQ(response.status(), DISK_STATUS_FAILED);
+        EXPECT_EQ(response.failure_reason(),
+                  "Custom mkfs_opts and tune2fs_opts are not supported");
+
         loop.Quit();
       }));
   loop.Run();
