@@ -92,18 +92,20 @@ struct Token {
 
 // Represents StringAtom node.
 struct StringAtom {
-  std::vector<Token> components;
+  std::string::const_iterator begin;
+  std::string::const_iterator end;
+  std::string value;
 };
 
 struct VariableAssignment {
-  Token variable;
+  StringAtom variable;
   StringAtom new_value;
 };
 
 // Represents Command node.
 struct Command {
   std::vector<VariableAssignment> variables_with_values;
-  Token application;
+  StringAtom application;
   std::vector<StringAtom> parameters;
 };
 
@@ -124,9 +126,6 @@ struct Pipeline {
 struct Script {
   std::vector<Pipeline> pipelines;
 };
-
-// Helper function. Returns string value of given StringAtom.
-std::string Value(const StringAtom& str);
 
 // Helper functions. Return positions in the executed script corresponding to
 // the beginning of an element given as a parameter.

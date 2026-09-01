@@ -14,19 +14,10 @@ namespace {
 
 // Returns the position of the beginning of given StringAtom.
 std::string::const_iterator Position(const StringAtom& str) {
-  DCHECK(!str.components.empty());
-  return str.components.front().begin;
+  return str.begin;
 }
 
 }  // namespace
-
-std::string Value(const StringAtom& str) {
-  std::string out;
-  for (auto& s : str.components) {
-    out += s.value;
-  }
-  return out;
-}
 
 std::string::const_iterator Position(const PipeSegment& segment) {
   if (segment.command) {

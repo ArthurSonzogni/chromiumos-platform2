@@ -93,14 +93,14 @@ std::unique_ptr<brillo::Process> ProcessLauncher::StartProcess(
   // Saves to a map all environment variables to set.
   std::map<std::string, std::string> vars;
   for (const auto& assignment : command.variables_with_values) {
-    vars[assignment.variable.value] = Value(assignment.new_value);
+    vars[assignment.variable.value] = assignment.new_value.value;
   }
 
   // Creates and runs the process.
   std::unique_ptr<brillo::Process> process(new brillo::ProcessImpl());
   process->AddArg(command.application.value);
   for (const StringAtom& param : command.parameters) {
-    process->AddArg(Value(param));
+    process->AddArg(param.value);
   }
   if (input_fd >= 0) {
     process->BindFd(input_fd, 0);

@@ -33,6 +33,13 @@ bool MatchAPrefixOfPipeSegment(const Token& token) {
   return false;
 }
 
+void Assign(StringAtom* out, const Token& token) {
+  DCHECK(out != nullptr);
+  out->begin = token.begin;
+  out->end = token.end;
+  out->value = token.value;
+}
+
 }  // namespace
 
 // This class encapsulates an iterator representing the current position
@@ -316,7 +323,7 @@ bool Parser::ParseCommand(Command* out) {
       }
       // Save the variable and parse its value.
       out->variables_with_values.emplace_back();
-      out->variables_with_values.back().variable = first;
+      Assign(&out->variables_with_values.back().variable, first);
       ParseString(&out->variables_with_values.back().new_value);
       // Now we expect Space.
       if (!tokens_->CurrentTokenIsSpace()) {
@@ -332,7 +339,7 @@ bool Parser::ParseCommand(Command* out) {
       }
     } else {
       // The token |first| is an Application.
-      out->application = first;
+      Assign(&out->application, first);
       // The current token is the first token after the Application.
       // Exit the loop and parse parameters.
       break;
@@ -374,9 +381,12 @@ void Parser::ParseString(StringAtom* out) {
   DCHECK(tokens_->CurrentTokenIsAnyString() ||
          tokens_->CurrentTokenIsByte('='));
 
+  out->begin = tokens_->GetCurrentToken().begin;
+  out->value = "";
   while (tokens_->CurrentTokenIsAnyString() ||
          tokens_->CurrentTokenIsByte('=')) {
-    out->components.push_back(tokens_->GetCurrentToken());
+    out->end = tokens_->GetCurrentToken().end;
+    out->value.append(tokens_->GetCurrentToken().value);
     tokens_->MoveToNext();
   }
 }

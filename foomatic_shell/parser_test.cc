@@ -2,14 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "foomatic_shell/grammar.h"
 #include "foomatic_shell/parser.h"
-#include "foomatic_shell/scanner.h"
 
-#include <gtest/gtest.h>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <gtest/gtest.h>
+
+#include "foomatic_shell/grammar.h"
+#include "foomatic_shell/scanner.h"
 
 namespace foomatic_shell {
 
@@ -31,15 +33,7 @@ std::string CreateRepresentation(const std::vector<Element>& elements) {
 
 // A string representation of StringAtom is its value.
 std::string CreateRepresentation(const StringAtom& str) {
-  std::string out;
-  for (auto& s : str.components) {
-    if (s.type == Token::Type::kLiteralString) {
-      out += std::string(s.begin, s.end);
-    } else {
-      out += s.value;
-    }
-  }
-  return out;
+  return str.value;
 }
 
 // A string representation of variable assignment is a name of variable and
@@ -48,7 +42,7 @@ std::string CreateRepresentation(const VariableAssignment& variable) {
   std::string out;
   out = variable.variable.value;
   out += "=";
-  out += CreateRepresentation(variable.new_value);
+  out += variable.new_value.value;
   return out;
 }
 

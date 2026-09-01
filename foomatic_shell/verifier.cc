@@ -6,6 +6,7 @@
 
 #include <set>
 #include <string_view>
+#include <utility>
 
 #include <base/check.h>
 #include <base/logging.h>
@@ -79,7 +80,7 @@ bool Verifier::VerifyCommand(Command* command) {
       return true;
     }
     if (command->parameters.size() == 1 &&
-        Value(command->parameters.front()) == "-") {
+        command->parameters.front().value == "-") {
       return true;
     }
     message_ = "cat: disallowed parameter";
@@ -95,7 +96,7 @@ bool Verifier::VerifyCommand(Command* command) {
   // or "--set".
   if (cmd == "date") {
     for (auto& parameter : command->parameters) {
-      const std::string param = Value(parameter);
+      const std::string& param = parameter.value;
       if (HasPrefix(param, "-s") || HasPrefix(param, "--set")) {
         message_ = "date: disallowed parameter";
         return false;
@@ -136,7 +137,7 @@ bool Verifier::VerifyCommand(Command* command) {
         value_expected = false;
         continue;
       }
-      const std::string param = Value(parameter);
+      const std::string& param = parameter.value;
       // We do not care about command line parameters shorter than two
       // characters or not started with '-'.
       if (param.size() < 2 || param[0] != '-') {
@@ -170,12 +171,10 @@ bool Verifier::VerifyCommand(Command* command) {
       message_ = "sed: the last parameter has missing value";
       return false;
     }
-    Token token;
-    token.type = Token::Type::kNativeString;
-    token.value = "--sandbox";
-    token.begin = token.end = command->application.end;
-    const StringAtom string_atom = {{token}};
-    command->parameters.push_back(string_atom);
+    StringAtom string_atom;
+    string_atom.value = "--sandbox";
+    string_atom.begin = string_atom.end = command->application.end;
+    command->parameters.push_back(std::move(string_atom));
     return true;
   }
 
@@ -195,7 +194,7 @@ bool Verifier::VerifyGs(const std::vector<StringAtom>& parameters) {
   bool safer = false;
   bool output_file = false;
   for (auto& parameter : parameters) {
-    const std::string param = Value(parameter);
+    const std::string& param = parameter.value;
     if (param == "-dPARANOIDSAFER" || param == "-dSAFER") {
       safer = true;
       continue;
