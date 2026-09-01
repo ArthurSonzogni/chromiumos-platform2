@@ -189,15 +189,74 @@ TEST(Verifier, printf) {
 }
 
 TEST(Verifier, sed) {
-  EXPECT_TRUE(VerifyScript("sed 's/foo/bar/' somefile"));
+  EXPECT_TRUE(VerifyScript("sed"));
+  EXPECT_TRUE(VerifyScript("sed -"));
+  EXPECT_TRUE(VerifyScript("sed 's/foo/bar/' -"));
+}
+
+TEST(Verifier, sedAddSandbox) {
+  const std::string input = "sed 's/foo/bar/' -";
+  Scanner scanner(input);
+  std::vector<Token> tokens;
+  ASSERT_TRUE(scanner.ParseWholeInput(&tokens));
+  Parser parser(std::move(tokens));
+  Script script;
+  ASSERT_TRUE(parser.ParseWholeInput(&script));
+  Verifier verifier;
+  EXPECT_TRUE(verifier.VerifyScript(&script));
+  ASSERT_EQ(script.pipelines.size(), 1);
+  ASSERT_EQ(script.pipelines[0].segments.size(), 1);
+  Command* cmd = script.pipelines[0].segments[0].command.get();
+  ASSERT_NE(cmd, nullptr);
+  ASSERT_EQ(cmd->parameters.size(), 3);
+  EXPECT_EQ(cmd->parameters[0].value, "--sandbox");
 }
 
 TEST(Verifier, sedFail) {
-  EXPECT_FALSE(VerifyScript("sed -ui 's/foo/bar/' somefile"));
+  EXPECT_FALSE(VerifyScript("sed -ui 's/foo/bar/' -"));
 }
 
 TEST(Verifier, sedFail2) {
-  EXPECT_FALSE(VerifyScript("sed --in-place 's/foo/bar/' somefile"));
+  EXPECT_FALSE(VerifyScript("sed --in-place 's/foo/bar/' -"));
+}
+
+TEST(Verifier, sedAllowedInputFile) {
+  EXPECT_TRUE(VerifyScript("sed -- /my/expresion -"));
+  EXPECT_TRUE(VerifyScript("sed -e /my/expresion -- -"));
+}
+
+TEST(Verifier, sedFailForbiddenInputFile) {
+  EXPECT_FALSE(VerifyScript("sed -- /my/expresion /path/file"));
+  EXPECT_FALSE(VerifyScript("sed -e /my/expresion -- /path/file"));
+  EXPECT_FALSE(VerifyScript("sed --expression=/my/expresion -- /path/file"));
+}
+
+TEST(Verifier, sedForbiddenParameter) {
+  EXPECT_FALSE(VerifyScript("sed -f's/foo/bar/' -"));
+  EXPECT_FALSE(VerifyScript("sed --file='s/foo/bar/' -"));
+}
+
+TEST(Verifier, sedExpression) {
+  // First non-option parameter is an expression, if no -e, --expression
+  // parameters were given. All other non-option parameters different than "-"
+  // are forbidden.
+  EXPECT_TRUE(VerifyScript("sed /my/expresion"));
+  EXPECT_FALSE(VerifyScript("sed exp /my/expresion"));
+  EXPECT_TRUE(VerifyScript("sed -e /my/expresion"));
+  EXPECT_TRUE(VerifyScript("sed -eexp"));
+  EXPECT_FALSE(VerifyScript("sed -e /my/expresion exp"));
+  EXPECT_FALSE(VerifyScript("sed --e /my/expresion exp"));
+  EXPECT_FALSE(VerifyScript("sed exp -eexp"));
+  EXPECT_FALSE(VerifyScript("sed exp --e=exp"));
+  EXPECT_TRUE(VerifyScript("sed --expression=/my/expresion"));
+  EXPECT_TRUE(VerifyScript("sed --expression /my/expresion"));
+  EXPECT_FALSE(VerifyScript("sed /my/expresion --expression exp"));
+  EXPECT_FALSE(VerifyScript("sed --expression= /my/expresion"));
+  EXPECT_FALSE(VerifyScript("sed exp --expression=/my/expresion"));
+  // Parameters -e, --expression must be followed by an expression.
+  EXPECT_FALSE(VerifyScript("sed --expression"));
+  EXPECT_FALSE(VerifyScript("sed --e"));
+  EXPECT_FALSE(VerifyScript("sed -e"));
 }
 
 TEST(Verifier, disallowedCommand) {

@@ -51,8 +51,9 @@ std::string FirstWithPrefix(const std::vector<std::string>& strs,
   return "";
 }
 
-bool Contains(const std::vector<char>& chars, char c) {
-  return std::find(chars.begin(), chars.end(), c) != chars.end();
+template <typename element>
+bool Contains(const std::vector<element>& v, element e) {
+  return std::find(v.begin(), v.end(), e) != v.end();
 }
 
 // Parse command line GNU parameters. Only parameters defined in the first four
@@ -236,7 +237,7 @@ bool Verifier::VerifyCommand(Command* command) {
     return true;
   }
 
-  // The "gs" command is verified in separate method.
+  // The "gs" command is verified in a separate method.
   if (cmd == "gs") {
     return VerifyGs(command->parameters);
   }
@@ -253,54 +254,16 @@ bool Verifier::VerifyCommand(Command* command) {
     return true;
   }
 
-  // The "sed" command is allowed <=> it has no parameters with prefixes "-i"
-  // or "--in-place". Moreover, the "--sandbox" parameter is added.
+  // The "sed" command is verified in a separate method.
   if (cmd == "sed") {
-    bool value_expected = false;
-    for (auto& parameter : command->parameters) {
-      if (value_expected) {
-        // This string is a value required by the previous parameter.
-        value_expected = false;
-        continue;
-      }
-      const std::string& param = parameter.value;
-      // We do not care about command line parameters shorter than two
-      // characters or not started with '-'.
-      if (param.size() < 2 || param[0] != '-') {
-        continue;
-      }
-      // If the parameter begins with '--' there is only one case to check.
-      if (param[1] == '-') {
-        if (HasPrefix(param, "--in-place")) {
-          message_ = "sed: disallowed parameter";
-          return false;
-        }
-        continue;
-      }
-      // The parameter begins with single '-'. It may contain several options
-      // glued together.
-      for (size_t i = 1; i < param.size(); ++i) {
-        if (param[i] == 'i') {
-          message_ = "sed: disallowed parameter";
-          return false;
-        }
-        if (param[i] == 'e' || param[i] == 'f') {
-          // These options require a value. If it is the last character of
-          // the parameter the value is provided in the next parameter.
-          // Otherwise, the remaining part of the parameter is the value.
-          value_expected = (i == param.size() - 1);
-          break;
-        }
-      }
-    }
-    if (value_expected) {
-      message_ = "sed: the last parameter has missing value";
+    if (!VerifySed(command->parameters)) {
       return false;
     }
+    // The "--sandbox" parameter is added as the first parameter.
     StringAtom string_atom;
     string_atom.value = "--sandbox";
     string_atom.begin = string_atom.end = command->application.end;
-    command->parameters.push_back(std::move(string_atom));
+    command->parameters.insert(command->parameters.begin(), string_atom);
     return true;
   }
 
@@ -377,6 +340,45 @@ bool Verifier::VerifyGs(const std::vector<StringAtom>& parameters) {
     message_ = "gs: the parameter -sOutputFile=- is missing";
     return false;
   }
+  return true;
+}
+
+// Verify parameters for "sed" command. Forbidden parameters:
+//   * -f script-file, --file=script-file
+//   * -i[SUFFIX], --in-place[=SUFFIX]
+// The only allowed input file is '-'.
+bool Verifier::VerifySed(const std::vector<StringAtom>& parameters) {
+  static const auto kLongParamsWithoutArg = std::vector<std::string>{
+      "quiet",           "silent",   "debug",   "follow-symlinks", "posix",
+      "regexp-extended", "separate", "sandbox", "unbuffered",      "null-data"};
+  static const auto kLongParamsWithArg =
+      std::vector<std::string>{"expression", "line-length"};
+  static const auto kShortParamsWithoutArg =
+      std::vector{'n', 'E', 'r', 's', 'u', 'z'};
+  static const auto kShortParamsWithArg = std::vector{'e', 'l'};
+  std::vector<std::string> optionParams;
+  std::vector<std::string> nonOptionParams;
+  if (!ParseGnuParameters(kShortParamsWithoutArg, kShortParamsWithArg,
+                          kLongParamsWithoutArg, kLongParamsWithArg, parameters,
+                          optionParams, nonOptionParams)) {
+    message_ = "sed: unknown or banned parameter";
+    return false;
+  }
+
+  // If no expressions have been provided, the first non-option parameter is an
+  // expression.
+  if (!nonOptionParams.empty() && !Contains<std::string>(optionParams, "-e") &&
+      !Contains<std::string>(optionParams, "--expression")) {
+    nonOptionParams.erase(nonOptionParams.begin());
+  }
+
+  for (const auto& param : nonOptionParams) {
+    if (param != "-") {
+      message_ = "sed: file parameter not equals '-'";
+      return false;
+    }
+  }
+
   return true;
 }
 

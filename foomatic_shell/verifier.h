@@ -38,6 +38,8 @@ class Verifier {
   bool VerifyCut(const std::vector<StringAtom>& parameters);
   // Verifies parameters of "gs" command.
   bool VerifyGs(const std::vector<StringAtom>& parameters);
+  // Verifies parameters of "sed" command.
+  bool VerifySed(const std::vector<StringAtom>& parameters);
 
   // Internal field holding an error message from the last call of
   // VerifyScript(...).
