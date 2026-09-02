@@ -643,29 +643,71 @@ class RSASignerVerifierImplPSS : public RSASignerVerifier {
  public:
   virtual ~RSASignerVerifierImplPSS() = default;
 
-  bool Sign(crypto::ScopedRSA rsa,
-            SessionImpl::OperationContext* context) final {
-    if (RSA_size(rsa.get()) > kMaxRSAOutputBytes) {
+  static CK_RV ValidateRSAPSS(const RSA* rsa,
+                              const SessionImpl::OperationContext* context,
+                              const string& input_data,
+                              const CK_RSA_PKCS_PSS_PARAMS** pss_params_out,
+                              const EVP_MD** md_out,
+                              const EVP_MD** mgf1_hash_out) {
+    if (RSA_size(rsa) > kMaxRSAOutputBytes) {
       LOG(ERROR) << __func__ << ": RSA Key size is too large for RSA PSS.";
-      return false;
+      return CKR_KEY_SIZE_RANGE;
     }
-    uint8_t buffer[kMaxRSAOutputBytes];
+
     DigestAlgorithm digest_algorithm = GetDigestAlgorithm(context->mechanism_);
-    // Parse the RSA PSS Parameters.
     const CK_RSA_PKCS_PSS_PARAMS* pss_params = nullptr;
     const EVP_MD* mgf1_hash = nullptr;
     if (!ParseRSAPSSParams(context->parameter_, digest_algorithm, &pss_params,
                            &mgf1_hash, &digest_algorithm)) {
       LOG(ERROR) << __func__ << ": Failed to parse RSA PSS parameters.";
+      return CKR_MECHANISM_PARAM_INVALID;
+    }
+
+    const EVP_MD* md = GetOpenSSLDigest(digest_algorithm);
+    if (!md) {
+      LOG(ERROR) << __func__ << ": Unsupported digest algorithm: "
+                 << static_cast<int>(digest_algorithm);
+      return CKR_MECHANISM_INVALID;
+    }
+    int expected_size = EVP_MD_size(md);
+    if (expected_size <= 0) {
+      LOG(ERROR) << __func__ << ": Invalid digest size: " << expected_size;
+      return CKR_FUNCTION_FAILED;
+    }
+    if (input_data.size() != static_cast<size_t>(expected_size)) {
+      LOG(ERROR) << __func__ << ": Size mismatch with RSAPSS, expected "
+                 << expected_size << ", actual " << input_data.size();
+      return CKR_SIGNATURE_INVALID;
+    }
+    if (static_cast<size_t>(expected_size) + pss_params->sLen + 2 >
+        static_cast<size_t>(RSA_size(rsa))) {
+      LOG(ERROR) << __func__
+                 << ": Key size too small for hash and salt length.";
+      return CKR_KEY_SIZE_RANGE;
+    }
+
+    *pss_params_out = pss_params;
+    *md_out = md;
+    *mgf1_hash_out = mgf1_hash;
+    return CKR_OK;
+  }
+
+  bool Sign(crypto::ScopedRSA rsa,
+            SessionImpl::OperationContext* context) final {
+    const CK_RSA_PKCS_PSS_PARAMS* pss_params = nullptr;
+    const EVP_MD* md = nullptr;
+    const EVP_MD* mgf1_hash = nullptr;
+    if (ValidateRSAPSS(rsa.get(), context, context->data_, &pss_params, &md,
+                       &mgf1_hash) != CKR_OK) {
       return false;
     }
 
+    uint8_t buffer[kMaxRSAOutputBytes];
     string padded_data(RSA_size(rsa.get()), 0);
     if (RSA_padding_add_PKCS1_PSS_mgf1(
             rsa.get(), reinterpret_cast<unsigned char*>(std::data(padded_data)),
             reinterpret_cast<const unsigned char*>(std::data(context->data_)),
-            GetOpenSSLDigest(digest_algorithm), mgf1_hash,
-            pss_params->sLen) != 1) {
+            md, mgf1_hash, static_cast<int>(pss_params->sLen)) != 1) {
       LOG(ERROR) << __func__ << ": Failed to produce the PSA PSS paddings.";
       return false;
     }
@@ -680,36 +722,22 @@ class RSASignerVerifierImplPSS : public RSASignerVerifier {
     // Set the signature in context->data_.
     context->data_ = string(reinterpret_cast<char*>(buffer), length);
     return true;
-  };
+  }
 
   CK_RV Verify(crypto::ScopedRSA rsa,
                SessionImpl::OperationContext* context,
                const string& digest,
                const string& signature) final {
-    if (RSA_size(rsa.get()) > kMaxRSAOutputBytes) {
-      LOG(ERROR) << __func__ << ": RSA Key size is too large for RSA PSS.";
-      return CKR_KEY_SIZE_RANGE;
-    }
-
-    DigestAlgorithm digest_algorithm = GetDigestAlgorithm(context->mechanism_);
-    uint8_t buffer[kMaxRSAOutputBytes];
-
-    // Parse the RSA PSS Parameters.
     const CK_RSA_PKCS_PSS_PARAMS* pss_params = nullptr;
+    const EVP_MD* md = nullptr;
     const EVP_MD* mgf1_hash = nullptr;
-    if (!ParseRSAPSSParams(context->parameter_, digest_algorithm, &pss_params,
-                           &mgf1_hash, &digest_algorithm)) {
-      LOG(ERROR) << __func__ << ": Failed to parse RSA PSS parameters.";
-      return CKR_SIGNATURE_INVALID;
+    CK_RV rv = ValidateRSAPSS(rsa.get(), context, digest, &pss_params, &md,
+                              &mgf1_hash);
+    if (rv != CKR_OK) {
+      return rv;
     }
 
-    int expected_size = EVP_MD_size(GetOpenSSLDigest(digest_algorithm));
-    if (digest.size() != expected_size) {
-      LOG(ERROR) << __func__ << ": Size mismatch with RSAPSS, expected "
-                 << expected_size << ", actual " << digest.size();
-      return CKR_SIGNATURE_INVALID;
-    }
-
+    uint8_t buffer[kMaxRSAOutputBytes];
     int length = RSA_public_decrypt(signature.length(),
                                     ConvertStringToByteBuffer(signature.data()),
                                     buffer, rsa.get(), RSA_NO_PADDING);
@@ -720,13 +748,12 @@ class RSASignerVerifierImplPSS : public RSASignerVerifier {
     }
     if (RSA_verify_PKCS1_PSS_mgf1(
             rsa.get(), reinterpret_cast<const unsigned char*>(digest.data()),
-            GetOpenSSLDigest(digest_algorithm), mgf1_hash, buffer,
-            pss_params->sLen) != 1) {
+            md, mgf1_hash, buffer, static_cast<int>(pss_params->sLen)) != 1) {
       LOG(ERROR) << __func__ << ": Incorrect PSS padding.";
       return CKR_SIGNATURE_INVALID;
     }
     return CKR_OK;
-  };
+  }
 };
 
 std::unique_ptr<RSASignerVerifier> RSASignerVerifier::GetForMechanism(
@@ -807,7 +834,12 @@ std::optional<hwsec::SigningOptions::PssParams> GetHwsecPssParams(
   };
 }
 
-hwsec::SigningOptions ToHwsecSigningOptions(
+// Returns std::nullopt if the caller-supplied mechanism parameters cannot be
+// parsed. Callers MUST fail the operation in that case. Returning a partially
+// populated hwsec::SigningOptions would request kRsassaPss with no PssParams,
+// and libhwsec substitutes a default maximal salt length and a null digest
+// (libhwsec/backend/tpm2/signing.cc) rather than rejecting the request.
+std::optional<hwsec::SigningOptions> ToHwsecSigningOptions(
     CK_MECHANISM_TYPE signing_mechanism,
     const std::string& mechanism_parameter) {
   // Parse the various parameters for this method.
@@ -819,6 +851,12 @@ hwsec::SigningOptions ToHwsecSigningOptions(
 
   if (padding_scheme == RsaPaddingScheme::RSASSA_PSS) {
     pss_params = GetHwsecPssParams(mechanism_parameter, digest_algorithm);
+    if (!pss_params.has_value()) {
+      // GetHwsecPssParams() has already logged the reason. Note that
+      // |digest_algorithm| is left untouched on failure, so continuing here
+      // would sign with DigestAlgorithm::kNoDigest.
+      return std::nullopt;
+    }
   }
 
   return hwsec::SigningOptions{
@@ -2660,14 +2698,24 @@ bool SessionImpl::RSASign(OperationContext* context) {
       return false;
     }
 
+    // Validate the caller-supplied mechanism parameters before loading the key
+    // into the security element, so that malformed requests are rejected
+    // without consuming a TPM key slot.
+    std::optional<hwsec::SigningOptions> options =
+        ToHwsecSigningOptions(context->mechanism_, context->parameter_);
+    if (!options.has_value()) {
+      LOG(ERROR) << __func__ << ": Invalid signing options for mechanism "
+                 << context->mechanism_;
+      return false;
+    }
+
     ASSIGN_OR_RETURN(hwsec::Key key, GetHwsecKey(context->key_.get()),
                      _.LogError().As(false));
 
     ASSIGN_OR_RETURN(
         brillo::Blob data,
-        hwsec_->Sign(
-            key, brillo::BlobFromString(context->data_),
-            ToHwsecSigningOptions(context->mechanism_, context->parameter_)),
+        hwsec_->Sign(key, brillo::BlobFromString(context->data_),
+                     std::move(options).value()),
         _.WithStatus<TPMError>("Failed to RSA sign the data in RASSign")
             .LogError()
             .As(false));
@@ -2749,13 +2797,24 @@ bool SessionImpl::ECCSignHwsec(const std::string& input,
     return false;
   }
 
+  // Validate before loading the key, matching RSASign(). ECDSA mechanisms
+  // never take the RSA PSS branch, so this cannot currently fail; the check
+  // keeps the call site correct if that ever changes.
+  std::optional<hwsec::SigningOptions> options =
+      ToHwsecSigningOptions(signing_mechanism, "");
+  if (!options.has_value()) {
+    LOG(ERROR) << __func__ << ": Invalid signing options for mechanism "
+               << signing_mechanism;
+    return false;
+  }
+
   ASSIGN_OR_RETURN(hwsec::Key key, GetHwsecKey(&key_object),
                    _.LogError().As(false));
 
   ASSIGN_OR_RETURN(
       brillo::Blob data,
       hwsec_->Sign(key, brillo::BlobFromString(input),
-                   ToHwsecSigningOptions(signing_mechanism, "")),
+                   std::move(options).value()),
       _.WithStatus<TPMError>("Failed to ECC sign the data in ECCSignHwsec")
           .LogError()
           .As(false));

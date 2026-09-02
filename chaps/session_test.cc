@@ -887,6 +887,266 @@ TEST_F(TestSession, RsaPSSSign) {
                  GetRSAPSSParam(CKM_SHA_1, CKG_MGF1_SHA1, 20));
 }
 
+// Test RSA PSS sign / verify input data length validation (b/524111614).
+TEST_F(TestSession, RsaPSSSignDataLengthValidation) {
+  const Object* pub = nullptr;
+  const Object* priv = nullptr;
+  GenerateRSAKeyPair(true, 1024, &pub, &priv);
+
+  EXPECT_CALL(mock_metrics_library_, SendSparseToUMA(kChapsSessionSign, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_metrics_library_, SendSparseToUMA(kChapsSessionVerify, _))
+      .WillRepeatedly(Return(true));
+
+  int len = 0;
+  string sig;
+
+  // 1. Generic RSA PSS with SHA-1 (digest size 20)
+  string pss_sha1 = GetRSAPSSParam(CKM_SHA_1, CKG_MGF1_SHA1, 20);
+  // Truncated / empty inputs for Sign
+  for (size_t bad_len : {size_t{0}, size_t{4}, size_t{19}}) {
+    string bad_input(bad_len, 'A');
+    EXPECT_EQ(CKR_OK,
+              session_->OperationInit(kSign, CKM_RSA_PKCS_PSS, pss_sha1, priv));
+    EXPECT_EQ(CKR_FUNCTION_FAILED,
+              session_->OperationSinglePart(kSign, bad_input, &len, &sig));
+  }
+  // Oversized inputs for Sign
+  for (size_t bad_len : {size_t{21}, size_t{32}, size_t{64}}) {
+    string bad_input(bad_len, 'B');
+    EXPECT_EQ(CKR_OK,
+              session_->OperationInit(kSign, CKM_RSA_PKCS_PSS, pss_sha1, priv));
+    EXPECT_EQ(CKR_FUNCTION_FAILED,
+              session_->OperationSinglePart(kSign, bad_input, &len, &sig));
+  }
+  // Exact size 20 succeeds for Sign
+  string valid_sha1(20, 'C');
+  len = 0;
+  string sig_sha1;
+  EXPECT_EQ(CKR_OK,
+            session_->OperationInit(kSign, CKM_RSA_PKCS_PSS, pss_sha1, priv));
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
+            session_->OperationSinglePart(kSign, valid_sha1, &len, &sig_sha1));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationSinglePart(kSign, valid_sha1, &len, &sig_sha1));
+
+  // Verify succeeds with valid SHA-1 digest and signature
+  EXPECT_EQ(CKR_OK,
+            session_->OperationInit(kVerify, CKM_RSA_PKCS_PSS, pss_sha1, pub));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationUpdate(kVerify, valid_sha1, nullptr, nullptr));
+  EXPECT_EQ(CKR_OK, session_->VerifyFinal(sig_sha1));
+
+  // Verify rejects truncated and oversized inputs with CKR_SIGNATURE_INVALID
+  for (size_t bad_len :
+       {size_t{0}, size_t{4}, size_t{19}, size_t{21}, size_t{32}, size_t{64}}) {
+    string bad_input(bad_len, 'A');
+    EXPECT_EQ(CKR_OK, session_->OperationInit(kVerify, CKM_RSA_PKCS_PSS,
+                                              pss_sha1, pub));
+    EXPECT_EQ(CKR_OK,
+              session_->OperationUpdate(kVerify, bad_input, nullptr, nullptr));
+    EXPECT_EQ(CKR_SIGNATURE_INVALID, session_->VerifyFinal(sig_sha1));
+  }
+
+  // 2. Generic RSA PSS with SHA-256 (digest size 32)
+  string pss_sha256 = GetRSAPSSParam(CKM_SHA256, CKG_MGF1_SHA256, 32);
+  // Truncated inputs for Sign (reproducing b/524111614)
+  for (size_t bad_len : {size_t{0}, size_t{4}, size_t{31}}) {
+    string bad_input(bad_len, 'D');
+    EXPECT_EQ(CKR_OK, session_->OperationInit(kSign, CKM_RSA_PKCS_PSS,
+                                              pss_sha256, priv));
+    EXPECT_EQ(CKR_FUNCTION_FAILED,
+              session_->OperationSinglePart(kSign, bad_input, &len, &sig));
+  }
+  // Oversized inputs for Sign
+  for (size_t bad_len : {size_t{33}, size_t{64}}) {
+    string bad_input(bad_len, 'E');
+    EXPECT_EQ(CKR_OK, session_->OperationInit(kSign, CKM_RSA_PKCS_PSS,
+                                              pss_sha256, priv));
+    EXPECT_EQ(CKR_FUNCTION_FAILED,
+              session_->OperationSinglePart(kSign, bad_input, &len, &sig));
+  }
+  // Exact size 32 succeeds for Sign
+  string valid_sha256(32, 'F');
+  len = 0;
+  string sig_sha256;
+  EXPECT_EQ(CKR_OK,
+            session_->OperationInit(kSign, CKM_RSA_PKCS_PSS, pss_sha256, priv));
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL, session_->OperationSinglePart(
+                                      kSign, valid_sha256, &len, &sig_sha256));
+  EXPECT_EQ(CKR_OK, session_->OperationSinglePart(kSign, valid_sha256, &len,
+                                                  &sig_sha256));
+
+  // Verify succeeds with valid SHA-256 digest and signature
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kVerify, CKM_RSA_PKCS_PSS,
+                                            pss_sha256, pub));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationUpdate(kVerify, valid_sha256, nullptr, nullptr));
+  EXPECT_EQ(CKR_OK, session_->VerifyFinal(sig_sha256));
+
+  // Verify rejects truncated and oversized inputs with CKR_SIGNATURE_INVALID
+  for (size_t bad_len :
+       {size_t{0}, size_t{4}, size_t{31}, size_t{33}, size_t{64}}) {
+    string bad_input(bad_len, 'D');
+    EXPECT_EQ(CKR_OK, session_->OperationInit(kVerify, CKM_RSA_PKCS_PSS,
+                                              pss_sha256, pub));
+    EXPECT_EQ(CKR_OK,
+              session_->OperationUpdate(kVerify, bad_input, nullptr, nullptr));
+    EXPECT_EQ(CKR_SIGNATURE_INVALID, session_->VerifyFinal(sig_sha256));
+  }
+
+  // 3. Multi-part signing length check
+  EXPECT_EQ(CKR_OK,
+            session_->OperationInit(kSign, CKM_RSA_PKCS_PSS, pss_sha256, priv));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationUpdate(kSign, "part1", nullptr, nullptr));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationUpdate(kSign, "part2", nullptr, nullptr));
+  // Total 10 bytes != 32 -> OperationFinal fails
+  EXPECT_EQ(CKR_FUNCTION_FAILED, session_->OperationFinal(kSign, &len, &sig));
+
+  // Multi-part signing valid case (16 bytes + 16 bytes = 32 bytes)
+  len = 0;
+  sig.clear();
+  EXPECT_EQ(CKR_OK,
+            session_->OperationInit(kSign, CKM_RSA_PKCS_PSS, pss_sha256, priv));
+  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kSign, string(16, 'A'), nullptr,
+                                              nullptr));
+  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kSign, string(16, 'B'), nullptr,
+                                              nullptr));
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL, session_->OperationFinal(kSign, &len, &sig));
+  EXPECT_EQ(CKR_OK, session_->OperationFinal(kSign, &len, &sig));
+
+  // 4. Sentinel salt length validation (truncating to OpenSSL -1 / -2)
+  for (CK_ULONG sentinel_salt :
+       {static_cast<CK_ULONG>(-1), static_cast<CK_ULONG>(-2)}) {
+    CK_RSA_PKCS_PSS_PARAMS sentinel_params = {CKM_SHA256, CKG_MGF1_SHA256,
+                                              sentinel_salt};
+    string pss_sentinel(reinterpret_cast<const char*>(&sentinel_params),
+                        sizeof(sentinel_params));
+    // Sign rejects sentinel salt length with CKR_FUNCTION_FAILED
+    EXPECT_EQ(CKR_OK, session_->OperationInit(kSign, CKM_RSA_PKCS_PSS,
+                                              pss_sentinel, priv));
+    EXPECT_EQ(CKR_FUNCTION_FAILED,
+              session_->OperationSinglePart(kSign, valid_sha256, &len, &sig));
+
+    // Verify rejects sentinel salt length with CKR_MECHANISM_PARAM_INVALID
+    EXPECT_EQ(CKR_OK, session_->OperationInit(kVerify, CKM_RSA_PKCS_PSS,
+                                              pss_sentinel, pub));
+    EXPECT_EQ(CKR_OK, session_->OperationUpdate(kVerify, valid_sha256, nullptr,
+                                                nullptr));
+    EXPECT_EQ(CKR_MECHANISM_PARAM_INVALID, session_->VerifyFinal(sig_sha256));
+  }
+
+  // 5. Key capacity bound validation (expected_size + sLen + 2 > RSA_size)
+  // For 1024-bit key (128 bytes) and SHA-256 (32 bytes), sLen=100 exceeds
+  // capacity: 32 + 100 + 2 = 134 > 128
+  CK_RSA_PKCS_PSS_PARAMS excessive_salt_params = {CKM_SHA256, CKG_MGF1_SHA256,
+                                                  100};
+  string pss_excessive_salt(
+      reinterpret_cast<const char*>(&excessive_salt_params),
+      sizeof(excessive_salt_params));
+  // Sign rejects excessive salt with CKR_FUNCTION_FAILED
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kSign, CKM_RSA_PKCS_PSS,
+                                            pss_excessive_salt, priv));
+  EXPECT_EQ(CKR_FUNCTION_FAILED,
+            session_->OperationSinglePart(kSign, valid_sha256, &len, &sig));
+
+  // Verify rejects excessive salt with CKR_KEY_SIZE_RANGE
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kVerify, CKM_RSA_PKCS_PSS,
+                                            pss_excessive_salt, pub));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationUpdate(kVerify, valid_sha256, nullptr, nullptr));
+  EXPECT_EQ(CKR_KEY_SIZE_RANGE, session_->VerifyFinal(sig_sha256));
+}
+
+// Malformed RSA PSS parameters must be rejected before the request reaches the
+// security element. ToHwsecSigningOptions() previously discarded the parse
+// failure from GetHwsecPssParams(), so libhwsec received a kRsassaPss request
+// with no PssParams and substituted a default maximal salt length and a null
+// digest instead of failing the operation (b/524111614).
+TEST_F(TestSession, RsaPSSHwsecRejectsMalformedParams) {
+  EXPECT_CALL(mock_metrics_library_, SendSparseToUMA(kChapsSessionSign, _))
+      .WillRepeatedly(Return(true));
+
+  // RSASign() takes the libhwsec path for any token object carrying a key
+  // blob, bypassing RSASignerVerifierImplPSS entirely. The key has to live in
+  // the token object pool: OperationInit() resolves it back through
+  // ObjectPool::FindByHandle() to hold an owning reference for the operation.
+  Object* key = CreateObjectMock();
+  key->SetAttributeBool(CKA_TOKEN, true);
+  key->SetAttributeInt(CKA_CLASS, CKO_PRIVATE_KEY);
+  key->SetAttributeInt(CKA_KEY_TYPE, CKK_RSA);
+  key->SetAttributeBool(CKA_SIGN, true);
+  key->SetAttributeString(CKA_MODULUS, string(256, 'M'));
+  key->SetAttributeString(kKeyBlobAttribute, "key-blob");
+  key->SetAttributeString(kAuthDataAttribute, "auth-data");
+  ASSERT_EQ(ObjectPool::Result::Success, token_pool_.Insert(key));
+
+  const string digest(32, 'D');
+
+  // Every entry makes ParseRSAPSSParams() fail. hwsec_ is a StrictMock, so
+  // reaching LoadKey() or Sign() with these parameters fails the test.
+  const string kMalformedParams[] = {
+      // Parameter structure of the wrong size.
+      GetRSAPSSParam(CKM_SHA256, CKG_MGF1_SHA256, 32).substr(1),
+      // Unrecognized mask generation function.
+      GetRSAPSSParam(CKM_SHA256, 0xdeadbeef, 32),
+      // Salt lengths that narrow to the OpenSSL RSA_PSS_SALTLEN_DIGEST (-1)
+      // and RSA_PSS_SALTLEN_AUTO (-2) sentinels when converted to int.
+      GetRSAPSSParam(CKM_SHA256, CKG_MGF1_SHA256, static_cast<CK_ULONG>(-1)),
+      GetRSAPSSParam(CKM_SHA256, CKG_MGF1_SHA256, static_cast<CK_ULONG>(-2)),
+  };
+  for (const string& params : kMalformedParams) {
+    int len = 0;
+    string sig;
+    EXPECT_EQ(CKR_OK,
+              session_->OperationInit(kSign, CKM_RSA_PKCS_PSS, params, key));
+    EXPECT_EQ(CKR_FUNCTION_FAILED,
+              session_->OperationSinglePart(kSign, digest, &len, &sig));
+  }
+
+  // Positive control: well-formed parameters must still reach libhwsec, so
+  // that the rejections above are attributable to the parameters and not to a
+  // broken hardware path. Capture the arguments rather than matching on _:
+  // the point of this CL is that the *correct* options reach the security
+  // element, so a regression that dropped pss_params or fell back to
+  // kNoDigest has to fail this test.
+  brillo::Blob signed_data;
+  std::optional<hwsec::SigningOptions> signing_options;
+  EXPECT_CALL(hwsec_, LoadKey(_, _)).WillOnce([this](auto&&, auto&&) {
+    return GetTestScopedKey();
+  });
+  EXPECT_CALL(hwsec_, Sign(_, _, _))
+      .WillOnce([&signed_data, &signing_options](
+                    hwsec::Key, const brillo::Blob& data,
+                    const hwsec::SigningOptions& options) {
+        signed_data = data;
+        signing_options = options;
+        return brillo::Blob(256, 'S');
+      });
+
+  int len = 0;
+  string sig;
+  EXPECT_EQ(CKR_OK, session_->OperationInit(
+                        kSign, CKM_RSA_PKCS_PSS,
+                        GetRSAPSSParam(CKM_SHA256, CKG_MGF1_SHA256, 32), key));
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
+            session_->OperationSinglePart(kSign, digest, &len, &sig));
+  EXPECT_EQ(CKR_OK, session_->OperationSinglePart(kSign, digest, &len, &sig));
+
+  EXPECT_EQ(brillo::BlobFromString(digest), signed_data);
+  ASSERT_TRUE(signing_options.has_value());
+  EXPECT_EQ(hwsec::DigestAlgorithm::kSha256, signing_options->digest_algorithm);
+  ASSERT_TRUE(signing_options->rsa_padding_scheme.has_value());
+  EXPECT_EQ(hwsec::SigningOptions::RsaPaddingScheme::kRsassaPss,
+            signing_options->rsa_padding_scheme.value());
+  ASSERT_TRUE(signing_options->pss_params.has_value());
+  EXPECT_EQ(hwsec::DigestAlgorithm::kSha256,
+            signing_options->pss_params->mgf1_algorithm);
+  EXPECT_EQ(32u, signing_options->pss_params->salt_length);
+}
+
 // Test ECC ECDSA sign / verify.
 TEST_F(TestSession, EcdsaSign) {
   EXPECT_CALL(hwsec_, IsECCurveSupported(_))

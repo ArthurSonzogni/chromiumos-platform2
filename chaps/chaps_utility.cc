@@ -4,6 +4,7 @@
 
 #include "chaps/chaps_utility.h"
 
+#include <limits>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -1020,6 +1021,12 @@ bool ParseRSAPSSParams(const std::string& mechanism_parameter,
   *mgf1_hash_out = GetOpenSSLDigestForMGF(pss_params->mgf);
   if (*mgf1_hash_out == nullptr) {
     LOG(ERROR) << "Invalid MGF Hash specified for ParseRSAPSSParams().";
+    return false;
+  }
+  if (pss_params->sLen >
+      static_cast<CK_ULONG>(std::numeric_limits<int>::max())) {
+    LOG(ERROR) << "Invalid salt length in ParseRSAPSSParams(): "
+               << pss_params->sLen;
     return false;
   }
   if (pss_params->sLen == 0) {
