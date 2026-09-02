@@ -163,6 +163,8 @@ void P2PManager::Stop() {
     }
     p2p_group_owners_.clear();
     p2p_clients_.clear();
+    supplicant_primary_p2pdevice_event_delegates_.clear();
+    supplicant_primary_p2pdevice_pending_event_delegate_ = nullptr;
     DisconnectFromSupplicantPrimaryP2PDeviceProxy();
   }
 }
@@ -604,6 +606,8 @@ void P2PManager::DisconnectFromSupplicantPrimaryP2PDeviceProxy() {
   if (supplicant_primary_p2pdevice_proxy_ && p2p_group_owners_.empty() &&
       p2p_clients_.empty()) {
     supplicant_primary_p2pdevice_proxy_.reset();
+    supplicant_primary_p2pdevice_event_delegates_.clear();
+    supplicant_primary_p2pdevice_pending_event_delegate_ = nullptr;
     LOG(INFO) << "Primary P2PDevice proxy disconnected";
   }
 }
