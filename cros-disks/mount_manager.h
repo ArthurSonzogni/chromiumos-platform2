@@ -121,6 +121,9 @@ class MountManager {
  protected:
   MountPoint* FindMountBySource(const std::string& source) const;
   MountPoint* FindMountByMountPath(const base::FilePath& path) const;
+
+  // Removes `mount_point` from `mount_points_`. This method does not
+  // dereference the passed `mount_point` pointer.
   bool RemoveMount(const MountPoint* mount_point);
 
   // The base class calls Platform::GetRealPath(), derived classes can override

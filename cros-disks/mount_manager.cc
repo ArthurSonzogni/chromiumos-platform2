@@ -270,8 +270,9 @@ MountError MountManager::Unmount(const std::string& path) {
     return MountError::kPathNotMounted;
   }
 
-  if (const MountError error = mount_point->Unmount();
-      mount_point->is_mounted()) {
+  // |mount_point| may be freed re-entrantly via OnLauncherExit.
+  const base::WeakPtr<MountPoint> wmp = mount_point->GetWeakPtr();
+  if (const MountError error = wmp->Unmount(); wmp && wmp->is_mounted()) {
     return error;
   }
 
@@ -310,13 +311,10 @@ MountPoint* MountManager::FindMountByMountPath(
 }
 
 bool MountManager::RemoveMount(const MountPoint* const mount_point) {
-  for (auto it = mount_points_.cbegin(); it != mount_points_.cend(); ++it) {
-    if (it->get() == mount_point) {
-      mount_points_.erase(it);
-      return true;
-    }
-  }
-  return false;
+  return std::erase_if(mount_points_,
+                       [mount_point](const std::unique_ptr<MountPoint>& p) {
+                         return p.get() == mount_point;
+                       }) > 0;
 }
 
 void MountManager::OnSandboxedProcessExit(

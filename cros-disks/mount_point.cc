@@ -69,7 +69,14 @@ MountError MountPoint::Unmount() {
   if (launcher_exit_callback_) {
     DCHECK_EQ(MountError::kInProgress, data_.error);
     data_.error = MountError::kCancelled;
+    // The `launcher_exit_callback_` may erase the `unique_ptr` that owns this
+    // MountPoint. Take a weak ref so we can detect that situation and bail out
+    // instead of touching freed members below.
+    const base::WeakPtr<MountPoint> wmp = GetWeakPtr();
     std::move(launcher_exit_callback_).Run(MountError::kCancelled);
+    if (!wmp) {
+      return error;
+    }
   }
 
   if (!is_mounted_ && must_remove_dir_ &&
