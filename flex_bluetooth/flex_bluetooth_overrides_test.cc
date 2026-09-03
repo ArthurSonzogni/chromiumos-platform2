@@ -109,6 +109,77 @@ TEST_F(FlexBluetoothOverridesTest, SyspropMultipleOverridesExistence) {
             std::string::npos);
 }
 
+TEST_F(FlexBluetoothOverridesTest, SyspropThreeOverridesExistence) {
+  const uint16_t id_vendor = 0x8087;
+  const uint16_t id_product = 0x0a2a;
+  std::map<BluetoothAdapter, std::unordered_set<SyspropOverride>> overrides = {
+      {BluetoothAdapter{id_vendor, id_product},
+       {SyspropOverride::kDisableEnhancedSCOConnection,
+        SyspropOverride::kDisablePacketBoundary,
+        SyspropOverride::kDisableSniffMode}},
+  };
+
+  const FlexBluetoothOverrides bt(base::FilePath(filepath_), overrides);
+  const auto overrides_result =
+      bt.GetAdapterSyspropOverridesForVidPid(id_vendor, id_product);
+  EXPECT_EQ(overrides_result.size(), 3);
+  EXPECT_EQ(
+      overrides_result.count(SyspropOverride::kDisableEnhancedSCOConnection),
+      1);
+  EXPECT_EQ(overrides_result.count(SyspropOverride::kDisablePacketBoundary), 1);
+  EXPECT_EQ(overrides_result.count(SyspropOverride::kDisableSniffMode), 1);
+
+  bt.ProcessOverridesForVidPid(id_vendor, id_product);
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(filepath_, &contents));
+  EXPECT_NE(contents.find("[Sysprops]\n"), std::string::npos);
+  EXPECT_NE(contents.find("bluetooth.sco.disable_enhanced_connection=true\n"),
+            std::string::npos);
+  EXPECT_NE(contents.find("bluetooth.core.disable_packet_boundary=true\n"),
+            std::string::npos);
+  EXPECT_NE(contents.find("bluetooth.core.disable_sniff_mode=true\n"),
+            std::string::npos);
+}
+
+TEST_F(FlexBluetoothOverridesTest, SyspropFourOverridesExistence) {
+  const uint16_t id_vendor = 0x8087;
+  const uint16_t id_product = 0x07da;
+  std::map<BluetoothAdapter, std::unordered_set<SyspropOverride>> overrides = {
+      {BluetoothAdapter{id_vendor, id_product},
+       {SyspropOverride::kDisableLEGetVendorCapabilities,
+        SyspropOverride::kDisableEnhancedSCOConnection,
+        SyspropOverride::kDisablePacketBoundary,
+        SyspropOverride::kDisableSniffMode}},
+  };
+
+  const FlexBluetoothOverrides bt(base::FilePath(filepath_), overrides);
+  const auto overrides_result =
+      bt.GetAdapterSyspropOverridesForVidPid(id_vendor, id_product);
+  EXPECT_EQ(overrides_result.size(), 4);
+  EXPECT_EQ(
+      overrides_result.count(SyspropOverride::kDisableLEGetVendorCapabilities),
+      1);
+  EXPECT_EQ(
+      overrides_result.count(SyspropOverride::kDisableEnhancedSCOConnection),
+      1);
+  EXPECT_EQ(overrides_result.count(SyspropOverride::kDisablePacketBoundary), 1);
+  EXPECT_EQ(overrides_result.count(SyspropOverride::kDisableSniffMode), 1);
+
+  bt.ProcessOverridesForVidPid(id_vendor, id_product);
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(filepath_, &contents));
+  EXPECT_NE(contents.find("[Sysprops]\n"), std::string::npos);
+  EXPECT_NE(
+      contents.find("bluetooth.core.le.vendor_capabilities.enabled=false\n"),
+      std::string::npos);
+  EXPECT_NE(contents.find("bluetooth.sco.disable_enhanced_connection=true\n"),
+            std::string::npos);
+  EXPECT_NE(contents.find("bluetooth.core.disable_packet_boundary=true\n"),
+            std::string::npos);
+  EXPECT_NE(contents.find("bluetooth.core.disable_sniff_mode=true\n"),
+            std::string::npos);
+}
+
 TEST_F(FlexBluetoothOverridesTest, RemoveSyspropOverrideFile) {
   const uint16_t id_vendor_a = 0x0cf3;
   const uint16_t id_product_a = 0xe007;

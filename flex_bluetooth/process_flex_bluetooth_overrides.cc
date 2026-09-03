@@ -138,8 +138,13 @@ const std::map<flex_bluetooth::BluetoothAdapter,
          {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
         {flex_bluetooth::BluetoothAdapter{0x0cf3, 0x3004},
          {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
+        // Disable packet boundary, enhanced SCO connection, sniff mode, and LE
+        // vendor capabilities for Intel Centrino Advanced-N 6235 chips.
         {flex_bluetooth::BluetoothAdapter{0x8087, 0x07da},
-         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
+         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities,
+          flex_bluetooth::SyspropOverride::kDisableEnhancedSCOConnection,
+          flex_bluetooth::SyspropOverride::kDisablePacketBoundary,
+          flex_bluetooth::SyspropOverride::kDisableSniffMode}},
         // Enable MSFT AdvMon quirk on RTL8852BE.
         {flex_bluetooth::BluetoothAdapter{0x13d3, 0x3570},
          {flex_bluetooth::SyspropOverride::kEnableLEAdvMonRTLQuirk}},
@@ -187,25 +192,34 @@ const std::map<flex_bluetooth::BluetoothAdapter,
          {flex_bluetooth::SyspropOverride::kDisablePacketBoundary,
           flex_bluetooth::SyspropOverride::kDisableSniffMode}},
 
-        // Disable packet boundary & enhanced SCO connection for Intel AC7265
-        // chips.
+        // Disable packet boundary, enhanced SCO connection, and sniff mode for
+        // Intel AC7265 / AC8260 / AC3168 chips.
         {flex_bluetooth::BluetoothAdapter{0x8087, 0x0a2a},
          {flex_bluetooth::SyspropOverride::kDisableEnhancedSCOConnection,
-          flex_bluetooth::SyspropOverride::kDisablePacketBoundary}},
+          flex_bluetooth::SyspropOverride::kDisablePacketBoundary,
+          flex_bluetooth::SyspropOverride::kDisableSniffMode}},
         {flex_bluetooth::BluetoothAdapter{0x8087, 0x0a2b},
          {flex_bluetooth::SyspropOverride::kDisableEnhancedSCOConnection,
-          flex_bluetooth::SyspropOverride::kDisablePacketBoundary}},
+          flex_bluetooth::SyspropOverride::kDisablePacketBoundary,
+          flex_bluetooth::SyspropOverride::kDisableSniffMode}},
         {flex_bluetooth::BluetoothAdapter{0x8087, 0x0aa7},
          {flex_bluetooth::SyspropOverride::kDisableEnhancedSCOConnection,
-          flex_bluetooth::SyspropOverride::kDisablePacketBoundary}},
+          flex_bluetooth::SyspropOverride::kDisablePacketBoundary,
+          flex_bluetooth::SyspropOverride::kDisableSniffMode}},
 
         // Resolve crashes from b/408887245
         {flex_bluetooth::BluetoothAdapter{0x04ca, 0x3016},
          {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
         {flex_bluetooth::BluetoothAdapter{0x13d3, 0x3503},
          {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
+        // b/537789097: Disable packet boundary, enhanced SCO connection, sniff
+        // mode, and LE vendor capabilities for Intel Wireless 7260 / 3160
+        // chips.
         {flex_bluetooth::BluetoothAdapter{0x8087, 0x07dc},
-         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
+         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities,
+          flex_bluetooth::SyspropOverride::kDisableEnhancedSCOConnection,
+          flex_bluetooth::SyspropOverride::kDisablePacketBoundary,
+          flex_bluetooth::SyspropOverride::kDisableSniffMode}},
         {flex_bluetooth::BluetoothAdapter{0x3641, 0x0902},
          {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
         {flex_bluetooth::BluetoothAdapter{0x0489, 0xe09f},
