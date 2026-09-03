@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <base/memory/weak_ptr.h>
+
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 
@@ -105,6 +107,9 @@ class FingerprintRoutine final : public DiagnosticRoutineWithStatus {
   };
 
   TestStep step_;
+
+  // Must be the last member of the class.
+  base::WeakPtrFactory<FingerprintRoutine> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics

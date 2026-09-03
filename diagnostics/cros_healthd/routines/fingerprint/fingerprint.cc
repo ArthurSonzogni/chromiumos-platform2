@@ -247,21 +247,23 @@ void FingerprintRoutine::RunNextStep() {
       context_->executor()->GetFingerprintFrame(
           mojom::FingerprintCaptureType::kCheckerboardTest,
           base::BindOnce(&FingerprintRoutine::ExamineCheckerboardFrame,
-                         base::Unretained(this)));
+                         weak_ptr_factory_.GetWeakPtr()));
+
       break;
     case TestStep::kInvertedCheckerboardTest:
       UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
       context_->executor()->GetFingerprintFrame(
           mojom::FingerprintCaptureType::kInvertedCheckerboardTest,
           base::BindOnce(&FingerprintRoutine::ExamineCheckerboardFrame,
-                         base::Unretained(this)));
+                         weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kResetTest:
       UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
       context_->executor()->GetFingerprintFrame(
           mojom::FingerprintCaptureType::kResetTest,
           base::BindOnce(&FingerprintRoutine::ExamineResetFrame,
-                         base::Unretained(this)));
+                         weak_ptr_factory_.GetWeakPtr()));
+
       break;
     case TestStep::kComplete:
       UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kPassed, "");

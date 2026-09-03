@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/memory/weak_ptr.h>
+
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 
@@ -34,6 +36,9 @@ class FingerprintAliveRoutine final : public DiagnosticRoutineWithStatus {
 
   // Context object used to communicate with the executor.
   Context* context_;
+
+  // Must be the last member of the class.
+  base::WeakPtrFactory<FingerprintAliveRoutine> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics

@@ -28,7 +28,7 @@ FingerprintAliveRoutine::~FingerprintAliveRoutine() = default;
 void FingerprintAliveRoutine::Start() {
   UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
   context_->executor()->GetFingerprintInfo(base::BindOnce(
-      &FingerprintAliveRoutine::ExamineInfo, base::Unretained(this)));
+      &FingerprintAliveRoutine::ExamineInfo, weak_ptr_factory_.GetWeakPtr()));
 }
 
 void FingerprintAliveRoutine::Resume() {}
