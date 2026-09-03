@@ -5,8 +5,6 @@
 #ifndef CHAPS_SESSION_IMPL_H_
 #define CHAPS_SESSION_IMPL_H_
 
-#include "chaps/session.h"
-
 #include <map>
 #include <memory>
 #include <string>
@@ -22,6 +20,7 @@
 #include "chaps/chaps_metrics.h"
 #include "chaps/object.h"
 #include "chaps/object_pool.h"
+#include "chaps/session.h"
 #include "pkcs11/cryptoki.h"
 
 namespace chaps {
@@ -48,7 +47,7 @@ class SessionImpl : public Session {
     crypto::ScopedEVP_MD_CTX digest_context_;
     crypto::ScopedHMAC_CTX hmac_context_;
     std::string data_;  // This can be used to queue input or output.
-    const Object* key_;
+    std::shared_ptr<const Object> key_;
     CK_MECHANISM_TYPE mechanism_;
     std::string parameter_;              // The mechanism parameter (if any).
     base::ScopedClosureRunner cleanup_;  // The extra closure for cleanup.

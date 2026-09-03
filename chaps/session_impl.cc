@@ -1117,9 +1117,32 @@ CK_RV SessionImpl::OperationInitRaw(OperationType operation,
     }
   }
 
+  // Obtain an owning reference from the object pool if the key is managed in a
+  // pool.
+  auto get_shared_key =
+      [this](const Object* k) -> std::shared_ptr<const Object> {
+    if (!k) {
+      return nullptr;
+    }
+    ObjectPool* pool =
+        k->IsTokenObject() ? token_object_pool_ : session_object_pool_.get();
+    std::shared_ptr<const Object> shared;
+    if (pool &&
+        pool->FindByHandle(k->handle(), &shared) ==
+            ObjectPool::Result::Success &&
+        shared.get() == k) {
+      return shared;
+    }
+    return nullptr;
+  };
+
   if (operation == kEncrypt || operation == kDecrypt) {
     if (mechanism == CKM_RSA_PKCS) {
-      context->key_ = key;
+      context->key_ = get_shared_key(key);
+      if (!context->key_) {
+        LOG(ERROR) << "Key handle not found in object pool.";
+        return CKR_KEY_HANDLE_INVALID;
+      }
       context->is_valid_ = true;
     } else {
       return CipherInit((operation == kEncrypt), mechanism, mechanism_parameter,
@@ -1150,7 +1173,11 @@ CK_RV SessionImpl::OperationInitRaw(OperationType operation,
       context->is_digest_ = true;
     }
     if (IsRSA(mechanism) || IsECC(mechanism)) {
-      context->key_ = key;
+      context->key_ = get_shared_key(key);
+      if (!context->key_) {
+        LOG(ERROR) << "Key handle not found in object pool.";
+        return CKR_KEY_HANDLE_INVALID;
+      }
     }
     context->is_valid_ = true;
   } else {
@@ -2533,13 +2560,13 @@ hwsec::StatusOr<hwsec::Key> SessionImpl::GetHwsecKey(const Object* key) {
 
 void SessionImpl::UpdateObjectCount(OperationContext* context) {
   if (context->key_ != nullptr) {
-    IncreaseObjectCount(context->key_);
+    IncreaseObjectCount(context->key_.get());
     // We stored the context inside the session, and there is no way to transfer
     // the ownership of context outside of session. So base::Unretained(this) is
     // safe here.
     context->cleanup_ = base::ScopedClosureRunner(
         base::BindOnce(&SessionImpl::DecreaseObjectCount,
-                       base::Unretained(this), context->key_));
+                       base::Unretained(this), context->key_.get()));
   }
 }
 
@@ -2570,7 +2597,7 @@ bool SessionImpl::RSADecrypt(OperationContext* context) {
       return false;
     }
 
-    ASSIGN_OR_RETURN(hwsec::Key key, GetHwsecKey(context->key_),
+    ASSIGN_OR_RETURN(hwsec::Key key, GetHwsecKey(context->key_.get()),
                      _.LogError().As(false));
 
     brillo::Blob encrypted_data = brillo::BlobFromString(context->data_);
@@ -2585,7 +2612,7 @@ bool SessionImpl::RSADecrypt(OperationContext* context) {
 
     context->data_ = data.to_string();
   } else {
-    crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_);
+    crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_.get());
     if (!rsa) {
       LOG(ERROR) << "Failed to create RSA key for decryption.";
       return false;
@@ -2606,7 +2633,7 @@ bool SessionImpl::RSADecrypt(OperationContext* context) {
 }
 
 bool SessionImpl::RSAEncrypt(OperationContext* context) {
-  crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_);
+  crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_.get());
   if (!rsa) {
     LOG(ERROR) << "Failed to create RSA key for encryption.";
     return false;
@@ -2633,7 +2660,7 @@ bool SessionImpl::RSASign(OperationContext* context) {
       return false;
     }
 
-    ASSIGN_OR_RETURN(hwsec::Key key, GetHwsecKey(context->key_),
+    ASSIGN_OR_RETURN(hwsec::Key key, GetHwsecKey(context->key_.get()),
                      _.LogError().As(false));
 
     ASSIGN_OR_RETURN(
@@ -2650,7 +2677,7 @@ bool SessionImpl::RSASign(OperationContext* context) {
   }
 
   // Sign the data without HWSec.
-  crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_);
+  crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_.get());
   if (!rsa) {
     LOG(ERROR) << "Failed to create RSA key for signing.";
     return false;
@@ -2672,7 +2699,7 @@ CK_RV SessionImpl::RSAVerify(OperationContext* context,
       signature.length()) {
     return CKR_SIGNATURE_LEN_RANGE;
   }
-  crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_);
+  crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_.get());
   if (!rsa) {
     LOG(ERROR) << "Failed to create RSA key for verification.";
     return CKR_KEY_HANDLE_INVALID;
@@ -2777,7 +2804,7 @@ CK_RV SessionImpl::ECCVerify(OperationContext* context,
                              const string& signed_data,
                              const string& signature) {
   // Software verify with ECC key
-  crypto::ScopedEC_KEY key = CreateECCPublicKeyFromObject(context->key_);
+  crypto::ScopedEC_KEY key = CreateECCPublicKeyFromObject(context->key_.get());
   if (key == nullptr) {
     LOG(ERROR) << __func__ << ": Load key failed.";
     return CKR_FUNCTION_FAILED;
@@ -2975,10 +3002,10 @@ void SessionImpl::OperationContext::Clear() {
   is_hmac_ = false;
   is_incremental_ = false;
   is_finished_ = false;
-  key_ = nullptr;
   data_.clear();
   parameter_.clear();
   cleanup_.RunAndReset();
+  key_.reset();
 }
 
 }  // namespace chaps

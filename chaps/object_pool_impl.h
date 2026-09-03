@@ -5,14 +5,13 @@
 #ifndef CHAPS_OBJECT_POOL_IMPL_H_
 #define CHAPS_OBJECT_POOL_IMPL_H_
 
-#include "chaps/object_pool.h"
-
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "chaps/object_pool.h"
 #include "chaps/object_store.h"
 
 namespace chaps {
@@ -53,6 +52,8 @@ class ObjectPoolImpl : public ObjectPool {
   Result Find(const Object* search_template,
               std::vector<const Object*>* matching_objects) override;
   Result FindByHandle(int handle, const Object** object) override;
+  Result FindByHandle(int handle,
+                      std::shared_ptr<const Object>* object) override;
   Object* GetModifiableObject(const Object* object) override;
   Result Flush(const Object* object) override;
   bool IsPrivateLoaded() override;

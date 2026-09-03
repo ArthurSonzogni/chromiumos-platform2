@@ -193,6 +193,17 @@ Result ObjectPoolImpl::FindByHandle(int handle, const Object** object) {
   return Result::Success;
 }
 
+Result ObjectPoolImpl::FindByHandle(int handle,
+                                    std::shared_ptr<const Object>* object) {
+  CHECK(object);
+  HandleObjectMap::iterator it = handle_object_map_.find(handle);
+  if (it == handle_object_map_.end()) {
+    return Result::Failure;
+  }
+  *object = it->second;
+  return Result::Success;
+}
+
 Object* ObjectPoolImpl::GetModifiableObject(const Object* object) {
   return const_cast<Object*>(object);
 }

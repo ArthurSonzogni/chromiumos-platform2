@@ -5,14 +5,14 @@
 #ifndef CHAPS_OBJECT_POOL_MOCK_H_
 #define CHAPS_OBJECT_POOL_MOCK_H_
 
-#include "chaps/object_pool.h"
-
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
 
 #include "chaps/object.h"
+#include "chaps/object_pool.h"
 
 namespace chaps {
 
@@ -34,6 +34,8 @@ class ObjectPoolMock : public ObjectPool {
   MOCK_METHOD2(Find,
                ObjectPool::Result(const Object*, std::vector<const Object*>*));
   MOCK_METHOD2(FindByHandle, ObjectPool::Result(int, const Object**));
+  MOCK_METHOD2(FindByHandle,
+               ObjectPool::Result(int, std::shared_ptr<const Object>*));
   MOCK_METHOD1(GetModifiableObject, Object*(const Object*));
   MOCK_METHOD1(Flush, ObjectPool::Result(const Object*));
   MOCK_METHOD0(IsPrivateLoaded, bool());
@@ -49,23 +51,26 @@ class ObjectPoolMock : public ObjectPool {
         .WillByDefault(testing::Invoke(this, &ObjectPoolMock::FakeDelete));
     ON_CALL(*this, Find(testing::_, testing::_))
         .WillByDefault(testing::Invoke(this, &ObjectPoolMock::FakeFind));
-    ON_CALL(*this, FindByHandle(testing::_, testing::_))
+    ON_CALL(*this, FindByHandle(testing::_, testing::A<const Object**>()))
         .WillByDefault(
             testing::Invoke(this, &ObjectPoolMock::FakeFindByHandle));
+    ON_CALL(*this, FindByHandle(testing::_,
+                                testing::A<std::shared_ptr<const Object>*>()))
+        .WillByDefault(
+            testing::Invoke(this, &ObjectPoolMock::FakeFindByHandleShared));
     ON_CALL(*this, IsPrivateLoaded()).WillByDefault(testing::Return(true));
     ON_CALL(*this, IsValid()).WillByDefault(testing::Return(true));
   }
 
  private:
   ObjectPool::Result FakeInsert(Object* o) {
-    v_.push_back(o);
+    v_.push_back(std::shared_ptr<const Object>(o));
     o->set_handle(++last_handle_);
     return ObjectPool::Result::Success;
   }
   ObjectPool::Result FakeDelete(const Object* o) {
     for (size_t i = 0; i < v_.size(); ++i) {
-      if (o == v_[i]) {
-        delete v_[i];
+      if (o == v_[i].get()) {
         v_.erase(v_.begin() + i);
         return ObjectPool::Result::Success;
       }
@@ -74,20 +79,32 @@ class ObjectPoolMock : public ObjectPool {
   }
   ObjectPool::Result FakeFind(const Object* o, std::vector<const Object*>* v) {
     for (size_t i = 0; i < v_.size(); ++i) {
-      v->push_back(v_[i]);
+      v->push_back(v_[i].get());
     }
     return ObjectPool::Result::Success;
   }
   ObjectPool::Result FakeFindByHandle(int handle, const Object** o) {
     for (size_t i = 0; i < v_.size(); ++i) {
       if (handle == v_[i]->handle()) {
-        *o = v_[i];
+        *o = v_[i].get();
         return ObjectPool::Result::Success;
       }
     }
     return ObjectPool::Result::Failure;
   }
-  std::vector<const Object*> v_;
+  ObjectPool::Result FakeFindByHandleShared(int handle,
+                                            std::shared_ptr<const Object>* o) {
+    for (size_t i = 0; i < v_.size(); ++i) {
+      if (handle == v_[i]->handle()) {
+        if (o) {
+          *o = v_[i];
+        }
+        return ObjectPool::Result::Success;
+      }
+    }
+    return ObjectPool::Result::Failure;
+  }
+  std::vector<std::shared_ptr<const Object>> v_;
   int last_handle_;
 };
 

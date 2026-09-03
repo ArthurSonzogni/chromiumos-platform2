@@ -4,10 +4,12 @@
 
 #include "chaps/fuzzers/fuzzed_object_pool.h"
 
-#include <absl/container/flat_hash_map.h>
-#include <fuzzer/FuzzedDataProvider.h>
+#include <memory>
 #include <string>
 #include <vector>
+
+#include <absl/container/flat_hash_map.h>
+#include <fuzzer/FuzzedDataProvider.h>
 
 #include "chaps/object.h"
 #include "chaps/object_pool.h"
@@ -77,6 +79,12 @@ Result FuzzedObjectPool::Find(const Object* search_template,
 }
 
 Result FuzzedObjectPool::FindByHandle(int handle, const Object** object) {
+  // Not used yet.
+  return Result::Failure;
+}
+
+Result FuzzedObjectPool::FindByHandle(int handle,
+                                      std::shared_ptr<const Object>* object) {
   // Not used yet.
   return Result::Failure;
 }

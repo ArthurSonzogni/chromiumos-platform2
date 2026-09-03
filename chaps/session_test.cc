@@ -3,10 +3,6 @@
 // found in the LICENSE file.
 
 #include "chaps/session.h"
-#include "chaps/chaps.h"
-#include "chaps/object.h"
-#include "chaps/proto_conversion.h"
-#include "chaps/session_impl.h"
 
 #include <iterator>
 #include <memory>
@@ -24,23 +20,27 @@
 #include <dbus/chaps/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <libhwsec/frontend/chaps/mock_frontend.h>
 #include <libhwsec-foundation/crypto/big_num_util.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libhwsec/frontend/chaps/mock_frontend.h>
 #include <metrics/metrics_library_mock.h>
 #include <openssl/bn.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 
+#include "chaps/chaps.h"
 #include "chaps/chaps_factory_impl.h"
 #include "chaps/chaps_factory_mock.h"
 #include "chaps/chaps_utility.h"
 #include "chaps/handle_generator_mock.h"
+#include "chaps/object.h"
 #include "chaps/object_impl.h"
 #include "chaps/object_mock.h"
 #include "chaps/object_pool_mock.h"
+#include "chaps/proto_conversion.h"
+#include "chaps/session_impl.h"
 #include "libhwsec/factory/tpm2_simulator_factory_for_test.h"
 #include "libhwsec/frontend/chaps/frontend.h"
 
@@ -103,7 +103,11 @@ void ConfigureObjectPool(chaps::ObjectPoolMock* op, int handle_base) {
   op->SetupFake(handle_base);
   EXPECT_CALL(*op, Insert(_)).Times(AnyNumber());
   EXPECT_CALL(*op, Find(_, _)).Times(AnyNumber());
-  EXPECT_CALL(*op, FindByHandle(_, _)).Times(AnyNumber());
+  EXPECT_CALL(*op, FindByHandle(_, testing::A<const chaps::Object**>()))
+      .Times(AnyNumber());
+  EXPECT_CALL(
+      *op, FindByHandle(_, testing::A<std::shared_ptr<const chaps::Object>*>()))
+      .Times(AnyNumber());
   EXPECT_CALL(*op, Delete(_)).Times(AnyNumber());
   EXPECT_CALL(*op, Flush(_)).WillRepeatedly(Return(Result::Success));
 }
@@ -2565,6 +2569,159 @@ TEST_F(TestSession, MultipleSignWithHWSec) {
   }
 
   EXPECT_EQ(session_->get_object_key_map_size_for_testing(), 0);
+}
+
+TEST_F(TestSession, DestroyObjectDuringActiveOperation) {
+  const Object* priv = nullptr;
+  CK_BBOOL no = CK_FALSE;
+  CK_BBOOL yes = CK_TRUE;
+  CK_BYTE pubexp[] = {1, 0, 1};
+  CK_ULONG size = 1024;
+  CK_ATTRIBUTE pub_attr[] = {{CKA_TOKEN, &no, sizeof(no)},
+                             {CKA_VERIFY, &yes, sizeof(yes)},
+                             {CKA_PUBLIC_EXPONENT, pubexp, 3},
+                             {CKA_MODULUS_BITS, &size, sizeof(size)}};
+  CK_ATTRIBUTE priv_attr[] = {{CKA_TOKEN, &no, sizeof(CK_BBOOL)},
+                              {CKA_SIGN, &yes, sizeof(yes)}};
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pubh, &privh));
+  ASSERT_TRUE(session_->GetObject(privh, &priv));
+
+  EXPECT_CALL(mock_metrics_library_, SendSparseToUMA(kChapsSessionSign, _))
+      .Times(AnyNumber());
+
+  EXPECT_EQ(CKR_OK,
+            session_->OperationInit(kSign, CKM_SHA256_RSA_PKCS, "", priv));
+  EXPECT_TRUE(session_->IsOperationActive(kSign));
+
+  // Destroying the object removes the handle from the pool, but the active
+  // operation retains shared ownership of the key object and continues safely.
+  EXPECT_EQ(CKR_OK, session_->DestroyObject(privh));
+  EXPECT_FALSE(session_->GetObject(privh, &priv));
+  EXPECT_TRUE(session_->IsOperationActive(kSign));
+
+  int len = 0;
+  string sig;
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL, session_->OperationFinal(kSign, &len, &sig));
+  EXPECT_GT(len, 0);
+  EXPECT_EQ(CKR_OK, session_->OperationFinal(kSign, &len, &sig));
+  EXPECT_FALSE(session_->IsOperationActive(kSign));
+}
+
+TEST_F(TestSession, DestroyTokenObjectCrossSessionDuringActiveOperation) {
+  CK_BBOOL yes = CK_TRUE;
+  CK_BYTE pubexp[] = {1, 0, 1};
+  CK_ULONG size = 1024;
+  CK_ATTRIBUTE pub_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                             {CKA_VERIFY, &yes, sizeof(yes)},
+                             {CKA_PUBLIC_EXPONENT, pubexp, 3},
+                             {CKA_MODULUS_BITS, &size, sizeof(size)}};
+  CK_ATTRIBUTE priv_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                              {CKA_SIGN, &yes, sizeof(yes)},
+                              {kForceSoftwareAttribute, &yes, sizeof(yes)}};
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pubh, &privh));
+
+  const Object* priv = nullptr;
+  ASSERT_TRUE(session_->GetObject(privh, &priv));
+
+  EXPECT_CALL(mock_metrics_library_, SendSparseToUMA(kChapsSessionSign, _))
+      .Times(AnyNumber());
+
+  // Session 1 initializes Sign operation with the token private key.
+  EXPECT_EQ(CKR_OK,
+            session_->OperationInit(kSign, CKM_SHA256_RSA_PKCS, "", priv));
+  EXPECT_TRUE(session_->IsOperationActive(kSign));
+
+  // Create a second session sharing the same token object pool and slot.
+  auto session2 =
+      std::make_unique<SessionImpl>(1, &token_pool_, &hwsec_, &factory_,
+                                    &handle_generator_, false, &chaps_metrics_);
+
+  // Session 2 destroys the token object while Session 1 has an active
+  // operation.
+  EXPECT_EQ(CKR_OK, session2->DestroyObject(privh));
+
+  // The object handle is removed from the token pool (Session 2 cannot get it).
+  const Object* check_obj = nullptr;
+  EXPECT_FALSE(session2->GetObject(privh, &check_obj));
+
+  // Session 1's operation context is preserved and the underlying object memory
+  // is kept alive via shared ownership, avoiding use-after-free.
+  EXPECT_TRUE(session_->IsOperationActive(kSign));
+
+  // Session 1 continues and finalizes the operation safely without memory
+  // corruption.
+  int len = 0;
+  string sig;
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL, session_->OperationFinal(kSign, &len, &sig));
+  EXPECT_GT(len, 0);
+  EXPECT_EQ(CKR_OK, session_->OperationFinal(kSign, &len, &sig));
+  EXPECT_FALSE(session_->IsOperationActive(kSign));
+}
+
+TEST_F(TestSession, DestroyObjectDuringMultipartEncryptDecrypt) {
+  const Object* pub = nullptr;
+  const Object* priv = nullptr;
+  CK_BBOOL no = CK_FALSE;
+  CK_BBOOL yes = CK_TRUE;
+  CK_BYTE pubexp[] = {1, 0, 1};
+  CK_ULONG size = 1024;
+  CK_ATTRIBUTE pub_attr[] = {{CKA_TOKEN, &no, sizeof(no)},
+                             {CKA_ENCRYPT, &yes, sizeof(yes)},
+                             {CKA_PUBLIC_EXPONENT, pubexp, 3},
+                             {CKA_MODULUS_BITS, &size, sizeof(size)}};
+  CK_ATTRIBUTE priv_attr[] = {{CKA_TOKEN, &no, sizeof(no)},
+                              {CKA_DECRYPT, &yes, sizeof(yes)}};
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pubh, &privh));
+  ASSERT_TRUE(session_->GetObject(privh, &priv));
+  ASSERT_TRUE(session_->GetObject(pubh, &pub));
+
+  EXPECT_CALL(mock_metrics_library_, SendSparseToUMA(kChapsSessionEncrypt, _))
+      .Times(AnyNumber());
+  EXPECT_CALL(mock_metrics_library_, SendSparseToUMA(kChapsSessionDecrypt, _))
+      .Times(AnyNumber());
+
+  // Encrypt plaintext.
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kEncrypt, CKM_RSA_PKCS, "", pub));
+  string plaintext(64, 'X');
+  int cipher_len = 0;
+  string ciphertext;
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
+            session_->OperationSinglePart(kEncrypt, plaintext, &cipher_len,
+                                          &ciphertext));
+  EXPECT_EQ(CKR_OK, session_->OperationSinglePart(kEncrypt, plaintext,
+                                                  &cipher_len, &ciphertext));
+
+  // Initialize multipart Decrypt with the private key.
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kDecrypt, CKM_RSA_PKCS, "", priv));
+  EXPECT_TRUE(session_->IsOperationActive(kDecrypt));
+
+  // Destroying the key object during an active multipart decrypt operation.
+  EXPECT_EQ(CKR_OK, session_->DestroyObject(privh));
+  EXPECT_FALSE(session_->GetObject(privh, &priv));
+  EXPECT_TRUE(session_->IsOperationActive(kDecrypt));
+
+  int out_len = 0;
+  string decrypted;
+  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kDecrypt, ciphertext, &out_len,
+                                              &decrypted));
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
+            session_->OperationFinal(kDecrypt, &out_len, &decrypted));
+  EXPECT_GT(out_len, 0);
+  EXPECT_EQ(CKR_OK, session_->OperationFinal(kDecrypt, &out_len, &decrypted));
+  EXPECT_FALSE(session_->IsOperationActive(kDecrypt));
+  EXPECT_EQ(decrypted, plaintext);
 }
 
 }  // namespace chaps

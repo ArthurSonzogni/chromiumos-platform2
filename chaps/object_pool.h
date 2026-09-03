@@ -5,6 +5,7 @@
 #ifndef CHAPS_OBJECT_POOL_H_
 #define CHAPS_OBJECT_POOL_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -82,6 +83,8 @@ class ObjectPool {
                       std::vector<const Object*>* matching_objects) = 0;
   // Finds an object by handle. Returns false if the handle does not exist.
   virtual Result FindByHandle(int handle, const Object** object) = 0;
+  virtual Result FindByHandle(int handle,
+                              std::shared_ptr<const Object>* object) = 0;
   // Returns a modifiable version of the given object.
   virtual Object* GetModifiableObject(const Object* object) = 0;
   // Flushes a modified object to persistent storage.

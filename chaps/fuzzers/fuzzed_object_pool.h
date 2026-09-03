@@ -5,10 +5,12 @@
 #ifndef CHAPS_FUZZERS_FUZZED_OBJECT_POOL_H_
 #define CHAPS_FUZZERS_FUZZED_OBJECT_POOL_H_
 
-#include <absl/container/flat_hash_map.h>
-#include <fuzzer/FuzzedDataProvider.h>
+#include <memory>
 #include <string>
 #include <vector>
+
+#include <absl/container/flat_hash_map.h>
+#include <fuzzer/FuzzedDataProvider.h>
 
 #include "chaps/object.h"
 #include "chaps/object_pool.h"
@@ -33,6 +35,8 @@ class FuzzedObjectPool : public ObjectPool {
   Result Find(const Object* search_template,
               std::vector<const Object*>* matching_objects) override;
   Result FindByHandle(int handle, const Object** object) override;
+  Result FindByHandle(int handle,
+                      std::shared_ptr<const Object>* object) override;
   Object* GetModifiableObject(const Object* object) override;
   Result Flush(const Object* object) override;
   bool IsPrivateLoaded() override;

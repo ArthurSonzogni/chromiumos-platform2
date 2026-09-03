@@ -9,10 +9,6 @@
 namespace chaps {
 
 ObjectPoolMock::ObjectPoolMock() {}
-ObjectPoolMock::~ObjectPoolMock() {
-  for (size_t i = 0; i < v_.size(); ++i) {
-    delete v_[i];
-  }
-}
+ObjectPoolMock::~ObjectPoolMock() = default;
 
 }  // namespace chaps
