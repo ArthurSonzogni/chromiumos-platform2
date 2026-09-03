@@ -83,6 +83,32 @@ TEST_F(FlexBluetoothOverridesTest, SyspropOverrideExistence) {
   EXPECT_EQ(contents_d, "[Sysprops]\n");
 }
 
+TEST_F(FlexBluetoothOverridesTest, SyspropMultipleOverridesExistence) {
+  const uint16_t id_vendor = 0x0cf3;
+  const uint16_t id_product = 0x311e;
+  std::map<BluetoothAdapter, std::unordered_set<SyspropOverride>> overrides = {
+      {BluetoothAdapter{id_vendor, id_product},
+       {SyspropOverride::kDisablePacketBoundary,
+        SyspropOverride::kDisableSniffMode}},
+  };
+
+  const FlexBluetoothOverrides bt(base::FilePath(filepath_), overrides);
+  const auto overrides_result =
+      bt.GetAdapterSyspropOverridesForVidPid(id_vendor, id_product);
+  EXPECT_EQ(overrides_result.size(), 2);
+  EXPECT_EQ(overrides_result.count(SyspropOverride::kDisablePacketBoundary), 1);
+  EXPECT_EQ(overrides_result.count(SyspropOverride::kDisableSniffMode), 1);
+
+  bt.ProcessOverridesForVidPid(id_vendor, id_product);
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(filepath_, &contents));
+  EXPECT_NE(contents.find("[Sysprops]\n"), std::string::npos);
+  EXPECT_NE(contents.find("bluetooth.core.disable_packet_boundary=true\n"),
+            std::string::npos);
+  EXPECT_NE(contents.find("bluetooth.core.disable_sniff_mode=true\n"),
+            std::string::npos);
+}
+
 TEST_F(FlexBluetoothOverridesTest, RemoveSyspropOverrideFile) {
   const uint16_t id_vendor_a = 0x0cf3;
   const uint16_t id_product_a = 0xe007;
