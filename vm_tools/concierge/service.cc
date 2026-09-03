@@ -756,7 +756,7 @@ std::optional<internal::VmStartImageFds> GetVmStartImageFds(
   struct internal::VmStartImageFds result;
   size_t count = 0;
   for (const auto& fdType : fds) {
-    base::ScopedFD fd(dup(file_handles[count++].get()));
+    base::ScopedFD fd(fcntl(file_handles[count++].get(), F_DUPFD_CLOEXEC, 0));
     if (!fd.is_valid()) {
       LOG(ERROR) << "Failed to get VM start image file descriptor";
       return std::nullopt;

@@ -4,6 +4,7 @@
 
 #include "vm_tools/concierge/service.h"
 
+#include <fcntl.h>
 #include <unistd.h>
 
 #include <vector>
@@ -235,6 +236,10 @@ TEST(ServiceInternalTest, TestGetVmStartImageFds) {
   ASSERT_TRUE(vm_start_image_fds.has_value());
   ASSERT_TRUE(vm_start_image_fds->kernel_fd.has_value());
   ASSERT_TRUE(vm_start_image_fds->rootfs_fd.has_value());
+  EXPECT_NE(fcntl(vm_start_image_fds->kernel_fd->get(), F_GETFD) & FD_CLOEXEC,
+            0);
+  EXPECT_NE(fcntl(vm_start_image_fds->rootfs_fd->get(), F_GETFD) & FD_CLOEXEC,
+            0);
   ASSERT_EQ(7, read(vm_start_image_fds->kernel_fd->get(), buf, 7));
   EXPECT_STREQ(buf, "kernel");
   ASSERT_EQ(7, read(vm_start_image_fds->rootfs_fd->get(), buf, 7));
