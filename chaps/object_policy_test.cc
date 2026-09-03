@@ -4,6 +4,7 @@
 
 #include <string>
 
+#include <dbus/chaps/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -101,6 +102,21 @@ TEST_F(TestObjectPolicy, IsModifyAllowed) {
   object_.SetAttributeBool(CKA_EXTRACTABLE, false);
   EXPECT_TRUE(policy.IsModifyAllowed(CKA_EXTRACTABLE, false_str));
   EXPECT_FALSE(policy.IsModifyAllowed(CKA_EXTRACTABLE, true_str));
+  // kChapsWrappableAttribute is not present initially; it defaults to false,
+  // so flipping it to true must be rejected.
+  EXPECT_TRUE(policy.IsModifyAllowed(kChapsWrappableAttribute, false_str));
+  EXPECT_FALSE(policy.IsModifyAllowed(kChapsWrappableAttribute, true_str));
+  object_.SetAttributeBool(kChapsWrappableAttribute, true);
+  EXPECT_TRUE(policy.IsModifyAllowed(kChapsWrappableAttribute, false_str));
+  EXPECT_TRUE(policy.IsModifyAllowed(kChapsWrappableAttribute, true_str));
+  object_.SetAttributeBool(kChapsWrappableAttribute, false);
+  EXPECT_TRUE(policy.IsModifyAllowed(kChapsWrappableAttribute, false_str));
+  EXPECT_FALSE(policy.IsModifyAllowed(kChapsWrappableAttribute, true_str));
+  // Defensive edge cases: empty string and invalid lengths must be rejected.
+  EXPECT_FALSE(policy.IsModifyAllowed(kChapsWrappableAttribute, ""));
+  EXPECT_FALSE(policy.IsModifyAllowed(kChapsWrappableAttribute, "\x01\x00"));
+  EXPECT_FALSE(policy.IsModifyAllowed(CKA_SENSITIVE, ""));
+  EXPECT_FALSE(policy.IsModifyAllowed(CKA_EXTRACTABLE, ""));
 }
 
 TEST_F(TestObjectPolicy, IsObjectComplete) {

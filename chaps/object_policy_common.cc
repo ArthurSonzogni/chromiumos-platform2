@@ -9,6 +9,8 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/notreached.h>
+#include <dbus/chaps/dbus-constants.h>
 
 #include "chaps/chaps_utility.h"
 #include "chaps/object.h"
@@ -66,12 +68,36 @@ bool ObjectPolicyCommon::IsModifyAllowed(CK_ATTRIBUTE_TYPE type,
       return false;
     }
   }
-  if (type == CKA_SENSITIVE ||          // Read-only when true.
-      type == CKA_EXTRACTABLE ||        // Read-only when false.
-      type == CKA_WRAP_WITH_TRUSTED) {  // Read-only when true.
+  if (type == CKA_SENSITIVE ||             // Read-only when true.
+      type == CKA_EXTRACTABLE ||           // Read-only when false.
+      type == CKA_WRAP_WITH_TRUSTED ||     // Read-only when true.
+      type == kChapsWrappableAttribute) {  // Read-only when false.
+    // Boolean PKCS#11 attributes MUST be exactly sizeof(CK_BBOOL).
+    if (value.size() != sizeof(CK_BBOOL)) {
+      LOG(WARNING) << "Invalid boolean attribute length for: "
+                   << AttributeToString(type);
+      return false;
+    }
     bool new_value = (value[0] != 0);
-    bool readonly_value = (type != CKA_EXTRACTABLE);
-    if (readonly_value == object_->GetAttributeBool(type, !readonly_value) &&
+    bool readonly_value = false;
+    bool default_value = false;
+    if (type == CKA_SENSITIVE || type == CKA_WRAP_WITH_TRUSTED) {
+      // Read-only once true; defaults to false (modifiable) when unset.
+      readonly_value = true;
+      default_value = false;
+    } else if (type == CKA_EXTRACTABLE) {
+      // Read-only once false; defaults to true (modifiable) when unset.
+      readonly_value = false;
+      default_value = true;
+    } else if (type == kChapsWrappableAttribute) {
+      // kChapsWrappableAttribute is read-only once false, and defaults to
+      // false (read-only) when unset on the object.
+      readonly_value = false;
+      default_value = false;
+    } else {
+      NOTREACHED();
+    }
+    if (object_->GetAttributeBool(type, default_value) == readonly_value &&
         new_value != readonly_value) {
       LOG(WARNING) << "Attribute is read-only: " << AttributeToString(type);
       return false;
