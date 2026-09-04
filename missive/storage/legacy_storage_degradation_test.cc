@@ -1271,19 +1271,6 @@ TEST_P(LegacyStorageDegradationTest, RecordsSheddingSecurityCantShedRecords) {
   // This writes enough records to create `kAmountOfBigRecords` files in
   // SECURITY queue that does not permit shedding.
   for (size_t i = 0; i < kAmountOfBigRecords; i++) {
-    // Write and expect immediate uploads.
-    test::TestCallbackAutoWaiter waiter;
-    EXPECT_CALL(set_mock_uploader_expectations_,
-                Call(Eq(UploaderInterface::UploadReason::IMMEDIATE_FLUSH)))
-        .WillOnce(
-            Invoke([&waiter, i, this](UploaderInterface::UploadReason reason) {
-              auto uploader = TestUploader::SetUp(SECURITY, &waiter, this);
-              for (size_t j = 0; j <= i; j++) {
-                uploader.Required(j, xBigData());
-              }
-              return uploader.Complete();
-            }))
-        .RetiresOnSaturation();
     WriteStringOrDie(SECURITY, xBigData());
   }
 
@@ -1304,7 +1291,7 @@ TEST_P(LegacyStorageDegradationTest, RecordsSheddingSecurityCantShedRecords) {
         .Times(0);
     test::TestCallbackAutoWaiter waiter;
     EXPECT_CALL(set_mock_uploader_expectations_,
-                Call(Eq(UploaderInterface::UploadReason::IMMEDIATE_FLUSH)))
+                Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
         .WillOnce(
             Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
               auto uploader = TestUploader::SetUp(SECURITY, &waiter, this);
@@ -1316,6 +1303,8 @@ TEST_P(LegacyStorageDegradationTest, RecordsSheddingSecurityCantShedRecords) {
         .RetiresOnSaturation();
     const Status write_result = WriteString(SECURITY, xBigData());
     ASSERT_FALSE(write_result.ok());
+    // Trigger upload on SECURITY.
+    task_environment_.FastForwardBy(StorageOptions::kSecurityUploadPeriod);
   }
 
   // Discard the space reserved

@@ -48,6 +48,7 @@ class StorageOptions {
 
   static constexpr char kSecurityQueueSubdir[] = "Security";
   static constexpr char kSecurityQueuePrefix[] = "P_Security";
+  static constexpr base::TimeDelta kSecurityUploadPeriod = base::Seconds(2);
 
   static constexpr char kImmediateQueueSubdir[] = "Immediate";
   static constexpr char kImmediateQueuePrefix[] = "P_Immediate";

@@ -91,8 +91,7 @@ QueueOptions StorageOptions::PopulateQueueOptions(Priority priority) const {
       return QueueOptions(*this)
           .set_subdirectory(kSecurityQueueSubdir)
           .set_file_prefix(kSecurityQueuePrefix)
-          .set_upload_retry_delay(kFailedUploadRetryDelay)
-          .set_can_shed_records(false);
+          .set_upload_period(kSecurityUploadPeriod);
     case UNDEFINED_PRIORITY:
       NOTREACHED() << "No QueueOptions for priority UNDEFINED_PRIORITY.";
   }

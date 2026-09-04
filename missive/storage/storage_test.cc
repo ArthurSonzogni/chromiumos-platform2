@@ -1722,13 +1722,11 @@ TEST_P(StorageTest, WriteAndUploadWithBadConfirmation) {
 TEST_P(StorageTest, WriteAndRepeatedlySecurityUpload) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
-  // Upload is initiated asynchronously, so it may happen after the next
-  // record is also written. Because of that we set expectations for the
-  // records after the current one as |Possible|.
+  // Upload is initiated periodically.
   {
     test::TestCallbackAutoWaiter waiter;
     EXPECT_CALL(set_mock_uploader_expectations_,
-                Call(Eq(UploaderInterface::UploadReason::IMMEDIATE_FLUSH)))
+                Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
         .WillOnce(
             Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
               return TestUploader::SetUp(SECURITY, &waiter, this)
@@ -1736,14 +1734,14 @@ TEST_P(StorageTest, WriteAndRepeatedlySecurityUpload) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    WriteStringOrDie(SECURITY,
-                     kData[0]);  // Immediately uploads and verifies.
+    WriteStringOrDie(SECURITY, kData[0]);
+    task_environment_.FastForwardBy(StorageOptions::kSecurityUploadPeriod);
   }
 
   {
     test::TestCallbackAutoWaiter waiter;
     EXPECT_CALL(set_mock_uploader_expectations_,
-                Call(Eq(UploaderInterface::UploadReason::IMMEDIATE_FLUSH)))
+                Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
         .WillOnce(
             Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
               return TestUploader::SetUp(SECURITY, &waiter, this)
@@ -1752,14 +1750,14 @@ TEST_P(StorageTest, WriteAndRepeatedlySecurityUpload) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    WriteStringOrDie(SECURITY,
-                     kData[1]);  // Immediately uploads and verifies.
+    WriteStringOrDie(SECURITY, kData[1]);
+    task_environment_.FastForwardBy(StorageOptions::kSecurityUploadPeriod);
   }
 
   {
     test::TestCallbackAutoWaiter waiter;
     EXPECT_CALL(set_mock_uploader_expectations_,
-                Call(Eq(UploaderInterface::UploadReason::IMMEDIATE_FLUSH)))
+                Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
         .WillOnce(
             Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
               return TestUploader::SetUp(SECURITY, &waiter, this)
@@ -1769,8 +1767,8 @@ TEST_P(StorageTest, WriteAndRepeatedlySecurityUpload) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    WriteStringOrDie(SECURITY,
-                     kData[2]);  // Immediately uploads and verifies.
+    WriteStringOrDie(SECURITY, kData[2]);
+    task_environment_.FastForwardBy(StorageOptions::kSecurityUploadPeriod);
   }
 }
 
