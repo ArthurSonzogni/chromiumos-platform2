@@ -53,6 +53,26 @@ PropertyStore::PropertyStore(PropertyChangeCallback on_property_changed)
 
 PropertyStore::~PropertyStore() = default;
 
+void PropertyStore::Clear() {
+  bool_properties_.clear();
+  int16_properties_.clear();
+  int32_properties_.clear();
+  key_value_store_properties_.clear();
+  key_value_stores_properties_.clear();
+  rpc_identifier_properties_.clear();
+  rpc_identifiers_properties_.clear();
+  string_properties_.clear();
+  stringmap_properties_.clear();
+  stringmaps_properties_.clear();
+  strings_properties_.clear();
+  uint8_properties_.clear();
+  bytearray_properties_.clear();
+  uint16_properties_.clear();
+  uint16s_properties_.clear();
+  uint32_properties_.clear();
+  uint64_properties_.clear();
+}
+
 bool PropertyStore::Contains(std::string_view prop) const {
   return (
       bool_properties_.contains(prop) || int16_properties_.contains(prop) ||

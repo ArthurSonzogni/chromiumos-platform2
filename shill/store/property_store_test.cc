@@ -785,4 +785,19 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
   EXPECT_EQ(new_uint32_value, result_dict[kUint32Key].Get<uint32_t>());
 }
 
+TEST_F(PropertyStoreTest, Clear) {
+  PropertyStore store;
+  bool bool_val = true;
+  store.RegisterBool("bool_key", &bool_val);
+  EXPECT_TRUE(store.Contains("bool_key"));
+
+  store.Clear();
+  EXPECT_FALSE(store.Contains("bool_key"));
+
+  brillo::VariantDictionary dict;
+  Error error;
+  EXPECT_TRUE(store.GetProperties(&dict, &error));
+  EXPECT_TRUE(dict.empty());
+}
+
 }  // namespace shill

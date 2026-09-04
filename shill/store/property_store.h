@@ -34,6 +34,9 @@ class PropertyStore {
 
   ~PropertyStore();
 
+  // Clears all registered properties.
+  void Clear();
+
   bool Contains(std::string_view property) const;
 
   // Setting properties using brillo::Any variant type.

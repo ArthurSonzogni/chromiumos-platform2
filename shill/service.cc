@@ -314,6 +314,12 @@ Service::~Service() {
     LOG(WARNING) << *this << ": Service still had a Network attached";
     attached_network_->UnregisterEventHandler(network_event_handler_.get());
   }
+  // Clear property store accessors so no dangling pointers to derived class
+  // members remain.
+  store_.Clear();
+  // Reset adaptor explicitly to unregister from D-Bus before remaining member
+  // destruction.
+  adaptor_.reset();
   SLOG(1) << *this << ": Service destroyed.";
 }
 
