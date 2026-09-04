@@ -116,7 +116,6 @@ const APIS: &[SystemApiDbus] = &[
     SystemApiDbus::constants("dbus/vm_cicerone"),
     SystemApiDbus::constants("dbus/dlcservice"),
     SystemApiDbus::constants("dbus/seneschal"),
-    SystemApiDbus::constants("dbus/vm_plugin_dispatcher"),
     SystemApiDbus::constants("dbus/vm_launch"),
 ];
 

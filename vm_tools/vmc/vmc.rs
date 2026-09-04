@@ -1327,7 +1327,7 @@ mod tests {
                 b"ListVmDisks" => {
                     let mut resp = ListVmDisksResponse::new();
                     resp.images.push(VmDiskInfo {
-                        name: "PvmDefault".to_owned(),
+                        name: "termina".to_owned(),
                         ..Default::default()
                     });
                     resp.success = true;

@@ -68,7 +68,6 @@ pub enum ChromeOSError {
     BadDiskImageStatus(EnumOrUnknown<DiskImageStatus>, String),
     BadVmStatus(EnumOrUnknown<VmStatus>, String),
     BadVmManagementCall,
-    BadVmPluginDispatcherStatus,
     BiosAlreadySpecified(String),
     BiosDlcNotAllowed(String),
     CrostiniVmDisabled,
@@ -96,7 +95,6 @@ pub enum ChromeOSError {
         EnumOrUnknown<attach_usb_to_container_response::Status>,
         String,
     ),
-    FailedSendProblemReport(String, i32),
     FailedSetUpVmUser(String),
     FailedSetupContainerUser(
         EnumOrUnknown<set_up_lxd_container_user_response::Status>,
@@ -123,16 +121,7 @@ pub enum ChromeOSError {
     NoSuchVm,
     NoSuchVmType,
     NoVmTechnologyEnabled,
-    NotAvailableForPluginVm,
-    NotPluginVm,
     OpenUserFile(PathBuf, std::io::Error),
-    PluginVmDisabled,
-    PluginVmDisabledReason(String),
-    PluginVmGenericError(i32),
-    PluginVmLicenseExpired(i32),
-    PluginVmLicenseInvalid(i32),
-    PluginVmNotEnoughDisk,
-    PluginVmNoPortalAccess,
     RetrieveActiveSessions,
     ToolsDlcNotAllowed(String),
 }
@@ -148,7 +137,6 @@ impl fmt::Display for ChromeOSError {
             }
             BadVmStatus(s, reason) => write!(f, "bad VM status: `{:?}`: {}", s, reason),
             BadVmManagementCall => write!(f, "invalid response to vm management request"),
-            BadVmPluginDispatcherStatus => write!(f, "failed to start Parallels dispatcher"),
             BiosAlreadySpecified(dlc) => write!(
                 f,
                 "bios path already specified bios dlc `{}` is not allowed",
@@ -189,9 +177,6 @@ impl fmt::Display for ChromeOSError {
                     "failed to register shared USB device with container: `{:?}`: {}",
                     s, reason
                 )
-            }
-            FailedSendProblemReport(msg, error_code) => {
-                write!(f, "failed to send problem report: {} ({})", msg, error_code)
             }
             FailedSetUpVmUser(reason) => {
                 write!(f, "failed to set up VM user: {}", reason)
@@ -244,30 +229,8 @@ impl fmt::Display for ChromeOSError {
             MissingVmTypeOnDisk => write!(f, "VM does not have an on-disk vm type set."),
             NoSuchVm => write!(f, "VM with such name does not exist"),
             NoSuchVmType => write!(f, "Invalid VM type"),
-            NoVmTechnologyEnabled => write!(f, "neither Crostini nor Parallels VMs are enabled"),
-            NotAvailableForPluginVm => write!(f, "this command is not available for Parallels VM"),
-            NotPluginVm => write!(f, "this VM is not a Parallels VM"),
+            NoVmTechnologyEnabled => write!(f, "neither Crostini nor Bruschetta VMs are enabled"),
             OpenUserFile(p, e) => write!(f, "failed to open `{}`: {}", p.display(), e),
-            PluginVmDisabled => {
-                write!(
-                    f,
-                    "Parallels VMs are not available. Visit `chrome://vm/parallels` \
-                           page in Chrome browser to review state of Parallels Desktop software."
-                )
-            }
-            PluginVmDisabledReason(reason) => {
-                write!(
-                    f,
-                    "Parallels VMs are not available: {}. Visit `chrome://vm/parallels` \
-                           page in Chrome browser to review state of Parallels Desktop software.",
-                    reason
-                )
-            }
-            PluginVmGenericError(rc) => write!(f, "failed to execute request: {:#X}", rc),
-            PluginVmLicenseExpired(rc) => write!(f, "expired license: {:#X}", rc),
-            PluginVmLicenseInvalid(rc) => write!(f, "invalid license: {:#X}", rc),
-            PluginVmNotEnoughDisk => write!(f, "insufficient disk space to start VM"),
-            PluginVmNoPortalAccess => write!(f, "unable to access Parallels licensing portal"),
             RetrieveActiveSessions => write!(f, "failed to retrieve active sessions"),
             ToolsDlcNotAllowed(dlc) => write!(f, "tools dlc `{}` is not allowed", dlc),
         }
@@ -894,8 +857,9 @@ impl Methods {
 
         Ok(())
     }
-    /// Starts all necessary VM services (currently just the Parallels dispatcher).
-    fn start_vm_infrastructure(&mut self, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
+
+    /// Checks that at least one supported VM technology is enabled for the user.
+    fn ensure_vm_technology_enabled(&mut self, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
         if self.is_crostini_enabled(user_id_hash)? || self.is_bruschetta_enabled(user_id_hash)? {
             Ok(())
         } else {
@@ -1313,20 +1277,6 @@ impl Methods {
         } else {
             Err(FailedListDiskImages(response.failure_reason).into())
         }
-    }
-
-    /// Checks if VM with given name/disk is running in Parallels.
-    pub fn is_plugin_vm(
-        &mut self,
-        vm_name: &str,
-        user_id_hash: &str,
-    ) -> Result<bool, Box<dyn Error>> {
-        let (images, _) = self.list_disk_images(
-            user_id_hash,
-            Some(StorageLocation::STORAGE_CRYPTOHOME_PLUGINVM),
-            Some(vm_name),
-        )?;
-        Ok(!images.is_empty())
     }
 
     /// Gets the id of the dlc to be used to boot a VM, or None if DLC should not be used.
@@ -2192,7 +2142,7 @@ impl Methods {
         operation: &str,
         params: &[&str],
     ) -> Result<(), Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
+        self.ensure_vm_technology_enabled(user_id_hash)?;
         self.adjust_vm(name, user_id_hash, operation, params)
     }
 
@@ -2208,9 +2158,6 @@ impl Methods {
         mut vm_type: Option<VmType>,
         start_shell: bool,
     ) -> Result<(), Box<dyn Error>> {
-        if self.is_plugin_vm(name, user_id_hash)? {
-            return Err(PluginVmDisabledReason("Plugin VM support is deprecated.".into()).into());
-        }
         self.ensure_crostini_available(user_id_hash)?;
 
         let disk_image_path = self.create_disk_image(name, user_id_hash)?;
@@ -2291,7 +2238,7 @@ impl Methods {
     }
 
     pub fn vm_stop(&mut self, name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
+        self.ensure_vm_technology_enabled(user_id_hash)?;
         self.stop_vm(name, user_id_hash)
     }
 
@@ -2344,7 +2291,7 @@ impl Methods {
         removable_media: Option<&str>,
         force: bool,
     ) -> Result<Option<String>, Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
+        self.ensure_vm_technology_enabled(user_id_hash)?;
         self.export_disk_image(
             name,
             user_id_hash,
@@ -2374,7 +2321,7 @@ impl Methods {
         user_id_hash: &str,
         path: &str,
     ) -> Result<String, Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
+        self.ensure_vm_technology_enabled(user_id_hash)?;
         let vm_info = self.get_vm_info(name, user_id_hash)?;
         let vm_path =
             self.share_path_with_vm(vm_info.seneschal_server_handle, user_id_hash, path)?;
@@ -2387,27 +2334,23 @@ impl Methods {
         user_id_hash: &str,
         path: &str,
     ) -> Result<(), Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
+        self.ensure_vm_technology_enabled(user_id_hash)?;
         let vm_info = self.get_vm_info(name, user_id_hash)?;
         self.unshare_path_with_vm(vm_info.seneschal_server_handle, path)
     }
 
     pub fn vsh_exec(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
-        if self.is_plugin_vm(vm_name, user_id_hash)? {
-            Err(PluginVmDisabledReason("Plugin VM support is deprecated.".into()).into())
-        } else {
-            Command::new("vsh")
-                .arg(format!("--vm_name={}", vm_name))
-                .arg(format!("--owner_id={}", user_id_hash))
-                .args([
-                    "--",
-                    "LXD_DIR=/mnt/stateful/lxd",
-                    "LXD_CONF=/mnt/stateful/lxd_conf",
-                ])
-                .status()?;
-            Ok(())
-        }
+        self.ensure_vm_technology_enabled(user_id_hash)?;
+        Command::new("vsh")
+            .arg(format!("--vm_name={}", vm_name))
+            .arg(format!("--owner_id={}", user_id_hash))
+            .args([
+                "--",
+                "LXD_DIR=/mnt/stateful/lxd",
+                "LXD_CONF=/mnt/stateful/lxd_conf",
+            ])
+            .status()?;
+        Ok(())
     }
 
     pub fn vsh_exec_container(
@@ -2435,7 +2378,7 @@ impl Methods {
         vm_name: &str,
         user_id_hash: &str,
     ) -> Result<(), Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
+        self.ensure_vm_technology_enabled(user_id_hash)?;
         self.destroy_disk_image(vm_name, user_id_hash)
     }
 
@@ -2443,7 +2386,7 @@ impl Methods {
         &mut self,
         user_id_hash: &str,
     ) -> Result<(Vec<DiskInfo>, u64), Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
+        self.ensure_vm_technology_enabled(user_id_hash)?;
         let (images, total_size) = self.list_disk_images(user_id_hash, None, None)?;
         let out_images: Vec<DiskInfo> = images
             .into_iter()
@@ -2501,7 +2444,7 @@ impl Methods {
         user_id_hash: &str,
         size: u64,
     ) -> Result<Option<String>, Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
+        self.ensure_vm_technology_enabled(user_id_hash)?;
         self.resize_disk(vm_name, user_id_hash, size)
     }
 
@@ -2511,7 +2454,7 @@ impl Methods {
         user_id_hash: &str,
         op_type: DiskOpType,
     ) -> Result<(bool, u32), Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
+        self.ensure_vm_technology_enabled(user_id_hash)?;
         self.check_disk_operation(uuid, op_type)
     }
 
@@ -2521,7 +2464,7 @@ impl Methods {
         user_id_hash: &str,
         op_type: DiskOpType,
     ) -> Result<(bool, u32), Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
+        self.ensure_vm_technology_enabled(user_id_hash)?;
         self.wait_disk_operation(uuid, op_type)
     }
 
@@ -2559,7 +2502,7 @@ impl Methods {
         user_id_hash: &str,
         vm_type: VmType,
     ) -> Result<(), Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
+        self.ensure_vm_technology_enabled(user_id_hash)?;
         self.set_vm_type(vm_type, user_id_hash)
     }
 
@@ -2571,10 +2514,7 @@ impl Methods {
         source: ContainerSource,
         timeout: Option<i32>,
     ) -> Result<(), Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
-        if self.is_plugin_vm(vm_name, user_id_hash)? {
-            return Err(NotAvailableForPluginVm.into());
-        }
+        self.ensure_vm_technology_enabled(user_id_hash)?;
 
         self.create_container(vm_name, user_id_hash, container_name, source, timeout)
     }
@@ -2587,10 +2527,7 @@ impl Methods {
         privilege_level: start_lxd_container_request::PrivilegeLevel,
         timeout: Option<i32>,
     ) -> Result<(), Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
-        if self.is_plugin_vm(vm_name, user_id_hash)? {
-            return Err(NotAvailableForPluginVm.into());
-        }
+        self.ensure_vm_technology_enabled(user_id_hash)?;
 
         self.start_container(
             vm_name,
@@ -2608,10 +2545,7 @@ impl Methods {
         container_name: &str,
         username: &str,
     ) -> Result<(), Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
-        if self.is_plugin_vm(vm_name, user_id_hash)? {
-            return Err(NotAvailableForPluginVm.into());
-        }
+        self.ensure_vm_technology_enabled(user_id_hash)?;
 
         self.setup_container_user(vm_name, user_id_hash, container_name, username)
     }
@@ -2623,10 +2557,7 @@ impl Methods {
         container_name: &str,
         updates: &HashMap<String, VmDeviceAction>,
     ) -> Result<String, Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
-        if self.is_plugin_vm(vm_name, user_id_hash)? {
-            return Err(NotAvailableForPluginVm.into());
-        }
+        self.ensure_vm_technology_enabled(user_id_hash)?;
 
         self.update_container_devices(vm_name, user_id_hash, container_name, updates)
     }
@@ -2639,7 +2570,7 @@ impl Methods {
         device: u8,
         container_name: Option<&str>,
     ) -> Result<u8, Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
+        self.ensure_vm_technology_enabled(user_id_hash)?;
         let usb_file_path = format!("/dev/bus/usb/{:03}/{:03}", bus, device);
         let usb_fd = self.permission_broker_open_path(Path::new(&usb_file_path))?;
         self.attach_usb(vm_name, user_id_hash, bus, device, usb_fd, container_name)
@@ -2651,7 +2582,7 @@ impl Methods {
         user_id_hash: &str,
         hidraw_device: &str,
     ) -> Result<u8, Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
+        self.ensure_vm_technology_enabled(user_id_hash)?;
         let hidraw_fd = self.permission_broker_open_path(Path::new(hidraw_device))?;
         self.attach_key(vm_name, user_id_hash, hidraw_fd)
     }
@@ -2662,7 +2593,7 @@ impl Methods {
         user_id_hash: &str,
         port: u8,
     ) -> Result<(), Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
+        self.ensure_vm_technology_enabled(user_id_hash)?;
         self.detach_usb(vm_name, user_id_hash, port)
     }
 
@@ -2671,7 +2602,7 @@ impl Methods {
         vm_name: &str,
         user_id_hash: &str,
     ) -> Result<Vec<(u8, u16, u16, String)>, Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
+        self.ensure_vm_technology_enabled(user_id_hash)?;
         let device_list = self
             .list_usb(vm_name, user_id_hash)?
             .into_iter()
