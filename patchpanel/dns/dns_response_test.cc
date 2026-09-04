@@ -10,8 +10,9 @@
 #include <optional>
 #include <string_view>
 
-#include <base/big_endian.h>
 #include <base/check.h>
+#include <base/containers/span.h>
+#include <base/containers/span_writer.h>
 #include <base/time/time.h>
 #include <testing/gmock/include/gmock/gmock.h>
 #include <testing/gtest/include/gtest/gtest.h>

@@ -8,9 +8,9 @@
 #include <sstream>
 #include <utility>
 
-#include <base/big_endian.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/span.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/cbor/diagnostic_writer.h>
