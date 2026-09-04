@@ -26,6 +26,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <brillo/blkdev_utils/storage_utils.h>
+#include <brillo/cryptohome.h>
 #include <brillo/files/file_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/process/process.h>
@@ -147,6 +148,8 @@ const std::array<const char*, 4> kPreserveDirs = {
 };
 
 constexpr char kOobeCompletedFile[] = "/home/chronos/.oobe_completed";
+constexpr char kInstallAttributesFile[] =
+    "var/lib/device_management/install_attributes.pb";
 
 constexpr char kMetaDataFSType[] = "ext4";
 
@@ -1123,7 +1126,9 @@ int ChromeosStartup::Run() {
   // to default_key_stateful partition.
   if (USE_DEFAULT_KEY_STATEFUL && flags_->lvm_stateful &&
       base::PathExists(stateful_.Append(kDefaultKeyStatefulMigrationTrigger)) &&
-      !base::PathExists(base::FilePath(kOobeCompletedFile))) {
+      !base::PathExists(base::FilePath(kOobeCompletedFile)) &&
+      !base::PathExists(root_.Append(kInstallAttributesFile)) &&
+      !HasAnyUserVaults()) {
     brillo::DeleteFile(stateful_.Append(kDefaultKeyStatefulMigrationTrigger));
     std::vector<base::FilePath> mnts;
     mount_helper_->CleanupMountsStack(&mnts);
@@ -1365,6 +1370,24 @@ void ChromeosStartup::RestorePreservedPaths() {
       }
     }
   }
+}
+
+bool ChromeosStartup::HasAnyUserVaults() {
+  base::FilePath shadow = root_.Append(kHome).Append(".shadow");
+  if (!platform_->DirectoryExists(shadow)) {
+    return false;
+  }
+  std::unique_ptr<libstorage::FileEnumerator> enumerator(
+      platform_->GetFileEnumerator(
+          shadow, false, base::FileEnumerator::FileType::DIRECTORIES));
+  for (base::FilePath entry = enumerator->Next(); !entry.empty();
+       entry = enumerator->Next()) {
+    if (brillo::cryptohome::home::IsSanitizedUserName(
+            entry.BaseName().value())) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace startup

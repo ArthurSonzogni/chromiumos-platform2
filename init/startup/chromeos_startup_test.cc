@@ -1711,4 +1711,52 @@ TEST_F(RestorePreservedPathsTest, PopPaths) {
   EXPECT_FALSE(platform_->FileExists(wifi_cred_preserve.Append("file2")));
 }
 
+class HasAnyUserVaultsTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    platform_ = std::make_unique<libstorage::FakePlatform>();
+    startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
+    std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
+        std::make_unique<hwsec_foundation::MockTlclWrapper>();
+    tlcl_ = tlcl.get();
+    startup_ = std::make_unique<startup::ChromeosStartup>(
+        std::make_unique<vpd::Vpd>(), std::make_unique<startup::Flags>(),
+        base_dir_, stateful_dir_, base::FilePath(), platform_.get(),
+        startup_dep_.get(),
+        std::make_unique<startup::MountHelperFactory>(
+            platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_,
+            base::FilePath(), base_dir_),
+        std::unique_ptr<libstorage::StorageContainerFactory>(), std::move(tlcl),
+        nullptr, nullptr);
+  }
+
+  std::unique_ptr<libstorage::FakePlatform> platform_;
+  std::unique_ptr<startup::FakeStartupDep> startup_dep_;
+  base::FilePath base_dir_{"/"};
+  base::FilePath stateful_dir_{"/stateful"};
+  hwsec_foundation::MockTlclWrapper* tlcl_;
+  std::unique_ptr<startup::ChromeosStartup> startup_;
+};
+
+TEST_F(HasAnyUserVaultsTest, NoUserVaults) {
+  EXPECT_FALSE(startup_->HasAnyUserVaults());
+}
+
+TEST_F(HasAnyUserVaultsTest, HasUserVaults) {
+  base::FilePath shadow = base_dir_.Append("home/.shadow");
+  ASSERT_TRUE(platform_->CreateDirectory(shadow));
+  base::FilePath user = shadow.Append("0123456789abcdef0123456789abcdef01234567");
+  ASSERT_TRUE(platform_->CreateDirectory(user));
+  EXPECT_TRUE(startup_->HasAnyUserVaults());
+}
+
+TEST_F(HasAnyUserVaultsTest, NonUserDirectories) {
+  base::FilePath shadow = base_dir_.Append("home/.shadow");
+  ASSERT_TRUE(platform_->CreateDirectory(shadow));
+  // System directories created by cryptohome
+  ASSERT_TRUE(platform_->CreateDirectory(shadow.Append("low_entropy_creds")));
+  ASSERT_TRUE(platform_->WriteStringToFile(shadow.Append("salt"), "salt_data"));
+  EXPECT_FALSE(startup_->HasAnyUserVaults());
+}
+
 }  // namespace startup

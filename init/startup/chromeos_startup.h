@@ -156,6 +156,11 @@ class ChromeosStartup {
   friend class RestorePreservedPathsTest;
   FRIEND_TEST(RestorePreservedPathsTest, PopPaths);
 
+  friend class HasAnyUserVaultsTest;
+  FRIEND_TEST(HasAnyUserVaultsTest, NoUserVaults);
+  FRIEND_TEST(HasAnyUserVaultsTest, HasUserVaults);
+  FRIEND_TEST(HasAnyUserVaultsTest, NonUserDirectories);
+
   void CheckClock();
   // Returns if the device is transitioning between verified boot and
   // dev mode.
@@ -173,6 +178,9 @@ class ChromeosStartup {
 
   // Create directories inside run_ds based on etc_ds directory structure.
   void CreateDaemonStore(base::FilePath run_ds, base::FilePath etc_ds);
+
+  // Returns if the device has any user vaults.
+  bool HasAnyUserVaults();
 
   raw_ptr<libstorage::Platform> platform_;
   std::unique_ptr<vpd::Vpd> vpd_;
