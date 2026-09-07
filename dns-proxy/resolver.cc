@@ -736,14 +736,15 @@ void Resolver::SetDomainDoHConfigs(
   }
 
   // Temporarily store the include and exclude domains in a single list.
-  std::vector<std::pair<std::string_view, DomainDoHConfig>> domain_doh_configs;
+  // Normalize everything to lower case.
+  std::vector<std::pair<std::string, DomainDoHConfig>> domain_doh_configs;
   for (const auto& domain : doh_excluded_domains) {
-    domain_doh_configs.push_back(std::pair<std::string_view, DomainDoHConfig>(
-        domain, DomainDoHConfig::kExcluded));
+    domain_doh_configs.emplace_back(base::ToLowerASCII(domain),
+                                    DomainDoHConfig::kExcluded);
   }
   for (const auto& domain : doh_included_domains) {
-    domain_doh_configs.push_back(std::pair<std::string_view, DomainDoHConfig>(
-        domain, DomainDoHConfig::kIncluded));
+    domain_doh_configs.emplace_back(base::ToLowerASCII(domain),
+                                    DomainDoHConfig::kIncluded);
   }
 
   // Separate DoH bypass domains full match and suffix match.
@@ -755,12 +756,10 @@ void Resolver::SetDomainDoHConfigs(
     if (domain[0] != '*') {
       // Prefer included domains over excluded domains. Included domains must
       // override excluded domains.
-      domain_doh_configs_[std::string(domain)] = config;
+      domain_doh_configs_[domain] = config;
       continue;
     }
-    domain.remove_prefix(1);
-    domain_suffix_doh_configs_.push_back(
-        std::make_pair(std::string(domain), config));
+    domain_suffix_doh_configs_.emplace_back(domain.substr(1), config);
   }
 
   // No need to sort if any of the list is empty. Priority matching is only
@@ -1147,14 +1146,15 @@ bool Resolver::BypassDoH(const std::string& domain) {
 
 std::optional<Resolver::DomainDoHConfig> Resolver::GetDomainDoHConfig(
     const std::string& domain) {
+  std::string lowercase_domain = base::ToLowerASCII(domain);
   // Compare |domain| with the map of FQDNs.
-  auto it = domain_doh_configs_.find(domain);
+  auto it = domain_doh_configs_.find(lowercase_domain);
   if (it != domain_doh_configs_.end()) {
     return it->second;
   }
   // Compare |domain| with the list of domain suffixes.
   for (const auto& [suffix, config] : domain_suffix_doh_configs_) {
-    if (domain.ends_with(suffix)) {
+    if (lowercase_domain.ends_with(suffix)) {
       return config;
     }
   }
@@ -1198,7 +1198,7 @@ std::optional<std::string> Resolver::GetDNSQuestionName(
       if (!base::IsAsciiAlpha(c) && !base::IsAsciiDigit(c) && c != '-') {
         return std::nullopt;
       }
-      qname.append(1, c);
+      qname.append(1, base::ToLowerASCII(c));
     }
 
     // Append dots ('.') if there is a following label.

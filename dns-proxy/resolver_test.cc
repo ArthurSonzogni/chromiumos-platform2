@@ -914,11 +914,79 @@ TEST_F(ResolverTest, BypassDoH_ExcludeNotIncludedDomains) {
   EXPECT_FALSE(resolver_->BypassDoH("google.com"));
 }
 
+TEST_F(ResolverTest, BypassDoH_IncludedDomain_CaseInsensitive) {
+  std::vector<std::string> doh_included_domains = {"bank.example"};
+  resolver_->SetDomainDoHConfigs(doh_included_domains,
+                                 /*doh_excluded_domains=*/{});
+  EXPECT_FALSE(resolver_->BypassDoH("bank.example"));
+  EXPECT_FALSE(resolver_->BypassDoH("BANK.EXAMPLE"));
+  EXPECT_FALSE(resolver_->BypassDoH("BaNk.ExAmPlE"));
+  EXPECT_TRUE(resolver_->BypassDoH("other.example"));
+}
+
+TEST_F(ResolverTest, BypassDoH_IncludedSuffix_CaseInsensitive) {
+  std::vector<std::string> doh_included_domains = {"*.corp.example"};
+  resolver_->SetDomainDoHConfigs(doh_included_domains,
+                                 /*doh_excluded_domains=*/{});
+  EXPECT_FALSE(resolver_->BypassDoH("a.corp.example"));
+  EXPECT_FALSE(resolver_->BypassDoH("a.CORP.EXAMPLE"));
+  EXPECT_FALSE(resolver_->BypassDoH("A.Corp.Example"));
+  EXPECT_TRUE(resolver_->BypassDoH("a.other.example"));
+}
+
+TEST_F(ResolverTest, BypassDoH_ExcludedDomain_CaseInsensitive) {
+  std::vector<std::string> doh_excluded_domains = {"internal.example"};
+  resolver_->SetDomainDoHConfigs(/*doh_included_domains=*/{},
+                                 doh_excluded_domains);
+  EXPECT_TRUE(resolver_->BypassDoH("internal.example"));
+  EXPECT_TRUE(resolver_->BypassDoH("INTERNAL.EXAMPLE"));
+  EXPECT_TRUE(resolver_->BypassDoH("InTeRnAl.ExAmPlE"));
+  EXPECT_FALSE(resolver_->BypassDoH("other.example"));
+}
+
+TEST_F(ResolverTest, BypassDoH_IncludedDomainWithCapitalsInPolicy) {
+  std::vector<std::string> doh_included_domains = {"BANK.EXAMPLE"};
+  resolver_->SetDomainDoHConfigs(doh_included_domains,
+                                 /*doh_excluded_domains=*/{});
+  EXPECT_FALSE(resolver_->BypassDoH("BANK.EXAMPLE"));
+  EXPECT_FALSE(resolver_->BypassDoH("bank.example"));
+  EXPECT_FALSE(resolver_->BypassDoH("BaNk.ExAmPlE"));
+}
+
+TEST_F(ResolverTest, BypassDoH_IncludedSuffixWithCapitalsInPolicy) {
+  std::vector<std::string> doh_included_domains = {"*.CORP.EXAMPLE"};
+  resolver_->SetDomainDoHConfigs(doh_included_domains,
+                                 /*doh_excluded_domains=*/{});
+  EXPECT_FALSE(resolver_->BypassDoH("a.corp.example"));
+  EXPECT_FALSE(resolver_->BypassDoH("A.CORP.EXAMPLE"));
+  EXPECT_FALSE(resolver_->BypassDoH("Sub.Corp.Example"));
+}
+
+TEST_F(ResolverTest, BypassDoH_ExcludedDomainWithCapitalsInPolicy) {
+  std::vector<std::string> doh_excluded_domains = {"INTERNAL.EXAMPLE"};
+  resolver_->SetDomainDoHConfigs(/*doh_included_domains=*/{},
+                                 doh_excluded_domains);
+  EXPECT_TRUE(resolver_->BypassDoH("INTERNAL.EXAMPLE"));
+  EXPECT_TRUE(resolver_->BypassDoH("internal.example"));
+  EXPECT_TRUE(resolver_->BypassDoH("InTeRnAl.ExAmPlE"));
+}
+
 TEST_F(ResolverTest, GetDNSQuestionName_ValidQuery) {
   const uint8_t kDnsQuery[] = {'J',    'G',    '\x01', ' ',    '\x00', '\x01',
                                '\x00', '\x00', '\x00', '\x00', '\x00', '\x01',
                                '\x06', 'g',    'o',    'o',    'g',    'l',
                                'e',    '\x03', 'c',    'o',    'm',    '\x00',
+                               '\x00', '\x01', '\x00', '\x01'};
+  EXPECT_EQ("google.com",
+            resolver_->GetDNSQuestionName(
+                base::span<const uint8_t>(kDnsQuery, sizeof(kDnsQuery))));
+}
+
+TEST_F(ResolverTest, GetDNSQuestionName_CaseInsensitive) {
+  const uint8_t kDnsQuery[] = {'J',    'G',    '\x01', ' ',    '\x00', '\x01',
+                               '\x00', '\x00', '\x00', '\x00', '\x00', '\x01',
+                               '\x06', 'G',    'o',    'O',    'g',    'L',
+                               'e',    '\x03', 'C',    'o',    'M',    '\x00',
                                '\x00', '\x01', '\x00', '\x01'};
   EXPECT_EQ("google.com",
             resolver_->GetDNSQuestionName(
