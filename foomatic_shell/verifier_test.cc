@@ -47,6 +47,51 @@ TEST(Verifier, cut) {
   EXPECT_TRUE(VerifyScript("cut -b 1-"));
 }
 
+TEST(Verifier, cutAllowedShortParameters) {
+  EXPECT_TRUE(VerifyScript("cut -b 12 -c 34 -d 56 -f 78"));
+  EXPECT_FALSE(VerifyScript("cut -b 12 12"));
+  EXPECT_TRUE(VerifyScript("cut -b123"));
+  EXPECT_FALSE(VerifyScript("cut -b123 x"));
+  EXPECT_TRUE(VerifyScript("cut -b123 -"));
+  EXPECT_FALSE(VerifyScript("cut -b"));
+  EXPECT_TRUE(VerifyScript("cut -nsz"));
+  EXPECT_FALSE(VerifyScript("cut -nsz x"));
+  EXPECT_FALSE(VerifyScript("cut -nszx"));
+}
+
+TEST(Verifier, cutAllowedLongParameters) {
+  EXPECT_TRUE(VerifyScript("cut --bytes=123 --characters xxx --delimiter=x"));
+  EXPECT_TRUE(VerifyScript("cut --byt=123 --ch=xxx --delim xxx --fields=1"));
+  EXPECT_TRUE(VerifyScript("cut --fiel=1 --output-delimiter=zzz"));
+  EXPECT_FALSE(VerifyScript("cut --byts=123"));
+  EXPECT_FALSE(VerifyScript("cut --bytes"));
+  EXPECT_TRUE(VerifyScript("cut --complement"));
+  EXPECT_TRUE(VerifyScript("cut --only-delimited"));
+  EXPECT_TRUE(VerifyScript("cut --zero-terminated"));
+  EXPECT_TRUE(VerifyScript("cut --compl --only-de --ze"));
+  EXPECT_FALSE(VerifyScript("cut --compl=x"));
+  EXPECT_FALSE(VerifyScript("cut --ze 123"));
+}
+
+TEST(Verifier, cutNonOptionParameters) {
+  // Only '-' is allowed.
+  EXPECT_TRUE(VerifyScript("cut -"));
+  EXPECT_FALSE(VerifyScript("cut x"));
+  EXPECT_TRUE(VerifyScript("cut --b=123 -- -"));
+  EXPECT_FALSE(VerifyScript("cut -- --b=123 -"));
+}
+
+TEST(Verifier, cutEmptyParameter) {
+  EXPECT_TRUE(VerifyScript("cut -b 12"));
+  EXPECT_TRUE(VerifyScript("cut -b ''"));
+  EXPECT_TRUE(VerifyScript("cut -b \"\""));
+  EXPECT_FALSE(VerifyScript("cut -b '' x"));
+  EXPECT_TRUE(VerifyScript("cut --bytes=123"));
+  EXPECT_TRUE(VerifyScript("cut --bytes="));
+  EXPECT_TRUE(VerifyScript("cut --bytes ''"));
+  EXPECT_FALSE(VerifyScript("cut --bytes '' x"));
+}
+
 TEST(Verifier, date) {
   EXPECT_TRUE(VerifyScript("date"));
 }

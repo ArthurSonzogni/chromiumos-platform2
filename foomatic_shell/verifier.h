@@ -34,6 +34,8 @@ class Verifier {
  private:
   // Verifies given Command. |command| must be not nullptr.
   bool VerifyCommand(Command* command);
+  // Verifies parameters of "cut" command.
+  bool VerifyCut(const std::vector<StringAtom>& parameters);
   // Verifies parameters of "gs" command.
   bool VerifyGs(const std::vector<StringAtom>& parameters);
 

@@ -4,9 +4,12 @@
 
 #include "foomatic_shell/verifier.h"
 
+#include <algorithm>
+#include <array>
 #include <set>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/logging.h>
@@ -34,6 +37,110 @@ bool HasSuffix(const std::string& str, const std::string_view& suffix) {
     return false;
   }
   return (str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0);
+}
+
+// Return the first element with the given prefix or an empty string if no
+// matching elements were found.
+std::string FirstWithPrefix(const std::vector<std::string>& strs,
+                            const std::string& prefix) {
+  for (const auto& str : strs) {
+    if (HasPrefix(str, prefix)) {
+      return str;
+    }
+  }
+  return "";
+}
+
+bool Contains(const std::vector<char>& chars, char c) {
+  return std::find(chars.begin(), chars.end(), c) != chars.end();
+}
+
+// Parse command line GNU parameters. Only parameters defined in the first four
+// vectors passed to the function are allowed. All parsed parameters are added
+// to the last two vectors passed to the function. Arguments of the parameters
+// are skipped. The function returns true <=> all command line parameters were
+// parsed successfully.
+bool ParseGnuParameters(const std::vector<char>& shortParamsWithoutArg,
+                        const std::vector<char>& shortParamsWithArg,
+                        const std::vector<std::string>& longParamsWithoutArg,
+                        const std::vector<std::string>& longParamsWithArg,
+                        const std::vector<StringAtom>& parameters,
+                        std::vector<std::string>& outOptionParams,
+                        std::vector<std::string>& outNonOptionParams) {
+  bool argument_expected = false;
+  bool no_more_options = false;
+  for (const auto& parameter : parameters) {
+    const std::string& param = parameter.value;
+    if (argument_expected) {
+      // This string is an argument required by the previous parameter.
+      argument_expected = false;
+      continue;
+    }
+    // Non-option parameter: not starting with '-' or equals "-" or after "--".
+    if (param.size() < 2 || param[0] != '-' || no_more_options) {
+      outNonOptionParams.push_back(param);
+      continue;
+    }
+    // Now, we have only parameters starting from '-' and having at least two
+    // characters. First check if the parameter begins with '--'.
+    if (param[1] == '-') {
+      // "--" means no more option parameters.
+      if (param.size() == 2) {  // == "--"
+        no_more_options = true;
+        continue;
+      }
+      // Check parameters starting from "--".
+      auto equalCharPos = param.find('=');
+      bool withArg = (equalCharPos != std::string::npos);
+      std::string paramName;
+      if (withArg) {
+        paramName = param.substr(2, equalCharPos - 2);
+      } else {
+        paramName = param.substr(2);
+      }
+      auto matchingParam = FirstWithPrefix(longParamsWithoutArg, paramName);
+      if (!matchingParam.empty()) {
+        if (withArg) {
+          // Unexpected argument.
+          return false;
+        }
+        outOptionParams.push_back(std::string("--") + matchingParam);
+        continue;
+      }
+      matchingParam = FirstWithPrefix(longParamsWithArg, paramName);
+      if (!matchingParam.empty()) {
+        argument_expected = !withArg;
+        outOptionParams.push_back(std::string("--") + matchingParam);
+        continue;
+      }
+      // Unknown or banned parameter.
+      return false;
+    }
+    // The parameter begins with single '-'. It may contain several options
+    // glued together.
+    for (size_t i = 1; i < param.size(); ++i) {
+      if (Contains(shortParamsWithoutArg, param[i])) {
+        // These parameters do not have an argument.
+        outOptionParams.push_back(std::string("-") + param.substr(i, 1));
+        continue;
+      }
+      if (Contains(shortParamsWithArg, param[i])) {
+        // This option requires an argument. If it is the last character of
+        // the parameter the argument is provided in the next parameter.
+        // Otherwise, the remaining part of the parameter is the value.
+        argument_expected = (i == param.size() - 1);
+        outOptionParams.push_back(std::string("-") + param.substr(i, 1));
+        break;
+      }
+      // Unknown or banned parameter.
+      return false;
+    }
+  }
+  if (argument_expected) {
+    // The last parameter has missing argument.
+    return false;
+  }
+  return true;
 }
 
 }  // namespace
@@ -108,7 +215,7 @@ bool Verifier::VerifyCommand(Command* command) {
 
   // The "cut" command is always allowed.
   if (cmd == "cut") {
-    return true;
+    return VerifyCut(command->parameters);
   }
 
   // The "date" command is allowed <=> it has no parameters with prefixes "-s"
@@ -200,6 +307,34 @@ bool Verifier::VerifyCommand(Command* command) {
   // All other commands are disallowed.
   message_ = "disallowed command: " + command->application.value;
   return false;
+}
+
+// Verify parameters for "cut" command. No input files different than '-' are
+// allowed.
+bool Verifier::VerifyCut(const std::vector<StringAtom>& parameters) {
+  static const auto kLongParamsWithoutArg = std::vector<std::string>{
+      "complement", "only-delimited", "zero-terminated"};
+  static const auto kLongParamsWithArg = std::vector<std::string>{
+      "bytes", "characters", "delimiter", "fields", "output-delimiter"};
+  static const auto kShortParamsWithoutArg = std::vector{'n', 's', 'z'};
+  static const auto kShortParamsWithArg = std::vector{'b', 'c', 'd', 'f'};
+  std::vector<std::string> optionParams;
+  std::vector<std::string> nonOptionParams;
+  if (!ParseGnuParameters(kShortParamsWithoutArg, kShortParamsWithArg,
+                          kLongParamsWithoutArg, kLongParamsWithArg, parameters,
+                          optionParams, nonOptionParams)) {
+    message_ = "cut: unknown or banned parameter";
+    return false;
+  }
+
+  for (const auto& param : nonOptionParams) {
+    if (param != "-") {
+      message_ = "cut: file parameter not equals '-'";
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // Parameters “-dSAFER” and “-sOutputFile=-” must be present.
