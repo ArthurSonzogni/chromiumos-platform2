@@ -178,7 +178,7 @@ TEST(FirewallTest, AddLoopbackLockdownRules_Success) {
 
   runner.ExpectCallIptables(
       IpFamily::kDual,
-      "filter -I egress_port_firewall -p tcp --dport 80 -o lo -m owner ! "
+      "filter -I loopback_port_firewall -p tcp --dport 80 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   ASSERT_TRUE(
       firewall.AddLoopbackLockdownRules(ModifyPortRuleRequest::TCP, 80));
@@ -186,7 +186,7 @@ TEST(FirewallTest, AddLoopbackLockdownRules_Success) {
 
   runner.ExpectCallIptables(
       IpFamily::kDual,
-      "filter -I egress_port_firewall -p udp --dport 53 -o lo -m owner ! "
+      "filter -I loopback_port_firewall -p udp --dport 53 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   ASSERT_TRUE(
       firewall.AddLoopbackLockdownRules(ModifyPortRuleRequest::UDP, 53));
@@ -194,7 +194,7 @@ TEST(FirewallTest, AddLoopbackLockdownRules_Success) {
 
   runner.ExpectCallIptables(
       IpFamily::kDual,
-      "filter -I egress_port_firewall -p tcp --dport 1234 -o lo -m owner ! "
+      "filter -I loopback_port_firewall -p tcp --dport 1234 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   ASSERT_TRUE(
       firewall.AddLoopbackLockdownRules(ModifyPortRuleRequest::TCP, 1234));
@@ -202,7 +202,7 @@ TEST(FirewallTest, AddLoopbackLockdownRules_Success) {
 
   runner.ExpectCallIptables(
       IpFamily::kDual,
-      "filter -I egress_port_firewall -p tcp --dport 8080 -o lo -m owner ! "
+      "filter -I loopback_port_firewall -p tcp --dport 8080 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   ASSERT_TRUE(
       firewall.AddLoopbackLockdownRules(ModifyPortRuleRequest::TCP, 8080));
@@ -213,16 +213,18 @@ TEST(FirewallTest, AddLoopbackLockdownRules_IptablesFails) {
   MockProcessRunner runner;
   Firewall firewall(&runner);
 
-  runner.ExpectCallIptables(IpFamily::kIPv4,
-                            "filter -I egress_port_firewall -p tcp --dport 80 "
-                            "-o lo -m owner ! --uid-owner chronos -j REJECT -w",
-                            /*call_times=*/1, /*output=*/"",
-                            /*empty_chain=*/false, /*return_value=*/1);
-  runner.ExpectCallIptables(IpFamily::kIPv4,
-                            "filter -I egress_port_firewall -p udp --dport 53 "
-                            "-o lo -m owner ! --uid-owner chronos -j REJECT -w",
-                            /*call_times=*/1, /*output=*/"",
-                            /*empty_chain=*/false, /*return_value=*/1);
+  runner.ExpectCallIptables(
+      IpFamily::kIPv4,
+      "filter -I loopback_port_firewall -p tcp --dport 80 "
+      "-o lo -m owner ! --uid-owner chronos -j REJECT -w",
+      /*call_times=*/1, /*output=*/"",
+      /*empty_chain=*/false, /*return_value=*/1);
+  runner.ExpectCallIptables(
+      IpFamily::kIPv4,
+      "filter -I loopback_port_firewall -p udp --dport 53 "
+      "-o lo -m owner ! --uid-owner chronos -j REJECT -w",
+      /*call_times=*/1, /*output=*/"",
+      /*empty_chain=*/false, /*return_value=*/1);
   runner.ExpectNoCallIptables(IpFamily::kIPv6);
 
   // Lock down TCP port 80, should fail.
@@ -239,31 +241,31 @@ TEST(FirewallTest, AddLoopbackLockdownRules_Ip6tablesFails) {
 
   runner.ExpectCallIptables(
       IpFamily::kIPv4,
-      "filter -I egress_port_firewall -p tcp --dport 80 -o lo -m owner ! "
+      "filter -I loopback_port_firewall -p tcp --dport 80 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   runner.ExpectCallIptables(
       IpFamily::kIPv6,
-      "filter -I egress_port_firewall -p tcp --dport 80 -o lo -m owner ! "
+      "filter -I loopback_port_firewall -p tcp --dport 80 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w",
       /*call_times=*/1, /*output=*/"", /*empty_chain=*/false,
       /*return_value=*/1);
   runner.ExpectCallIptables(
       IpFamily::kIPv4,
-      "filter -D egress_port_firewall -p tcp --dport 80 -o lo -m owner ! "
+      "filter -D loopback_port_firewall -p tcp --dport 80 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   runner.ExpectCallIptables(
       IpFamily::kIPv4,
-      "filter -I egress_port_firewall -p udp --dport 53 -o lo -m owner ! "
+      "filter -I loopback_port_firewall -p udp --dport 53 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   runner.ExpectCallIptables(
       IpFamily::kIPv6,
-      "filter -I egress_port_firewall -p udp --dport 53 -o lo -m owner ! "
+      "filter -I loopback_port_firewall -p udp --dport 53 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w",
       /*call_times=*/1, /*output=*/"", /*empty_chain=*/false,
       /*return_value=*/1);
   runner.ExpectCallIptables(
       IpFamily::kIPv4,
-      "filter -D egress_port_firewall -p udp --dport 53 -o lo -m owner ! "
+      "filter -D loopback_port_firewall -p udp --dport 53 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
 
   // Lock down TCP port 80, should fail because 'ip6tables' fails.

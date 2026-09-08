@@ -140,7 +140,7 @@ COMMIT
 :enforce_ipv6_src_prefix - [0:0]
 {% endif -%}
 :ingress_port_firewall - [0:0]
-:egress_port_firewall - [0:0]
+:loopback_port_firewall - [0:0]
 :ingress_downstream_network - [0:0]
 :ingress_dns_proxy - [0:0]
 :forward_tethering - [0:0]
@@ -217,17 +217,20 @@ COMMIT
   {#- Always ACCEPT traffic to DNS proxy's addresses. The rule is inserted    #}
   {#- before VPN filters and after drop guest IPv4 prefix rules.              #}
 {% endif -%}
+  {#- b/542788853: Evaluate loopback lockdown rules before broad VPN and state accepts. #}
+  {#- Only traverse loopback_port_firewall for connection initiation (state NEW) on lo.  #}
+-A OUTPUT -o lo -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A OUTPUT -o lo -j loopback_port_firewall
+-A OUTPUT -o lo -j ACCEPT
 -A OUTPUT -j accept_egress_to_dns_proxy
 -A OUTPUT -j vpn_egress_filters
 -A OUTPUT -j drop_output_to_bruschetta
 -A OUTPUT -m state --state NEW,RELATED,ESTABLISHED -j ACCEPT
--A OUTPUT -o lo -j ACCEPT
 {% if ipv6 -%}
   {#- Do not send out Destination Unreachable packets.                        #}
 -A OUTPUT -p ipv6-icmp -m icmp6 --icmpv6-type 1 -j DROP
 -A OUTPUT -p ipv6-icmp -j ACCEPT
 {% endif -%}
--A OUTPUT -j egress_port_firewall
 
 {% if ipv4 -%}
   {#- b/196899048: IPv4 TCP packets with TCP flags FIN,PSH coming from downstream #}

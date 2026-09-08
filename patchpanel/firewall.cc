@@ -312,7 +312,7 @@ bool Firewall::ModifyLoopbackLockdownRule(IpFamily ip_family,
   };
 
   return RunIptables(ip_family, Iptables::Table::kFilter, command,
-                     kEgressPortFirewallChain, argv);
+                     kLoopbackPortFirewallChain, argv);
 }
 
 bool Firewall::RunIptables(IpFamily ip_family,

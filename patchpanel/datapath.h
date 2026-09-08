@@ -38,9 +38,9 @@ namespace patchpanel {
 // filter INPUT chain for ingress port access rules controlled by
 // permission_broker.
 constexpr char kIngressPortFirewallChain[] = "ingress_port_firewall";
-// filter OUTPUT chain for egress port restriction rules controlled by
+// filter OUTPUT chain for loopback port restriction rules controlled by
 // permission_broker.
-constexpr char kEgressPortFirewallChain[] = "egress_port_firewall";
+constexpr char kLoopbackPortFirewallChain[] = "loopback_port_firewall";
 // nat PREROUTING chain for ingress DNAT forwarding rules controlled by
 // permission_broker.
 constexpr char kIngressPortForwardingChain[] = "ingress_port_forwarding";
