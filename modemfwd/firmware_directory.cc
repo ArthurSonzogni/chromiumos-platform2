@@ -46,7 +46,8 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
     FirmwareFileInfo info;
 
     // Note the recovery metadata directory for this variant, if it exists
-    if (cache.recovery_directory.has_value()) {
+    if (cache.recovery_directory.has_value() &&
+        cache.recovery_directory.value()) {
       result.recovery_directory = *cache.recovery_directory.value();
     }
 
@@ -207,6 +208,10 @@ std::unique_ptr<FirmwareDirectory> CreateFirmwareDirectory(
     std::unique_ptr<FirmwareIndex> index,
     const base::FilePath& directory,
     const std::string& variant) {
+  if (!index) {
+    LOG(WARNING) << "Firmware index is null; creating empty index";
+    index = std::make_unique<FirmwareIndex>();
+  }
   return std::make_unique<FirmwareDirectoryImpl>(std::move(index), directory,
                                                  variant);
 }

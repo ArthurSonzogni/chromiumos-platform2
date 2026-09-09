@@ -131,6 +131,12 @@ class ModemFlasherImpl : public ModemFlasher {
       Modem* modem,
       std::optional<std::string> carrier_override_uuid,
       brillo::ErrorPtr* err) override {
+    if (!modem || !firmware_directory_) {
+      Error::AddTo(err, FROM_HERE, kErrorResultFlashFailure,
+                   "Modem or firmware directory is null; not flashing");
+      return nullptr;
+    }
+
     FlashState* flash_state = &modem_info_[modem->GetEquipmentId()];
     std::string device_id = modem->GetDeviceId();
 
