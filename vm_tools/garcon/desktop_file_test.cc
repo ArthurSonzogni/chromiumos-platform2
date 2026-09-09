@@ -742,6 +742,111 @@ TEST_F(DesktopFileTest, Keywords) {
       true);
 }
 
+TEST_F(DesktopFileTest, GenerateArgvPreservesExplicitEmptyArguments) {
+  struct TestCase {
+    const char* name;
+    const char* exec;
+    std::vector<std::string> expected;
+  };
+  const TestCase cases[] = {
+      {"control",
+       "probe before NONEMPTY after",
+       {"probe", "before", "NONEMPTY", "after"}},
+      {"middle_empty",
+       "probe before \"\" after",
+       {"probe", "before", "", "after"}},
+      {"trailing_empty", "probe before \"\"", {"probe", "before", ""}},
+      {"consecutive_empty",
+       "probe \"\" \"\" after",
+       {"probe", "", "", "after"}},
+      {"quoted_words",
+       "probe before \"two words\" after",
+       {"probe", "before", "two words", "after"}},
+      {"quoted_whitespace",
+       "probe before \"   \" after",
+       {"probe", "before", "   ", "after"}},
+      {"absent_file", "probe before %f after", {"probe", "before", "after"}},
+      {"absent_url", "probe before %u after", {"probe", "before", "after"}},
+      {"absent_files", "probe before %F after", {"probe", "before", "after"}},
+      {"absent_urls", "probe before %U after", {"probe", "before", "after"}},
+      {"empty_before_absent_file",
+       "probe before \"\" %f after",
+       {"probe", "before", "", "after"}},
+  };
+
+  for (const auto& test_case : cases) {
+    SCOPED_TRACE(test_case.name);
+    const std::string contents =
+        "[Desktop Entry]\nType=Application\nName=Argument test\nExec=" +
+        std::string(test_case.exec) + "\n";
+    const base::FilePath path =
+        WriteContentsToPath(contents, std::string(test_case.name) + ".desktop");
+    const std::unique_ptr<DesktopFile> desktop_file =
+        DesktopFile::ParseDesktopFile(path);
+    ASSERT_NE(desktop_file, nullptr);
+    EXPECT_EQ(desktop_file->exec(), test_case.exec);
+    EXPECT_EQ(desktop_file->GenerateArgvWithFiles({}), test_case.expected);
+  }
+}
+
+TEST_F(DesktopFileTest, GenerateArgvEmptyArgumentsWithExpansionAndEscaping) {
+  struct TestCase {
+    const char* name;
+    const char* exec;
+    const char* parsed_exec;
+    std::vector<std::string> files;
+    std::vector<std::string> expected;
+  };
+  const TestCase cases[] = {
+      {"populated_file_control",
+       "probe before %f after",
+       "probe before %f after",
+       {"/tmp/first file.txt", "/tmp/second.txt"},
+       {"probe", "before", "/tmp/first file.txt", "after"}},
+      {"empty_before_populated_file",
+       "probe before \"\" %f after",
+       "probe before \"\" %f after",
+       {"/tmp/first file.txt", "/tmp/second.txt"},
+       {"probe", "before", "", "/tmp/first file.txt", "after"}},
+      {"populated_files_control",
+       "probe before %F after",
+       "probe before %F after",
+       {"/tmp/first file.txt", "/tmp/second.txt"},
+       {"probe", "before", "/tmp/first file.txt", "/tmp/second.txt", "after"}},
+      {"empty_after_populated_files",
+       "probe before %F \"\" after",
+       "probe before %F \"\" after",
+       {"/tmp/first file.txt", "/tmp/second.txt"},
+       {"probe", "before", "/tmp/first file.txt", "/tmp/second.txt", "",
+        "after"}},
+      {"escaped_neighbors_control",
+       R"(probe "quote:\\"inside\\"" "path:\\\\leaf" after)",
+       R"(probe "quote:\"inside\"" "path:\\leaf" after)",
+       {},
+       {"probe", "quote:\"inside\"", R"(path:\leaf)", "after"}},
+      {"empty_between_escaped_neighbors",
+       R"(probe "quote:\\"inside\\"" "" "path:\\\\leaf" after)",
+       R"(probe "quote:\"inside\"" "" "path:\\leaf" after)",
+       {},
+       {"probe", "quote:\"inside\"", "", R"(path:\leaf)", "after"}},
+  };
+
+  for (const auto& test_case : cases) {
+    SCOPED_TRACE(test_case.name);
+    const std::string contents =
+        "[Desktop Entry]\nType=Application\nName=Argument test\nExec=" +
+        std::string(test_case.exec) + "\n";
+    const base::FilePath path =
+        WriteContentsToPath(contents, std::string(test_case.name) + ".desktop");
+    const std::unique_ptr<DesktopFile> desktop_file =
+        DesktopFile::ParseDesktopFile(path);
+    ASSERT_NE(desktop_file, nullptr);
+    EXPECT_EQ(desktop_file->exec(), test_case.parsed_exec);
+    EXPECT_EQ(desktop_file->GenerateArgvWithFiles(test_case.files),
+              test_case.expected);
+  }
+}
+
 TEST_F(DesktopFileTest, ExecName) {
   ValidateExecutableFileName(
       "[Desktop Entry]\n"

@@ -336,7 +336,7 @@ std::vector<std::string> DesktopFile::GenerateArgvWithFiles(
       continue;
     }
     if (c == '"') {
-      if (in_quotes && !curr_arg.empty()) {
+      if (in_quotes) {
         // End of a quoted argument.
         retval.emplace_back(std::move(curr_arg));
         curr_arg.clear();
