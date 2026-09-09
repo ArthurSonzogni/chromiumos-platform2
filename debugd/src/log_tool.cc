@@ -519,10 +519,6 @@ const std::array kFeedbackLogs {
     "/usr/sbin/android-sh -c 'cat /sys/block/zram0/mm_stat'", kRoot, kRoot},
   Log{kCommand, "arcvm_zram_stat", "/usr/bin/nsenter -t1 -m "
     "/usr/sbin/android-sh -c 'cat /sys/block/zram0/stat'", kRoot, kRoot},
-  Log{kCommand, "borealis_fossilize_wrap_log", "timeout -s KILL 5s "
-    "/usr/bin/borealis-sh -- /usr/bin/get_feedback_file.sh "
-    "/tmp/fossilize-wrap-log.txt",
-    kRoot, kRoot},
   Log{kCommand, "borealis_frames", "timeout -s KILL 5s /usr/bin/borealis-sh "
     "-- /usr/bin/get-frame-log.sh", kRoot, kRoot},
   Log{kCommand, "borealis_frames_summary", "timeout -s KILL 5s "

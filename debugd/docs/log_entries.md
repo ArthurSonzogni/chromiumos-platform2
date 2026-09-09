@@ -127,11 +127,6 @@ btadapterd.
 
 Logs from the Borealis VM's output (kernel logs to serial, in-VM services).
 
-## borealis_fossilize_wrap_log
-
-Logs from Borealis attempts to install shader cache DLCs when fossilize is
-called within the VM.
-
 ## borealis_frames
 
 Frame timings from apps running in the Borealis VM. 16 KiB.
