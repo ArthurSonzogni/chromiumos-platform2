@@ -39,7 +39,6 @@
 #include <featured/feature_library.h>
 #include <grpcpp/grpcpp.h>
 #include <metrics/metrics_library.h>
-#include <shadercached/proto_bindings/shadercached.pb.h>
 #include <spaced/disk_usage_proxy.h>
 #include <vm_cicerone/cicerone_service.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
@@ -129,7 +128,6 @@ class Service final : public org::chromium::VmConciergeInterface,
   struct VMGpuCacheSpec {
     base::FilePath device;
     base::FilePath render_server;
-    base::FilePath foz_db_list;
   };
 
   // TODO(b/296025701): Move code out of this method and into async helpers.
@@ -576,8 +574,7 @@ class Service final : public org::chromium::VmConciergeInterface,
   // Prepares the GPU shader disk cache directories and if necessary erases
   // old caches for all VMs. Returns the prepared paths.
   VMGpuCacheSpec PrepareVmGpuCachePaths(const VmId& vm_id,
-                                        bool enable_render_server,
-                                        bool enable_foz_db_list);
+                                        bool enable_render_server);
 
   // Checks the current Feature settings and returns the CPU quota value (e.g.
   // 50 meaning 50%) to be set as the cpu.cfs_quota_us cgroup. When the Feature
@@ -636,7 +633,6 @@ class Service final : public org::chromium::VmConciergeInterface,
   dbus::ObjectProxy* resource_manager_service_proxy_;  // Owned by |bus_|.
   dbus::ObjectProxy* chrome_features_service_proxy_;   // Owned by |bus_|.
   dbus::ObjectProxy* vm_management_service_proxy_;     // Owned by |bus_|.
-  dbus::ObjectProxy* shadercached_proxy_;              // Owned by |bus_|.
 
   std::unique_ptr<org::chromium::VmCiceroneProxy> cicerone_service_proxy_;
 

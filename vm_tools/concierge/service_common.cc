@@ -54,7 +54,6 @@ std::optional<base::FilePath> GetFilePathFromName(
     return std::nullopt;
   }
 
-  // Group rx permission needed for VM shader cache management by shadercached
   if (!base::SetPosixFilePermissions(storage_dir, 0750)) {
     LOG(WARNING) << "Failed to set directory permissions for " << storage_dir;
   }

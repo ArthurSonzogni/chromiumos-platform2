@@ -142,8 +142,6 @@ class VmBuilder {
   VmBuilder& SetGpuCachePath(base::FilePath gpu_cache_path);
   VmBuilder& SetGpuCacheSize(std::string_view gpu_cache_size_str);
   VmBuilder& SetRenderServerCachePath(base::FilePath render_server_cache_path);
-  VmBuilder& SetPrecompiledCachePath(base::FilePath precompiled_cache_path);
-  VmBuilder& SetFozDbListPath(base::FilePath foz_db_list_path);
   VmBuilder& SetRenderServerCacheSize(
       std::string_view render_server_cache_size_str);
   // By default, VMM infers which context types should be advertised.
@@ -233,8 +231,6 @@ class VmBuilder {
   base::FilePath gpu_cache_path_;
   std::string gpu_cache_size_str_;
   base::FilePath render_server_cache_path_;
-  base::FilePath foz_db_list_path_;
-  base::FilePath precompiled_cache_path_;
   std::string render_server_cache_size_str_;
   std::bitset<GPU_CONTEXT_TYPE_COUNT> enabled_gpu_context_types_;
 

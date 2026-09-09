@@ -282,17 +282,6 @@ VmBuilder& VmBuilder::SetRenderServerCachePath(
   return *this;
 }
 
-VmBuilder& VmBuilder::SetPrecompiledCachePath(
-    base::FilePath precompiled_cache_path) {
-  precompiled_cache_path_ = std::move(precompiled_cache_path);
-  return *this;
-}
-
-VmBuilder& VmBuilder::SetFozDbListPath(base::FilePath foz_db_list_path) {
-  foz_db_list_path_ = std::move(foz_db_list_path);
-  return *this;
-}
-
 VmBuilder& VmBuilder::SetRenderServerCacheSize(
     std::string_view render_server_cache_size_str) {
   render_server_cache_size_str_ = render_server_cache_size_str;
@@ -634,13 +623,6 @@ base::StringPairs VmBuilder::BuildRunParams() const {
       }
       if (!render_server_cache_size_str_.empty()) {
         render_server_arg += ",cache-size=" + render_server_cache_size_str_;
-      }
-      if (!foz_db_list_path_.empty()) {
-        render_server_arg += ",foz-db-list-path=" + foz_db_list_path_.value();
-      }
-      if (!precompiled_cache_path_.empty()) {
-        render_server_arg +=
-            ",precompiled-cache-path=" + precompiled_cache_path_.value();
       }
       if constexpr (USE_CROSVM_VENUS_GWP_ASAN) {
         render_server_arg += ",ld-preload-path=" + std::string(kScudoPath);

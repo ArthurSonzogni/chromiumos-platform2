@@ -87,7 +87,6 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <dbus/error.h>
 #include <dbus/object_proxy.h>
-#include <dbus/shadercached/dbus-constants.h>
 #include <dbus/vm_concierge/dbus-constants.h>
 #include <google/protobuf/repeated_field.h>
 #include <metrics/metrics_library.h>
@@ -123,7 +122,6 @@
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/service_common.h"
 #include "vm_tools/concierge/service_start_vm_helper.h"
-#include "vm_tools/concierge/shadercached_helper.h"
 #include "vm_tools/concierge/ssh_keys.h"
 #include "vm_tools/concierge/termina_vm.h"
 #include "vm_tools/concierge/thread_utils.h"
@@ -1295,10 +1293,6 @@ bool Service::Init(MmServiceFactory mm_service_factory) {
       chromeos::kVmManagementServiceName,
       dbus::ObjectPath(chromeos::kVmManagementServicePath));
 
-  shadercached_proxy_ = bus_->GetObjectProxy(
-      shadercached::kShaderCacheServiceName,
-      dbus::ObjectPath(shadercached::kShaderCacheServicePath));
-
   CHECK(feature::PlatformFeatures::Initialize(bus_));
   VMT_TRACE_END(kCategory);
 
@@ -1732,15 +1726,10 @@ StartVmResponse Service::StartVmInternal(
 
   // Enable the render server for Vulkan.
   const bool enable_render_server = request.enable_gpu() && USE_CROSVM_VULKAN;
-  // Enable foz db list (dynamic un/loading for RO mesa shader cache) only for
-  // Borealis, for now.
-  const bool enable_foz_db_list =
-      USE_BOREALIS_HOST && classification == apps::VmType::BOREALIS;
 
   VMGpuCacheSpec gpu_cache_spec;
   if (request.enable_gpu()) {
-    gpu_cache_spec =
-        PrepareVmGpuCachePaths(vm_id, enable_render_server, enable_foz_db_list);
+    gpu_cache_spec = PrepareVmGpuCachePaths(vm_id, enable_render_server);
   }
 
   // Allocate resources for the VM.
@@ -1838,19 +1827,6 @@ StartVmResponse Service::StartVmInternal(
       .AppendCustomParam("--vcpu-cgroup-path",
                          base::FilePath(kTerminaVcpuCpuCgroup).value())
       .SetRenderServerCachePath(std::move(gpu_cache_spec.render_server));
-  if (enable_foz_db_list) {
-    auto prepare_result = PrepareShaderCache(vm_id, bus_, shadercached_proxy_);
-    if (prepare_result.has_value()) {
-      auto precompiled_cache_path =
-          base::FilePath(prepare_result.value().precompiled_cache_path());
-      vm_builder.SetFozDbListPath(std::move(gpu_cache_spec.foz_db_list))
-          .SetPrecompiledCachePath(precompiled_cache_path)
-          .AppendSharedDir(CreateShaderSharedDirParam(precompiled_cache_path));
-    } else {
-      LOG(ERROR) << "Unable to initialize shader cache: "
-                 << prepare_result.error();
-    }
-  }
   if (!image_spec.rootfs.empty()) {
     vm_builder.SetRootfs({.device = std::move(rootfs_device),
                           .path = std::move(image_spec.rootfs),
@@ -3001,12 +2977,6 @@ void Service::DestroyDiskImage(
       return;
     }
   }
-
-  // Delete shader cache best-effort. Shadercached is only distributed to boards
-  // if borealis enabled. There is no way to check VM type easily unless we turn
-  // it up.
-  // TODO(endlesspring): Deal with errors once we distribute to all boards.
-  auto _ = PurgeShaderCache(vm_id, bus_, shadercached_proxy_);
 
   base::FilePath disk_path;
   StorageLocation location;
@@ -4510,9 +4480,8 @@ Service::VmMap::iterator Service::FindVm(const VmId& vm_id) {
   return vms_.find(vm_id);
 }
 
-// TODO(b/244486983): move this functionality to shadercached
 Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
-    const VmId& vm_id, bool enable_render_server, bool enable_foz_db_list) {
+    const VmId& vm_id, bool enable_render_server) {
   // We want to delete and recreate the cache directory atomically, and in order
   // to do that we ensure that this method runs on the main thread always.
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -4525,9 +4494,6 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
   base::FilePath cache_device_path = cache_path.Append("device");
   base::FilePath cache_render_server_path =
       enable_render_server ? cache_path.Append("render_server")
-                           : base::FilePath();
-  base::FilePath foz_db_list_file =
-      enable_render_server ? cache_render_server_path.Append("foz_db_list.txt")
                            : base::FilePath();
 
   const base::FilePath* cache_subdir_paths[] = {&cache_device_path,
@@ -4576,36 +4542,13 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
     if (base::IsLink(*path)) {
       continue;
     }
-    // Group rx permission needed for VM shader cache management by shadercached
     if (!base::SetPosixFilePermissions(*path, 0750)) {
       LOG(WARNING) << "Failed to set directory permissions for " << *path;
     }
   }
 
-  if (!foz_db_list_file.empty()) {
-    bool file_exists = base::PathExists(foz_db_list_file);
-    if (enable_foz_db_list) {
-      // Initiate foz db file, if it already exists, continue using it
-      if (!file_exists) {
-        if (!base::WriteFile(foz_db_list_file, "")) {
-          LOG(WARNING) << "Failed to create foz db list file";
-          return VMGpuCacheSpec{};
-        }
-      }
-      if (!base::SetPosixFilePermissions(foz_db_list_file, 0774)) {
-        LOG(WARNING) << "Failed to set file permissions for "
-                     << foz_db_list_file;
-        return VMGpuCacheSpec{};
-      }
-    } else if (file_exists) {
-      LOG(WARNING) << "Dynamic GPU RO cache loading is disabled but the "
-                      "feature management file exists";
-    }
-  }
-
   return VMGpuCacheSpec{.device = std::move(cache_device_path),
-                        .render_server = std::move(cache_render_server_path),
-                        .foz_db_list = std::move(foz_db_list_file)};
+                        .render_server = std::move(cache_render_server_path)};
 }
 
 void AddGroupPermissionChildren(const base::FilePath& path) {
