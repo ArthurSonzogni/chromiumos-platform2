@@ -206,10 +206,10 @@ bool Verifier::VerifyCommand(Command* command) {
 // No other “-sOutputFile=” parameters are allowed.
 // All other parameters cannot start from prefixes defined in the array below.
 bool Verifier::VerifyGs(const std::vector<StringAtom>& parameters) {
-  static constexpr std::array<std::string_view, 10> kBannedPrefixes = {
-      "--permit-file-", "-I",        "-c", "-dALLOWPSTRANSPARENCY",
-      "-dDELAYSAFER",   "-dNOSAFER", "-o", "-sOutputFile=",
-      "-sstdout=",      "@"};
+  static constexpr std::array<std::string_view, 11> kBannedPrefixes = {
+      "--permit-file-",     "-I",        "-c", "-dALLOWPSTRANSPARENCY",
+      "-dDELAYSAFER",       "-dNOSAFER", "-o", "-sOutputFile=",
+      "-sOutputICCProfile", "-sstdout=", "@"};
   bool safer = false;
   bool output_file = false;
   for (auto& parameter : parameters) {
