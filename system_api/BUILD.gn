@@ -70,8 +70,6 @@ group("all") {
     ":system_api-runtime_probe-protos",
     ":system_api-seneschal-goprotos",
     ":system_api-seneschal-protos",
-    ":system_api-shadercached-goprotos",
-    ":system_api-shadercached-protos",
     ":system_api-smbprovider-protos",
     ":system_api-spaced-protos",
     ":system_api-stack_sampled_metrics_status-goprotos",
@@ -137,7 +135,6 @@ install_dbus_client_headers("install_dbus_headers") {
     "power_manager",
     "rgbkbd",
     "rmad",
-    "shadercached",
     "shill",
     "smbprovider",
     "tpm_manager",
@@ -822,20 +819,6 @@ goproto_library("system_api-ml-goprotos") {
   proto_in_dir = "dbus/ml"
   proto_out_dir = "go/src"
   sources = [ "${proto_in_dir}/ranker_example.proto" ]
-}
-
-proto_library("system_api-shadercached-protos") {
-  proto_in_dir = "dbus/shadercached"
-  proto_out_dir = "include/shadercached/proto_bindings"
-  sources = [ "${proto_in_dir}/shadercached.proto" ]
-  standalone = true
-  install_package = true
-}
-
-goproto_library("system_api-shadercached-goprotos") {
-  proto_in_dir = "dbus/shadercached"
-  proto_out_dir = "go/src/"
-  sources = [ "${proto_in_dir}/shadercached.proto" ]
 }
 
 proto_library("system_api-arc-protos") {

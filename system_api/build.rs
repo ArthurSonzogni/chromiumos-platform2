@@ -149,10 +149,6 @@ const PROTOS_TO_GENERATE: &[(&str, &str)] = &[
         "seneschal_service",
         "system_api/dbus/seneschal/seneschal_service.proto",
     ),
-    (
-        "shadercached",
-        "system_api/dbus/shadercached/shadercached.proto",
-    ),
     ("spaced", "system_api/dbus/spaced/spaced.proto"),
     (
         "UserDataAuth",
