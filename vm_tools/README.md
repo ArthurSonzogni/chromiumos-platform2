@@ -165,12 +165,6 @@ VM, since the stats are not namespaced) and reports those to UMA by invoking
 
 See [metric_reporter/README.md](metric_reporter/README.md) for more details.
 
-## shadercached
-
-A daemon responsible for managing VM shader cache.
-
-See [../shadercached/README.md](../shadercached/README.md) for more details.
-
 ## vmc (crostini_client)
 
 `vmc` is a command line tool used to interface with `vm_concierge` and other VM

@@ -175,7 +175,6 @@ copies.
 | [secure-wipe](./secure-wipe/) | Secure disk wipe |
 | [secure_erase_file](./secure_erase_file/) | Helper tools for securely erasing files from storage (e.g. keys and PII data) |
 | [sepolicy](./sepolicy/) | SELinux policy for ChromeOS |
-| [shadercached](./shadercached/) | Shader cache management daemon |
 | [shill](./shill/) | ChromeOS Connection Manager |
 | [smbfs](./smbfs/) | FUSE-based filesystem for accessing Samba / Windows networking shares |
 | [smbprovider](./smbprovider/) | Daemon for connecting Samba / Windows networking shares to the Files.app |
