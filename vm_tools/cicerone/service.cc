@@ -44,9 +44,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chunneld/proto_bindings/chunneld_service.pb.h>
 #include <dbus/object_proxy.h>
-#include <dbus/shadercached/dbus-constants.h>
 #include <vm_protos/proto_bindings/container_host.pb.h>
-#include <vm_tools/cicerone/shadercached_helper.h>
 
 using std::string;
 
@@ -1456,102 +1454,6 @@ void Service::ReportMetrics(
   event->Signal();
 }
 
-void Service::InstallVmShaderCache(
-    const uint32_t cid,
-    const vm_tools::container::InstallShaderCacheRequest* request,
-    std::string* error_out,
-    base::WaitableEvent* event) {
-  VirtualMachine* vm;
-  std::string owner_id;
-  std::string vm_name;
-
-  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
-    *error_out =
-        base::StringPrintf("Could not get virtual machine for cid %du", cid);
-    event->Signal();
-    return;
-  }
-
-  if (!vm->GetContainerForToken(request->token())) {
-    *error_out = "Invalid container token: " + request->token();
-    event->Signal();
-    return;
-  }
-
-  if (vm->GetType() != VirtualMachine::VmType::BOREALIS) {
-    *error_out = "Only Borealis VM supported";
-    event->Signal();
-    return;
-  }
-
-  shadercached_helper_->InstallShaderCache(
-      owner_id, vm_name, request, error_out, event, shadercached_proxy_);
-}
-
-void Service::UninstallVmShaderCache(
-    const uint32_t cid,
-    const vm_tools::container::UninstallShaderCacheRequest* request,
-    std::string* error_out,
-    base::WaitableEvent* event) {
-  VirtualMachine* vm;
-  std::string owner_id;
-  std::string vm_name;
-
-  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
-    *error_out =
-        base::StringPrintf("Could not get virtual machine for cid %du", cid);
-    event->Signal();
-    return;
-  }
-
-  if (!vm->GetContainerForToken(request->token())) {
-    *error_out = "Invalid container token: " + request->token();
-    event->Signal();
-    return;
-  }
-
-  if (vm->GetType() != VirtualMachine::VmType::BOREALIS) {
-    *error_out = "Only Borealis VM supported";
-    event->Signal();
-    return;
-  }
-
-  shadercached_helper_->UninstallShaderCache(
-      owner_id, vm_name, request, error_out, event, shadercached_proxy_);
-}
-
-void Service::UnmountVmShaderCache(
-    const uint32_t cid,
-    const vm_tools::container::UnmountShaderCacheRequest* request,
-    std::string* error_out,
-    base::WaitableEvent* event) {
-  VirtualMachine* vm;
-  std::string owner_id;
-  std::string vm_name;
-
-  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
-    *error_out =
-        base::StringPrintf("Could not get virtual machine for cid %du", cid);
-    event->Signal();
-    return;
-  }
-
-  if (!vm->GetContainerForToken(request->token())) {
-    *error_out = "Invalid container token: " + request->token();
-    event->Signal();
-    return;
-  }
-
-  if (vm->GetType() != VirtualMachine::VmType::BOREALIS) {
-    *error_out = "Only Borealis VM supported";
-    event->Signal();
-    return;
-  }
-
-  shadercached_helper_->UnmountShaderCache(
-      owner_id, vm_name, request, error_out, event, shadercached_proxy_);
-}
-
 void Service::InhibitScreensaver(const std::string& container_token,
                                  const uint32_t cid,
                                  InhibitScreensaverSignal* signal,
@@ -1669,16 +1571,6 @@ bool Service::Init(
                << vm_tools::sk_forwarding::kVmSKForwardingServiceName;
     return false;
   }
-  shadercached_proxy_ = bus_->GetObjectProxy(
-      shadercached::kShaderCacheServiceName,
-      dbus::ObjectPath(shadercached::kShaderCacheServicePath));
-  if (!shadercached_proxy_) {
-    LOG(ERROR) << "Unable to get dbus proxy for "
-               << shadercached::kShaderCacheServiceName;
-    return false;
-  }
-  shadercached_helper_ =
-      std::make_unique<ShadercachedHelper>(shadercached_proxy_);
 
   std::vector<std::string> container_listener_addresses = {
       base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY, vm_tools::kGarconPort),

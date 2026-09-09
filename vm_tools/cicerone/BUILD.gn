@@ -44,7 +44,6 @@ static_library("libcicerone") {
     "grpc_util.cc",
     "guest_metrics.cc",
     "service.cc",
-    "shadercached_helper.cc",
     "shill_client.cc",
     "tremplin_listener_impl.cc",
     "virtual_machine.cc",

@@ -40,7 +40,6 @@
 #include "vm_tools/cicerone/crash_listener_impl.h"
 #include "vm_tools/cicerone/dbus_adaptors/org.chromium.VmCicerone.h"
 #include "vm_tools/cicerone/guest_metrics.h"
-#include "vm_tools/cicerone/shadercached_helper.h"
 #include "vm_tools/cicerone/shill_client.h"
 #include "vm_tools/cicerone/tremplin_listener_impl.h"
 #include "vm_tools/cicerone/virtual_machine.h"
@@ -409,27 +408,6 @@ class Service : public org::chromium::VmCiceroneInterface {
                      vm_tools::container::ReportMetricsResponse* result,
                      base::WaitableEvent* event);
 
-  // Install shader cache DLC and optionally mount for the VM specified.
-  void InstallVmShaderCache(
-      const uint32_t cid,
-      const vm_tools::container::InstallShaderCacheRequest* request,
-      std::string* error_out,
-      base::WaitableEvent* event);
-
-  // Uninstall shader cache, unmount the shader cache DLC for all VMs.
-  void UninstallVmShaderCache(
-      const uint32_t cid,
-      const vm_tools::container::UninstallShaderCacheRequest* request,
-      std::string* error_out,
-      base::WaitableEvent* event);
-
-  // Uninstall shader cache, unmount the shader cache DLC for all VMs.
-  void UnmountVmShaderCache(
-      const uint32_t cid,
-      const vm_tools::container::UnmountShaderCacheRequest* request,
-      std::string* error_out,
-      base::WaitableEvent* event);
-
   // Sends a D-Bus message to request that sleep be inhibited.
   void InhibitScreensaver(const std::string& container_token,
                           const uint32_t cid,
@@ -730,7 +708,6 @@ class Service : public org::chromium::VmCiceroneInterface {
   dbus::ObjectProxy* crosdns_service_proxy_;           // Owned by |bus_|.
   dbus::ObjectProxy* concierge_service_proxy_;         // Owned by |bus_|.
   dbus::ObjectProxy* vm_sk_forwarding_service_proxy_;  // Owned by |bus_|.
-  dbus::ObjectProxy* shadercached_proxy_;              // Owned by |bus_|.
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   org::chromium::VmCiceroneAdaptor cicerone_adaptor_{this};
 
@@ -787,9 +764,6 @@ class Service : public org::chromium::VmCiceroneInterface {
 
   // Handler and accumulator for guest metrics.
   std::unique_ptr<GuestMetrics> guest_metrics_;
-
-  // Helper for shadercached requests
-  std::unique_ptr<ShadercachedHelper> shadercached_helper_;
 
   // Should Service create GuestMetric instance on initialization?  Used for
   // testing.
