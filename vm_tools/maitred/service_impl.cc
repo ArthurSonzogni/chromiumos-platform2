@@ -53,6 +53,8 @@
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/lock.h>
 #include <base/system/sys_info.h>
+#include <base/threading/platform_thread.h>
+#include <base/time/time.h>
 #include <brillo/file_utils.h>
 #include <brillo/files/file_util.h>
 #include <dbus/message.h>
@@ -265,11 +267,30 @@ grpc::Status ServiceImpl::ConfigureNetwork(grpc::ServerContext* ctx,
   if (!SetSysctl("/proc/sys/net/ipv4/ip_forward", "1", &error)) {
     return grpc::Status(grpc::INTERNAL, error);
   }
+
+  // When virtio_net driver probes asynchronously during VM boot, the network
+  // interface (eth0) might not be registered yet when maitred receives
+  // ConfigureNetwork. Wait up to 15 seconds for the interface to appear.
+  constexpr base::TimeDelta kInterfaceWaitTimeout = base::Seconds(15);
+  constexpr base::TimeDelta kInterfacePollInterval = base::Milliseconds(100);
+  base::FilePath accept_ra_path(base::StringPrintf(
+      "/proc/sys/net/ipv6/conf/%s/accept_ra", kInterfaceName));
+
+  const base::TimeTicks start_time = base::TimeTicks::Now();
+  while (!base::PathExists(accept_ra_path)) {
+    if (base::TimeTicks::Now() - start_time >= kInterfaceWaitTimeout) {
+      LOG(ERROR) << "Timed out waiting for network interface "
+                 << kInterfaceName;
+      return grpc::Status(
+          grpc::DEADLINE_EXCEEDED,
+          base::StringPrintf("timed out waiting for network interface %s",
+                             kInterfaceName));
+    }
+    base::PlatformThread::Sleep(kInterfacePollInterval);
+  }
+
   // accept_ra = 2: To accept RA packet even if forwarding == 1
-  if (!SetSysctl(base::StringPrintf("/proc/sys/net/ipv6/conf/%s/accept_ra",
-                                    kInterfaceName)
-                     .c_str(),
-                 "2", &error)) {
+  if (!SetSysctl(accept_ra_path.value().c_str(), "2", &error)) {
     return grpc::Status(grpc::INTERNAL, error);
   }
   if (!SetSysctl("/proc/sys/net/ipv6/conf/all/forwarding", "1", &error)) {
