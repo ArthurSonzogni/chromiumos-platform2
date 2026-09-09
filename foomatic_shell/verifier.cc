@@ -29,6 +29,13 @@ bool HasPrefix(const std::string& str, const std::string_view& prefix) {
   return (str.compare(0, prefix.size(), prefix) == 0);
 }
 
+bool HasSuffix(const std::string& str, const std::string_view& suffix) {
+  if (suffix.size() > str.size()) {
+    return false;
+  }
+  return (str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0);
+}
+
 }  // namespace
 
 bool Verifier::VerifyScript(Script* script, int recursion_level) {
@@ -199,10 +206,10 @@ bool Verifier::VerifyCommand(Command* command) {
 // No other “-sOutputFile=” parameters are allowed.
 // All other parameters cannot start from prefixes defined in the array below.
 bool Verifier::VerifyGs(const std::vector<StringAtom>& parameters) {
-  static constexpr std::array<std::string_view, 9> kBannedPrefixes = {
+  static constexpr std::array<std::string_view, 10> kBannedPrefixes = {
       "--permit-file-", "-I",        "-c", "-dALLOWPSTRANSPARENCY",
       "-dDELAYSAFER",   "-dNOSAFER", "-o", "-sOutputFile=",
-      "-sstdout="};
+      "-sstdout=",      "@"};
   bool safer = false;
   bool output_file = false;
   for (auto& parameter : parameters) {
@@ -213,6 +220,11 @@ bool Verifier::VerifyGs(const std::vector<StringAtom>& parameters) {
     }
     if (param == "-sOutputFile=-" || param == "-sOutputFile=%stdout") {
       output_file = true;
+      continue;
+    }
+    // Special case for @: we have to allow for *.upp files.
+    if (HasPrefix(param, "@") && HasSuffix(param, ".upp") &&
+        param.find('/') == std::string::npos) {
       continue;
     }
     for (auto& banned : kBannedPrefixes) {

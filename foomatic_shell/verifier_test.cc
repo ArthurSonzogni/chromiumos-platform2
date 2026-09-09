@@ -129,6 +129,12 @@ TEST(Verifier, gsOK) {
   EXPECT_TRUE(VerifyScript("gs -dPARANOIDSAFER -sOutputFile=%stdout"));
 }
 
+TEST(Verifier, gsUppFile) {
+  EXPECT_TRUE(VerifyScript("gs -dPARANOIDSAFER -sOutputFile=%stdout @aaa.upp"));
+  EXPECT_FALSE(VerifyScript("gs -dPARANOIDSAFER -sOutputFile=%stdout @aaa.up"));
+  EXPECT_FALSE(VerifyScript("gs -dPARANOIDSAFER -sOutputFile=%stdout @/a.upp"));
+}
+
 TEST(Verifier, pdftops) {
   EXPECT_TRUE(VerifyScript("pdftops"));
 }
