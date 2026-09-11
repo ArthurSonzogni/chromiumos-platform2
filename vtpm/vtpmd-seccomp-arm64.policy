@@ -41,6 +41,7 @@ ppoll: 1
 openat: 1
 read: 1
 write: 1
+writev: 1
 unlinkat: 1
 close: 1
 # For device policy to walk through the directory of interest.

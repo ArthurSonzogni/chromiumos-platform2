@@ -46,6 +46,7 @@ openat: 1
 creat: 1
 read: 1
 write: 1
+writev: 1
 unlink: 1
 unlinkat: 1
 close: 1
