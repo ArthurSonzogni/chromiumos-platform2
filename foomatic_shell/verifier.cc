@@ -61,13 +61,16 @@ bool Contains(const std::vector<element>& v, element e) {
 // to the last two vectors passed to the function. Arguments of the parameters
 // are skipped. The function returns true <=> all command line parameters were
 // parsed successfully.
-bool ParseGnuParameters(const std::vector<char>& shortParamsWithoutArg,
-                        const std::vector<char>& shortParamsWithArg,
-                        const std::vector<std::string>& longParamsWithoutArg,
-                        const std::vector<std::string>& longParamsWithArg,
-                        const std::vector<StringAtom>& parameters,
-                        std::vector<std::string>& outOptionParams,
-                        std::vector<std::string>& outNonOptionParams) {
+bool ParseGnuParameters(
+    const std::vector<char>& shortParamsWithoutArg,
+    const std::vector<char>& shortParamsWithArg,
+    const std::vector<std::string>& longParamsWithoutArg,
+    const std::vector<std::string>& longParamsWithArg,
+    const std::vector<StringAtom>& parameters,
+    std::vector<std::string>& outOptionParams,
+    std::vector<std::string>& outNonOptionParams,
+    const std::vector<char>& shortParamsWithOptionalArg = {},
+    const std::vector<std::string>& longParamsWithOptionalArg = {}) {
   bool argument_expected = false;
   bool no_more_options = false;
   for (const auto& parameter : parameters) {
@@ -114,6 +117,11 @@ bool ParseGnuParameters(const std::vector<char>& shortParamsWithoutArg,
         outOptionParams.push_back(std::string("--") + matchingParam);
         continue;
       }
+      matchingParam = FirstWithPrefix(longParamsWithOptionalArg, paramName);
+      if (!matchingParam.empty()) {
+        outOptionParams.push_back(std::string("--") + matchingParam);
+        continue;
+      }
       // Unknown or banned parameter.
       return false;
     }
@@ -130,6 +138,12 @@ bool ParseGnuParameters(const std::vector<char>& shortParamsWithoutArg,
         // the parameter the argument is provided in the next parameter.
         // Otherwise, the remaining part of the parameter is the value.
         argument_expected = (i == param.size() - 1);
+        outOptionParams.push_back(std::string("-") + param.substr(i, 1));
+        break;
+      }
+      if (Contains(shortParamsWithOptionalArg, param[i])) {
+        // This option may have an argument. In this case, the remaining part of
+        // the parameter is the value.
         outOptionParams.push_back(std::string("-") + param.substr(i, 1));
         break;
       }
@@ -214,22 +228,14 @@ bool Verifier::VerifyCommand(Command* command) {
     return false;
   }
 
-  // The "cut" command is always allowed.
+  // The "cut" command is verified in a separate method.
   if (cmd == "cut") {
     return VerifyCut(command->parameters);
   }
 
-  // The "date" command is allowed <=> it has no parameters with prefixes "-s"
-  // or "--set".
+  // The "date" command is verified in a separate method.
   if (cmd == "date") {
-    for (auto& parameter : command->parameters) {
-      const std::string& param = parameter.value;
-      if (HasPrefix(param, "-s") || HasPrefix(param, "--set")) {
-        message_ = "date: disallowed parameter";
-        return false;
-      }
-    }
-    return true;
+    return VerifyDate(command->parameters);
   }
 
   // The "echo" command is always allowed.
@@ -297,6 +303,39 @@ bool Verifier::VerifyCut(const std::vector<StringAtom>& parameters) {
     }
   }
 
+  return true;
+}
+
+// Verify parameters for "date" command. Forbidden parameters:
+//   * -f, --file=DATEFILE
+//   * -r, --reference=FILE
+//   * -s, --set=STRING
+// Only non-option parameters starting from '+' are allowed.
+bool Verifier::VerifyDate(const std::vector<StringAtom>& parameters) {
+  static const auto kLongParamsWithoutArg = std::vector<std::string>{
+      "debug", "resolution", "rfc-email", "utc", "universal"};
+  static const auto kLongParamsWithArg =
+      std::vector<std::string>{"date", "rfc-3339"};
+  static const auto kLongParamsWithOptionalArg =
+      std::vector<std::string>{"iso-8601"};
+  static const auto kShortParamsWithoutArg = std::vector{'R', 'u'};
+  static const auto kShortParamsWithArg = std::vector{'d'};
+  static const auto kShortParamsWithOptionalArg = std::vector{'I'};
+  std::vector<std::string> optionParams;
+  std::vector<std::string> nonOptionParams;
+  if (!ParseGnuParameters(
+          kShortParamsWithoutArg, kShortParamsWithArg, kLongParamsWithoutArg,
+          kLongParamsWithArg, parameters, optionParams, nonOptionParams,
+          kShortParamsWithOptionalArg, kLongParamsWithOptionalArg)) {
+    message_ = "date: unknown or banned parameter";
+    return false;
+  }
+  for (const auto& param : nonOptionParams) {
+    if (!HasPrefix(param, "+")) {
+      message_ = "date: disallowed positional parameter";
+      return false;
+    }
+  }
   return true;
 }
 

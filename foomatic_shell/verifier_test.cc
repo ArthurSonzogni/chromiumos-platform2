@@ -94,6 +94,42 @@ TEST(Verifier, cutEmptyParameter) {
 
 TEST(Verifier, date) {
   EXPECT_TRUE(VerifyScript("date"));
+  EXPECT_TRUE(VerifyScript("date +format"));
+  EXPECT_FALSE(VerifyScript("date xxx"));
+  EXPECT_TRUE(VerifyScript("date --date='@2147483647' +format"));
+}
+
+TEST(Verifier, dateLongParameters) {
+  EXPECT_TRUE(VerifyScript("date --debug --date my/date"));
+  EXPECT_TRUE(VerifyScript("date --iso-8601"));
+  EXPECT_TRUE(VerifyScript("date --is=xxx"));
+  EXPECT_TRUE(VerifyScript("date --rfc-email"));
+  EXPECT_TRUE(VerifyScript("date --rfc-3339=FMT"));
+  EXPECT_TRUE(VerifyScript("date --rfc-3 FMT"));
+  EXPECT_TRUE(VerifyScript("date --utc --universal"));
+  EXPECT_FALSE(VerifyScript("date --file=DATEFILE"));
+  EXPECT_FALSE(VerifyScript("date --file"));
+  EXPECT_FALSE(VerifyScript("date --reference=FILE"));
+  EXPECT_FALSE(VerifyScript("date --reference"));
+  EXPECT_FALSE(VerifyScript("date --set=STRING"));
+  EXPECT_FALSE(VerifyScript("date --set"));
+  EXPECT_FALSE(VerifyScript("date --help"));
+  EXPECT_FALSE(VerifyScript("date --version"));
+}
+
+TEST(Verifier, dateShortParameters) {
+  EXPECT_TRUE(VerifyScript("date -d 'TZ=\"America/Los_Angeles\" 09:00'"));
+  EXPECT_FALSE(VerifyScript("date -d"));
+  EXPECT_TRUE(VerifyScript("date -I"));
+  EXPECT_TRUE(VerifyScript("date -Ixxx"));
+  EXPECT_TRUE(VerifyScript("date -R"));
+  EXPECT_TRUE(VerifyScript("date -u"));
+  EXPECT_FALSE(VerifyScript("date -f DATEFILE"));
+  EXPECT_FALSE(VerifyScript("date -f"));
+  EXPECT_FALSE(VerifyScript("date -r FILE"));
+  EXPECT_FALSE(VerifyScript("date -r"));
+  EXPECT_FALSE(VerifyScript("date -s STRING"));
+  EXPECT_FALSE(VerifyScript("date -s"));
 }
 
 TEST(Verifier, dateFail) {
