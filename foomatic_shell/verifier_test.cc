@@ -217,7 +217,13 @@ TEST(Verifier, gsUppFile) {
 }
 
 TEST(Verifier, pdftops) {
-  EXPECT_TRUE(VerifyScript("pdftops"));
+  EXPECT_TRUE(VerifyScript("pdftops 1 2 3 4 5"));
+  EXPECT_FALSE(VerifyScript("pdftops 1 2 3 4"));
+  EXPECT_FALSE(VerifyScript("pdftops 1 2 3 4 5 6 7"));
+  EXPECT_TRUE(VerifyScript("pdftops 1 2 3 4 5 -"));
+  EXPECT_TRUE(VerifyScript("pdftops 1 2 3 4 5 /var/spool/cups/tmp/whatever"));
+  EXPECT_FALSE(VerifyScript("pdftops 1 2 3 4 5 /var/spool/cups/../whatever"));
+  EXPECT_FALSE(VerifyScript("pdftops 1 2 3 4 5 /var/spool/xxx"));
 }
 
 TEST(Verifier, printf) {

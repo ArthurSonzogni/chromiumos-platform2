@@ -252,6 +252,22 @@ bool Verifier::VerifyCommand(Command* command) {
   // /usr/libexec/cups/filter/pdftops, not /usr/bin/pdftops (a default one).
   // It takes 5 or 6 parameters.
   if (cmd == "pdftops") {
+    if (command->parameters.size() < 5 || command->parameters.size() > 6) {
+      message_ = "pdftops: wrong number of parameters";
+      return false;
+    }
+    if (command->parameters.size() == 6) {
+      const std::string& path = command->parameters[5].value;
+      if (path == "-") {
+        return true;
+      }
+      if (HasPrefix(path, "/var/spool/cups/") &&
+          path.find("..") == std::string::npos) {
+        return true;
+      }
+      message_ = "pdftops: disallowed filename";
+      return false;
+    }
     return true;
   }
 
