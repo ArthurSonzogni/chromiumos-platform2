@@ -33,6 +33,7 @@ bool FakeBrowserJob::RunInBackground(
     DCHECK(fake_process_.get());
     fake_process_->ScheduleExit();
   }
+  spawn_time_ = base::TimeTicks::Now();
   return running_ = true;
 }
 
@@ -45,8 +46,13 @@ pid_t FakeBrowserJob::CurrentPid() const {
   return (running_ ? fake_process_->pid() : -1);
 }
 
+std::optional<base::TimeTicks> FakeBrowserJob::GetSpawnTime() const {
+  return spawn_time_;
+}
+
 void FakeBrowserJob::ClearPid() {
   running_ = false;
+  spawn_time_.reset();
 }
 
 }  // namespace login_manager

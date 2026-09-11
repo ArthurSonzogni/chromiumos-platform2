@@ -201,6 +201,10 @@ SessionManagerService::SessionManagerService(
       file_checker_(magic_chrome_file),
       match_rule_(base::StringPrintf("type='method_call', interface='%s'",
                                      kSessionManagerInterface)),
+      name_owner_changed_match_rule_(base::StringPrintf(
+          "type='signal',sender='%s',interface='%s',member='NameOwnerChanged'",
+          DBUS_SERVICE_DBUS,
+          DBUS_INTERFACE_DBUS)),
       login_metrics_(metrics),
       system_utils_(system_utils),
       nss_(NssUtil::Create()),
@@ -473,6 +477,56 @@ base::TimeTicks SessionManagerService::GetLastBrowserRestartTime() {
   return last_browser_restart_time_;
 }
 
+bool SessionManagerService::IsSenderConnectedAfterBrowserSpawn(
+    std::string_view sender) {
+  std::optional<base::TimeTicks> browser_spawn_time = browser_->GetSpawnTime();
+  if (!browser_spawn_time.has_value()) {
+    LOG(WARNING) << "Rejecting " << sender << ": no browser is running.";
+    return false;
+  }
+
+  auto it = connection_timestamps_.find(sender);
+  if (it == connection_timestamps_.end()) {
+    LOG(WARNING) << "Rejecting " << sender
+                 << ": connection was established before session_manager "
+                    "started or was not observed.";
+    return false;
+  }
+
+  if (it->second < *browser_spawn_time) {
+    LOG(WARNING) << "Rejecting " << sender << ": connection was established at "
+                 << it->second << ", before current browser was spawned at "
+                 << *browser_spawn_time << ".";
+    return false;
+  }
+
+  return true;
+}
+
+void SessionManagerService::HandleNameOwnerChanged(std::string_view name,
+                                                   std::string_view old_owner,
+                                                   std::string_view new_owner) {
+  if (!name.starts_with(':')) {
+    // Only track unique connection names (e.g., ":1.42").
+    return;
+  }
+
+  if (old_owner.empty() && !new_owner.empty()) {
+    // New connection established.
+    connection_timestamps_.insert_or_assign(std::string(name),
+                                            base::TimeTicks::Now());
+    DLOG(INFO) << "Tracked D-Bus connection " << name << " at "
+               << connection_timestamps_.find(name)->second;
+  } else if (new_owner.empty()) {
+    // Connection closed.
+    auto it = connection_timestamps_.find(name);
+    if (it != connection_timestamps_.end()) {
+      connection_timestamps_.erase(it);
+      DLOG(INFO) << "Removed D-Bus connection " << name;
+    }
+  }
+}
+
 void SessionManagerService::HandleBrowserExit(const siginfo_t& status) {
   CHECK(IsBrowser(status.si_pid));
 
@@ -539,19 +593,61 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
                                                        DBusMessage* message,
                                                        void* data) {
   SessionManagerService* service = static_cast<SessionManagerService*>(data);
+
+  // Handle NameOwnerChanged signals from org.freedesktop.DBus to track
+  // D-Bus connection lifecycles.
+  if (::dbus_message_is_signal(message, DBUS_INTERFACE_DBUS,
+                               "NameOwnerChanged")) {
+    const char* raw_sender = ::dbus_message_get_sender(message);
+    if (!raw_sender || std::string_view(raw_sender) == DBUS_SERVICE_DBUS) {
+      const char* raw_name = nullptr;
+      const char* raw_old_owner = nullptr;
+      const char* raw_new_owner = nullptr;
+      if (::dbus_message_get_args(message, nullptr, DBUS_TYPE_STRING, &raw_name,
+                                  DBUS_TYPE_STRING, &raw_old_owner,
+                                  DBUS_TYPE_STRING, &raw_new_owner,
+                                  DBUS_TYPE_INVALID)) {
+        service->HandleNameOwnerChanged(raw_name ? raw_name : "",
+                                        raw_old_owner ? raw_old_owner : "",
+                                        raw_new_owner ? raw_new_owner : "");
+      }
+    }
+    // Return NOT_YET_HANDLED so that other filters/listeners on the same
+    // DBusConnection (such as dbus::ObjectProxy callbacks) can also receive
+    // NameOwnerChanged signals.
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+  }
+
   const auto method_name = GetMethodName(message);
   if (method_name.has_value() && IsPidCheckRequired(method_name.value())) {
-    const char* sender = ::dbus_message_get_sender(message);
-    if (!sender) {
+    const char* raw_sender = ::dbus_message_get_sender(message);
+    if (!raw_sender) {
       LOG(ERROR) << "Call to " << method_name->name << " has no sender";
       return DBUS_HANDLER_RESULT_HANDLED;
     }
+    std::string_view sender(raw_sender);
     LOG(INFO) << "Received " << method_name->name << " from " << sender;
+
+    if (!service->IsSenderConnectedAfterBrowserSpawn(sender)) {
+      LOG(WARNING) << "Sender " << sender << " of " << method_name->name
+                   << " failed connection lifetime check!";
+      DBusMessage* denial = dbus_message_new_error(
+          message, DBUS_ERROR_ACCESS_DENIED, "Sender is not browser.");
+      if (!denial || !::dbus_connection_send(conn, denial, nullptr)) {
+        LOG(ERROR) << "Could not create error response to " << method_name->name
+                   << ".";
+      }
+      if (denial) {
+        ::dbus_message_unref(denial);
+      }
+      return DBUS_HANDLER_RESULT_HANDLED;
+    }
+
     DBusMessage* get_pid = ::dbus_message_new_method_call(
-        "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
+        DBUS_SERVICE_DBUS, DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS,
         "GetConnectionUnixProcessID");
     CHECK(get_pid);
-    ::dbus_message_append_args(get_pid, DBUS_TYPE_STRING, &sender,
+    ::dbus_message_append_args(get_pid, DBUS_TYPE_STRING, &raw_sender,
                                DBUS_TYPE_INVALID);
     DBusMessage* got_pid =
         ::dbus_connection_send_with_reply_and_block(conn, get_pid, -1, nullptr);
@@ -577,6 +673,9 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
       if (!denial || !::dbus_connection_send(conn, denial, nullptr)) {
         LOG(ERROR) << "Could not create error response to " << method_name->name
                    << ".";
+      }
+      if (denial) {
+        ::dbus_message_unref(denial);
       }
       return DBUS_HANDLER_RESULT_HANDLED;
     }
@@ -649,18 +748,37 @@ void SessionManagerService::InitializeDBus() {
   CHECK(bus_->SetUpAsyncOperations());
 
   bus_->AddFilterFunction(&SessionManagerService::FilterMessage, this);
-  dbus::Error error;
-  bus_->AddMatch(match_rule_, &error);
-  CHECK(!error.IsValid()) << "Failed to add match to bus: " << error.name()
-                          << ", message=" << error.message();
+  {
+    dbus::Error error;
+    bus_->AddMatch(match_rule_, &error);
+    CHECK(!error.IsValid()) << "Failed to add match to bus: " << error.name()
+                            << ", message=" << error.message();
+  }
+  {
+    dbus::Error error;
+    bus_->AddMatch(name_owner_changed_match_rule_, &error);
+    CHECK(!error.IsValid())
+        << "Failed to add NameOwnerChanged match to bus: " << error.name()
+        << ", message=" << error.message();
+  }
 }
 
 void SessionManagerService::ShutDownDBus() {
-  dbus::Error error;
-  bus_->RemoveMatch(match_rule_, &error);
-  if (error.IsValid()) {
-    LOG(ERROR) << "Failed to remove match from bus: " << error.name()
-               << ", message=" << error.message();
+  {
+    dbus::Error error;
+    bus_->RemoveMatch(name_owner_changed_match_rule_, &error);
+    if (error.IsValid()) {
+      LOG(ERROR) << "Failed to remove NameOwnerChanged match from bus: "
+                 << error.name() << ", message=" << error.message();
+    }
+  }
+  {
+    dbus::Error error;
+    bus_->RemoveMatch(match_rule_, &error);
+    if (error.IsValid()) {
+      LOG(ERROR) << "Failed to remove match from bus: " << error.name()
+                 << ", message=" << error.message();
+    }
   }
   bus_->RemoveFilterFunction(&SessionManagerService::FilterMessage, this);
   bus_->ShutdownAndBlock();

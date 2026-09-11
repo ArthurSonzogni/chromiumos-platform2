@@ -20,6 +20,7 @@
 #include <base/strings/string_util.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/dbus.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -169,12 +170,12 @@ class SessionManagerProcessTest : public ::testing::Test {
   // on them after we hand them off.
   MockLivenessChecker* liveness_checker_;
   MockSessionManager* session_manager_impl_;
+  FakeBrowserJob* fake_browser_job_ = nullptr;
 
  private:
   bool must_destroy_mocks_;
   base::ScopedTempDir tmpdir_;
   brillo::BaseMessageLoop brillo_loop_;
-  FakeBrowserJob* fake_browser_job_ = nullptr;
 };
 
 // static
@@ -559,6 +560,185 @@ TEST_F(SessionManagerProcessTest, ShouldRunBrowser) {
   // Create a file at a specific path then browser restart will be prevented.
   ASSERT_TRUE(base::WriteFile(GetChromeMagicFilePath(), ""));
   EXPECT_FALSE(manager_->test_api().ShouldRunBrowser());
+}
+
+TEST_F(SessionManagerProcessTest,
+       HandleNameOwnerChanged_TracksAndRemovesConnections) {
+  InitManager();
+  // Unique connection names should be tracked when connected.
+  manager_->test_api().HandleNameOwnerChanged(":1.42", "", ":1.42");
+  fake_browser_job_->set_spawn_time(base::TimeTicks::Now() - base::Seconds(10));
+  EXPECT_TRUE(manager_->test_api().IsSenderConnectedAfterBrowserSpawn(":1.42"));
+
+  // Disconnection removes the connection.
+  manager_->test_api().HandleNameOwnerChanged(":1.42", ":1.42", "");
+  EXPECT_FALSE(
+      manager_->test_api().IsSenderConnectedAfterBrowserSpawn(":1.42"));
+
+  // Non-unique names (like service names) should be ignored.
+  manager_->test_api().HandleNameOwnerChanged("org.chromium.SomeService", "",
+                                              ":1.42");
+  EXPECT_FALSE(manager_->test_api().IsSenderConnectedAfterBrowserSpawn(
+      "org.chromium.SomeService"));
+}
+
+TEST_F(SessionManagerProcessTest,
+       IsSenderConnectedAfterBrowserSpawn_NoBrowserRunning) {
+  InitManager();
+  fake_browser_job_->set_spawn_time(std::nullopt);
+  manager_->test_api().set_connection_timestamp(":1.42",
+                                                base::TimeTicks::Now());
+  EXPECT_FALSE(
+      manager_->test_api().IsSenderConnectedAfterBrowserSpawn(":1.42"));
+}
+
+TEST_F(SessionManagerProcessTest,
+       IsSenderConnectedAfterBrowserSpawn_UnknownSender) {
+  InitManager();
+  fake_browser_job_->set_spawn_time(base::TimeTicks::Now());
+  EXPECT_FALSE(
+      manager_->test_api().IsSenderConnectedAfterBrowserSpawn(":1.999"));
+}
+
+TEST_F(SessionManagerProcessTest,
+       IsSenderConnectedAfterBrowserSpawn_ConnectionBeforeBrowserSpawn) {
+  InitManager();
+  base::TimeTicks now = base::TimeTicks::Now();
+  base::TimeTicks conn_time = now - base::Seconds(5);
+  base::TimeTicks spawn_time = now;
+
+  // A connection created before the browser was spawned (e.g. by a dead
+  // attacker process whose PID was later recycled) must be rejected.
+  manager_->test_api().set_connection_timestamp(":1.42", conn_time);
+  fake_browser_job_->set_spawn_time(spawn_time);
+
+  EXPECT_FALSE(
+      manager_->test_api().IsSenderConnectedAfterBrowserSpawn(":1.42"));
+}
+
+TEST_F(SessionManagerProcessTest,
+       IsSenderConnectedAfterBrowserSpawn_ConnectionAtOrAfterBrowserSpawn) {
+  InitManager();
+  base::TimeTicks now = base::TimeTicks::Now();
+  base::TimeTicks spawn_time = now;
+  base::TimeTicks conn_time = now + base::Seconds(1);
+
+  fake_browser_job_->set_spawn_time(spawn_time);
+  manager_->test_api().set_connection_timestamp(":1.42", conn_time);
+
+  EXPECT_TRUE(manager_->test_api().IsSenderConnectedAfterBrowserSpawn(":1.42"));
+}
+
+namespace {
+
+class ScopedTestDBusConnection {
+ public:
+  ScopedTestDBusConnection() {
+    DBusError error;
+    dbus_error_init(&error);
+    server_ = dbus_server_listen("unix:tmpdir=/tmp", &error);
+    CHECK(server_) << "dbus_server_listen failed: " << error.message;
+    char* address = dbus_server_get_address(server_);
+    CHECK(address);
+    conn_ = dbus_connection_open_private(address, &error);
+    dbus_free(address);
+    CHECK(conn_) << "dbus_connection_open_private failed: " << error.message;
+  }
+  ScopedTestDBusConnection(const ScopedTestDBusConnection&) = delete;
+  ScopedTestDBusConnection& operator=(const ScopedTestDBusConnection&) = delete;
+
+  ~ScopedTestDBusConnection() {
+    if (conn_) {
+      dbus_connection_close(conn_);
+      dbus_connection_unref(conn_);
+    }
+    if (server_) {
+      dbus_server_disconnect(server_);
+      dbus_server_unref(server_);
+    }
+  }
+
+  DBusConnection* get() const { return conn_; }
+
+ private:
+  DBusServer* server_ = nullptr;
+  DBusConnection* conn_ = nullptr;
+};
+
+}  // namespace
+
+TEST_F(SessionManagerProcessTest, FilterMessage_NoPidCheckRequired) {
+  InitManager();
+  ScopedTestDBusConnection conn;
+  DBusMessage* msg = dbus_message_new_method_call(
+      "org.chromium.SessionManagerInterface", "/org/chromium/SessionManager",
+      "org.chromium.SessionManagerInterface", "EnableChromeTesting");
+  ASSERT_TRUE(msg);
+  dbus_message_set_serial(msg, 1);
+  EXPECT_EQ(DBUS_HANDLER_RESULT_NOT_YET_HANDLED,
+            manager_->test_api().FilterMessage(conn.get(), msg));
+  dbus_message_unref(msg);
+}
+
+TEST_F(SessionManagerProcessTest, FilterMessage_RestartJobNoSender) {
+  InitManager();
+  ScopedTestDBusConnection conn;
+  DBusMessage* msg = dbus_message_new_method_call(
+      "org.chromium.SessionManagerInterface", "/org/chromium/SessionManager",
+      "org.chromium.SessionManagerInterface", "RestartJob");
+  ASSERT_TRUE(msg);
+  dbus_message_set_serial(msg, 1);
+  EXPECT_EQ(DBUS_HANDLER_RESULT_HANDLED,
+            manager_->test_api().FilterMessage(conn.get(), msg));
+  dbus_message_unref(msg);
+}
+
+TEST_F(SessionManagerProcessTest,
+       FilterMessage_RestartJobSenderConnectedBeforeBrowserSpawn) {
+  InitManager();
+  ScopedTestDBusConnection conn;
+  base::TimeTicks now = base::TimeTicks::Now();
+  manager_->test_api().set_connection_timestamp(":1.42",
+                                                now - base::Seconds(10));
+  fake_browser_job_->set_spawn_time(now);
+
+  DBusMessage* msg = dbus_message_new_method_call(
+      "org.chromium.SessionManagerInterface", "/org/chromium/SessionManager",
+      "org.chromium.SessionManagerInterface", "RestartJob");
+  ASSERT_TRUE(msg);
+  dbus_message_set_serial(msg, 1);
+  dbus_message_set_sender(msg, ":1.42");
+
+  // Connection lifetime check fails -> handled and rejected.
+  EXPECT_EQ(DBUS_HANDLER_RESULT_HANDLED,
+            manager_->test_api().FilterMessage(conn.get(), msg));
+  dbus_message_unref(msg);
+}
+
+TEST_F(SessionManagerProcessTest, FilterMessage_NameOwnerChangedSignal) {
+  InitManager();
+  ScopedTestDBusConnection conn;
+  DBusMessage* msg = dbus_message_new_signal(
+      "/org/freedesktop/DBus", "org.freedesktop.DBus", "NameOwnerChanged");
+  ASSERT_TRUE(msg);
+  dbus_message_set_sender(msg, DBUS_SERVICE_DBUS);
+
+  const char* name = ":1.100";
+  const char* old_owner = "";
+  const char* new_owner = ":1.100";
+  ASSERT_TRUE(dbus_message_append_args(
+      msg, DBUS_TYPE_STRING, &name, DBUS_TYPE_STRING, &old_owner,
+      DBUS_TYPE_STRING, &new_owner, DBUS_TYPE_INVALID));
+
+  // Signal should be processed and not consumed.
+  EXPECT_EQ(DBUS_HANDLER_RESULT_NOT_YET_HANDLED,
+            manager_->test_api().FilterMessage(conn.get(), msg));
+  dbus_message_unref(msg);
+
+  // The connection should now be tracked.
+  fake_browser_job_->set_spawn_time(base::TimeTicks::Now() - base::Seconds(5));
+  EXPECT_TRUE(
+      manager_->test_api().IsSenderConnectedAfterBrowserSpawn(":1.100"));
 }
 
 }  // namespace login_manager

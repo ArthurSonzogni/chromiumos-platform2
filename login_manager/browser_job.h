@@ -60,6 +60,10 @@ class BrowserJobInterface {
   // Returns the pid of the current instance of this job. May be -1.
   virtual pid_t CurrentPid() const = 0;
 
+  // Returns the time when the current instance of this job was spawned,
+  // or std::nullopt if the job is not running.
+  virtual std::optional<base::TimeTicks> GetSpawnTime() const = 0;
+
   virtual bool IsGuestSession() = 0;
 
   // If ShouldStop() returns true, this means that the parent should tear
@@ -160,6 +164,7 @@ class BrowserJob : public BrowserJobInterface {
   bool WaitForExit(base::TimeDelta timeout) override;
   void AbortAndKillAll(base::TimeDelta timeout) override;
   pid_t CurrentPid() const override;
+  std::optional<base::TimeTicks> GetSpawnTime() const override;
   bool IsGuestSession() override;
   bool ShouldStop() const override;
   void StartSession(const std::string& account_id,
@@ -260,6 +265,10 @@ class BrowserJob : public BrowserJobInterface {
 
   // The subprocess tracked by this job.
   std::unique_ptr<SubprocessInterface> subprocess_;
+
+  // Monotonic timestamp when the current job was spawned, or std::nullopt
+  // if not running.
+  std::optional<base::TimeTicks> spawn_time_;
 
   base::WeakPtrFactory<BrowserJob> weak_factory_{this};
 };

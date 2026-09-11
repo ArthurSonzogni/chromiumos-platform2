@@ -116,6 +116,31 @@ TEST_F(BrowserJobTest, InitializationTest) {
   ExpectArgsToContainAll(job_args, argv_);
 }
 
+TEST_F(BrowserJobTest, GetSpawnTime) {
+  EXPECT_FALSE(job_->GetSpawnTime().has_value());
+
+  const gid_t kFakeGid = 1000;
+  const pid_t kFakePid = 4;
+  EXPECT_CALL(system_utils_, GetGidAndGroups(getuid(), _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kFakeGid), Return(true)));
+  EXPECT_CALL(system_utils_, RunInMinijail(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(kFakePid), Return(true)));
+  EXPECT_CALL(system_utils_, time(nullptr)).WillRepeatedly(Return(0));
+  EXPECT_CALL(metrics_, HasRecordedChromeExec()).WillRepeatedly(Return(false));
+  EXPECT_CALL(metrics_, RecordStats(_)).Times(AnyNumber());
+
+  base::TimeTicks before_run = base::TimeTicks::Now();
+  ASSERT_TRUE(job_->RunInBackground(base::DoNothing()));
+  base::TimeTicks after_run = base::TimeTicks::Now();
+
+  ASSERT_TRUE(job_->GetSpawnTime().has_value());
+  EXPECT_GE(job_->GetSpawnTime().value(), before_run);
+  EXPECT_LE(job_->GetSpawnTime().value(), after_run);
+
+  job_->ClearPid();
+  EXPECT_FALSE(job_->GetSpawnTime().has_value());
+}
+
 TEST_F(BrowserJobTest, AbortAndKillAll) {
   const gid_t kFakeGid = 1000;
   const pid_t kFakePid = 4;

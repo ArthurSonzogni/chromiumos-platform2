@@ -214,6 +214,10 @@ pid_t BrowserJob::CurrentPid() const {
   return subprocess_->GetPid();
 }
 
+std::optional<base::TimeTicks> BrowserJob::GetSpawnTime() const {
+  return spawn_time_;
+}
+
 bool BrowserJob::IsGuestSession() {
   return std::ranges::count(arguments_, kGuestSessionFlag) > 0;
 }
@@ -289,6 +293,8 @@ bool BrowserJob::RunInBackground(
   if (!subprocess_->ForkAndExec(argv, env_vars)) {
     return false;
   }
+
+  spawn_time_ = base::TimeTicks::Now();
 
   process_reaper_->WatchForChild(
       FROM_HERE, subprocess_->GetPid(),
@@ -463,6 +469,7 @@ void BrowserJob::ClearPid() {
     process_reaper_->ForgetChild(pid);
   }
   subprocess_->ClearPid();
+  spawn_time_.reset();
 }
 
 std::vector<std::string> BrowserJob::ExportArgv() const {

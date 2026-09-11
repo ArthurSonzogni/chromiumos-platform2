@@ -9,6 +9,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -31,6 +32,9 @@ class FakeBrowserJob : public BrowserJobInterface {
 
   void set_fake_child_process(std::unique_ptr<FakeChildProcess> fake);
   void set_schedule_exit(bool value);
+  void set_spawn_time(std::optional<base::TimeTicks> spawn_time) {
+    spawn_time_ = spawn_time;
+  }
 
   // Overridden from BrowserJobInterface
   bool IsGuestSession() override;
@@ -70,6 +74,7 @@ class FakeBrowserJob : public BrowserJobInterface {
       base::OnceCallback<void(const siginfo_t&)> callback) override;
   const std::string GetName() const override;
   pid_t CurrentPid() const override;
+  std::optional<base::TimeTicks> GetSpawnTime() const override;
   void ClearPid() override;
 
  private:
@@ -77,6 +82,7 @@ class FakeBrowserJob : public BrowserJobInterface {
   const std::string name_;
   bool running_ = false;
   bool schedule_exit_ = true;
+  std::optional<base::TimeTicks> spawn_time_;
 };
 }  // namespace login_manager
 

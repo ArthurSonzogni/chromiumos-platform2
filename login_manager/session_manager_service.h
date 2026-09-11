@@ -5,10 +5,12 @@
 #ifndef LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_
 #define LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -121,6 +123,27 @@ class SessionManagerService
       return session_manager_service_->ShouldRunBrowser();
     }
 
+    void set_connection_timestamp(std::string_view sender,
+                                  base::TimeTicks timestamp) {
+      session_manager_service_->connection_timestamps_[std::string(sender)] =
+          timestamp;
+    }
+    bool IsSenderConnectedAfterBrowserSpawn(std::string_view sender) {
+      return session_manager_service_->IsSenderConnectedAfterBrowserSpawn(
+          sender);
+    }
+    void HandleNameOwnerChanged(std::string_view name,
+                                std::string_view old_owner,
+                                std::string_view new_owner) {
+      session_manager_service_->HandleNameOwnerChanged(name, old_owner,
+                                                       new_owner);
+    }
+    DBusHandlerResult FilterMessage(DBusConnection* conn,
+                                    DBusMessage* message) {
+      return SessionManagerService::FilterMessage(conn, message,
+                                                  session_manager_service_);
+    }
+
    private:
     friend class SessionManagerService;
     explicit TestApi(SessionManagerService* session_manager_service)
@@ -187,6 +210,16 @@ class SessionManagerService
   static DBusHandlerResult FilterMessage(DBusConnection* conn,
                                          DBusMessage* message,
                                          void* data);
+
+  // Checks if the given D-Bus sender connection was established at or after
+  // the current browser process was spawned.
+  bool IsSenderConnectedAfterBrowserSpawn(std::string_view sender);
+
+  // Handles org.freedesktop.DBus.NameOwnerChanged signals to track D-Bus
+  // connection lifecycles.
+  void HandleNameOwnerChanged(std::string_view name,
+                              std::string_view old_owner,
+                              std::string_view new_owner);
 
   // Set up any necessary signal handlers.
   void SetUpHandlers();
@@ -277,6 +310,7 @@ class SessionManagerService
 
   scoped_refptr<dbus::Bus> bus_;
   const std::string match_rule_;
+  const std::string name_owner_changed_match_rule_;
   // These proxies are owned by |bus_|.
   dbus::ObjectProxy* screen_lock_dbus_proxy_ = nullptr;
   dbus::ObjectProxy* powerd_dbus_proxy_ = nullptr;
@@ -328,6 +362,10 @@ class SessionManagerService
   bool use_long_kill_timeout_ = false;
 
   std::unique_ptr<BrowserJobInterface> browser_;
+
+  // Active D-Bus unique connection names (":1.X") mapped to their connection
+  // timestamp.
+  std::map<std::string, base::TimeTicks, std::less<>> connection_timestamps_;
 
   std::unique_ptr<ArcManager> arc_manager_;
   std::unique_ptr<ArcManagerProxy> arc_manager_proxy_;
