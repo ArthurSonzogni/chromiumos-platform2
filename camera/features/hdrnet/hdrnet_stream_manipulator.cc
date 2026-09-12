@@ -181,6 +181,14 @@ HdrNetStreamManipulator::HdrNetStreamManipulator(
 }
 
 HdrNetStreamManipulator::~HdrNetStreamManipulator() {
+  // Stop watching the config override file before tearing down the GPU state so
+  // that no further OnOptionsUpdated() is delivered.  This narrows, but does
+  // not close, the window in which the file watcher sequence can run
+  // concurrently with destruction on the camera device ops thread.
+  // TODO(b/537016795): Make the watcher teardown synchronous in
+  // ReloadableConfigFile so the window is fully closed.
+  config_.StopOverrideFileWatcher();
+
   hdrnet_gpu_resources_->PostGpuTaskSync(
       FROM_HERE, base::BindOnce(&HdrNetStreamManipulator::ResetStateOnGpuThread,
                                 base::Unretained(this)));
@@ -689,9 +697,23 @@ void HdrNetStreamManipulator::ResetStateOnGpuThread() {
 
 void HdrNetStreamManipulator::OnOptionsUpdated(
     const base::DictValue& json_values) {
-  json_values_ = json_values.Clone();
+  // ReloadableConfigFile delivers this callback on the sequence that
+  // constructed |config_| (the camera module thread), but |json_values_|,
+  // |override_data_|, |options_| and |hdrnet_stream_context_| are all owned by
+  // the HDRnet GPU thread.  Trampoline so that every access stays on that one
+  // sequence, matching FramingStreamManipulator::OnOptionsUpdated().
+  hdrnet_gpu_resources_->PostGpuTask(
+      FROM_HERE,
+      base::BindOnce(&HdrNetStreamManipulator::UpdateOptionsOnGpuThread,
+                     base::Unretained(this), json_values.Clone()));
+}
+
+void HdrNetStreamManipulator::UpdateOptionsOnGpuThread(
+    base::DictValue json_values) {
+  DCHECK(hdrnet_gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  json_values_ = std::move(json_values);
   SetOptions(HdrNetProcessorDeviceAdapter::GetOverriddenOptions(
-      json_values, override_data_));
+      json_values_, override_data_));
 }
 
 void HdrNetStreamManipulator::SetOptions(const base::DictValue& json_values) {

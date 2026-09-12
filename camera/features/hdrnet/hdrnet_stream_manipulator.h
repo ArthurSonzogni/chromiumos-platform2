@@ -91,6 +91,7 @@ class HdrNetStreamManipulator : public StreamManipulator {
   void ResetStateOnGpuThread();
 
   void OnOptionsUpdated(const base::DictValue& json_values);
+  void UpdateOptionsOnGpuThread(base::DictValue json_values);
   void SetOptions(const base::DictValue& json_values);
   void UploadMetrics();
   void OnProcessTask(ScopedProcessTask task);
