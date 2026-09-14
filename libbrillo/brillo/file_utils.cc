@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -400,6 +401,24 @@ base::ScopedFD MkdirRecursively(const base::FilePath& full_path, mode_t mode) {
 
   return OpenPathComponentInternal(parent_fd.get(), *itr,
                                    O_RDONLY | O_DIRECTORY, 0);
+}
+
+bool CopyFileSafely(const base::FilePath& from_path,
+                    const base::FilePath& to_path,
+                    int flags,
+                    mode_t mode) {
+  base::File infile(OpenSafely(from_path, flags | O_RDONLY, 0));
+  if (!infile.IsValid()) {
+    return false;
+  }
+
+  base::File outfile(
+      OpenSafely(to_path, flags | O_WRONLY | O_CREAT | O_TRUNC, mode));
+  if (!outfile.IsValid()) {
+    return false;
+  }
+
+  return base::CopyFileContents(infile, outfile);
 }
 
 bool WriteStringToFile(const base::FilePath& path, const std::string& data) {

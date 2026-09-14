@@ -45,6 +45,7 @@
 #include <brillo/blkdev_utils/storage_device.h>
 #include <brillo/blkdev_utils/storage_utils.h>
 #include <brillo/cryptohome.h>
+#include <brillo/file_utils.h>
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 #include <chromeos/constants/imageloader.h>
@@ -558,7 +559,8 @@ void ClobberState::PreserveEncryptedFiles() {
       base::FilePath ue_prefs_file(ue_prefs_path.Append(ue_prefs_filename));
       base::FilePath ue_preserved_prefs_file(
           ue_preserve_prefs_path.Append(ue_prefs_filename));
-      if (!base::CopyFile(ue_prefs_file, ue_preserved_prefs_file)) {
+      if (!brillo::CopyFileSafely(ue_prefs_file, ue_preserved_prefs_file,
+                                  O_NOFOLLOW)) {
         LOG(ERROR) << "Error copying file. Source: " << ue_prefs_file
                    << " Target: " << ue_preserved_prefs_file;
       }
@@ -572,7 +574,8 @@ void ClobberState::PreserveEncryptedFiles() {
       root_path_.Append(kPsmDeviceActiveLocalPrefPath));
   base::FilePath psm_preserved_pref_file(
       stateful_.Append(kPsmDeviceActivePreservePath));
-  if (!base::CopyFile(psm_local_pref_file, psm_preserved_pref_file)) {
+  if (!brillo::CopyFileSafely(psm_local_pref_file, psm_preserved_pref_file,
+                              O_NOFOLLOW)) {
     LOG(ERROR) << "Error copying file. Source: " << psm_local_pref_file
                << " Target: " << psm_preserved_pref_file;
   }
@@ -585,7 +588,7 @@ void ClobberState::PreserveEncryptedFiles() {
       base::FilePath flex_file(flex_path.Append(flex_filename));
       base::FilePath flex_preserved_file(
           flex_preserve_path.Append(flex_filename));
-      if (!base::CopyFile(flex_file, flex_preserved_file)) {
+      if (!brillo::CopyFileSafely(flex_file, flex_preserved_file, O_NOFOLLOW)) {
         LOG(ERROR) << "Error copying file. Source: " << flex_file
                    << " Target: " << flex_preserved_file;
       }

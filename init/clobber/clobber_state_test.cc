@@ -1334,3 +1334,41 @@ TEST_F(PreserveEncryptedFilesTest, FlexFilesArePreserved) {
   ASSERT_TRUE(base::PathExists(
       fake_stateful_.Append("unencrypted/preserve/flex/flex_state_key")));
 }
+
+TEST_F(PreserveEncryptedFilesTest, UpdateEnginePrefsSymlinksAreNotPreserved) {
+  base::FilePath secret_file = fake_root_.Append("secret");
+  ASSERT_TRUE(CreateDirectoryAndWriteFile(secret_file, "secret_data"));
+  base::FilePath symlink_path =
+      fake_root_.Append("var/lib/update_engine/prefs/last-active-ping-day");
+  ASSERT_TRUE(base::CreateDirectory(symlink_path.DirName()));
+  ASSERT_TRUE(base::CreateSymbolicLink(secret_file, symlink_path));
+
+  clobber_.PreserveEncryptedFiles();
+  EXPECT_FALSE(base::PathExists(fake_stateful_.Append(
+      "unencrypted/preserve/update_engine/prefs/last-active-ping-day")));
+}
+
+TEST_F(PreserveEncryptedFilesTest, PsmPrefsSymlinksAreNotPreserved) {
+  base::FilePath secret_file = fake_root_.Append("secret");
+  ASSERT_TRUE(CreateDirectoryAndWriteFile(secret_file, "secret_data"));
+  base::FilePath symlink_path =
+      fake_root_.Append("var/lib/private_computing/last_active_dates");
+  ASSERT_TRUE(base::CreateDirectory(symlink_path.DirName()));
+  ASSERT_TRUE(base::CreateSymbolicLink(secret_file, symlink_path));
+
+  clobber_.PreserveEncryptedFiles();
+  EXPECT_FALSE(base::PathExists(
+      fake_stateful_.Append("unencrypted/preserve/last_active_dates")));
+}
+
+TEST_F(PreserveEncryptedFilesTest, FlexFilesSymlinksAreNotPreserved) {
+  base::FilePath secret_file = fake_root_.Append("secret");
+  ASSERT_TRUE(CreateDirectoryAndWriteFile(secret_file, "secret_data"));
+  base::FilePath symlink_path = fake_root_.Append("var/lib/flex_id/flex_id");
+  ASSERT_TRUE(base::CreateDirectory(symlink_path.DirName()));
+  ASSERT_TRUE(base::CreateSymbolicLink(secret_file, symlink_path));
+
+  clobber_.PreserveEncryptedFiles();
+  EXPECT_FALSE(base::PathExists(
+      fake_stateful_.Append("unencrypted/preserve/flex/flex_id")));
+}

@@ -173,6 +173,36 @@ TEST_F(FileUtilsTest, TestOpenFifoSafelyRegularFile) {
   EXPECT_FALSE(fd.is_valid());
 }
 
+TEST_F(FileUtilsTest, TestCopyFileSafelySuccess) {
+  ASSERT_TRUE(WriteStringToFile(file_path_, "test content"));
+  base::FilePath dst_path = temp_dir_.GetPath().Append("dst");
+  EXPECT_TRUE(CopyFileSafely(file_path_, dst_path, O_NOFOLLOW));
+  std::string contents;
+  EXPECT_TRUE(base::ReadFileToString(dst_path, &contents));
+  EXPECT_EQ("test content", contents);
+}
+
+TEST_F(FileUtilsTest, TestCopyFileSafelySourceSymlink) {
+  base::FilePath target_path = temp_dir_.GetPath().Append("target");
+  ASSERT_TRUE(WriteStringToFile(target_path, "secret content"));
+  ASSERT_TRUE(base::CreateSymbolicLink(target_path, file_path_));
+  base::FilePath dst_path = temp_dir_.GetPath().Append("dst");
+  EXPECT_FALSE(CopyFileSafely(file_path_, dst_path, O_NOFOLLOW));
+  EXPECT_FALSE(base::PathExists(dst_path));
+}
+
+TEST_F(FileUtilsTest, TestCopyFileSafelyDestinationSymlink) {
+  ASSERT_TRUE(WriteStringToFile(file_path_, "new content"));
+  base::FilePath target_path = temp_dir_.GetPath().Append("target");
+  ASSERT_TRUE(WriteStringToFile(target_path, "original content"));
+  base::FilePath dst_path = temp_dir_.GetPath().Append("dst");
+  ASSERT_TRUE(base::CreateSymbolicLink(target_path, dst_path));
+  EXPECT_FALSE(CopyFileSafely(file_path_, dst_path, O_NOFOLLOW));
+  std::string contents;
+  EXPECT_TRUE(base::ReadFileToString(target_path, &contents));
+  EXPECT_EQ("original content", contents);
+}
+
 TEST_F(FileUtilsTest, TestMkdirRecursivelyRoot) {
   // Try to create an existing directory ("/") should still succeed.
   EXPECT_TRUE(

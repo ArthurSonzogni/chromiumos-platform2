@@ -91,6 +91,21 @@ BRILLO_EXPORT base::ScopedFD OpenFifoSafely(const base::FilePath& path,
 BRILLO_EXPORT base::ScopedFD MkdirRecursively(const base::FilePath& full_path,
                                               mode_t mode);
 
+// Copies a single file from |from_path| to |to_path| using OpenSafely() to open
+// both source and destination files, ensuring that none of the path components
+// are symbolic links. |flags| is passed to OpenSafely() when opening the files
+// (e.g. O_NOFOLLOW).
+//
+// Parameters
+//  from_path - An absolute path of the source file to copy from.
+//  to_path - An absolute path of the destination file to copy to.
+//  flags - Additional flags to pass to OpenSafely (e.g. O_NOFOLLOW).
+//  mode - File permission bit-pattern for destination file creation.
+BRILLO_EXPORT bool CopyFileSafely(const base::FilePath& from_path,
+                                  const base::FilePath& to_path,
+                                  int flags,
+                                  mode_t mode = 0644);
+
 // Writes the entirety of the given data to |path| with 0640 permissions
 // (modulo umask).  If missing, parent (and parent of parent etc.) directories
 // are created with 0700 permissions (modulo umask).  Returns true on success.
