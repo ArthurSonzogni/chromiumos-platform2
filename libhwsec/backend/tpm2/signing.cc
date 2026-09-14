@@ -4,6 +4,7 @@
 
 #include "libhwsec/backend/tpm2/signing.h"
 
+#include <limits>
 #include <string>
 #include <utility>
 
@@ -254,26 +255,64 @@ StatusOr<brillo::Blob> SigningTpm2::RawSignRsaWithDecrypt(
                                          brillo::BlobToString(data_to_sign),
                                      public_area.unique.rsa.size));
   } else {
+    // RSASSA-PSS needs a real digest algorithm: the padding step below
+    // dereferences the EVP_MD and consumes exactly hLen bytes of input.
+    if (options.digest_algorithm == DigestAlgorithm::kNoDigest) {
+      return MakeStatus<TPMError>("PSS signing requires a digest algorithm",
+                                  TPMRetryAction::kNoRetry);
+    }
+
+    const size_t digest_length = GetDigestLength(options.digest_algorithm);
+
+    // The input must be exactly one digest. RSA_padding_add_PKCS1_PSS_mgf1()
+    // reads exactly hLen bytes, so a shorter input reads out of bounds and a
+    // longer one is signed with a silently truncated message. Chaps performs
+    // the same equality check on its software path; keep the two aligned.
+    if (data_to_sign.size() != digest_length) {
+      return MakeStatus<TPMError>("Data to sign is too small or too large",
+                                  TPMRetryAction::kNoRetry);
+    }
+
+    // Guard the default salt length against unsigned underflow when the
+    // modulus is too small for the digest (e.g. a 512-bit key with SHA-512).
+    // An underflowed size_t narrows to the OpenSSL sentinels
+    // RSA_PSS_SALTLEN_DIGEST (-1) or RSA_PSS_SALTLEN_AUTO (-2). This is a
+    // conservative pre-check; OpenSSL enforces the exact emLen bound below.
+    if (public_area.unique.rsa.size < digest_length + 2) {
+      return MakeStatus<TPMError>("RSA key too small for PSS with this digest",
+                                  TPMRetryAction::kNoRetry);
+    }
+
     PssParams pss_params = options.pss_params.value_or(PssParams{
         .mgf1_algorithm = options.digest_algorithm,
-        .salt_length = public_area.unique.rsa.size -
-                       GetDigestLength(options.digest_algorithm) - 2,
+        .salt_length = public_area.unique.rsa.size - digest_length - 2,
     });
+
+    // PssParams::salt_length is a size_t but OpenSSL takes an int, so a
+    // caller-supplied value above INT_MAX narrows to a negative number and
+    // lands on the RSA_PSS_SALTLEN_* sentinels, silently signing with a salt
+    // policy the caller never asked for. Bound it here, in the layer that
+    // owns the conversion, rather than relying on every caller to do it.
+    if (pss_params.salt_length >
+        static_cast<size_t>(std::numeric_limits<int>::max())) {
+      return MakeStatus<TPMError>("PSS salt length out of range",
+                                  TPMRetryAction::kNoRetry);
+    }
+
+    const EVP_MD* digest = GetOpenSSLDigest(options.digest_algorithm);
+    const EVP_MD* mgf1_digest = GetOpenSSLDigest(pss_params.mgf1_algorithm);
+    if (digest == nullptr || mgf1_digest == nullptr) {
+      return MakeStatus<TPMError>("Unsupported digest algorithm for PSS",
+                                  TPMRetryAction::kNoRetry);
+    }
 
     ASSIGN_OR_RETURN(crypto::ScopedRSA rsa, PublicAreaToScopedRsa(public_area));
 
     brillo::Blob padded_data_blob(RSA_size(rsa.get()));
 
-    if (data_to_sign.size() < GetDigestLength(options.digest_algorithm)) {
-      return MakeStatus<TPMError>("Data to sign is too small",
-                                  TPMRetryAction::kNoRetry);
-    }
-
-    if (RSA_padding_add_PKCS1_PSS_mgf1(
-            rsa.get(), padded_data_blob.data(), data_to_sign.data(),
-            GetOpenSSLDigest(options.digest_algorithm),
-            GetOpenSSLDigest(pss_params.mgf1_algorithm),
-            pss_params.salt_length) != 1) {
+    if (RSA_padding_add_PKCS1_PSS_mgf1(rsa.get(), padded_data_blob.data(),
+                                       data_to_sign.data(), digest, mgf1_digest,
+                                       pss_params.salt_length) != 1) {
       return MakeStatus<TPMError>("Failed to produce the PSA PSS paddings",
                                   TPMRetryAction::kNoRetry);
     }

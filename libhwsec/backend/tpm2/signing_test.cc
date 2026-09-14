@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <utility>
 
@@ -840,13 +841,15 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecryptDataTooSmall) {
               NotOkWith("Data to sign is too small"));
 }
 
-TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecryptUnsupportedMgf1Alg) {
-  const OperationPolicy kFakePolicy{};
-  const std::string kFakeKeyBlob = "fake_key_blob";
-  const std::string kDataToSign(20, 'D');
-  const std::string kSignature = "signature";
-  const uint32_t kFakeKeyHandle = 0x1337;
-  const trunks::TPMT_PUBLIC kFakePublic = {
+namespace {
+
+// Public area shared by the RSASSA-PSS pre-condition tests below, which differ
+// only in their SigningOptions. |modulus_size| is the length of
+// |unique.rsa.size|: the software padding path sizes the encoded message from
+// that field, not from |key_bits|, and the salt-length boundary cases need to
+// vary it.
+trunks::TPMT_PUBLIC GetRsaPssTestPublicArea(uint16_t modulus_size = 64) {
+  trunks::TPMT_PUBLIC public_area = {
       .type = trunks::TPM_ALG_RSA,
       .name_alg = trunks::TPM_ALG_SHA256,
       .object_attributes = trunks::kFixedTPM | trunks::kFixedParent |
@@ -872,12 +875,25 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecryptUnsupportedMgf1Alg) {
           trunks::TPMU_PUBLIC_ID{
               .rsa =
                   trunks::TPM2B_PUBLIC_KEY_RSA{
-                      .size = 64,
+                      .size = modulus_size,
                       .buffer = "9876543210987654321098765432109876543210987654"
-                                "321098765432104321",
+                                "3210987654321043219876543210987654321098765432"
+                                "10987654321098765432104321",
                   },
           },
   };
+  return public_area;
+}
+
+}  // namespace
+
+TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecryptUnsupportedMgf1Alg) {
+  const OperationPolicy kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const std::string kDataToSign(20, 'D');
+  const std::string kSignature = "signature";
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const trunks::TPMT_PUBLIC kFakePublic = GetRsaPssTestPublicArea();
 
   EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
@@ -905,7 +921,251 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecryptUnsupportedMgf1Alg) {
                               .salt_length = 1024,
                           },
                   }),
+              NotOkWith("Unsupported digest algorithm for PSS"));
+}
+
+// An input longer than one digest used to be accepted: OpenSSL silently
+// consumed only the first hLen bytes, so the caller received a signature over
+// a truncated message. Chaps rejects this, and libhwsec now matches.
+TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecryptDataTooLarge) {
+  const OperationPolicy kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const std::string kDataToSign(21, 'D');
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const trunks::TPMT_PUBLIC kFakePublic = GetRsaPssTestPublicArea();
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{});
+
+  ASSERT_OK(key);
+
+  EXPECT_THAT(backend_->GetSigningTpm2().RawSign(
+                  key->GetKey(), brillo::BlobFromString(kDataToSign),
+                  SigningOptions{
+                      .digest_algorithm = DigestAlgorithm::kSha1,
+                      .rsa_padding_scheme =
+                          SigningOptions::RsaPaddingScheme::kRsassaPss,
+                  }),
+              NotOkWith("Data to sign is too small or too large"));
+}
+
+// GetDigestLength(kNoDigest) is 0 and GetOpenSSLDigest(kNoDigest) is nullptr,
+// so PSS without a digest algorithm must be rejected outright rather than
+// reaching RSA_padding_add_PKCS1_PSS_mgf1() with a null EVP_MD.
+TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecryptNoDigestAlgorithm) {
+  const OperationPolicy kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const std::string kDataToSign(20, 'D');
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const trunks::TPMT_PUBLIC kFakePublic = GetRsaPssTestPublicArea();
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{});
+
+  ASSERT_OK(key);
+
+  EXPECT_THAT(backend_->GetSigningTpm2().RawSign(
+                  key->GetKey(), brillo::BlobFromString(kDataToSign),
+                  SigningOptions{
+                      .digest_algorithm = DigestAlgorithm::kNoDigest,
+                      .rsa_padding_scheme =
+                          SigningOptions::RsaPaddingScheme::kRsassaPss,
+                  }),
+              NotOkWith("PSS signing requires a digest algorithm"));
+
+  // The same request with an empty input must also be rejected: an equality
+  // check alone would let 0 == GetDigestLength(kNoDigest) through.
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto empty_key = backend_->GetKeyManagementTpm2().LoadKey(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{});
+
+  ASSERT_OK(empty_key);
+
+  EXPECT_THAT(backend_->GetSigningTpm2().RawSign(
+                  empty_key->GetKey(), brillo::Blob(),
+                  SigningOptions{
+                      .digest_algorithm = DigestAlgorithm::kNoDigest,
+                      .rsa_padding_scheme =
+                          SigningOptions::RsaPaddingScheme::kRsassaPss,
+                  }),
+              NotOkWith("PSS signing requires a digest algorithm"));
+}
+
+// The default salt length is |modulus| - hLen - 2 computed in size_t. A
+// modulus too small for the digest used to underflow into the OpenSSL
+// sentinels RSA_PSS_SALTLEN_DIGEST (-1) / RSA_PSS_SALTLEN_AUTO (-2).
+TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecryptKeyTooSmall) {
+  const OperationPolicy kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const std::string kDataToSign(64, 'D');
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const trunks::TPMT_PUBLIC kFakePublic = GetRsaPssTestPublicArea();
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{});
+
+  ASSERT_OK(key);
+
+  // 64-byte modulus, 64-byte SHA-512 digest: |modulus| - hLen - 2 underflows.
+  EXPECT_THAT(backend_->GetSigningTpm2().RawSign(
+                  key->GetKey(), brillo::BlobFromString(kDataToSign),
+                  SigningOptions{
+                      .digest_algorithm = DigestAlgorithm::kSha512,
+                      .rsa_padding_scheme =
+                          SigningOptions::RsaPaddingScheme::kRsassaPss,
+                  }),
+              NotOkWith("RSA key too small for PSS with this digest"));
+}
+
+// A caller-supplied salt that does not fit the modulus is still rejected by
+// OpenSSL. This keeps coverage of that path, which the UnsupportedMgf1Alg test
+// above no longer reaches now that the null EVP_MD is caught earlier.
+TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecryptSaltTooLarge) {
+  const OperationPolicy kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const std::string kDataToSign(20, 'D');
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const trunks::TPMT_PUBLIC kFakePublic = GetRsaPssTestPublicArea();
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{});
+
+  ASSERT_OK(key);
+
+  EXPECT_THAT(backend_->GetSigningTpm2().RawSign(
+                  key->GetKey(), brillo::BlobFromString(kDataToSign),
+                  SigningOptions{
+                      .digest_algorithm = DigestAlgorithm::kSha1,
+                      .rsa_padding_scheme =
+                          SigningOptions::RsaPaddingScheme::kRsassaPss,
+                      .pss_params =
+                          SigningOptions::PssParams{
+                              .mgf1_algorithm = DigestAlgorithm::kSha1,
+                              .salt_length = 1024,
+                          },
+                  }),
               NotOkWith("Failed to produce the PSA PSS paddings"));
+}
+
+// PssParams::salt_length is a size_t narrowed to an int at the OpenSSL call.
+// A value above INT_MAX used to land on RSA_PSS_SALTLEN_DIGEST (-1), which
+// OpenSSL accepts: the request SUCCEEDED with a salt length the caller never
+// asked for, rather than failing.
+TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecryptSaltOutOfRange) {
+  const OperationPolicy kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const std::string kDataToSign(20, 'D');
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const trunks::TPMT_PUBLIC kFakePublic = GetRsaPssTestPublicArea();
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{});
+
+  ASSERT_OK(key);
+
+  EXPECT_THAT(backend_->GetSigningTpm2().RawSign(
+                  key->GetKey(), brillo::BlobFromString(kDataToSign),
+                  SigningOptions{
+                      .digest_algorithm = DigestAlgorithm::kSha1,
+                      .rsa_padding_scheme =
+                          SigningOptions::RsaPaddingScheme::kRsassaPss,
+                      .pss_params =
+                          SigningOptions::PssParams{
+                              .mgf1_algorithm = DigestAlgorithm::kSha1,
+                              .salt_length = std::numeric_limits<size_t>::max(),
+                          },
+                  }),
+              NotOkWith("PSS salt length out of range"));
+}
+
+// The other underflow sentinel. A modulus of exactly hLen + 1 makes the
+// default salt computation produce (size_t)-1, which narrows to
+// RSA_PSS_SALTLEN_DIGEST. Unlike the -2 case this one does NOT error in
+// OpenSSL: it silently substitutes sLen = hLen.
+TEST_F(BackendSigningTpm2Test,
+       SignRSARsassaPssWithDecryptSaltLenDigestSentinel) {
+  const OperationPolicy kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const std::string kDataToSign(64, 'D');
+  const uint32_t kFakeKeyHandle = 0x1337;
+  // 65-byte modulus with a 64-byte SHA-512 digest: 65 - 64 - 2 == (size_t)-1.
+  const trunks::TPMT_PUBLIC kFakePublic = GetRsaPssTestPublicArea(65);
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{});
+
+  ASSERT_OK(key);
+
+  EXPECT_THAT(backend_->GetSigningTpm2().RawSign(
+                  key->GetKey(), brillo::BlobFromString(kDataToSign),
+                  SigningOptions{
+                      .digest_algorithm = DigestAlgorithm::kSha512,
+                      .rsa_padding_scheme =
+                          SigningOptions::RsaPaddingScheme::kRsassaPss,
+                  }),
+              NotOkWith("RSA key too small for PSS with this digest"));
 }
 
 TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithoutDigestAlgorithm) {
