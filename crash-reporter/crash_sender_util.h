@@ -240,6 +240,8 @@ class Sender : public SenderBase {
   FRIEND_TEST(CrashSenderUtilTest, RemoveReportFiles);
   FRIEND_TEST(CrashSenderUtilTest, RemoveReportFilesUnderDryRunMode);
   FRIEND_TEST(CrashSenderUtilTest, FailRemoveReportFilesSendsMetric);
+  FRIEND_TEST(CrashSenderUtilTest,
+              RemoveReportFilesMarkerDoesNotFollowSymlinkedDir);
 
   // Removes report files associated with the given meta file.
   // More specifically, if "foo.meta" is given, "foo.*" will be removed.

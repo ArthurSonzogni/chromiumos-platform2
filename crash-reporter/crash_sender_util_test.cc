@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <iterator>
@@ -35,6 +36,7 @@
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <base/values.h>
+#include <brillo/files/file_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/http/http_transport_fake.h>
@@ -586,6 +588,55 @@ class CrashSenderUtilTest : public testing::Test {
     metrics_lib->set_metrics_enabled(metrics_flag == kMetricsEnabled);
 
     return true;
+  }
+
+  // Sends a single crash report with crash sending mocked out as successful.
+  // This exercises Sender::WriteUploadLog(), which is what writes Chrome's
+  // uploads.log. Consumes metrics_lib_.
+  void SendOneCrashWithSuccessfulUpload() {
+    auto session_manager_mock =
+        std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
+    test_util::SetActiveSessions(session_manager_mock.get(),
+                                 {{"user", "hash"}});
+
+    const base::FilePath system_dir = paths::Get(paths::kSystemCrashDirectory);
+    ASSERT_TRUE(base::CreateDirectory(system_dir));
+    const base::FilePath system_meta_file = system_dir.Append("0.0.0.0.0.meta");
+    const base::FilePath system_log = system_dir.Append("0.0.0.0.0.log");
+    const char system_meta[] =
+        "payload=0.0.0.0.0.log\n"
+        "exec_name=exec_foo\n"
+        "fake_report_id=123\n"
+        "upload_var_prod=foo\n"
+        "done=1\n";
+    ASSERT_TRUE(test_util::CreateFile(system_meta_file, system_meta));
+    ASSERT_TRUE(test_util::CreateFile(system_log, ""));
+    CrashInfo system_info;
+    ASSERT_TRUE(system_info.metadata.LoadFromString(system_meta));
+    system_info.payload_file = system_log;
+    system_info.payload_kind = "log";
+    ASSERT_TRUE(base::Time::FromString("25 Apr 2018 1:23:45 GMT",
+                                       &system_info.last_modified));
+    std::vector<MetaFile> crashes_to_send;
+    crashes_to_send.emplace_back(system_meta_file, std::move(system_info));
+
+    ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
+    SetMockCrashSending(true);
+
+    std::vector<base::TimeDelta> sleep_times;
+    Sender::Options options;
+    options.session_manager_proxy = session_manager_mock.release();
+    options.max_crash_rate = 2;
+    options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
+    options.always_write_uploads_log = true;
+    options.hold_off_time = base::TimeDelta();
+    options.max_spread_time = base::TimeDelta();
+    MockSender sender(true,   // success
+                      "123",  // Response (report ID)
+                      std::move(metrics_lib_),
+                      std::make_unique<test_util::AdvancingClock>(), options);
+
+    sender.SendCrashes(crashes_to_send);
   }
 
   // Directory that the test executable lives in. We reset CommandLine during
@@ -2685,6 +2736,112 @@ TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
   // The Chrome uploads.log file shouldn't exist because we had nothing to
   // report.
   EXPECT_FALSE(base::PathExists(paths::Get(paths::ChromeCrashLog::Get())));
+}
+
+// Chrome's uploads.log lives in a chronos-owned directory, so crash_sender
+// must not follow a symlink planted there. b/537017674.
+TEST_F(CrashSenderUtilTest, WriteUploadLogDoesNotFollowSymlinkedLogFile) {
+  const base::FilePath upload_log = paths::Get(paths::ChromeCrashLog::Get());
+  const base::FilePath target = test_dir_.Append("root_owned_file");
+  constexpr char kTargetContents[] = "root owned contents\n";
+  ASSERT_TRUE(test_util::CreateFile(target, kTargetContents));
+  ASSERT_TRUE(base::CreateSymbolicLink(target, upload_log));
+  brillo::ClearLog();
+
+  SendOneCrashWithSuccessfulUpload();
+
+  // The symlink target must not have been appended to.
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(target, &contents));
+  EXPECT_EQ(kTargetContents, contents);
+  // ... and the symlink itself must not have been replaced by a real file.
+  EXPECT_TRUE(base::IsLink(upload_log));
+  // The symlink must be rejected by open() itself, not checked afterwards.
+  EXPECT_TRUE(brillo::FindLog("Could not safely open"));
+}
+
+// As above, but the symlink is a directory component of the path rather than
+// the log file itself.
+TEST_F(CrashSenderUtilTest, WriteUploadLogDoesNotFollowSymlinkedParentDir) {
+  const base::FilePath upload_log = paths::Get(paths::ChromeCrashLog::Get());
+  const base::FilePath target_dir = test_dir_.Append("target_dir");
+  ASSERT_TRUE(base::CreateDirectory(target_dir));
+  ASSERT_TRUE(brillo::DeletePathRecursively(upload_log.DirName()));
+  ASSERT_TRUE(base::CreateSymbolicLink(target_dir, upload_log.DirName()));
+
+  SendOneCrashWithSuccessfulUpload();
+
+  EXPECT_FALSE(base::PathExists(target_dir.Append(upload_log.BaseName())));
+}
+
+// A dangling symlink must not be created through either.
+TEST_F(CrashSenderUtilTest, WriteUploadLogDoesNotCreateThroughDanglingSymlink) {
+  const base::FilePath upload_log = paths::Get(paths::ChromeCrashLog::Get());
+  const base::FilePath target = test_dir_.Append("should_not_be_created");
+  ASSERT_TRUE(base::CreateSymbolicLink(target, upload_log));
+
+  SendOneCrashWithSuccessfulUpload();
+
+  EXPECT_FALSE(base::PathExists(target));
+}
+
+// Opening a FIFO planted at the log path used to block crash_sender forever.
+TEST_F(CrashSenderUtilTest, WriteUploadLogDoesNotBlockOnFifo) {
+  const base::FilePath upload_log = paths::Get(paths::ChromeCrashLog::Get());
+  ASSERT_EQ(0, mkfifo(upload_log.value().c_str(), 0644));
+
+  SendOneCrashWithSuccessfulUpload();
+
+  // Reaching here at all is the point: the FIFO was rejected, not opened.
+  struct stat st;
+  ASSERT_EQ(0, lstat(upload_log.value().c_str(), &st));
+  EXPECT_TRUE(S_ISFIFO(st.st_mode));
+}
+
+// The normal case still works: the log is created when it is missing.
+TEST_F(CrashSenderUtilTest, WriteUploadLogCreatesLogFile) {
+  const base::FilePath upload_log = paths::Get(paths::ChromeCrashLog::Get());
+  ASSERT_FALSE(base::PathExists(upload_log));
+
+  SendOneCrashWithSuccessfulUpload();
+
+  ASSERT_TRUE(base::PathExists(upload_log));
+  int mode = 0;
+  ASSERT_TRUE(base::GetPosixFilePermissions(upload_log, &mode));
+  const mode_t mask = umask(0);
+  umask(mask);
+  EXPECT_EQ(0644 & ~mask, mode);
+
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(upload_log, &contents));
+  EXPECT_EQ(1, ParseChromeUploadsLog(contents).size());
+}
+
+// User crash directories are user-writable, so the ".alreadyuploaded" marker
+// must not be created through a symlinked directory component either.
+TEST_F(CrashSenderUtilTest, RemoveReportFilesMarkerDoesNotFollowSymlinkedDir) {
+  Sender::Options options;
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
+
+  const base::FilePath real_dir = test_dir_.Append("real_crash_dir");
+  ASSERT_TRUE(base::CreateDirectory(real_dir));
+  const base::FilePath link_dir = test_dir_.Append("crash_dir_link");
+  ASSERT_TRUE(base::CreateSymbolicLink(real_dir, link_dir));
+
+  const base::FilePath foo_meta = link_dir.Append("foo.meta");
+  ASSERT_TRUE(test_util::CreateFile(foo_meta, ""));
+  // Make the removal fail so that the ".alreadyuploaded" marker path is taken.
+  ASSERT_EQ(0, chmod(real_dir.value().c_str(), 0500));
+  brillo::ClearLog();
+
+  sender.RemoveReportFiles(foo_meta);
+
+  EXPECT_EQ(0, chmod(real_dir.value().c_str(), 0700));
+  EXPECT_FALSE(base::PathExists(real_dir.Append("foo.alreadyuploaded")));
+  // SafeFD reports this as ENOTDIR rather than ELOOP, because the component is
+  // opened with O_NOFOLLOW|O_DIRECTORY.
+  EXPECT_TRUE(brillo::FindLog("Could not safely open directory"));
 }
 
 // Verify behavior when SendCrashes itself crashes.

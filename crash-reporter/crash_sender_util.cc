@@ -17,7 +17,6 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/containers/span.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/hash/md5.h>
@@ -101,6 +100,49 @@ constexpr char kCrashSenderRemoveHistName[] =
 
 // Receipt ID that indicates the crash report was rejected due to throttling.
 constexpr char kCrashSenderDroppedDueToThrottlingId[] = "0000000000000001";
+
+// Permissions for files crash_sender creates itself. Matches what base::File
+// used before.
+constexpr mode_t kCrashSenderCreatedFileMode = 0644;
+
+// Opens |path| for writing, creating it if needed, without following symlinks
+// anywhere in the path. crash_sender runs as root but writes to directories
+// that unprivileged users can write to, so paths must be resolved with
+// O_NOFOLLOW rather than checked after the fact.
+std::optional<brillo::SafeFD> OpenFileForWritingSafely(
+    const base::FilePath& path, int extra_flags = 0) {
+  brillo::SafeFD::SafeFDResult root = brillo::SafeFD::Root();
+  if (brillo::SafeFD::IsError(root.second)) {
+    LOG(ERROR) << "Could not open root directory: "
+               << static_cast<int>(root.second);
+    return std::nullopt;
+  }
+
+  brillo::SafeFD::SafeFDResult dir = root.first.OpenExistingDir(path.DirName());
+  if (brillo::SafeFD::IsError(dir.second)) {
+    LOG(ERROR) << "Could not safely open directory " << path.DirName().value()
+               << ": " << static_cast<int>(dir.second);
+    return std::nullopt;
+  }
+
+  const base::FilePath base_name = path.BaseName();
+  const int flags = O_WRONLY | O_CLOEXEC | extra_flags;
+  brillo::SafeFD::SafeFDResult file =
+      dir.first.OpenExistingFile(base_name, flags);
+  if (file.second == brillo::SafeFD::Error::kDoesNotExist) {
+    // MakeFile() creates with O_CREAT|O_EXCL|O_NOFOLLOW. It does not create
+    // the parent directory, and ownership defaults to this process.
+    file = dir.first.MakeFile(base_name, kCrashSenderCreatedFileMode, getuid(),
+                              getgid(), flags);
+  }
+  if (brillo::SafeFD::IsError(file.second)) {
+    LOG(ERROR) << "Could not safely open " << path.value() << ": "
+               << static_cast<int>(file.second);
+    return std::nullopt;
+  }
+
+  return std::move(file.first);
+}
 
 }  // namespace
 
@@ -855,9 +897,11 @@ void Sender::RemoveReportFiles(const base::FilePath& meta_file) {
         // instance it will not help if unix permissions on the directory don't
         // let the write happen. Use a different directory for these so that we
         // can write it if this directory is unwriteable.
-        base::File f(meta_file.ReplaceExtension(kAlreadyUploadedExt),
-                     base::File::FLAG_CREATE | base::File::FLAG_WRITE);
-        if (!f.IsValid()) {
+        // Unlike base::File::FLAG_CREATE this succeeds if the marker already
+        // exists, which is fine: all that matters is that it is there.
+        if (!OpenFileForWritingSafely(
+                 meta_file.ReplaceExtension(kAlreadyUploadedExt))
+                 .has_value()) {
           LOG(ERROR) << "Failed to mark crash as uploaded";
         }
       }
@@ -1089,14 +1133,12 @@ SenderBase::CrashRemoveReason Sender::WriteUploadLog(
   if (always_write_uploads_log_ || (!USE_CHROMELESS_TTY && silent != "true")) {
     base::FilePath upload_logs_path(paths::Get(paths::ChromeCrashLog::Get()));
 
-    // Open the file before we check the normalized path or it will fail if the
-    // path doesn't exist.
-    base::File upload_logs_file(upload_logs_path, base::File::FLAG_OPEN_ALWAYS |
-                                                      base::File::FLAG_APPEND);
+    // /var/log/chrome is chronos-owned, so open without following symlinks and
+    // write only through the resulting descriptor.
+    std::optional<brillo::SafeFD> upload_logs_file =
+        OpenFileForWritingSafely(upload_logs_path, O_APPEND);
 
-    base::FilePath normalized_path;
-    if (base::NormalizeFilePath(upload_logs_path, &normalized_path) &&
-        upload_logs_path == normalized_path) {
+    if (upload_logs_file.has_value()) {
       auto entry_or_reason =
           CreateUploadLogEntry(report_id, product_name, details);
       if (const auto* reason =
@@ -1106,19 +1148,16 @@ SenderBase::CrashRemoveReason Sender::WriteUploadLog(
       }
       const std::string& upload_log_entry =
           absl::get<std::string>(entry_or_reason);
-      auto write_result = upload_logs_file.IsValid()
-                              ? upload_logs_file.WriteAtCurrentPos(
-                                    base::as_byte_span(upload_log_entry))
-                              : std::nullopt;
-      if (!write_result.has_value() ||
-          *write_result != upload_log_entry.size()) {
-        PLOG(ERROR) << "Error writing to Chrome uploads.log file";
+      brillo::SafeFD::Error write_error = upload_logs_file->Write(
+          upload_log_entry.data(), upload_log_entry.size());
+      if (brillo::SafeFD::IsError(write_error)) {
+        LOG(ERROR) << "Error writing to Chrome uploads.log file: "
+                   << static_cast<int>(write_error);
       }
     } else {
-      LOG(ERROR) << "Did not write to Chrome uploads.log file because the "
-                 << "normalized path didn't match the target path, target: "
-                 << upload_logs_path.value()
-                 << " normalized: " << normalized_path.value();
+      LOG(ERROR) << "Did not write to Chrome uploads.log file because it "
+                 << "could not be safely opened, target: "
+                 << upload_logs_path.value();
     }
   }
   LOG(INFO) << "Crash report receipt ID " << report_id
