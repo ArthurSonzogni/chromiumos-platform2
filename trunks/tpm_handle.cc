@@ -35,9 +35,9 @@ constexpr base::TimeDelta kInitialRetry = base::Seconds(0.1);
 // When we retry the next time, how much longer do we wait?
 constexpr double kRetryMultiplier = 2.0;
 // How many times to retry?
-constexpr int kMaxRetry = 5;
-// Total of 4 wait time between 5 retries.
-// sum 0.1*2^k for k = 0 to 3 = 1.5s
+constexpr int kMaxRetry = 7;
+// Total of 6 wait times between 7 attempts (1 initial try + 6 retries).
+// sum 0.1*2^k for k = 0 to 5 = 6.3s
 // Note that if this period is not enough, upstart will still respawn trunksd
 // after it all fall through.
 
