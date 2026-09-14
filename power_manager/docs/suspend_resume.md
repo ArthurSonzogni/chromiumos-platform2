@@ -177,7 +177,8 @@ extends the amount of time `powerd` waits after a display disconnect before
 triggering a system suspend, thus allowing momentarily disconnected external
 displays to get re-connected.
 
-The default value is now 5 seconds as of M137 and 0 (disabled) prior to that.
+The default value is 10 seconds as of M155 (previously 5 seconds starting from
+M137, and 0 / disabled prior to that).
 
 [suspend delays]: https://chromium.googlesource.com/chromiumos/platform2/system_api/+/HEAD/dbus/power_manager/suspend.proto
 [/sys/power/wakeup_count]: https://lwn.net/Articles/393314/
