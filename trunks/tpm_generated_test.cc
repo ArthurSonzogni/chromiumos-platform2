@@ -4,6 +4,8 @@
 
 // Note: These tests are not generated. They test generated code.
 
+#include "trunks/tpm_generated.h"
+
 #include <iterator>
 #include <utility>
 
@@ -14,9 +16,9 @@
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 
+#include "trunks/error_codes.h"
 #include "trunks/mock_authorization_delegate.h"
 #include "trunks/mock_command_transceiver.h"
-#include "trunks/tpm_generated.h"
 
 using testing::_;
 using testing::DoAll;
@@ -120,11 +122,8 @@ TEST(GeneratorTest, SynchronousCommand) {
   StrictMock<MockCommandTransceiver> transceiver;
   EXPECT_CALL(transceiver, SendCommandAndWait(expected_command))
       .WillOnce(Return(command_response));
-  StrictMock<MockAuthorizationDelegate> authorization;
-  EXPECT_CALL(authorization, GetCommandAuthorization(_, _, _, _))
-      .WillOnce(Return(true));
   Tpm tpm(&transceiver);
-  EXPECT_EQ(TPM_RC_SUCCESS, tpm.StartupSync(TPM_SU_CLEAR, &authorization));
+  EXPECT_EQ(TPM_RC_SUCCESS, tpm.StartupSync(TPM_SU_CLEAR, nullptr));
 }
 
 TEST(GeneratorTest, SynchronousCommandWithError) {
@@ -143,11 +142,8 @@ TEST(GeneratorTest, SynchronousCommandWithError) {
   StrictMock<MockCommandTransceiver> transceiver;
   EXPECT_CALL(transceiver, SendCommandAndWait(expected_command))
       .WillOnce(Return(command_response));
-  StrictMock<MockAuthorizationDelegate> authorization;
-  EXPECT_CALL(authorization, GetCommandAuthorization(_, _, _, _))
-      .WillOnce(Return(true));
   Tpm tpm(&transceiver);
-  EXPECT_EQ(TPM_RC_FAILURE, tpm.StartupSync(TPM_SU_CLEAR, &authorization));
+  EXPECT_EQ(TPM_RC_FAILURE, tpm.StartupSync(TPM_SU_CLEAR, nullptr));
 }
 
 TEST(GeneratorTest, SynchronousCommandResponseTest) {
@@ -277,6 +273,115 @@ TEST(GeneratorTest, SynchronousCommandResponseTest) {
   EXPECT_EQ(key_name.name[2], 'Y');
 }
 
+TEST(GeneratorTest, RejectsUnauthenticatedResponseWhenSessionProvided) {
+  std::string auth_in(10, 'A');
+  std::string auth_size("\x00\x00\x00\x0A", 4);
+  std::string handle_in("\x40\x00\x00\x07", 4);  // primary_handle = TPM_RH_NULL
+  std::string handle_out("\x80\x00\x00\x01", 4);  // out_handle
+  std::string sensitive(
+      "\x00\x05"   // sensitive.size = 5
+      "\x00\x01"   // sensitive.auth.size = 1
+      "\x61"       // sensitive.auth.buffer[0] = 0x61 ('a')
+      "\x00\x00",  // sensitive.data.size = 0
+      7);
+  std::string public_data(
+      "\x00\x12"  // public.size = 18
+      "\x00\x25"  // public.type = TPM_ALG_SYMCIPHER
+      "\x00\x0B"  // public.name_alg = SHA256
+      "\x00\x00\x00\x00"
+      "\x00\x00"   // public.auth_policy.size = 0
+      "\x00\x06"   // public.sym.alg = TPM_ALG_AES
+      "\x00\x80"   // public.sym.key_bits = 128
+      "\x00\x43"   // public.sym.mode = TPM_ALG_CFB
+      "\x00\x00",  // public.unique.size = 0
+      20);
+  std::string outside("\x00\x00", 2);             // outside_info.size = 0
+  std::string pcr_select("\x00\x00\x00\x00", 4);  // pcr_select.size = 0
+
+  std::string data(
+      "\x00\x0F"          // creation_data.size = 15
+      "\x00\x00\x00\x00"  // creation.pcr = 0
+      "\x00\x00"          // creation.digest.size = 0
+      "\x00"              // creation.locality = 0
+      "\x00\x00"          // creation.parent_alg = 0
+      "\x00\x00"          // creation.parent_name.size = 0
+      "\x00\x00"
+      "\x00\x00",  // creation.outside.size = 0
+      17);
+  std::string hash(
+      "\x00\x01"
+      "\x62",
+      3);
+  std::string ticket(
+      "\x80\x02"          // tag = TPM_ST_SESSIONS
+      "\x40\x00\x00\x07"  // parent = TPM_RH_NULL
+      "\x00\x00",
+      8);
+  std::string name(
+      "\x00\x03"
+      "KEY",
+      5);
+
+  std::string command_tag(
+      "\x80\x02"           // tag = TPM_ST_SESSIONS
+      "\x00\x00\x00\x3D"   // size = 61
+      "\x00\x00\x01\x31",  // code = TPM_CC_CreatePrimary
+      10);
+  // Forged response with TPM_ST_NO_SESSIONS tag (session stripped)
+  std::string response_tag(
+      "\x80\x01"           // tag = TPM_ST_NO_SESSIONS
+      "\x00\x00\x00\x43"   // size = 67 (header + handle + parameters)
+      "\x00\x00\x00\x00",  // rc = TPM_RC_SUCCESS
+      10);
+  std::string command_response =
+      response_tag + handle_out + public_data + data + hash + ticket + name;
+
+  std::string expected_command = command_tag + handle_in + auth_size + auth_in +
+                                 sensitive + public_data + outside + pcr_select;
+
+  StrictMock<MockCommandTransceiver> transceiver;
+  EXPECT_CALL(transceiver, SendCommandAndWait(expected_command))
+      .WillOnce(Return(command_response));
+  StrictMock<MockAuthorizationDelegate> authorization;
+  EXPECT_CALL(authorization, GetCommandAuthorization(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(auth_in), Return(true)));
+  EXPECT_CALL(authorization, EncryptCommandParameter(_)).WillOnce(Return(true));
+
+  TPM2B_SENSITIVE_CREATE in_sensitive;
+  in_sensitive.size = sizeof(TPMS_SENSITIVE_CREATE);
+  in_sensitive.sensitive.user_auth.size = 1;
+  in_sensitive.sensitive.user_auth.buffer[0] = 'a';
+  in_sensitive.sensitive.data.size = 0;
+  TPM2B_PUBLIC in_public;
+  in_public.size = sizeof(TPMT_PUBLIC);
+  in_public.public_area.type = TPM_ALG_SYMCIPHER;
+  in_public.public_area.name_alg = TPM_ALG_SHA256;
+  in_public.public_area.object_attributes = 0;
+  in_public.public_area.auth_policy.size = 0;
+  in_public.public_area.parameters.sym_detail.sym.algorithm = TPM_ALG_AES;
+  in_public.public_area.parameters.sym_detail.sym.key_bits.aes = 128;
+  in_public.public_area.parameters.sym_detail.sym.mode.aes = TPM_ALG_CFB;
+  in_public.public_area.unique.sym.size = 0;
+  TPM2B_DATA outside_info;
+  outside_info.size = 0;
+  TPML_PCR_SELECTION create_pcr;
+  create_pcr.count = 0;
+
+  TPM_HANDLE key_handle;
+  TPM2B_PUBLIC out_public;
+  TPM2B_CREATION_DATA creation_data;
+  TPM2B_DIGEST creation_hash;
+  TPMT_TK_CREATION creation_ticket;
+  TPM2B_NAME key_name;
+
+  Tpm tpm(&transceiver);
+  TPM_RC rc = tpm.CreatePrimarySync(
+      trunks::TPM_RH_NULL, "", in_sensitive, in_public, outside_info,
+      create_pcr, &key_handle, &out_public, &creation_data, &creation_hash,
+      &creation_ticket, &key_name, &authorization);
+  EXPECT_EQ(rc, TRUNKS_RC_AUTHORIZATION_FAILED);
+}
+
 // A fixture for asynchronous command flow tests.
 class CommandFlowTest : public testing::Test {
  public:
@@ -356,12 +461,9 @@ TEST_F(CommandFlowTest, SimpleCommandFlow) {
   StrictMock<MockCommandTransceiver> transceiver;
   EXPECT_CALL(transceiver, SendCommand(expected_command, _))
       .WillOnce(WithArg<1>(Invoke(PostResponse(command_response))));
-  StrictMock<MockAuthorizationDelegate> authorization;
-  EXPECT_CALL(authorization, GetCommandAuthorization(_, _, _, _))
-      .WillOnce(Return(true));
   Tpm tpm(&transceiver);
   response_code_ = TPM_RC_FAILURE;
-  tpm.Startup(TPM_SU_CLEAR, &authorization,
+  tpm.Startup(TPM_SU_CLEAR, nullptr,
               base::BindOnce(&CommandFlowTest::StartupCallback,
                              base::Unretained(this)));
   Run();
@@ -384,11 +486,8 @@ TEST_F(CommandFlowTest, SimpleCommandFlowWithError) {
   StrictMock<MockCommandTransceiver> transceiver;
   EXPECT_CALL(transceiver, SendCommand(expected_command, _))
       .WillOnce(WithArg<1>(Invoke(PostResponse(command_response))));
-  StrictMock<MockAuthorizationDelegate> authorization;
-  EXPECT_CALL(authorization, GetCommandAuthorization(_, _, _, _))
-      .WillOnce(Return(true));
   Tpm tpm(&transceiver);
-  tpm.Startup(TPM_SU_CLEAR, &authorization,
+  tpm.Startup(TPM_SU_CLEAR, nullptr,
               base::BindOnce(&CommandFlowTest::StartupCallback,
                              base::Unretained(this)));
   Run();

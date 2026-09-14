@@ -276,16 +276,18 @@ TPM_RC Tpm::ParseResponse_PolicyFidoSigned(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
 
   return TPM_RC_SUCCESS;

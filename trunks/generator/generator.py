@@ -1482,16 +1482,19 @@ TPM_RC Tpm::ParseResponse_%(method_name)s(%(method_args)s) {
     buffer.erase(parameter_section_size);
   }"""
     _AUTHORIZE_RESPONSE = """
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
-    if (!authorization_delegate)
+    if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
+    }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }"""
     _DECRYPT_PARAMETER = """
   if (tag == TPM_ST_SESSIONS) {

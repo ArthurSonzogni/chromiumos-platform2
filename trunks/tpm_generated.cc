@@ -8230,16 +8230,18 @@ TPM_RC Tpm::ParseResponse_Startup(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -8421,16 +8423,18 @@ TPM_RC Tpm::ParseResponse_Shutdown(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -8613,16 +8617,18 @@ TPM_RC Tpm::ParseResponse_SelfTest(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -8806,16 +8812,18 @@ TPM_RC Tpm::ParseResponse_IncrementalSelfTest(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   std::string to_do_list_bytes;
   rc = Parse_TPML_ALG(&buffer, to_do_list, &to_do_list_bytes);
@@ -9003,16 +9011,18 @@ TPM_RC Tpm::ParseResponse_GetTestResult(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -9301,16 +9311,18 @@ TPM_RC Tpm::ParseResponse_StartAuthSession(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -9548,16 +9560,18 @@ TPM_RC Tpm::ParseResponse_PolicyRestart(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -9793,16 +9807,18 @@ TPM_RC Tpm::ParseResponse_Create(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -10093,16 +10109,18 @@ TPM_RC Tpm::ParseResponse_Load(const std::string& response,
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -10358,16 +10376,18 @@ TPM_RC Tpm::ParseResponse_LoadExternal(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -10591,16 +10611,18 @@ TPM_RC Tpm::ParseResponse_ReadPublic(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -10869,16 +10891,18 @@ TPM_RC Tpm::ParseResponse_ActivateCredential(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -11136,16 +11160,18 @@ TPM_RC Tpm::ParseResponse_MakeCredential(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -11378,16 +11404,18 @@ TPM_RC Tpm::ParseResponse_Unseal(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -11630,16 +11658,18 @@ TPM_RC Tpm::ParseResponse_ObjectChangeAuth(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -11906,16 +11936,18 @@ TPM_RC Tpm::ParseResponse_Duplicate(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -12207,16 +12239,18 @@ TPM_RC Tpm::ParseResponse_Rewrap(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -12506,16 +12540,18 @@ TPM_RC Tpm::ParseResponse_Import(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -12778,16 +12814,18 @@ TPM_RC Tpm::ParseResponse_RSA_Encrypt(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -13047,16 +13085,18 @@ TPM_RC Tpm::ParseResponse_RSA_Decrypt(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -13282,16 +13322,18 @@ TPM_RC Tpm::ParseResponse_ECDH_KeyGen(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -13533,16 +13575,18 @@ TPM_RC Tpm::ParseResponse_ECDH_ZGen(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -13760,16 +13804,18 @@ TPM_RC Tpm::ParseResponse_ECC_Parameters(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   std::string parameters_bytes;
   rc = Parse_TPMS_ALGORITHM_DETAIL_ECC(&buffer, parameters, &parameters_bytes);
@@ -14009,16 +14055,18 @@ TPM_RC Tpm::ParseResponse_ZGen_2Phase(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -14290,16 +14338,18 @@ TPM_RC Tpm::ParseResponse_EncryptDecrypt(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -14560,16 +14610,18 @@ TPM_RC Tpm::ParseResponse_Hash(const std::string& response,
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -14820,16 +14872,18 @@ TPM_RC Tpm::ParseResponse_HMAC(const std::string& response,
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -15048,16 +15102,18 @@ TPM_RC Tpm::ParseResponse_GetRandom(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -15278,16 +15334,18 @@ TPM_RC Tpm::ParseResponse_StirRandom(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -15503,16 +15561,18 @@ TPM_RC Tpm::ParseResponse_HMAC_Start(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -15728,16 +15788,18 @@ TPM_RC Tpm::ParseResponse_HashSequenceStart(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -15947,16 +16009,18 @@ TPM_RC Tpm::ParseResponse_SequenceUpdate(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -16176,16 +16240,18 @@ TPM_RC Tpm::ParseResponse_SequenceComplete(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -16446,16 +16512,18 @@ TPM_RC Tpm::ParseResponse_EventSequenceComplete(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   std::string results_bytes;
   rc = Parse_TPML_DIGEST_VALUES(&buffer, results, &results_bytes);
@@ -16699,16 +16767,18 @@ TPM_RC Tpm::ParseResponse_Certify(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -16997,16 +17067,18 @@ TPM_RC Tpm::ParseResponse_CertifyCreation(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -17284,16 +17356,18 @@ TPM_RC Tpm::ParseResponse_Quote(const std::string& response,
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -17573,16 +17647,18 @@ TPM_RC Tpm::ParseResponse_GetSessionAuditDigest(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -17863,16 +17939,18 @@ TPM_RC Tpm::ParseResponse_GetCommandAuditDigest(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -18149,16 +18227,18 @@ TPM_RC Tpm::ParseResponse_GetTime(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -18434,16 +18514,18 @@ TPM_RC Tpm::ParseResponse_Commit(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   std::string param_size_out_bytes;
   rc = Parse_UINT32(&buffer, param_size_out, &param_size_out_bytes);
@@ -18687,16 +18769,18 @@ TPM_RC Tpm::ParseResponse_EC_Ephemeral(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   std::string param_size_out_bytes;
   rc = Parse_UINT32(&buffer, param_size_out, &param_size_out_bytes);
@@ -18932,16 +19016,18 @@ TPM_RC Tpm::ParseResponse_VerifySignature(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   std::string validation_bytes;
   rc = Parse_TPMT_TK_VERIFIED(&buffer, validation, &validation_bytes);
@@ -19179,16 +19265,18 @@ TPM_RC Tpm::ParseResponse_Sign(const std::string& response,
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   std::string signature_bytes;
   rc = Parse_TPMT_SIGNATURE(&buffer, signature, &signature_bytes);
@@ -19416,16 +19504,18 @@ TPM_RC Tpm::ParseResponse_SetCommandCodeAuditStatus(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -19634,16 +19724,18 @@ TPM_RC Tpm::ParseResponse_PCR_Extend(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -19849,16 +19941,18 @@ TPM_RC Tpm::ParseResponse_PCR_Event(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   std::string digests_bytes;
   rc = Parse_TPML_DIGEST_VALUES(&buffer, digests, &digests_bytes);
@@ -20058,16 +20152,18 @@ TPM_RC Tpm::ParseResponse_PCR_Read(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   std::string pcr_update_counter_bytes;
   rc = Parse_UINT32(&buffer, pcr_update_counter, &pcr_update_counter_bytes);
@@ -20291,16 +20387,18 @@ TPM_RC Tpm::ParseResponse_PCR_Allocate(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   std::string allocation_success_bytes;
   rc =
@@ -20561,16 +20659,18 @@ TPM_RC Tpm::ParseResponse_PCR_SetAuthPolicy(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -20787,16 +20887,18 @@ TPM_RC Tpm::ParseResponse_PCR_SetAuthValue(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -20988,16 +21090,18 @@ TPM_RC Tpm::ParseResponse_PCR_Reset(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -21248,16 +21352,18 @@ TPM_RC Tpm::ParseResponse_PolicySigned(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -21555,16 +21661,18 @@ TPM_RC Tpm::ParseResponse_PolicySecret(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -21857,16 +21965,18 @@ TPM_RC Tpm::ParseResponse_PolicyTicket(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -22073,16 +22183,18 @@ TPM_RC Tpm::ParseResponse_PolicyOR(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -22298,16 +22410,18 @@ TPM_RC Tpm::ParseResponse_PolicyPCR(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -22508,16 +22622,18 @@ TPM_RC Tpm::ParseResponse_PolicyLocality(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -22764,16 +22880,18 @@ TPM_RC Tpm::ParseResponse_PolicyNV(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -23012,16 +23130,18 @@ TPM_RC Tpm::ParseResponse_PolicyCounterTimer(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -23228,16 +23348,18 @@ TPM_RC Tpm::ParseResponse_PolicyCommandCode(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -23431,16 +23553,18 @@ TPM_RC Tpm::ParseResponse_PolicyPhysicalPresence(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -23647,16 +23771,18 @@ TPM_RC Tpm::ParseResponse_PolicyCpHash(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -23863,16 +23989,18 @@ TPM_RC Tpm::ParseResponse_PolicyNameHash(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -24099,16 +24227,18 @@ TPM_RC Tpm::ParseResponse_PolicyDuplicationSelect(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -24350,16 +24480,18 @@ TPM_RC Tpm::ParseResponse_PolicyAuthorize(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -24558,16 +24690,18 @@ TPM_RC Tpm::ParseResponse_PolicyAuthValue(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -24756,16 +24890,18 @@ TPM_RC Tpm::ParseResponse_PolicyPassword(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -24954,16 +25090,18 @@ TPM_RC Tpm::ParseResponse_PolicyGetDigest(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -25191,16 +25329,18 @@ TPM_RC Tpm::ParseResponse_PolicyNvWritten(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -25448,16 +25588,18 @@ TPM_RC Tpm::ParseResponse_CreatePrimary(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -25737,16 +25879,18 @@ TPM_RC Tpm::ParseResponse_HierarchyControl(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -25968,16 +26112,18 @@ TPM_RC Tpm::ParseResponse_SetPrimaryPolicy(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -26173,16 +26319,18 @@ TPM_RC Tpm::ParseResponse_ChangePPS(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -26368,16 +26516,18 @@ TPM_RC Tpm::ParseResponse_ChangeEPS(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -26562,16 +26712,18 @@ TPM_RC Tpm::ParseResponse_Clear(const std::string& response,
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -26765,16 +26917,18 @@ TPM_RC Tpm::ParseResponse_ClearControl(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -26979,16 +27133,18 @@ TPM_RC Tpm::ParseResponse_HierarchyChangeAuth(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -27182,16 +27338,18 @@ TPM_RC Tpm::ParseResponse_DictionaryAttackLockReset(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -27410,16 +27568,18 @@ TPM_RC Tpm::ParseResponse_DictionaryAttackParameters(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -27637,16 +27797,18 @@ TPM_RC Tpm::ParseResponse_PP_Commands(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -27845,16 +28007,18 @@ TPM_RC Tpm::ParseResponse_SetAlgorithmSet(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -28084,16 +28248,18 @@ TPM_RC Tpm::ParseResponse_FieldUpgradeStart(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -28302,16 +28468,18 @@ TPM_RC Tpm::ParseResponse_FieldUpgradeData(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   std::string next_digest_bytes;
   rc = Parse_TPMT_HA(&buffer, next_digest, &next_digest_bytes);
@@ -28514,16 +28682,18 @@ TPM_RC Tpm::ParseResponse_FirmwareRead(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -28738,16 +28908,18 @@ TPM_RC Tpm::ParseResponse_ContextSave(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   std::string context_bytes;
   rc = Parse_TPMS_CONTEXT(&buffer, context, &context_bytes);
@@ -28946,16 +29118,18 @@ TPM_RC Tpm::ParseResponse_ContextLoad(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -29142,16 +29316,18 @@ TPM_RC Tpm::ParseResponse_FlushContext(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -29355,16 +29531,18 @@ TPM_RC Tpm::ParseResponse_EvictControl(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -29549,16 +29727,18 @@ TPM_RC Tpm::ParseResponse_ReadClock(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   std::string current_time_bytes;
   rc = Parse_TPMS_TIME_INFO(&buffer, current_time, &current_time_bytes);
@@ -29755,16 +29935,18 @@ TPM_RC Tpm::ParseResponse_ClockSet(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -29961,16 +30143,18 @@ TPM_RC Tpm::ParseResponse_ClockRateAdjust(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -30180,16 +30364,18 @@ TPM_RC Tpm::ParseResponse_GetCapability(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   std::string more_data_bytes;
   rc = Parse_TPMI_YES_NO(&buffer, more_data, &more_data_bytes);
@@ -30393,16 +30579,18 @@ TPM_RC Tpm::ParseResponse_TestParms(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -30612,16 +30800,18 @@ TPM_RC Tpm::ParseResponse_NV_DefineSpace(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -30825,16 +31015,18 @@ TPM_RC Tpm::ParseResponse_NV_UndefineSpace(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -31040,16 +31232,18 @@ TPM_RC Tpm::ParseResponse_NV_UndefineSpaceSpecial(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -31247,16 +31441,18 @@ TPM_RC Tpm::ParseResponse_NV_ReadPublic(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -31516,16 +31712,18 @@ TPM_RC Tpm::ParseResponse_NV_Write(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -31731,16 +31929,18 @@ TPM_RC Tpm::ParseResponse_NV_Increment(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -31959,16 +32159,18 @@ TPM_RC Tpm::ParseResponse_NV_Extend(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -32181,16 +32383,18 @@ TPM_RC Tpm::ParseResponse_NV_SetBits(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -32394,16 +32598,18 @@ TPM_RC Tpm::ParseResponse_NV_WriteLock(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -32595,16 +32801,18 @@ TPM_RC Tpm::ParseResponse_NV_GlobalWriteLock(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -32823,16 +33031,18 @@ TPM_RC Tpm::ParseResponse_NV_Read(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
@@ -33067,16 +33277,18 @@ TPM_RC Tpm::ParseResponse_NV_ReadLock(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -33285,16 +33497,18 @@ TPM_RC Tpm::ParseResponse_NV_ChangeAuth(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -33549,16 +33763,18 @@ TPM_RC Tpm::ParseResponse_NV_Certify(
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
-  std::string response_hash(32, 0);
-  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+    std::string response_hash(32, 0);
+    hash->Finish(std::data(response_hash), response_hash.size());
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
+  } else if (authorization_delegate) {
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   if (tag == TPM_ST_SESSIONS) {
     if (!authorization_delegate) {
