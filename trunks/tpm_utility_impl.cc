@@ -115,9 +115,9 @@ std::string HashString(const std::string& plaintext,
       return base::SHA1HashString(plaintext);
     case trunks::TPM_ALG_SHA256:
       return crypto::SHA256HashString(plaintext);
+    default:
+      return std::string();
   }
-  NOTREACHED_IN_MIGRATION();
-  return std::string();
 }
 
 VendorVariant ToVendorVariant(std::optional<uint32_t> vendor_id) {

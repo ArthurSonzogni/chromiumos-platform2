@@ -291,8 +291,6 @@ std::string GetErrorStringInternal(trunks::TPM_RC error) {
     default:
       return std::string();
   }
-  NOTREACHED_IN_MIGRATION();
-  return std::string();
 }
 
 bool IsFormatOne(trunks::TPM_RC error) {
