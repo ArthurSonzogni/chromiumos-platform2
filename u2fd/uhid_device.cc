@@ -43,7 +43,6 @@ const char* GetUhidEventName(int event) {
     case UHID_OUTPUT:
       return "OUTPUT";
     default:
-      NOTREACHED_IN_MIGRATION();
       return "UNKNOWN";
   }
 }

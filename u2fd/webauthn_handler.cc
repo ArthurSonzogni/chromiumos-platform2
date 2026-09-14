@@ -1028,7 +1028,8 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
         return result;
       case google::protobuf::kint32min:
       case google::protobuf::kint32max:
-        NOTREACHED_IN_MIGRATION();
+        LOG(ERROR) << "U2fSignCheckOnly returned kint32min/max";
+        break;
     }
 
     // Try matching app_id.
@@ -1051,7 +1052,8 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
         return result;
       case google::protobuf::kint32min:
       case google::protobuf::kint32max:
-        NOTREACHED_IN_MIGRATION();
+        LOG(ERROR) << "U2fSignCheckOnly returned kint32min/max";
+        break;
     }
   }
 
