@@ -136,8 +136,8 @@ The other interaction is between `openvpn` and `OpenVPNManagementServer`.
 OpenVPN provides the concept of a management server, which is an entity external
 to the `openvpn` process which provides administrative control. Communication
 between the `openvpn` and management server processes occurs either over TCP or
-unix domain sockets. In this case, `OpenVPNManagementServer` uses a TCP socket
-over 127.0.0.1 to communicate with the OpenVPN client. This allows for Shill to
+unix domain sockets. In this case, `OpenVPNManagementServer` uses a unix domain
+socket to communicate with the OpenVPN client. This allows for Shill to
 control `openvpn` behavior like holds (keeping `openvpn` hibernated until the
 hold is released) and restarts (triggered by sending "signal SIGUSR1" over the
 socket), but also allows for `openvpn` to send information like state changes

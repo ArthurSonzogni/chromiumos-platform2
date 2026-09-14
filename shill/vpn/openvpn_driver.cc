@@ -106,6 +106,10 @@ constexpr char kOpenVPNScript[] = SHIMDIR "/openvpn-script";
 constexpr char kDefaultOpenVPNConfigurationDirectory[] =
     RUNDIR "/openvpn_config";
 
+// Filename of the UNIX domain socket used by OpenVPNManagementServer
+// to communicate with the OpenVPN client process.
+constexpr char kManagementSocketFilename[] = "openvpn-mgmt.sock";
+
 }  // namespace
 
 // static
@@ -1034,7 +1038,14 @@ void OpenVPNDriver::InitClientAuthOptions(
 
 bool OpenVPNDriver::InitManagementChannelOptions(
     std::vector<std::vector<std::string>>* options, Error* error) {
-  if (!management_server_->Start(options)) {
+  if (!vpn_util_->PrepareConfigDirectory(openvpn_config_directory_)) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
+                          "Unable to setup OpenVPN config directory.");
+    return false;
+  }
+  const base::FilePath socket_path =
+      openvpn_config_directory_.Append(kManagementSocketFilename);
+  if (!management_server_->Start(socket_path, options)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                           "Unable to setup management channel.");
     return false;

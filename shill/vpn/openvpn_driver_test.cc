@@ -958,7 +958,7 @@ TEST_F(OpenVPNDriverTest, InitPKCS11Options) {
 
 TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsServerFail) {
   std::vector<std::vector<std::string>> options;
-  EXPECT_CALL(*management_server_, Start(&options)).WillOnce(Return(false));
+  EXPECT_CALL(*management_server_, Start(_, &options)).WillOnce(Return(false));
   Error error;
   EXPECT_FALSE(InitManagementChannelOptions(&options, &error));
   EXPECT_EQ(Error::kInternalError, error.type());
@@ -967,7 +967,7 @@ TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsServerFail) {
 
 TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsOnline) {
   std::vector<std::vector<std::string>> options;
-  EXPECT_CALL(*management_server_, Start(&options)).WillOnce(Return(true));
+  EXPECT_CALL(*management_server_, Start(_, &options)).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(true));
   EXPECT_CALL(*management_server_, ReleaseHold());
   Error error;
@@ -977,7 +977,7 @@ TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsOnline) {
 
 TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsOffline) {
   std::vector<std::vector<std::string>> options;
-  EXPECT_CALL(*management_server_, Start(&options)).WillOnce(Return(true));
+  EXPECT_CALL(*management_server_, Start(_, &options)).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
   EXPECT_CALL(*management_server_, ReleaseHold()).Times(0);
   Error error;

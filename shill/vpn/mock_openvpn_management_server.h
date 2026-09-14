@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <gmock/gmock.h>
 
 #include "shill/vpn/openvpn_management_server.h"
@@ -25,7 +26,7 @@ class MockOpenVPNManagementServer : public OpenVPNManagementServer {
 
   MOCK_METHOD(bool,
               Start,
-              (std::vector<std::vector<std::string>>*),
+              (const base::FilePath&, std::vector<std::vector<std::string>>*),
               (override));
   MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(void, ReleaseHold, (), (override));

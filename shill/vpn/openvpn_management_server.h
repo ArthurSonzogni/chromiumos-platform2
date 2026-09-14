@@ -5,11 +5,14 @@
 #ifndef SHILL_VPN_OPENVPN_MANAGEMENT_SERVER_H_
 #define SHILL_VPN_OPENVPN_MANAGEMENT_SERVER_H_
 
+#include <sys/types.h>
+
 #include <memory>
 #include <string>
 #include <vector>
 
 #include <base/containers/span.h>
+#include <base/files/file_path.h>
 #include <chromeos/net-base/socket.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -32,9 +35,11 @@ class OpenVPNManagementServer {
 
   virtual ~OpenVPNManagementServer();
 
-  // Returns false on failure. On success, returns true and appends management
-  // interface openvpn options to |options|.
-  virtual bool Start(std::vector<std::vector<std::string>>* options);
+  // Starts the management server listening on a UNIX domain socket at
+  // |socket_path|. Returns false on failure. On success, returns true and
+  // appends management interface openvpn options to |options|.
+  virtual bool Start(const base::FilePath& socket_path,
+                     std::vector<std::vector<std::string>>* options);
 
   virtual void Stop();
 
@@ -149,6 +154,10 @@ class OpenVPNManagementServer {
   std::unique_ptr<net_base::Socket> socket_;
   std::unique_ptr<net_base::Socket> connected_socket_;
 
+  // Path of the AF_UNIX domain socket used to communicate with the
+  // openvpn child process, and group ID for socket file ownership.
+  base::FilePath socket_path_;
+  gid_t socket_gid_;
   std::string state_;
 
   bool hold_waiting_;

@@ -4,12 +4,13 @@
 
 #include "shill/vpn/openvpn_management_server.h"
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
+#include <sys/stat.h>
+#include <sys/un.h>
 
 #include <memory>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <utility>
 
 #include <base/check.h>
@@ -23,10 +24,12 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/data_encoding.h>
+#include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/logging.h"
 #include "shill/vpn/openvpn_driver.h"
+#include "shill/vpn/vpn_util.h"
 
 namespace shill {
 
@@ -39,47 +42,84 @@ constexpr char kPasswordTagAuth[] = "Auth";
 }  // namespace
 
 OpenVPNManagementServer::OpenVPNManagementServer(OpenVPNDriver* driver)
-    : driver_(driver), hold_waiting_(false), hold_release_(false) {}
+    : driver_(driver),
+      socket_gid_(VPNUtil::kVPNGid),
+      hold_waiting_(false),
+      hold_release_(false) {}
 
 OpenVPNManagementServer::~OpenVPNManagementServer() {
   OpenVPNManagementServer::Stop();
 }
 
 bool OpenVPNManagementServer::Start(
+    const base::FilePath& socket_path,
     std::vector<std::vector<std::string>>* options) {
   SLOG(2) << __func__;
   if (IsStarted()) {
     return true;
   }
 
+  if (socket_path.empty()) {
+    LOG(ERROR) << "Socket path is empty.";
+    return false;
+  }
+
+  struct sockaddr_un addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sun_family = AF_UNIX;
+  if (socket_path.value().size() >= sizeof(addr.sun_path)) {
+    LOG(ERROR) << "Socket path is too long: " << socket_path.value();
+    return false;
+  }
+  base::strlcpy(addr.sun_path, socket_path.value().c_str(),
+                sizeof(addr.sun_path));
+
+  // Delete any stale socket file at socket_path prior to Bind().
+  if (!brillo::DeleteFile(socket_path)) {
+    LOG(ERROR) << "Failed to delete stale socket file: " << socket_path.value();
+    return false;
+  }
+
   std::unique_ptr<net_base::Socket> socket =
-      socket_factory_->Create(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
+      socket_factory_->Create(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
   if (!socket) {
     PLOG(ERROR) << "Unable to create management server socket.";
     return false;
   }
 
-  struct sockaddr_in addr;
+  base::ScopedClosureRunner destroy_socket_file(
+      base::BindOnce(base::IgnoreResult(&brillo::DeleteFile), socket_path));
+
   socklen_t addrlen = sizeof(addr);
-  memset(&addr, 0, sizeof(addr));
-  addr.sin_family = AF_INET;
-  addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
   if (!socket->Bind(reinterpret_cast<struct sockaddr*>(&addr), addrlen) ||
-      !socket->Listen(1) ||
-      !socket->GetSockName(reinterpret_cast<struct sockaddr*>(&addr),
-                           &addrlen)) {
+      !socket->Listen(1)) {
     PLOG(ERROR) << "Socket setup failed.";
     return false;
   }
 
+  // Set permissions on the socket file to 0660 and group to vpn.
+  if (chown(socket_path.value().c_str(), -1, socket_gid_) != 0) {
+    PLOG(ERROR) << "Failed to change group owner of socket "
+                << socket_path.value();
+    return false;
+  }
+  if (chmod(socket_path.value().c_str(),
+            S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP) != 0) {
+    PLOG(ERROR) << "Failed to set permissions on socket "
+                << socket_path.value();
+    return false;
+  }
+
+  std::ignore = destroy_socket_file.Release();
+
   SLOG(2) << "Listening socket: " << socket;
   socket_ = std::move(socket);
+  socket_path_ = socket_path;
   socket_->SetReadableCallback(base::BindRepeating(
       &OpenVPNManagementServer::OnAcceptReady, base::Unretained(this)));
 
   // Append openvpn management API options.
-  driver_->AppendOption("management", inet_ntoa(addr.sin_addr),
-                        base::NumberToString(ntohs(addr.sin_port)), options);
+  driver_->AppendOption("management", socket_path_.value(), "unix", options);
   driver_->AppendOption("management-client", options);
   driver_->AppendOption("management-hold", options);
   hold_release_ = false;
@@ -102,6 +142,11 @@ void OpenVPNManagementServer::Stop() {
 
   connected_socket_.reset();
   socket_.reset();
+
+  if (!socket_path_.empty()) {
+    brillo::DeleteFile(socket_path_);
+    socket_path_.clear();
+  }
 }
 
 void OpenVPNManagementServer::ReleaseHold() {

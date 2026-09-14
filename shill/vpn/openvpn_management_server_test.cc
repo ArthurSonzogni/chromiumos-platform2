@@ -4,13 +4,15 @@
 
 #include "shill/vpn/openvpn_management_server.h"
 
-#include <netinet/in.h>
+#include <sys/un.h>
 
 #include <memory>
 #include <string_view>
 #include <utility>
 
 #include <base/containers/span.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/test/task_environment.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/net-base/mock_process_manager.h>
@@ -54,6 +56,9 @@ class OpenVPNManagementServerTest : public testing::Test {
     auto socket_factory = std::make_unique<net_base::MockSocketFactory>();
     socket_factory_ = socket_factory.get();
     server_.socket_factory_ = std::move(socket_factory);
+    // Deactivate chown() group change in unit tests since the test runner does
+    // not run in the "vpn" group or with CAP_CHOWN.
+    server_.socket_gid_ = -1;
   }
 
   ~OpenVPNManagementServerTest() override = default;
@@ -166,58 +171,89 @@ class OpenVPNManagementServerTest : public testing::Test {
   net_base::MockProcessManager process_manager_;
   Manager manager_;
   MockOpenVPNDriver driver_;
+  base::ScopedTempDir temp_dir_;
   OpenVPNManagementServer server_;  // Destroy before anything it references.
   net_base::MockSocketFactory* socket_factory_;  // Owned by |server_|.
 };
 
 TEST_F(OpenVPNManagementServerTest, StartStarted) {
+  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+  const base::FilePath socket_path = temp_dir_.GetPath().Append("mgmt.sock");
   SetSocket(std::make_unique<net_base::MockSocket>());
-  EXPECT_TRUE(server_.Start(nullptr));
+  EXPECT_TRUE(server_.Start(socket_path, nullptr));
 }
 
-TEST_F(OpenVPNManagementServerTest, StartSocketFail) {
-  EXPECT_CALL(*socket_factory_,
-              Create(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP))
-      .WillOnce(Return(nullptr));
-
-  EXPECT_FALSE(server_.Start(nullptr));
+TEST_F(OpenVPNManagementServerTest, StartEmptyPath) {
+  EXPECT_FALSE(server_.Start(base::FilePath(), nullptr));
   EXPECT_FALSE(server_.IsStarted());
 }
 
-TEST_F(OpenVPNManagementServerTest, StartGetSockNameFail) {
-  EXPECT_CALL(*socket_factory_,
-              Create(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP))
+TEST_F(OpenVPNManagementServerTest, StartSocketFail) {
+  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+  const base::FilePath socket_path = temp_dir_.GetPath().Append("mgmt.sock");
+  EXPECT_CALL(*socket_factory_, Create(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0))
+      .WillOnce(Return(nullptr));
+
+  EXPECT_FALSE(server_.Start(socket_path, nullptr));
+  EXPECT_FALSE(server_.IsStarted());
+}
+
+TEST_F(OpenVPNManagementServerTest, StartBindFail) {
+  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+  const base::FilePath socket_path = temp_dir_.GetPath().Append("mgmt.sock");
+  EXPECT_CALL(*socket_factory_, Create(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0))
       .WillOnce([]() {
         auto socket = std::make_unique<net_base::MockSocket>();
-        EXPECT_CALL(*socket, Bind).WillOnce(Return(true));
-        EXPECT_CALL(*socket, Listen(1)).WillOnce(Return(true));
-        EXPECT_CALL(*socket, GetSockName).WillOnce(Return(false));
+        EXPECT_CALL(*socket, Bind).WillOnce(Return(false));
         return socket;
       });
 
-  EXPECT_FALSE(server_.Start(nullptr));
+  EXPECT_FALSE(server_.Start(socket_path, nullptr));
+  EXPECT_FALSE(server_.IsStarted());
+}
+
+TEST_F(OpenVPNManagementServerTest, StartChownFail) {
+  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+  const base::FilePath socket_path = temp_dir_.GetPath().Append("mgmt.sock");
+  EXPECT_CALL(*socket_factory_, Create(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0))
+      .WillOnce([]() {
+        auto socket = std::make_unique<net_base::MockSocket>();
+        // Bind succeeds without creating the socket file on disk, so chown()
+        // fails with ENOENT.
+        EXPECT_CALL(*socket, Bind).WillOnce(Return(true));
+        EXPECT_CALL(*socket, Listen(1)).WillOnce(Return(true));
+        return socket;
+      });
+
+  EXPECT_FALSE(server_.Start(socket_path, nullptr));
   EXPECT_FALSE(server_.IsStarted());
 }
 
 TEST_F(OpenVPNManagementServerTest, Start) {
+  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+  const base::FilePath socket_path = temp_dir_.GetPath().Append("mgmt.sock");
   const std::string kStaticChallenge = "static-challenge";
   driver_.args()->Set<std::string>(kOpenVPNStaticChallengeProperty,
                                    kStaticChallenge);
 
-  EXPECT_CALL(*socket_factory_,
-              Create(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP))
-      .WillOnce([]() {
+  EXPECT_CALL(*socket_factory_, Create(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0))
+      .WillOnce([&socket_path]() {
         auto socket = std::make_unique<net_base::MockSocket>();
-        EXPECT_CALL(*socket, Bind).WillOnce(Return(true));
+        EXPECT_CALL(*socket, Bind)
+            .WillOnce([&socket_path](const struct sockaddr*, socklen_t) {
+              return base::WriteFile(socket_path, "");
+            });
         EXPECT_CALL(*socket, Listen(1)).WillOnce(Return(true));
-        EXPECT_CALL(*socket, GetSockName).WillOnce(Return(true));
         return socket;
       });
 
   std::vector<std::vector<std::string>> options;
-  EXPECT_TRUE(server_.Start(&options));
+  EXPECT_TRUE(server_.Start(socket_path, &options));
+  int mode = 0;
+  EXPECT_TRUE(base::GetPosixFilePermissions(socket_path, &mode));
+  EXPECT_EQ(mode, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
   std::vector<std::vector<std::string>> expected_options{
-      {"management", "127.0.0.1", "0"},
+      {"management", socket_path.value(), "unix"},
       {"management-client"},
       {"management-hold"},
       {"management-query-passwords"},
@@ -228,6 +264,12 @@ TEST_F(OpenVPNManagementServerTest, Start) {
 TEST_F(OpenVPNManagementServerTest, Stop) {
   EXPECT_TRUE(server_.state().empty());
 
+  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+  const base::FilePath socket_path = temp_dir_.GetPath().Append("mgmt.sock");
+  EXPECT_TRUE(base::WriteFile(socket_path, ""));
+  EXPECT_TRUE(base::PathExists(socket_path));
+  server_.socket_path_ = socket_path;
+
   SetSocket(std::make_unique<net_base::MockSocket>());
   SetConnectedSocket(std::make_unique<net_base::MockSocket>());
 
@@ -237,6 +279,8 @@ TEST_F(OpenVPNManagementServerTest, Stop) {
   EXPECT_EQ(nullptr, server_.socket_);
   EXPECT_TRUE(server_.state().empty());
   EXPECT_FALSE(server_.IsStarted());
+  EXPECT_FALSE(base::PathExists(socket_path));
+  EXPECT_TRUE(server_.socket_path_.empty());
 }
 
 TEST_F(OpenVPNManagementServerTest, OnReadyAcceptFail) {
