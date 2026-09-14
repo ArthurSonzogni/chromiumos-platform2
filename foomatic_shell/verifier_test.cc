@@ -159,15 +159,23 @@ TEST(Verifier, echoWithVariableFail) {
 }
 
 TEST(Verifier, gs) {
-  EXPECT_TRUE(VerifyScript("gs -dSAFER -sOutputFile=- somefile.ps"));
+  EXPECT_TRUE(
+      VerifyScript("gs -dSAFER -sOutputFile=- /var/spool/cups/somefile.ps"));
+  EXPECT_TRUE(VerifyScript("gs -dSAFER -sOutputFile=- -"));
+  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- somefile.ps"));
 }
 
-TEST(Verifier, gsFail) {
-  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- -dNOSAFER somefile.ps"));
+TEST(Verifier, gsGsNames) {
+  EXPECT_TRUE(VerifyScript("gs -dSAFER -sOutputFile=- -dGSNAME -"));
+  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- -dNOSAFER -"));
+  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- -DNOSAFER -"));
+  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- -sNOSAFER -"));
+  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- -SNOSAFER -"));
+  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- -pNOSAFER -"));
 }
 
 TEST(Verifier, gsFail1) {
-  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- -dDELAYSAFER file.ps"));
+  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- -dDELAYSAFER -"));
 }
 
 TEST(Verifier, gsFail2) {
@@ -175,15 +183,15 @@ TEST(Verifier, gsFail2) {
 }
 
 TEST(Verifier, gsFail3) {
-  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=xyz.out somefile.ps"));
+  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=xyz.out -"));
 }
 
 TEST(Verifier, gsFail4) {
-  EXPECT_FALSE(VerifyScript("gs -dSAFER somefile.ps"));
+  EXPECT_FALSE(VerifyScript("gs -dSAFER /var/spool/cups/somefile.ps"));
 }
 
 TEST(Verifier, gsFail5) {
-  EXPECT_FALSE(VerifyScript("gs -sOutputFile=- somefile.ps"));
+  EXPECT_FALSE(VerifyScript("gs -sOutputFile=- /var/spool/cups/somefile.ps"));
 }
 
 TEST(Verifier, gsFail6) {
@@ -214,6 +222,16 @@ TEST(Verifier, gsUppFile) {
   EXPECT_TRUE(VerifyScript("gs -dPARANOIDSAFER -sOutputFile=%stdout @aaa.upp"));
   EXPECT_FALSE(VerifyScript("gs -dPARANOIDSAFER -sOutputFile=%stdout @aaa.up"));
   EXPECT_FALSE(VerifyScript("gs -dPARANOIDSAFER -sOutputFile=%stdout @/a.upp"));
+}
+
+TEST(Verifier, gsInputFiles) {
+  EXPECT_TRUE(VerifyScript("gs -dSAFER -sOutputFile=- -f/var/spool/cups/f.ps"));
+  EXPECT_TRUE(VerifyScript("gs -dSAFER -sOutputFile=- -+/var/spool/cups/f.ps"));
+  EXPECT_TRUE(VerifyScript("gs -dSAFER -sOutputFile=- -@/var/spool/cups/f.ps"));
+  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- -f/var/spool/f.ps"));
+  EXPECT_FALSE(
+      VerifyScript("gs -dSAFER -sOutputFile=- -+/var/spool/cups/../f.ps"));
+  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- -@/xxx/yyy/cups/f.ps"));
 }
 
 TEST(Verifier, pdftops) {

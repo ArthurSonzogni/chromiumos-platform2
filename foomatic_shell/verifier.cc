@@ -51,6 +51,11 @@ std::string FirstWithPrefix(const std::vector<std::string>& strs,
   return "";
 }
 
+template <typename element, size_t arraySize>
+bool Contains(const std::array<element, arraySize>& v, element e) {
+  return std::find(v.begin(), v.end(), e) != v.end();
+}
+
 template <typename element>
 bool Contains(const std::vector<element>& v, element e) {
   return std::find(v.begin(), v.end(), e) != v.end();
@@ -158,6 +163,19 @@ bool ParseGnuParameters(
   return true;
 }
 
+// Return true <=> the input filename equals '-' or is in /var/spool/cups/ or in
+// /tmp/.
+bool InputPathIsAllowed(const std::string& path) {
+  if (path == "-") {
+    return true;
+  }
+  if ((HasPrefix(path, "/var/spool/cups/") || HasPrefix(path, "/tmp/")) &&
+      path.find("..") == std::string::npos) {
+    return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 bool Verifier::VerifyScript(Script* script, int recursion_level) {
@@ -258,15 +276,10 @@ bool Verifier::VerifyCommand(Command* command) {
     }
     if (command->parameters.size() == 6) {
       const std::string& path = command->parameters[5].value;
-      if (path == "-") {
-        return true;
+      if (!InputPathIsAllowed(path)) {
+        message_ = "pdftops: disallowed filename";
+        return false;
       }
-      if (HasPrefix(path, "/var/spool/cups/") &&
-          path.find("..") == std::string::npos) {
-        return true;
-      }
-      message_ = "pdftops: disallowed filename";
-      return false;
     }
     return true;
   }
@@ -355,18 +368,23 @@ bool Verifier::VerifyDate(const std::vector<StringAtom>& parameters) {
   return true;
 }
 
-// Parameters “-dSAFER” and “-sOutputFile=-” must be present.
-// No other “-sOutputFile=” parameters are allowed.
-// All other parameters cannot start from prefixes defined in the array below.
+// Parameters “-dSAFER” and “-sOutputFile=[-|%stdout]” must be present.
+// All other parameters cannot start from prefixes defined in the array
+// kBannedPrefixes. Setting any gs name defined in the array kBannedGsNames is
+// forbidden. All provided input filenames are also checked.
 bool Verifier::VerifyGs(const std::vector<StringAtom>& parameters) {
-  static constexpr std::array<std::string_view, 11> kBannedPrefixes = {
-      "--permit-file-",     "-I",        "-c", "-dALLOWPSTRANSPARENCY",
-      "-dDELAYSAFER",       "-dNOSAFER", "-o", "-sOutputFile=",
-      "-sOutputICCProfile", "-sstdout=", "@"};
+  static constexpr std::array<std::string_view, 5> kBannedPrefixes = {
+      "--permit-file-", "-I", "-c", "-o", "@"};
+  static constexpr std::array<std::string_view, 6> kBannedGsNames = {
+      "ALLOWPSTRANSPARENCY", "DELAYSAFER",       "NOSAFER",
+      "OutputFile",          "OutputICCProfile", "stdout"};
+  static constexpr std::array<char, 5> kGsNameSw = {'D', 'S', 'd', 's', 'p'};
+  static constexpr std::array<char, 3> kFilenameSw = {'f', '+', '@'};
   bool safer = false;
   bool output_file = false;
   for (auto& parameter : parameters) {
     const std::string& param = parameter.value;
+    // Handle some standard parameters.
     if (param == "-dPARANOIDSAFER" || param == "-dSAFER") {
       safer = true;
       continue;
@@ -380,9 +398,44 @@ bool Verifier::VerifyGs(const std::vector<StringAtom>& parameters) {
         param.find('/') == std::string::npos) {
       continue;
     }
+    // Reject all parameters with banned prefixes.
     for (auto& banned : kBannedPrefixes) {
       if (HasPrefix(param, banned)) {
         message_ = "gs: disallowed parameter";
+        return false;
+      }
+    }
+    // Ignore empty parameters.
+    if (param.empty()) {
+      continue;
+    }
+    // Now, we know that param.size() >= 1.
+    // Check for input filenames. "-" is treated as an input file.
+    if (param.size() == 1 || param[0] != '-') {
+      if (!InputPathIsAllowed(param)) {
+        message_ = "gs: disallowed input file";
+        return false;
+      }
+      continue;
+    }
+    // Now, we know that param.size() >= 2 and param[0] == '-'.
+    // Check for parameters introducing input files.
+    if (param.size() >= 3 && Contains(kFilenameSw, param[1])) {
+      if (!InputPathIsAllowed(param.substr(2))) {
+        message_ = "gs: disallowed input file";
+        return false;
+      }
+      continue;
+    }
+    // Check gs names set from the command line.
+    if (Contains(kGsNameSw, param[1])) {
+      auto end_pos = param.find_first_of("=#");
+      if (end_pos == std::string::npos) {
+        end_pos = param.size();
+      }
+      if (Contains(kBannedGsNames,
+                   std::string_view(param.substr(2, end_pos - 2)))) {
+        message_ = "gs: disallowed name";
         return false;
       }
     }
