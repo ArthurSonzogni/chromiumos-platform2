@@ -30,6 +30,7 @@
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libhwsec/frontend/chaps/frontend.h>
 #include <openssl/bio.h>
+#include <openssl/crypto.h>
 #include <openssl/des.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
@@ -38,6 +39,7 @@
 #include <openssl/params.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
+#include <openssl/sha.h>
 
 #include "chaps/chaps.h"
 #include "chaps/chaps_factory.h"
@@ -1726,10 +1728,23 @@ CK_RV SessionImpl::WrapKeyInternal(CK_MECHANISM_TYPE mechanism,
 
   switch (mechanism) {
     case CKM_RSA_PKCS_OAEP: {
+      if (!mechanism_parameter.empty()) {
+        VLOG(1) << __func__
+                << ": Custom CKM_RSA_PKCS_OAEP parameters not supported.";
+        return CKR_MECHANISM_PARAM_INVALID;
+      }
       LOG_CK_RV_AND_RETURN_IF(key.GetObjectClass() != CKO_SECRET_KEY,
                               CKR_KEY_NOT_WRAPPABLE);
-      LOG_CK_RV_AND_RETURN_IF_ERR(
-          WrapKeyRSAOAEP(wrapping_key, key, wrapped_key));
+      // Do not use LOG_CK_RV_AND_RETURN_IF_ERR here. That macro substitutes
+      // its argument multiple times, so the helper would be evaluated more
+      // than once on the failure path and the value returned would come from
+      // the last evaluation. It also re-logs at LOG(ERROR), which would undo
+      // the VLOG(1) severity chosen inside the helper for routine client
+      // input rejections.
+      CK_RV rv = WrapKeyRSAOAEP(wrapping_key, key, wrapped_key);
+      if (rv != CKR_OK) {
+        return rv;
+      }
       break;
     }
     default: {
@@ -1746,28 +1761,58 @@ CK_RV SessionImpl::WrapKeyRSAOAEP(const Object& wrapping_key,
   if (wrapping_key.GetObjectClass() != CKO_PUBLIC_KEY ||
       wrapping_key.GetAttributeInt(CKA_KEY_TYPE, CK_UNAVAILABLE_INFORMATION) !=
           CKK_RSA) {
-    LOG(ERROR) << __func__ << "The wrapping key should be a RSA public key.";
+    VLOG(1) << __func__ << ": The wrapping key should be a RSA public key.";
     return CKR_WRAPPING_KEY_TYPE_INCONSISTENT;
   }
   crypto::ScopedRSA rsa = CreateRSAKeyFromObject(&wrapping_key);
   if (!rsa) {
-    LOG(ERROR) << "Failed to create RSA key for encryption.";
+    VLOG(1) << __func__ << ": Failed to create RSA key for encryption.";
     return CKR_FUNCTION_FAILED;
   }
   if (RSA_size(rsa.get()) > kMaxRSAOutputBytes) {
-    LOG(ERROR) << __func__ << ": RSA Key size is too large for RSA OAEP.";
+    VLOG(1) << __func__ << ": RSA Key size is too large for RSA OAEP.";
     return CKR_WRAPPING_KEY_SIZE_RANGE;
   }
+  // Extract key material into SecureBlob to ensure automatic zeroization.
+  brillo::SecureBlob key_value(key.GetAttributeString(CKA_VALUE));
+  if (key_value.empty()) {
+    VLOG(1) << __func__ << ": Target key has empty CKA_VALUE.";
+    return CKR_KEY_SIZE_RANGE;
+  }
+
+  // Detect attribute tampering / inconsistency.
+  if (key.IsAttributePresent(CKA_VALUE_LEN)) {
+    size_t declared_len = key.GetAttributeInt(CKA_VALUE_LEN, 0);
+    if (declared_len != key_value.size()) {
+      VLOG(1) << __func__ << ": CKA_VALUE_LEN (" << declared_len
+              << ") does not match CKA_VALUE size (" << key_value.size()
+              << "). Proceeding with actual key size.";
+    }
+  }
+
+  // Enforce true OAEP payload capacity bounds (RFC 3447: k - 2*hLen - 2).
+  const int rsa_bytes = RSA_size(rsa.get());
+  constexpr int kOaepOverhead = 2 * SHA_DIGEST_LENGTH + 2;
+  if (rsa_bytes < kMinRSAKeyBits / 8 || rsa_bytes <= kOaepOverhead) {
+    VLOG(1) << __func__ << ": Wrapping key modulus (" << rsa_bytes
+            << " bytes) is too small for RSA-OAEP.";
+    return CKR_WRAPPING_KEY_SIZE_RANGE;
+  }
+  const size_t max_oaep_capacity =
+      static_cast<size_t>(rsa_bytes - kOaepOverhead);
+  if (key_value.size() > max_oaep_capacity) {
+    VLOG(1) << __func__ << ": Key size (" << key_value.size()
+            << ") exceeds RSA-OAEP payload capacity (" << max_oaep_capacity
+            << ").";
+    return CKR_KEY_SIZE_RANGE;
+  }
+
   uint8_t buffer[kMaxRSAOutputBytes];
   int length = RSA_public_encrypt(
-      key.GetAttributeInt(CKA_VALUE_LEN, 0),
-      chaps::ConvertStringToByteBuffer(
-          key.GetAttributeString(CKA_VALUE).data()),
-      buffer, rsa.get(),
+      static_cast<int>(key_value.size()), key_value.data(), buffer, rsa.get(),
       RSA_PKCS1_OAEP_PADDING);  // using EME-OAEP for padding.
   if (length == -1) {
-    LOG(ERROR) << __func__
-               << "RSA_public_encrypt failed: " << GetOpenSSLError();
+    VLOG(1) << __func__ << ": RSA_public_encrypt failed: " << GetOpenSSLError();
     return CKR_FUNCTION_FAILED;
   }
   CHECK(length <= std::size(buffer));
@@ -1864,8 +1909,18 @@ CK_RV SessionImpl::UnwrapKeyInternal(CK_MECHANISM_TYPE mechanism,
 
   switch (mechanism) {
     case CKM_RSA_PKCS_OAEP: {
-      LOG_CK_RV_AND_RETURN_IF_ERR(
-          UnwrapKeyRSAOAEP(unwrapping_key, *object.get(), wrapped_key));
+      if (!mechanism_parameter.empty()) {
+        VLOG(1) << __func__
+                << ": Custom CKM_RSA_PKCS_OAEP parameters not supported.";
+        return CKR_MECHANISM_PARAM_INVALID;
+      }
+      // Do not use LOG_CK_RV_AND_RETURN_IF_ERR here; see WrapKeyInternal.
+      // Repeated evaluation matters more on this path because
+      // UnwrapKeyRSAOAEP may perform a TPM operation.
+      CK_RV rv = UnwrapKeyRSAOAEP(unwrapping_key, *object, wrapped_key);
+      if (rv != CKR_OK) {
+        return rv;
+      }
       break;
     }
     default: {
@@ -1899,9 +1954,31 @@ CK_RV SessionImpl::UnwrapKeyRSAOAEP(const Object& unwrapping_key,
   if (unwrapping_key.GetObjectClass() != CKO_PRIVATE_KEY ||
       unwrapping_key.GetAttributeInt(CKA_KEY_TYPE,
                                      CK_UNAVAILABLE_INFORMATION) != CKK_RSA) {
-    LOG(ERROR) << __func__ << "The unwrapping key should be a RSA private key.";
+    VLOG(1) << __func__ << ": The unwrapping key should be a RSA private key.";
     return CKR_UNWRAPPING_KEY_TYPE_INCONSISTENT;
   }
+  if (!unwrapping_key.IsAttributePresent(CKA_MODULUS)) {
+    VLOG(1) << __func__ << ": RSA unwrapping key missing CKA_MODULUS.";
+    return CKR_UNWRAPPING_KEY_TYPE_INCONSISTENT;
+  }
+  const size_t rsa_bytes =
+      unwrapping_key.GetAttributeString(CKA_MODULUS).length();
+  constexpr size_t kOaepOverhead = 2 * SHA_DIGEST_LENGTH + 2;
+  if (rsa_bytes < kMinRSAKeyBits / 8 || rsa_bytes <= kOaepOverhead) {
+    VLOG(1) << __func__ << ": Unwrapping key modulus (" << rsa_bytes
+            << " bytes) is too small for RSA-OAEP.";
+    return CKR_UNWRAPPING_KEY_SIZE_RANGE;
+  }
+  if (rsa_bytes > static_cast<size_t>(kMaxRSAOutputBytes)) {
+    VLOG(1) << __func__ << ": RSA Key size is too large for RSA OAEP.";
+    return CKR_UNWRAPPING_KEY_SIZE_RANGE;
+  }
+  if (wrapped_key.size() != rsa_bytes) {
+    VLOG(1) << __func__ << ": Wrapped key size (" << wrapped_key.size()
+            << ") does not match RSA modulus (" << rsa_bytes << ").";
+    return CKR_WRAPPED_KEY_LEN_RANGE;
+  }
+
   if (unwrapping_key.IsTokenObject() &&
       unwrapping_key.IsAttributePresent(kKeyBlobAttribute)) {
     if (!hwsec_) {
@@ -1914,19 +1991,17 @@ CK_RV SessionImpl::UnwrapKeyRSAOAEP(const Object& unwrapping_key,
 
     ASSIGN_OR_RETURN(
         data, hwsec_->Decrypt(key, brillo::BlobFromString(wrapped_key)),
+        // No .LogError(): a decrypt failure here reflects client-supplied
+        // input rather than a daemon fault, and this is the common path on
+        // hardware. The software equivalent below logs at VLOG(1).
         _.WithStatus<TPMError>(
              "Failed to decrypt the wrapped key in UnwrapKeyRSAOAEP")
-            .LogError()
             .As(CKR_FUNCTION_FAILED));
   } else {
     crypto::ScopedRSA rsa = CreateRSAKeyFromObject(&unwrapping_key);
     if (!rsa) {
-      LOG(ERROR) << __func__ << "Failed to create RSA key for decryption.";
+      VLOG(1) << __func__ << ": Failed to create RSA key for decryption.";
       return CKR_FUNCTION_FAILED;
-    }
-    if (RSA_size(rsa.get()) > kMaxRSAOutputBytes) {
-      LOG(ERROR) << __func__ << ": RSA Key size is too large for RSA OAEP.";
-      return CKR_UNWRAPPING_KEY_SIZE_RANGE;
     }
     uint8_t buffer[kMaxRSAOutputBytes];
     int length = RSA_private_decrypt(
@@ -1934,12 +2009,26 @@ CK_RV SessionImpl::UnwrapKeyRSAOAEP(const Object& unwrapping_key,
         buffer, rsa.get(),
         RSA_PKCS1_OAEP_PADDING);  // using EME-OAEP for padding.
     if (length == -1) {
-      LOG(ERROR) << __func__
-                 << "RSA_private_decrypt failed: " << GetOpenSSLError();
+      OPENSSL_cleanse(buffer, sizeof(buffer));
+      VLOG(1) << __func__
+              << ": RSA_private_decrypt failed: " << GetOpenSSLError();
       return CKR_FUNCTION_FAILED;
     }
     CHECK(length <= std::size(buffer));
-    data = SecureBlob(ConvertByteBufferToString(buffer, length));
+    data = brillo::SecureBlob(buffer, buffer + length);
+    OPENSSL_cleanse(buffer, sizeof(buffer));
+  }
+  if (data.empty()) {
+    VLOG(1) << __func__ << ": Decrypted key material is empty.";
+    return CKR_KEY_SIZE_RANGE;
+  }
+  if (object.IsAttributePresent(CKA_VALUE_LEN) &&
+      (object.GetAttributeInt(CKA_VALUE_LEN, 0) <= 0 ||
+       static_cast<size_t>(object.GetAttributeInt(CKA_VALUE_LEN, 0)) !=
+           data.size())) {
+    VLOG(1) << __func__
+            << ": Template CKA_VALUE_LEN does not match decrypted key size.";
+    return CKR_TEMPLATE_INCONSISTENT;
   }
   object.SetAttributeInt(CKA_CLASS, CKO_SECRET_KEY);
   object.SetAttributeString(CKA_VALUE, data.to_string());

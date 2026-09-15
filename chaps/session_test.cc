@@ -2466,7 +2466,459 @@ TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPSoftware) {
             aeskey_new->GetAttributeString(CKA_VALUE));
 }
 
+TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPMismatchedValueLen) {
+  CK_BBOOL no = CK_FALSE;
+  CK_BBOOL yes = CK_TRUE;
+  CK_BYTE pubexp[] = {1, 0, 1};
+  int rsa_size = 2048;
+  CK_ATTRIBUTE pub_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                             {CKA_WRAP, &yes, sizeof(yes)},
+                             {CKA_PUBLIC_EXPONENT, pubexp, 3},
+                             {CKA_MODULUS_BITS, &rsa_size, sizeof(rsa_size)}};
+  CK_ATTRIBUTE priv_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                              {CKA_UNWRAP, &yes, sizeof(yes)},
+                              {kForceSoftwareAttribute, &yes, sizeof(yes)}};
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pubh, &privh));
+
+  const Object *rsapub, *rsapriv;
+  ASSERT_TRUE(session_->GetObject(pubh, &rsapub));
+  ASSERT_TRUE(session_->GetObject(privh, &rsapriv));
+
+  const Object* aeskey = nullptr;
+  int aes_size = 32;
+  GenerateSecretKey(CKM_AES_KEY_GEN, aes_size, &aeskey);
+  const_cast<Object*>(aeskey)->SetAttributeBool(CKA_EXTRACTABLE, true);
+  int inflated_value_len = 100;
+  const_cast<Object*>(aeskey)->SetAttributeInt(CKA_VALUE_LEN,
+                                               inflated_value_len);
+
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey, static_cast<int>(CKR_OK)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionUnwrapKey, static_cast<int>(CKR_OK)))
+      .Times(1);
+
+  int len = 0;
+  string wrapped_key;
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
+            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey, &len,
+                              &wrapped_key));
+  EXPECT_EQ(CKR_OK, session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey,
+                                      &len, &wrapped_key));
+  CK_KEY_TYPE key_type = CKK_AES;
+  CK_ATTRIBUTE attr[] = {{CKA_TOKEN, &no, sizeof(no)},
+                         {CKA_KEY_TYPE, &key_type, sizeof(key_type)}};
+
+  int handle = 0;
+  EXPECT_EQ(CKR_OK,
+            session_->UnwrapKey(CKM_RSA_PKCS_OAEP, "", rsapriv, wrapped_key,
+                                attr, std::size(attr), &handle));
+  const Object* aeskey_new = nullptr;
+  ASSERT_TRUE(session_->GetObject(handle, &aeskey_new));
+  EXPECT_EQ(aes_size, aeskey_new->GetAttributeInt(CKA_VALUE_LEN, 0));
+  EXPECT_EQ(aeskey->GetAttributeString(CKA_VALUE),
+            aeskey_new->GetAttributeString(CKA_VALUE));
+}
+
+TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPDeflatedValueLen) {
+  CK_BBOOL no = CK_FALSE;
+  CK_BBOOL yes = CK_TRUE;
+  CK_BYTE pubexp[] = {1, 0, 1};
+  int rsa_size = 2048;
+  CK_ATTRIBUTE pub_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                             {CKA_WRAP, &yes, sizeof(yes)},
+                             {CKA_PUBLIC_EXPONENT, pubexp, 3},
+                             {CKA_MODULUS_BITS, &rsa_size, sizeof(rsa_size)}};
+  CK_ATTRIBUTE priv_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                              {CKA_UNWRAP, &yes, sizeof(yes)},
+                              {kForceSoftwareAttribute, &yes, sizeof(yes)}};
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pubh, &privh));
+
+  const Object *rsapub, *rsapriv;
+  ASSERT_TRUE(session_->GetObject(pubh, &rsapub));
+  ASSERT_TRUE(session_->GetObject(privh, &rsapriv));
+
+  const Object* aeskey = nullptr;
+  int aes_size = 32;
+  GenerateSecretKey(CKM_AES_KEY_GEN, aes_size, &aeskey);
+  const_cast<Object*>(aeskey)->SetAttributeBool(CKA_EXTRACTABLE, true);
+  int deflated_value_len = 16;
+  const_cast<Object*>(aeskey)->SetAttributeInt(CKA_VALUE_LEN,
+                                               deflated_value_len);
+
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey, static_cast<int>(CKR_OK)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionUnwrapKey, static_cast<int>(CKR_OK)))
+      .Times(1);
+
+  int len = 0;
+  string wrapped_key;
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
+            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey, &len,
+                              &wrapped_key));
+  EXPECT_EQ(CKR_OK, session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey,
+                                      &len, &wrapped_key));
+  CK_KEY_TYPE key_type = CKK_AES;
+  CK_ATTRIBUTE attr[] = {{CKA_TOKEN, &no, sizeof(no)},
+                         {CKA_KEY_TYPE, &key_type, sizeof(key_type)}};
+
+  int handle = 0;
+  EXPECT_EQ(CKR_OK,
+            session_->UnwrapKey(CKM_RSA_PKCS_OAEP, "", rsapriv, wrapped_key,
+                                attr, std::size(attr), &handle));
+  const Object* aeskey_new = nullptr;
+  ASSERT_TRUE(session_->GetObject(handle, &aeskey_new));
+  EXPECT_EQ(aes_size, aeskey_new->GetAttributeInt(CKA_VALUE_LEN, 0));
+  EXPECT_EQ(aeskey->GetAttributeString(CKA_VALUE),
+            aeskey_new->GetAttributeString(CKA_VALUE));
+}
+
+TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPEmptyKey) {
+  CK_BBOOL yes = CK_TRUE;
+  CK_BYTE pubexp[] = {1, 0, 1};
+  int rsa_size = 2048;
+  CK_ATTRIBUTE pub_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                             {CKA_WRAP, &yes, sizeof(yes)},
+                             {CKA_PUBLIC_EXPONENT, pubexp, 3},
+                             {CKA_MODULUS_BITS, &rsa_size, sizeof(rsa_size)}};
+  CK_ATTRIBUTE priv_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                              {CKA_UNWRAP, &yes, sizeof(yes)},
+                              {kForceSoftwareAttribute, &yes, sizeof(yes)}};
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pubh, &privh));
+
+  const Object* rsapub = nullptr;
+  ASSERT_TRUE(session_->GetObject(pubh, &rsapub));
+
+  const Object* aeskey = nullptr;
+  GenerateSecretKey(CKM_AES_KEY_GEN, 32, &aeskey);
+  const_cast<Object*>(aeskey)->SetAttributeBool(CKA_EXTRACTABLE, true);
+  const_cast<Object*>(aeskey)->SetAttributeString(CKA_VALUE, "");
+
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey,
+                              static_cast<int>(CKR_KEY_SIZE_RANGE)))
+      .Times(1);
+
+  int len = 0;
+  string wrapped_key;
+  EXPECT_EQ(CKR_KEY_SIZE_RANGE, session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub,
+                                                  *aeskey, &len, &wrapped_key));
+}
+
+TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPOversizedPayload) {
+  CK_BBOOL yes = CK_TRUE;
+  CK_BYTE pubexp[] = {1, 0, 1};
+  int rsa_size = 2048;
+  CK_ATTRIBUTE pub_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                             {CKA_WRAP, &yes, sizeof(yes)},
+                             {CKA_PUBLIC_EXPONENT, pubexp, 3},
+                             {CKA_MODULUS_BITS, &rsa_size, sizeof(rsa_size)}};
+  CK_ATTRIBUTE priv_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                              {CKA_UNWRAP, &yes, sizeof(yes)},
+                              {kForceSoftwareAttribute, &yes, sizeof(yes)}};
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pubh, &privh));
+
+  const Object* rsapub = nullptr;
+  ASSERT_TRUE(session_->GetObject(pubh, &rsapub));
+
+  const Object* aeskey = nullptr;
+  GenerateSecretKey(CKM_AES_KEY_GEN, 32, &aeskey);
+  const_cast<Object*>(aeskey)->SetAttributeBool(CKA_EXTRACTABLE, true);
+  string oversized(250, 'A');
+  const_cast<Object*>(aeskey)->SetAttributeString(CKA_VALUE, oversized);
+  const_cast<Object*>(aeskey)->SetAttributeInt(CKA_VALUE_LEN, oversized.size());
+
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey,
+                              static_cast<int>(CKR_KEY_SIZE_RANGE)))
+      .Times(1);
+
+  int len = 0;
+  string wrapped_key;
+  EXPECT_EQ(CKR_KEY_SIZE_RANGE, session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub,
+                                                  *aeskey, &len, &wrapped_key));
+}
+
+TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPBoundaryCapacity) {
+  CK_BBOOL no = CK_FALSE;
+  CK_BBOOL yes = CK_TRUE;
+  CK_BYTE pubexp[] = {1, 0, 1};
+  int rsa_size = 2048;
+  CK_ATTRIBUTE pub_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                             {CKA_WRAP, &yes, sizeof(yes)},
+                             {CKA_PUBLIC_EXPONENT, pubexp, 3},
+                             {CKA_MODULUS_BITS, &rsa_size, sizeof(rsa_size)}};
+  CK_ATTRIBUTE priv_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                              {CKA_UNWRAP, &yes, sizeof(yes)},
+                              {kForceSoftwareAttribute, &yes, sizeof(yes)}};
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pubh, &privh));
+
+  const Object *rsapub, *rsapriv;
+  ASSERT_TRUE(session_->GetObject(pubh, &rsapub));
+  ASSERT_TRUE(session_->GetObject(privh, &rsapriv));
+
+  const Object* aeskey = nullptr;
+  GenerateSecretKey(CKM_AES_KEY_GEN, 32, &aeskey);
+  const_cast<Object*>(aeskey)->SetAttributeBool(CKA_EXTRACTABLE, true);
+  // Max OAEP payload for 2048-bit RSA with SHA-1: 256 - 2*20 - 2 = 214 bytes.
+  string boundary(214, 'B');
+  const_cast<Object*>(aeskey)->SetAttributeString(CKA_VALUE, boundary);
+  const_cast<Object*>(aeskey)->SetAttributeInt(CKA_VALUE_LEN, boundary.size());
+
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey, static_cast<int>(CKR_OK)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionUnwrapKey, static_cast<int>(CKR_OK)))
+      .Times(1);
+
+  int len = 0;
+  string wrapped_key;
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
+            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey, &len,
+                              &wrapped_key));
+  EXPECT_EQ(CKR_OK, session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey,
+                                      &len, &wrapped_key));
+  CK_KEY_TYPE key_type = CKK_GENERIC_SECRET;
+  CK_ATTRIBUTE attr[] = {{CKA_TOKEN, &no, sizeof(no)},
+                         {CKA_KEY_TYPE, &key_type, sizeof(key_type)}};
+
+  int handle = 0;
+  EXPECT_EQ(CKR_OK,
+            session_->UnwrapKey(CKM_RSA_PKCS_OAEP, "", rsapriv, wrapped_key,
+                                attr, std::size(attr), &handle));
+  const Object* aeskey_new = nullptr;
+  ASSERT_TRUE(session_->GetObject(handle, &aeskey_new));
+  EXPECT_EQ(boundary.size(), aeskey_new->GetAttributeInt(CKA_VALUE_LEN, 0));
+  EXPECT_EQ(boundary, aeskey_new->GetAttributeString(CKA_VALUE));
+}
+
+TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPStrictOffByOne) {
+  CK_BBOOL yes = CK_TRUE;
+  CK_BYTE pubexp[] = {1, 0, 1};
+  int rsa_size = 2048;
+  CK_ATTRIBUTE pub_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                             {CKA_WRAP, &yes, sizeof(yes)},
+                             {CKA_PUBLIC_EXPONENT, pubexp, 3},
+                             {CKA_MODULUS_BITS, &rsa_size, sizeof(rsa_size)}};
+  CK_ATTRIBUTE priv_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                              {CKA_UNWRAP, &yes, sizeof(yes)},
+                              {kForceSoftwareAttribute, &yes, sizeof(yes)}};
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pubh, &privh));
+
+  const Object* rsapub = nullptr;
+  ASSERT_TRUE(session_->GetObject(pubh, &rsapub));
+
+  const Object* aeskey = nullptr;
+  GenerateSecretKey(CKM_AES_KEY_GEN, 32, &aeskey);
+  const_cast<Object*>(aeskey)->SetAttributeBool(CKA_EXTRACTABLE, true);
+  // Boundary + 1: 215 bytes on 2048-bit RSA must be rejected with
+  // CKR_KEY_SIZE_RANGE.
+  string off_by_one(215, 'C');
+  const_cast<Object*>(aeskey)->SetAttributeString(CKA_VALUE, off_by_one);
+  const_cast<Object*>(aeskey)->SetAttributeInt(CKA_VALUE_LEN,
+                                               off_by_one.size());
+
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey,
+                              static_cast<int>(CKR_KEY_SIZE_RANGE)))
+      .Times(1);
+
+  int len = 0;
+  string wrapped_key;
+  EXPECT_EQ(CKR_KEY_SIZE_RANGE, session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub,
+                                                  *aeskey, &len, &wrapped_key));
+}
+
+TEST_F(TestSessionWithRealObject, UnwrapKeyRSAOAEPInvalidCiphertextLen) {
+  CK_BBOOL yes = CK_TRUE;
+  CK_BYTE pubexp[] = {1, 0, 1};
+  int rsa_size = 2048;
+  CK_ATTRIBUTE pub_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                             {CKA_WRAP, &yes, sizeof(yes)},
+                             {CKA_PUBLIC_EXPONENT, pubexp, 3},
+                             {CKA_MODULUS_BITS, &rsa_size, sizeof(rsa_size)}};
+  CK_ATTRIBUTE priv_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                              {CKA_UNWRAP, &yes, sizeof(yes)},
+                              {kForceSoftwareAttribute, &yes, sizeof(yes)}};
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pubh, &privh));
+
+  const Object* rsapriv = nullptr;
+  ASSERT_TRUE(session_->GetObject(privh, &rsapriv));
+
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionUnwrapKey,
+                              static_cast<int>(CKR_WRAPPED_KEY_LEN_RANGE)))
+      .Times(2);
+
+  CK_KEY_TYPE key_type = CKK_AES;
+  CK_ATTRIBUTE attr[] = {{CKA_KEY_TYPE, &key_type, sizeof(key_type)}};
+  int handle = 0;
+
+  // 1. Truncated ciphertext (100 bytes instead of 256 bytes).
+  string truncated_ciphertext(100, 'X');
+  EXPECT_EQ(
+      CKR_WRAPPED_KEY_LEN_RANGE,
+      session_->UnwrapKey(CKM_RSA_PKCS_OAEP, "", rsapriv, truncated_ciphertext,
+                          attr, std::size(attr), &handle));
+
+  // 2. Oversized ciphertext (300 bytes instead of 256 bytes).
+  string oversized_ciphertext(300, 'Y');
+  EXPECT_EQ(
+      CKR_WRAPPED_KEY_LEN_RANGE,
+      session_->UnwrapKey(CKM_RSA_PKCS_OAEP, "", rsapriv, oversized_ciphertext,
+                          attr, std::size(attr), &handle));
+}
+
+TEST_F(TestSessionWithRealObject,
+       UnwrapKeyRSAOAEPTemplateInconsistentValueLen) {
+  CK_BBOOL no = CK_FALSE;
+  CK_BBOOL yes = CK_TRUE;
+  CK_BYTE pubexp[] = {1, 0, 1};
+  int rsa_size = 2048;
+  CK_ATTRIBUTE pub_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                             {CKA_WRAP, &yes, sizeof(yes)},
+                             {CKA_PUBLIC_EXPONENT, pubexp, 3},
+                             {CKA_MODULUS_BITS, &rsa_size, sizeof(rsa_size)}};
+  CK_ATTRIBUTE priv_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                              {CKA_UNWRAP, &yes, sizeof(yes)},
+                              {kForceSoftwareAttribute, &yes, sizeof(yes)}};
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pubh, &privh));
+
+  const Object *rsapub, *rsapriv;
+  ASSERT_TRUE(session_->GetObject(pubh, &rsapub));
+  ASSERT_TRUE(session_->GetObject(privh, &rsapriv));
+
+  const Object* aeskey = nullptr;
+  int aes_size = 32;
+  GenerateSecretKey(CKM_AES_KEY_GEN, aes_size, &aeskey);
+  const_cast<Object*>(aeskey)->SetAttributeBool(CKA_EXTRACTABLE, true);
+
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey, static_cast<int>(CKR_OK)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionUnwrapKey,
+                              static_cast<int>(CKR_TEMPLATE_INCONSISTENT)))
+      .Times(1);
+
+  int len = 0;
+  string wrapped_key;
+  ASSERT_EQ(CKR_BUFFER_TOO_SMALL,
+            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey, &len,
+                              &wrapped_key));
+  ASSERT_EQ(CKR_OK, session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey,
+                                      &len, &wrapped_key));
+
+  // Inconsistent CKA_VALUE_LEN in template (16 instead of actual 32).
+  int bad_value_len = 16;
+  CK_KEY_TYPE key_type = CKK_AES;
+  CK_ATTRIBUTE attr[] = {
+      {CKA_TOKEN, &no, sizeof(no)},
+      {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+      {CKA_VALUE_LEN, &bad_value_len, sizeof(bad_value_len)}};
+  int handle = 0;
+  EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
+            session_->UnwrapKey(CKM_RSA_PKCS_OAEP, "", rsapriv, wrapped_key,
+                                attr, std::size(attr), &handle));
+}
+
 #if USE_TPM2
+TEST_F(TestSessionWithTpmSimulator,
+       UnwrapKeyRSAOAEPInvalidCiphertextLenWithHWSec) {
+  CK_BBOOL yes = CK_TRUE;
+  CK_BYTE pubexp[] = {1, 0, 1};
+  int rsa_size = 2048;
+  CK_ATTRIBUTE pub_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                             {CKA_WRAP, &yes, sizeof(yes)},
+                             {CKA_PUBLIC_EXPONENT, pubexp, 3},
+                             {CKA_MODULUS_BITS, &rsa_size, sizeof(rsa_size)}};
+  CK_ATTRIBUTE priv_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                              {CKA_UNWRAP, &yes, sizeof(yes)}};
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pubh, &privh));
+
+  const Object* rsapriv = nullptr;
+  ASSERT_TRUE(session_->GetObject(privh, &rsapriv));
+
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionUnwrapKey,
+                              static_cast<int>(CKR_WRAPPED_KEY_LEN_RANGE)))
+      .Times(2);
+
+  CK_KEY_TYPE key_type = CKK_AES;
+  CK_ATTRIBUTE attr[] = {{CKA_KEY_TYPE, &key_type, sizeof(key_type)}};
+  int handle = 0;
+
+  // 1. Truncated ciphertext (100 bytes instead of 256 bytes).
+  string truncated_ciphertext(100, 'X');
+  EXPECT_EQ(
+      CKR_WRAPPED_KEY_LEN_RANGE,
+      session_->UnwrapKey(CKM_RSA_PKCS_OAEP, "", rsapriv, truncated_ciphertext,
+                          attr, std::size(attr), &handle));
+
+  // 2. Oversized ciphertext (300 bytes instead of 256 bytes).
+  string oversized_ciphertext(300, 'Y');
+  EXPECT_EQ(
+      CKR_WRAPPED_KEY_LEN_RANGE,
+      session_->UnwrapKey(CKM_RSA_PKCS_OAEP, "", rsapriv, oversized_ciphertext,
+                          attr, std::size(attr), &handle));
+}
+
 TEST_F(TestSessionWithTpmSimulator, WrapKeyRSAOAEPWithHWSec) {
   CK_BBOOL no = CK_FALSE;
   CK_BBOOL yes = CK_TRUE;
@@ -2567,6 +3019,10 @@ TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPInvalidAttributes) {
               SendSparseToUMA(kChapsSessionWrapKey,
                               static_cast<int>(CKR_KEY_FUNCTION_NOT_PERMITTED)))
       .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey,
+                              static_cast<int>(CKR_MECHANISM_PARAM_INVALID)))
+      .Times(1);
   EXPECT_CALL(
       mock_metrics_library_,
       SendSparseToUMA(kChapsSessionWrapKey,
@@ -2598,6 +3054,11 @@ TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPInvalidAttributes) {
             session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey, &len,
                               &wrapped_key));
   const_cast<Object*>(rsapub)->SetAttributeBool(CKA_WRAP, true);
+
+  // Non-empty mechanism_parameter is not supported for CKM_RSA_PKCS_OAEP.
+  EXPECT_EQ(CKR_MECHANISM_PARAM_INVALID,
+            session_->WrapKey(CKM_RSA_PKCS_OAEP, "custom_oaep_params", rsapub,
+                              *aeskey, &len, &wrapped_key));
 
   // The wrapping_key should be a rsa public key.
   EXPECT_EQ(CKR_WRAPPING_KEY_TYPE_INCONSISTENT,
@@ -2637,11 +3098,15 @@ TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPInvalidAttributes) {
               SendSparseToUMA(kChapsSessionUnwrapKey,
                               static_cast<int>(CKR_KEY_FUNCTION_NOT_PERMITTED)))
       .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionUnwrapKey,
+                              static_cast<int>(CKR_MECHANISM_PARAM_INVALID)))
+      .Times(1);
   EXPECT_CALL(
       mock_metrics_library_,
       SendSparseToUMA(kChapsSessionUnwrapKey,
                       static_cast<int>(CKR_UNWRAPPING_KEY_TYPE_INCONSISTENT)))
-      .Times(1);
+      .Times(2);
   EXPECT_CALL(mock_metrics_library_,
               SendSparseToUMA(kChapsSessionUnwrapKey,
                               static_cast<int>(CKR_FUNCTION_FAILED)))
@@ -2657,10 +3122,25 @@ TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPInvalidAttributes) {
                                 attr, std::size(attr), &handle));
   const_cast<Object*>(rsapriv)->SetAttributeBool(CKA_UNWRAP, true);
 
+  // Non-empty mechanism_parameter is not supported for CKM_RSA_PKCS_OAEP.
+  EXPECT_EQ(
+      CKR_MECHANISM_PARAM_INVALID,
+      session_->UnwrapKey(CKM_RSA_PKCS_OAEP, "custom_oaep_params", rsapriv,
+                          wrapped_key, attr, std::size(attr), &handle));
+
   // The unwrapping_key should be a rsa private key.
   EXPECT_EQ(CKR_UNWRAPPING_KEY_TYPE_INCONSISTENT,
             session_->UnwrapKey(CKM_RSA_PKCS_OAEP, "", aeskey, wrapped_key,
                                 attr, std::size(attr), &handle));
+
+  // Missing CKA_MODULUS on the unwrapping key returns
+  // CKR_UNWRAPPING_KEY_TYPE_INCONSISTENT.
+  string saved_modulus = rsapriv->GetAttributeString(CKA_MODULUS);
+  const_cast<Object*>(rsapriv)->RemoveAttribute(CKA_MODULUS);
+  EXPECT_EQ(CKR_UNWRAPPING_KEY_TYPE_INCONSISTENT,
+            session_->UnwrapKey(CKM_RSA_PKCS_OAEP, "", rsapriv, wrapped_key,
+                                attr, std::size(attr), &handle));
+  const_cast<Object*>(rsapriv)->SetAttributeString(CKA_MODULUS, saved_modulus);
 
   // Generate another rsa key pair and unwrap the blob using the new
   // (mismatched) private key.
