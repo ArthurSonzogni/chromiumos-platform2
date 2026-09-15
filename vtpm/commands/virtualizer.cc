@@ -67,8 +67,10 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
   std::unique_ptr<Virtualizer> v =
       std::unique_ptr<Virtualizer>(new Virtualizer());
   if (profile == Virtualizer::Profile::kGLinux) {
-    CHECK(v->trunks_factory_.Initialize())
-        << " Failed to initialize trunks factory.";
+    if (!v->trunks_factory_.Initialize()) {
+      LOG(ERROR) << "Failed to initialize trunks factory.";
+      return nullptr;
+    }
     v->command_parser_ = &v->real_command_parser_;
     v->response_serializer_ = &v->real_response_serializer_;
 
@@ -80,7 +82,10 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
 
     // Set up attestation client.
     scoped_refptr<dbus::Bus> bus = v->system_bus_connection_.Connect();
-    CHECK(bus) << "Failed to connect to system D-Bus";
+    if (!bus) {
+      LOG(ERROR) << "Failed to connect to system D-Bus.";
+      return nullptr;
+    }
     v->attestation_proxy_ =
         std::make_unique<org::chromium::AttestationProxy>(bus);
 

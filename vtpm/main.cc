@@ -42,6 +42,13 @@ int main(int argc, char* argv[]) {
 
   std::unique_ptr<vtpm::Command> vtpm =
       vtpm::Virtualizer::Create(vtpm::Virtualizer::Profile::kGLinux);
+  if (!vtpm) {
+    LOG(ERROR) << "Failed to initialize vtpm Virtualizer.";
+    // Exiting with EX_UNAVAILABLE (non-zero) tells Upstart that the service
+    // failed to start, triggering its respawn policy to retry if trunksd was
+    // temporarily slow, while avoiding an abort core dump.
+    return EX_UNAVAILABLE;
+  }
 
   // Start profiling.
   hwsec_foundation::SetUpProfiling();
