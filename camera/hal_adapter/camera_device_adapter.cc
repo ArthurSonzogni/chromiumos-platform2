@@ -622,13 +622,28 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
         const_cast<const native_handle_t**>(&input_buffer_handle);
     {
       base::AutoLock streams_lock(streams_lock_);
-      internal::DeserializeStreamBuffer(request->input_buffer, streams_,
-                                        buffer_handles_, &input_buffer);
+      if (internal::DeserializeStreamBuffer(request->input_buffer, streams_,
+                                            buffer_handles_,
+                                            &input_buffer) != 0) {
+        LOGF(ERROR) << "Failed to deserialize input buffer";
+        std::move(error_task_locked).Run();
+        return -EINVAL;
+      }
     }
-    ++buffer_inflight_refs_[request->input_buffer->buffer_id];
+    if (request->input_buffer->buffer_id != cros::mojom::NO_BUFFER_BUFFER_ID) {
+      auto it = buffer_handles_.find(request->input_buffer->buffer_id);
+      if (it == buffer_handles_.end() || it->second->state == kRegistered) {
+        LOGF(ERROR) << "Input buffer 0x" << std::hex
+                    << request->input_buffer->buffer_id
+                    << " is invalid or already in-flight";
+        std::move(error_task_locked).Run();
+        return -EINVAL;
+      }
+      it->second->state = kRegistered;
+      registered_buffers.emplace_back(request->input_buffer->buffer_id,
+                                      input_buffer);
+    }
     req.input_buffer = &input_buffer;
-    registered_buffers.emplace_back(request->input_buffer->buffer_id,
-                                    *req.input_buffer);
   } else {
     req.input_buffer = nullptr;
   }
@@ -651,12 +666,27 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
       }
       {
         base::AutoLock streams_lock(streams_lock_);
-        internal::DeserializeStreamBuffer(
-            out_buf_ptr, streams_, buffer_handles_, &output_buffers.at(i));
+        if (internal::DeserializeStreamBuffer(out_buf_ptr, streams_,
+                                              buffer_handles_,
+                                              &output_buffers.at(i)) != 0) {
+          LOGF(ERROR) << "Failed to deserialize output buffer";
+          std::move(error_task_locked).Run();
+          return -EINVAL;
+        }
       }
-      ++buffer_inflight_refs_[request->output_buffers[i]->buffer_id];
-      registered_buffers.emplace_back(request->output_buffers[i]->buffer_id,
-                                      output_buffers.at(i));
+      if (out_buf_ptr->buffer_id != cros::mojom::NO_BUFFER_BUFFER_ID) {
+        auto it = buffer_handles_.find(out_buf_ptr->buffer_id);
+        if (it == buffer_handles_.end() || it->second->state == kRegistered) {
+          LOGF(ERROR) << "Output buffer 0x" << std::hex
+                      << out_buf_ptr->buffer_id
+                      << " is invalid or already in-flight";
+          std::move(error_task_locked).Run();
+          return -EINVAL;
+        }
+        it->second->state = kRegistered;
+        registered_buffers.emplace_back(out_buf_ptr->buffer_id,
+                                        output_buffers.at(i));
+      }
     }
     req.num_output_buffers = output_buffers.size();
     req.output_buffers =
@@ -941,14 +971,19 @@ void CameraDeviceAdapter::OnBufferRetired(uint64_t buffer_id) {
   TRACE_HAL_ADAPTER();
   base::AutoLock buffer_handles_lock(buffer_handles_lock_);
 
-  CHECK(buffer_ids_active_in_client_.contains(buffer_id));
+  if (!buffer_ids_active_in_client_.contains(buffer_id)) {
+    LOGF(ERROR) << "Client retired an unknown buffer: 0x" << std::hex
+                << buffer_id;
+    return;
+  }
   buffer_ids_active_in_client_.erase(buffer_id);
 
   // Retires buffers marked as returned. Buffers in use should be retired when
   // they are returned to the client.
   auto buffer_handle_iter = buffer_handles_.find(buffer_id);
-  if (buffer_handle_iter->second->state == kReturned) {
-    buffer_handles_.erase(buffer_id);
+  if (buffer_handle_iter != buffer_handles_.end() &&
+      buffer_handle_iter->second->state == kReturned) {
+    buffer_handles_.erase(buffer_handle_iter);
   }
 }
 
@@ -1338,7 +1373,6 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
   // Checks if this buffer already in the |buffer_hanldes_| pool.
   auto buffer_handle_iter = buffer_handles_.find(buffer_id);
   if (buffer_handle_iter != buffer_handles_.end()) {
-    buffer_handle_iter->second->state = kRegistered;
     return 0;
   }
 
@@ -1371,6 +1405,7 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
     return -EINVAL;
   }
 
+  buffer_handle->state = kReturned;
   buffer_handles_[buffer_id] = std::move(buffer_handle);
 
   VLOGF(1) << std::hex << "Buffer 0x" << buffer_id
@@ -1577,13 +1612,25 @@ CameraDeviceAdapter::DeserializeReturnedBufferRequest(
           continue;
         }
       }
+      auto it = buffer_handles_.find(buf_ptr->buffer_id);
+      if (it == buffer_handles_.end() || it->second->state == kRegistered) {
+        LOGF(ERROR) << "Returned buffer 0x" << std::hex << buf_ptr->buffer_id
+                    << " is invalid or already in-flight";
+        ret.status = CAMERA3_PS_BUF_REQ_UNKNOWN_ERROR;
+        continue;
+      }
       {
         base::AutoLock streams_lock(streams_lock_);
-        internal::DeserializeStreamBuffer(
-            buf_ptr, streams_, buffer_handles_,
-            ret.output_buffers + output_buffers_index++);
+        if (internal::DeserializeStreamBuffer(
+                buf_ptr, streams_, buffer_handles_,
+                ret.output_buffers + output_buffers_index) != 0) {
+          LOGF(ERROR) << "Failed to deserialize returned stream buffer";
+          ret.status = CAMERA3_PS_BUF_REQ_UNKNOWN_ERROR;
+          continue;
+        }
       }
-      ++buffer_inflight_refs_[buf_ptr->buffer_id];
+      it->second->state = kRegistered;
+      ++output_buffers_index;
     }
     ret.num_output_buffers = output_buffers_index;
   }
@@ -1669,19 +1716,11 @@ void CameraDeviceAdapter::MaybeRemoveBufferLocked(
 void CameraDeviceAdapter::RemoveReturnBufferLocked(
     uint64_t buffer_id, const camera3_stream_buffer_t& buffer) {
   buffer_handles_lock_.AssertAcquired();
-  DCHECK(buffer_handles_.find(buffer_id) != buffer_handles_.end());
-  // A hostile Mojo client may have pipelined the same buffer_id in multiple
-  // in-flight requests; the HAL still holds raw pointers into
-  // buffer_handles_[buffer_id] for the others. Do not free until the last
-  // reference returns.
-  auto ref = buffer_inflight_refs_.find(buffer_id);
-  if (ref != buffer_inflight_refs_.end()) {
-    if (--ref->second > 0) {
-      return;
-    }
-    buffer_inflight_refs_.erase(ref);
+  auto it = buffer_handles_.find(buffer_id);
+  if (it == buffer_handles_.end()) {
+    return;
   }
-  buffer_handles_[buffer_id]->state = kReturned;
+  it->second->state = kReturned;
   MaybeRemoveBufferLocked(buffer);
 }
 
