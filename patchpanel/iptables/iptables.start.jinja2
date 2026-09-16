@@ -214,15 +214,18 @@ COMMIT
   {#- vpn_lockdown, they are inserted last in front of the OUTPUT chain and   #}
   {#- FORWARD chains respectively.                                            #}
 -A OUTPUT -j drop_guest_ipv4_prefix
+{% endif -%}
   {#- Always ACCEPT traffic to DNS proxy's addresses. The rule is inserted    #}
   {#- before VPN filters and after drop guest IPv4 prefix rules.              #}
-{% endif -%}
+-A OUTPUT -j accept_egress_to_dns_proxy
+  {#- Always ACCEPT standard DNS traffic on loopback before lockdown.         #}
+-A OUTPUT -o lo -p udp --dport 53 -j ACCEPT
+-A OUTPUT -o lo -p tcp --dport 53 -j ACCEPT
   {#- b/542788853: Evaluate loopback lockdown rules before broad VPN and state accepts. #}
   {#- Only traverse loopback_port_firewall for connection initiation (state NEW) on lo.  #}
 -A OUTPUT -o lo -m state --state RELATED,ESTABLISHED -j ACCEPT
 -A OUTPUT -o lo -j loopback_port_firewall
 -A OUTPUT -o lo -j ACCEPT
--A OUTPUT -j accept_egress_to_dns_proxy
 -A OUTPUT -j vpn_egress_filters
 -A OUTPUT -j drop_output_to_bruschetta
 -A OUTPUT -m state --state NEW,RELATED,ESTABLISHED -j ACCEPT
