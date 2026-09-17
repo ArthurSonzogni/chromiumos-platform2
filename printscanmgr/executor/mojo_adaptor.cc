@@ -18,6 +18,13 @@ namespace {
 
 constexpr char kPpdDirectory[] = "/var/cache/cups/printers/ppd";
 
+bool IsValidPpdFilename(const std::string& filename) {
+  const base::FilePath path(filename);
+  return !filename.empty() && filename != "." && filename != ".." &&
+         filename.find('/') == std::string::npos &&
+         path.BaseName().value() == filename;
+}
+
 }  // namespace
 
 MojoAdaptor::MojoAdaptor(
@@ -44,6 +51,12 @@ void MojoAdaptor::RestartUpstartJob(mojom::UpstartJob job,
 
 void MojoAdaptor::GetPpdFile(const std::string& file_name,
                              GetPpdFileCallback callback) {
+  if (!IsValidPpdFilename(file_name)) {
+    LOG(ERROR) << "Invalid PPD file name: " << file_name;
+    std::move(callback).Run(/*file_contents=*/"", /*success=*/false);
+    return;
+  }
+
   // Get just the filename from the input and build a new path with the known
   // cups PPD directory.  Doing it this way for security reasons - making sure
   // we use a known good directory and not trusting the input from printscanmgr.
