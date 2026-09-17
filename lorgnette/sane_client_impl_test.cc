@@ -172,4 +172,102 @@ TEST_F(SaneClientTest, SaneClientSetsStatusOnBusy) {
   EXPECT_EQ(status, SANE_STATUS_DEVICE_BUSY);
 }
 
+class FakeSaneWrapper : public LibsaneWrapperFake {
+ public:
+  void SetDeviceList(const SANE_Device** device_list) {
+    device_list_ = device_list;
+  }
+
+  SANE_Status sane_get_devices(const SANE_Device*** device_list,
+                               SANE_Bool local_only) override {
+    if (!device_list_) {
+      return SANE_STATUS_IO_ERROR;
+    }
+    *device_list = device_list_;
+    return SANE_STATUS_GOOD;
+  }
+
+ private:
+  const SANE_Device** device_list_ = nullptr;
+};
+
+TEST_F(SaneClientTest, SaneClientRejectsUndiscoveredDevices) {
+  FakeSaneWrapper libsane;
+  libsane.CreateScanner("airscan:escl:poc:http://127.0.0.1:34653/eSCL/");
+  std::unique_ptr<SaneClient> client = SaneClientImpl::Create(&libsane);
+
+  SANE_Status status = SANE_STATUS_GOOD;
+  brillo::ErrorPtr error;
+  std::unique_ptr<SaneDevice> device = client->ConnectToDevice(
+      &error, &status, "airscan:escl:poc:http://127.0.0.1:34653/eSCL/");
+  EXPECT_EQ(device, nullptr);
+  EXPECT_NE(error, nullptr);
+  EXPECT_EQ(status, SANE_STATUS_INVAL);
+}
+
+TEST_F(SaneClientTest, SaneClientAllowsDiscoveredFakeDevices) {
+  FakeSaneWrapper libsane;
+  dev_.name = "pixma:04A9176D_123456";
+  dev_two_.name = "epson2:net:192.168.1.50";
+  libsane.SetDeviceList(two_devices_);
+  libsane.CreateScanner("pixma:04A9176D_123456");
+  libsane.CreateScanner("epsonds:net:192.168.1.50");
+  libsane.CreateScanner("airscan:escl:Other:http://192.168.1.99:80/eSCL/");
+
+  std::unique_ptr<SaneClient> client = SaneClientImpl::Create(&libsane);
+
+  // Before ListDevices(), opening a fake scanner must fail.
+  SANE_Status status = SANE_STATUS_GOOD;
+  brillo::ErrorPtr error;
+  EXPECT_EQ(client->ConnectToDevice(&error, &status, "pixma:04A9176D_123456"),
+            nullptr);
+  EXPECT_EQ(status, SANE_STATUS_INVAL);
+
+  // Discover devices via ListDevices().
+  error.reset();
+  std::optional<std::vector<ScannerInfo>> scanners =
+      client->ListDevices(&error, false);
+  ASSERT_TRUE(scanners.has_value());
+  EXPECT_EQ(scanners->size(), 2);
+
+  // Discovered fake scanner can now be opened.
+  error.reset();
+  std::unique_ptr<SaneDevice> pixma_device =
+      client->ConnectToDevice(&error, &status, "pixma:04A9176D_123456");
+  EXPECT_NE(pixma_device, nullptr);
+  EXPECT_EQ(status, SANE_STATUS_GOOD);
+
+  // Discovered "epson2:" scanner also allows probing via "epsonds:".
+  error.reset();
+  std::unique_ptr<SaneDevice> epsonds_device =
+      client->ConnectToDevice(&error, &status, "epsonds:net:192.168.1.50");
+  EXPECT_NE(epsonds_device, nullptr);
+  EXPECT_EQ(status, SANE_STATUS_GOOD);
+
+  // Undiscovered fake scanner is still rejected.
+  error.reset();
+  EXPECT_EQ(client->ConnectToDevice(
+                &error, &status,
+                "airscan:escl:Other:http://192.168.1.99:80/eSCL/"),
+            nullptr);
+  EXPECT_EQ(status, SANE_STATUS_INVAL);
+}
+
+TEST_F(SaneClientTest, SaneClientRejectsDirectUnixSocketDevices) {
+  FakeSaneWrapper libsane;
+  std::unique_ptr<SaneClient> client = SaneClientImpl::Create(&libsane);
+
+  for (const char* dev_name : {
+           "airscan:escl:Test:unix:///run/ippusb/1234-5678.sock/eSCL/",
+           "airscan:escl:Test:UNIX:///run/ippusb/1234-5678.sock/eSCL/",
+           "airscan:escl:Test:Unix:///run/ippusb/1234-5678.sock/eSCL/",
+       }) {
+    SANE_Status status = SANE_STATUS_GOOD;
+    brillo::ErrorPtr error;
+    EXPECT_EQ(client->ConnectToDevice(&error, &status, dev_name), nullptr);
+    EXPECT_NE(error, nullptr);
+    EXPECT_EQ(status, SANE_STATUS_INVAL);
+  }
+}
+
 }  // namespace lorgnette

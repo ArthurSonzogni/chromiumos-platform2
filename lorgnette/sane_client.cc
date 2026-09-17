@@ -4,10 +4,11 @@
 
 #include "lorgnette/sane_client.h"
 
+#include <optional>
+
+#include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <sane/sane.h>
-
-#include <optional>
 
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
 #include "lorgnette/ippusb_device.h"
@@ -24,6 +25,17 @@ std::unique_ptr<SaneDevice> SaneClient::ConnectToDevice(
     brillo::ErrorPtr* error,
     SANE_Status* sane_status,
     const std::string& device_name) {
+  if (base::ToLowerASCII(device_name).find(":unix://") != std::string::npos) {
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, brillo::errors::dbus::kDomain, kManagerServiceError,
+        "Direct unix socket device strings are not permitted: %s",
+        device_name.c_str());
+    if (sane_status) {
+      *sane_status = SANE_STATUS_INVAL;
+    }
+    return nullptr;
+  }
+
   std::string real_device = device_name;
   if (device_name.substr(0, 7) == "ippusb:") {
     LOG(INFO) << "Finding real backend for device: " << device_name;

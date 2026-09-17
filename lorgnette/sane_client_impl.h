@@ -45,9 +45,13 @@ class SaneClientImpl : public SaneClient {
  private:
   explicit SaneClientImpl(LibsaneWrapper* libsane);
 
+  bool IsDeviceKnown(const std::string& device_name);
+
   LibsaneWrapper* libsane_;  // Not owned.
   base::Lock lock_;
   std::shared_ptr<DeviceSet> open_devices_;
+  base::Lock known_devices_lock_;
+  std::unordered_set<std::string> known_devices_;
 };
 
 }  // namespace lorgnette
