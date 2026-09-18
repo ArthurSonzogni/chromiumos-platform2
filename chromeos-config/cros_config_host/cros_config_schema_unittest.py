@@ -7,6 +7,7 @@
 
 import contextlib
 import io
+import json
 import os
 import pathlib
 import re
@@ -1000,6 +1001,63 @@ class FilterBuildElements(unittest.TestCase):
         self.assertNotIn("firmware", json_dict["chromeos"]["configs"][0])
 
 
+class FilterFactoryConfigTests(unittest.TestCase):
+    def testFilterFactoryConfig(self):
+        full_config = {
+            "chromeos": {
+                "configs": [
+                    {
+                        "name": "basking",
+                        "brand-code": "ZZCR",
+                        "identity": {"sku-id": 0, "platform-name": "Reef"},
+                        "audio": {"main": {"cras-config-dir": "basking"}},
+                        "firmware": {
+                            "image-name": "basking",
+                            "bcs-overlay": "overlay-reef-private",
+                            "build-targets": {"coreboot": "reef"},
+                        },
+                        "firmware-signing": {
+                            "key-id": "OEM2",
+                            "signature-id": "basking",
+                            "sig-id-in-customization-id": True,
+                            "extra-unused": "dropped",
+                        },
+                        "fingerprint": {
+                            "board": "dartmonkey",
+                            "sensor-location": "power-button-top-left",
+                        },
+                    },
+                    {
+                        "name": "minimal",
+                        "firmware": {"bcs-overlay": "overlay-only"},
+                    },
+                ]
+            }
+        }
+        factory = cros_config_schema.FilterFactoryConfig(full_config)
+        configs = factory["chromeos"]["configs"]
+        self.assertEqual(len(configs), 2)
+
+        self.assertEqual(
+            configs[0],
+            {
+                "name": "basking",
+                "brand-code": "ZZCR",
+                "identity": {"sku-id": 0, "platform-name": "Reef"},
+                "firmware": {"image-name": "basking"},
+                "firmware-signing": {
+                    "key-id": "OEM2",
+                    "signature-id": "basking",
+                    "sig-id-in-customization-id": True,
+                },
+                "fingerprint": {"board": "dartmonkey"},
+            },
+        )
+        # Ensure empty nested dictionaries (like firmware with no image-name)
+        # are omitted.
+        self.assertEqual(configs[1], {"name": "minimal"})
+
+
 class GetValidSchemaProperties(unittest.TestCase):
     def testGetValidSchemaProperties(self):
         schema_props = cros_config_schema.GetValidSchemaProperties()
@@ -1052,6 +1110,38 @@ class MainTests(unittest.TestCase):
             # contents/format.  We just check that we put some good looking
             # data there (greater than 32 bytes is required).
         self.assertGreater(len(output.getvalue()), 32)
+
+    def testFactory(self):
+        base_path = os.path.join(this_dir, "../test_data")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            full_out = os.path.join(temp_dir, "full.json")
+            factory_out = os.path.join(temp_dir, "factory.json")
+            cros_config_schema.Main(
+                None,
+                full_out,
+                configs=[os.path.join(base_path, "test.yaml")],
+                minify=True,
+            )
+            cros_config_schema.Main(
+                full_out,
+                factory_out,
+                minify=True,
+                factory=True,
+            )
+            with open(factory_out, "r", encoding="utf-8") as f:
+                factory_data = json.load(f)
+
+            self.assertGreater(
+                os.path.getsize(full_out), os.path.getsize(factory_out)
+            )
+            self.assertIn(
+                "firmware-signing", factory_data["chromeos"]["configs"][0]
+            )
+            allowed_keys = set(cros_config_schema.FACTORY_TOP_KEYS) | set(
+                cros_config_schema.FACTORY_NESTED_KEYS.keys()
+            )
+            for cfg in factory_data["chromeos"]["configs"]:
+                self.assertTrue(set(cfg.keys()).issubset(allowed_keys))
 
 
 if __name__ == "__main__":

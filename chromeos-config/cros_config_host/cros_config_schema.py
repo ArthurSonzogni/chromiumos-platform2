@@ -40,6 +40,24 @@ BRAND_ELEMENTS = [
 EXTERNAL_STYLUS = "external"
 TEMPLATE_PATTERN = re.compile("{{([^}]*)}}")
 ALLOWED_CUSTOM_LABEL_FEATURES = {"CloudGamingDevice"}
+# Top-level and nested keys needed by offline factory tools on target images.
+# Runtime daemons read from ConfigFS (/usr/share/chromeos-config/configfs.img),
+# whereas factory tools (finalize_bundle.py, gooftool, image_tool, hwid_utils)
+# inspect /usr/share/chromeos-config/yaml/config.yaml on ROOT-A.
+FACTORY_TOP_KEYS = (
+    "name",
+    "brand-code",
+    "identity",
+)
+FACTORY_NESTED_KEYS = {
+    "firmware": ("image-name",),
+    "firmware-signing": (
+        "key-id",
+        "signature-id",
+        "sig-id-in-customization-id",
+    ),
+    "fingerprint": ("board",),
+}
 
 
 def MergeDictionaries(primary, overlay):
@@ -134,6 +152,11 @@ def ParseArgs(argv):
         "--minify",
         action="store_true",
         help="Output minified JSON",
+    )
+    parser.add_argument(
+        "--factory",
+        action="store_true",
+        help="Filter output JSON down to fields needed by factory tools",
     )
     return parser.parse_args(argv)
 
@@ -530,6 +553,43 @@ def _FilterBuildElements(config, path, build_only_elements):
             _FilterBuildElements(config[key], full_path, build_only_elements)
     for key in to_delete:
         config.pop(key)
+
+
+def FilterFactoryConfig(config):
+    """Filters a full cros_config dictionary down to target/factory fields.
+
+    Runtime daemons on ChromeOS read from
+    /usr/share/chromeos-config/configfs.img, while offline factory tools
+    (finalize_bundle.py, gooftool, image_tool, hwid_utils) inspect ROOT-A's
+    /usr/share/chromeos-config/yaml/config.yaml and only require a small subset
+    of device identity and firmware properties.
+
+    Args:
+        config: Dict containing the transformed ChromeOS configuration.
+
+    Returns:
+        A new dict containing only the properties required by factory tools.
+    """
+    factory_configs = []
+    for device_config in config.get(CHROMEOS, {}).get(CONFIGS, []):
+        factory_entry = {
+            k: copy.deepcopy(device_config[k])
+            for k in FACTORY_TOP_KEYS
+            if k in device_config
+        }
+        for parent_key, sub_keys in FACTORY_NESTED_KEYS.items():
+            parent_val = device_config.get(parent_key)
+            if isinstance(parent_val, collections.abc.Mapping):
+                sub_dict = {
+                    k: copy.deepcopy(parent_val[k])
+                    for k in sub_keys
+                    if k in parent_val
+                }
+                if sub_dict:
+                    factory_entry[parent_key] = sub_dict
+        factory_configs.append(factory_entry)
+
+    return {CHROMEOS: {CONFIGS: factory_configs}}
 
 
 def GenerateFridMatches(json_config):
@@ -1036,6 +1096,7 @@ def Main(
     configs=None,
     identity_table_out=None,
     minify=False,
+    factory=False,
 ):
     """Transforms and validates a cros config file for use on the system
 
@@ -1055,6 +1116,7 @@ def Main(
         configs: List of source config files that will be transformed/verified.
         identity_table_out: Output file for crosid identity table.
         minify: Whether to output minified JSON.
+        factory: Whether to filter output JSON down to factory fields.
     """
     schema = schema or ReadSchema()
 
@@ -1078,6 +1140,8 @@ def Main(
         json_transform = FilterBuildElements(
             json_transform, build_only_elements
         )
+    if factory:
+        json_transform = FilterFactoryConfig(json_transform)
     if output:
         Path(output).write_text(
             libcros_schema.FormatJson(json_transform, minify=minify),
@@ -1111,6 +1175,7 @@ def main(argv=None):
         configs=opts.configs,
         identity_table_out=opts.identity_table_out,
         minify=opts.minify,
+        factory=opts.factory,
     )
 
 
