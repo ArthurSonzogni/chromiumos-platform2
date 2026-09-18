@@ -92,7 +92,7 @@ bool MountLoopbackFile(const base::FilePath& file,
   mount_process.AddArg("/bin/mount");
 
   mount_process.AddArg("-o");
-  mount_process.AddArg("loop");
+  mount_process.AddArg("loop,sync");
 
   mount_process.AddArg(file.value());
   mount_process.AddArg(mount_point.value());
