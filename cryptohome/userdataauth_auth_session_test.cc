@@ -1619,8 +1619,12 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoLabel) {
 }
 
 // Test that AuthenticateAuthFactor succeeds using credential verifier based
-// lightweight authentication when `AuthIntent::kVerifyOnly` is requested.
+// lightweight authentication when `AuthIntent::kVerifyOnly` is requested and
+// PinWeaver is not enabled.
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
+  ON_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+      .WillByDefault(ReturnValue(false));
+
   // Set up a user session with a mocked credential verifier.
   auto user_session = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session, VerifyUser(SanitizeUserName(kUsername)))

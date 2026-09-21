@@ -36,6 +36,12 @@ namespace cryptohome {
 // implementation for each AuthFactorType.
 class AuthFactorDriver {
  public:
+  // Specifies the type of user for which the auth factor is being used.
+  enum class UserType {
+    kPersistent,
+    kEphemeral,
+  };
+
   AuthFactorDriver() = default;
 
   AuthFactorDriver(const AuthFactorDriver&) = delete;
@@ -101,7 +107,8 @@ class AuthFactorDriver {
   // complete Authenticate sequence with the factor's underlying auth block
   // while the lightweight authentication is done via a CredentialVerifier.
   virtual bool IsFullAuthSupported(AuthIntent auth_intent) const = 0;
-  virtual bool IsLightAuthSupported(AuthIntent auth_intent) const = 0;
+  virtual bool IsLightAuthSupported(AuthIntent auth_intent,
+                                    UserType user_type) const = 0;
 
   // Specifies if the factor supports repeating the AuthenticateAuthFactor
   // request with full auth that is transparent to the user (i.e., shouldn't ask
@@ -131,7 +138,8 @@ class AuthFactorDriver {
   virtual std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
       const std::string& auth_factor_label,
       const AuthInput& auth_input,
-      const AuthFactorMetadata& auth_factor_metadata) const = 0;
+      const AuthFactorMetadata& auth_factor_metadata,
+      UserType user_type) const = 0;
 
   // This returns if a type needs a reset secret.
   virtual bool NeedsResetSecret() const = 0;

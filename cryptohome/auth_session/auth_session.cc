@@ -539,10 +539,16 @@ void AuthSession::SetAuthorizedForFullAuthIntents(
     AuthFactorType auth_factor_type,
     const SerializedUserAuthFactorTypePolicy& auth_factor_type_user_policy) {
   // Determine what intents are allowed for this factor type under full auth.
+  // If the session was created for verify-only, do not authorize it for full
+  // decrypt even though full auth was performed.
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(auth_factor_type);
+  std::vector<AuthIntent> intents_to_check = {AuthIntent::kVerifyOnly};
+  if (auth_intent_ != AuthIntent::kVerifyOnly) {
+    intents_to_check.push_back(AuthIntent::kDecrypt);
+  }
   absl::flat_hash_set<AuthIntent> authorized_for;
-  for (AuthIntent intent : {AuthIntent::kDecrypt, AuthIntent::kVerifyOnly}) {
+  for (AuthIntent intent : intents_to_check) {
     if (factor_driver.IsFullAuthSupported(intent) &&
         IsIntentEnabledBasedOnPolicy(factor_driver, intent,
                                      auth_factor_type_user_policy)) {
@@ -1212,7 +1218,8 @@ void AuthSession::AuthenticateAuthFactor(
       }
       // A CredentialVerifier must exist if there is no label and the verifier
       // will be used for authentication.
-      if (!verifier || !factor_driver.IsLightAuthSupported(auth_intent_) ||
+      if (!verifier ||
+          !factor_driver.IsLightAuthSupported(auth_intent_, user_type()) ||
           !IsIntentEnabledBasedOnPolicy(factor_driver, auth_intent_,
                                         auth_factor_type_user_policy) ||
           request.flags.force_full_auth == ForceFullAuthFlag::kForce) {
@@ -1269,7 +1276,7 @@ void AuthSession::AuthenticateAuthFactor(
       // Attempt lightweight authentication via a credential verifier if
       // suitable.
       if (!restoring_chaps && verifier &&
-          factor_driver.IsLightAuthSupported(auth_intent_) &&
+          factor_driver.IsLightAuthSupported(auth_intent_, user_type()) &&
           IsIntentEnabledBasedOnPolicy(factor_driver, auth_intent_,
                                        auth_factor_type_user_policy) &&
           request.flags.force_full_auth != ForceFullAuthFlag::kForce) {
@@ -2483,7 +2490,8 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactorEphemeral(
 
   // Create the replacement verifier.
   auto replacement_verifier = factor_driver.CreateCredentialVerifier(
-      auth_factor_label, *auth_input, auth_factor_metadata);
+      auth_factor_label, *auth_input, auth_factor_metadata,
+      AuthFactorDriver::UserType::kEphemeral);
   if (!replacement_verifier) {
     LOG(ERROR) << "AuthSession: Unable to create replacement verifier.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -2920,7 +2928,8 @@ void AuthSession::PrepareAuthFactor(
     }
 
     // If this type of factor supports label-less verifiers, then create one.
-    if (auto verifier = factor_driver.CreateCredentialVerifier({}, {}, {})) {
+    if (auto verifier =
+            factor_driver.CreateCredentialVerifier({}, {}, {}, user_type())) {
       verifier_forwarder_.AddVerifier(std::move(verifier));
     }
   } else {
@@ -3451,7 +3460,7 @@ CredentialVerifier* AuthSession::AddCredentialVerifier(
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(auth_factor_type);
   if (auto new_verifier = factor_driver.CreateCredentialVerifier(
-          auth_factor_label, auth_input, auth_factor_metadata)) {
+          auth_factor_label, auth_input, auth_factor_metadata, user_type())) {
     auto* return_ptr = new_verifier.get();
     verifier_forwarder_.AddVerifier(std::move(new_verifier));
     return return_ptr;

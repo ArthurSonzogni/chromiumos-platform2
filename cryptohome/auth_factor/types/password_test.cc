@@ -24,10 +24,12 @@ namespace {
 using ::base::test::TestFuture;
 using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::NotOk;
+using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::_;
 using ::testing::ElementsAreArray;
 using ::testing::Eq;
 using ::testing::IsFalse;
+using ::testing::IsNull;
 using ::testing::IsTrue;
 using ::testing::NotNull;
 using ::testing::Optional;
@@ -39,7 +41,7 @@ class PasswordDriverTest : public AuthFactorDriverGenericTest {
 };
 
 TEST_F(PasswordDriverTest, BlockTypes) {
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver(&crypto_);
   AuthFactorDriver& driver = password_driver;
 
   std::vector<AuthBlockType> expected_types = {
@@ -56,7 +58,7 @@ TEST_F(PasswordDriverTest, BlockTypes) {
 TEST_F(PasswordDriverTest, PasswordConvertToProto) {
   // Setup
   const std::string kSalt = "fake_salt";
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver(&crypto_);
   AuthFactorDriver& driver = password_driver;
   AuthFactorMetadata metadata = CreateMetadataWithType<PasswordMetadata>(
       {.hash_info = SerializedKnowledgeFactorHashInfo{
@@ -90,7 +92,7 @@ TEST_F(PasswordDriverTest, PasswordConvertToProto) {
 
 TEST_F(PasswordDriverTest, PasswordConvertToProtoErrorNoMetadata) {
   // Setup
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver(&crypto_);
   AuthFactorDriver& driver = password_driver;
   AuthFactorMetadata metadata;
 
@@ -104,7 +106,7 @@ TEST_F(PasswordDriverTest, PasswordConvertToProtoErrorNoMetadata) {
 
 TEST_F(PasswordDriverTest, SupportedWithoutKiosk) {
   // Setup
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver(&crypto_);
   AuthFactorDriver& driver = password_driver;
 
   // Test, Verify
@@ -133,7 +135,7 @@ TEST_F(PasswordDriverTest, SupportedWithoutKiosk) {
 
 TEST_F(PasswordDriverTest, UnsupportedWithKiosk) {
   // Setup
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver(&crypto_);
   AuthFactorDriver& driver = password_driver;
 
   // Test, Verify
@@ -148,7 +150,7 @@ TEST_F(PasswordDriverTest, UnsupportedWithKiosk) {
 
 TEST_F(PasswordDriverTest, AlwaysSupportedByHardware) {
   // Setup
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver(&crypto_);
   AuthFactorDriver& driver = password_driver;
 
   // Test, Verify
@@ -156,7 +158,7 @@ TEST_F(PasswordDriverTest, AlwaysSupportedByHardware) {
 }
 
 TEST_F(PasswordDriverTest, GetDelayFails) {
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver(&crypto_);
   AuthFactorDriver& driver = password_driver;
 
   AuthFactor factor(AuthFactorType::kPassword, kLabel,
@@ -170,7 +172,7 @@ TEST_F(PasswordDriverTest, GetDelayFails) {
 }
 
 TEST_F(PasswordDriverTest, GetExpirationFails) {
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver(&crypto_);
   AuthFactorDriver& driver = password_driver;
 
   AuthFactor factor(AuthFactorType::kPassword, kLabel,
@@ -184,7 +186,7 @@ TEST_F(PasswordDriverTest, GetExpirationFails) {
 }
 
 TEST_F(PasswordDriverTest, PrepareForAddFails) {
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver(&crypto_);
   AuthFactorDriver& driver = password_driver;
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
@@ -196,7 +198,7 @@ TEST_F(PasswordDriverTest, PrepareForAddFails) {
 }
 
 TEST_F(PasswordDriverTest, PrepareForAuthFails) {
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver(&crypto_);
   AuthFactorDriver& driver = password_driver;
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
@@ -207,12 +209,25 @@ TEST_F(PasswordDriverTest, PrepareForAuthFails) {
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 
-TEST_F(PasswordDriverTest, CreateCredentialVerifier) {
-  PasswordAuthFactorDriver password_driver;
+TEST_F(PasswordDriverTest, CreateCredentialVerifierWithoutPinWeaver) {
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
+
+  PasswordAuthFactorDriver password_driver(&crypto_);
   AuthFactorDriver& driver = password_driver;
 
+  EXPECT_THAT(
+      driver.IsLightAuthSupported(AuthIntent::kVerifyOnly,
+                                  AuthFactorDriver::UserType::kPersistent),
+      IsTrue());
+  EXPECT_THAT(
+      driver.IsLightAuthSupported(AuthIntent::kVerifyOnly,
+                                  AuthFactorDriver::UserType::kEphemeral),
+      IsTrue());
+
   AuthInput auth_input = {.user_input = kPassword};
-  auto verifier = driver.CreateCredentialVerifier(kLabel, auth_input, {});
+  auto verifier = driver.CreateCredentialVerifier(
+      kLabel, auth_input, {}, AuthFactorDriver::UserType::kPersistent);
   ASSERT_THAT(verifier, NotNull());
   EXPECT_THAT(verifier->auth_factor_type(), Eq(AuthFactorType::kPassword));
   EXPECT_THAT(verifier->auth_factor_label(), Eq(kLabel));
@@ -224,6 +239,38 @@ TEST_F(PasswordDriverTest, CreateCredentialVerifier) {
   TestFuture<CryptohomeStatus> bad_result;
   verifier->Verify(auth_input, bad_result.GetCallback());
   EXPECT_THAT(bad_result.Get(), NotOk());
+}
+
+TEST_F(PasswordDriverTest, CreateCredentialVerifierWithPinWeaver) {
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
+
+  PasswordAuthFactorDriver password_driver(&crypto_);
+  AuthFactorDriver& driver = password_driver;
+
+  // For persistent users, light auth and credential verifier are disabled when
+  // PinWeaver is enabled.
+  EXPECT_THAT(
+      driver.IsLightAuthSupported(AuthIntent::kVerifyOnly,
+                                  AuthFactorDriver::UserType::kPersistent),
+      IsFalse());
+  AuthInput auth_input = {.user_input = kPassword};
+  EXPECT_THAT(
+      driver.CreateCredentialVerifier(kLabel, auth_input, {},
+                                      AuthFactorDriver::UserType::kPersistent),
+      IsNull());
+
+  // For ephemeral users, light auth and credential verifier remain supported.
+  EXPECT_THAT(
+      driver.IsLightAuthSupported(AuthIntent::kVerifyOnly,
+                                  AuthFactorDriver::UserType::kEphemeral),
+      IsTrue());
+  auto ephemeral_verifier = driver.CreateCredentialVerifier(
+      kLabel, auth_input, {}, AuthFactorDriver::UserType::kEphemeral);
+  ASSERT_THAT(ephemeral_verifier, NotNull());
+  EXPECT_THAT(ephemeral_verifier->auth_factor_type(),
+              Eq(AuthFactorType::kPassword));
+  EXPECT_THAT(ephemeral_verifier->auth_factor_label(), Eq(kLabel));
 }
 
 }  // namespace

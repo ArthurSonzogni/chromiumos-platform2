@@ -4,8 +4,12 @@
 
 #include "cryptohome/auth_factor/types/password.h"
 
+#include <algorithm>
+#include <memory>
+#include <string>
 #include <utility>
 
+#include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/auth_factor/label_arity.h"
 #include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/auth_factor/protobuf.h"
@@ -14,6 +18,25 @@
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {
+namespace {
+
+bool IsCredentialVerifierSupported(base::span<const AuthBlockType> block_types,
+                                   Crypto* crypto,
+                                   AuthFactorDriver::UserType user_type) {
+  switch (user_type) {
+    case AuthFactorDriver::UserType::kEphemeral:
+      return true;
+    case AuthFactorDriver::UserType::kPersistent: {
+      bool is_pinweaver_used =
+          std::find(block_types.begin(), block_types.end(),
+                    AuthBlockType::kPinWeaver) != block_types.end() &&
+          PinWeaverAuthBlock::IsSupported(*crypto->GetHwsec()).ok();
+      return !is_pinweaver_used;
+    }
+  }
+}
+
+}  // namespace
 
 bool AfDriverWithPasswordBlockTypes::NeedsResetSecret() const {
   // Reset secrets are only used for pinweaver based passwords but since we
@@ -30,16 +53,23 @@ bool PasswordAuthFactorDriver::IsSupportedByHardware() const {
   return true;
 }
 
-bool PasswordAuthFactorDriver::IsLightAuthSupported(
-    AuthIntent auth_intent) const {
-  return auth_intent == AuthIntent::kVerifyOnly;
+bool PasswordAuthFactorDriver::IsLightAuthSupported(AuthIntent auth_intent,
+                                                    UserType user_type) const {
+  if (auth_intent != AuthIntent::kVerifyOnly) {
+    return false;
+  }
+  return IsCredentialVerifierSupported(block_types(), crypto_, user_type);
 }
 
 std::unique_ptr<CredentialVerifier>
 PasswordAuthFactorDriver::CreateCredentialVerifier(
     const std::string& auth_factor_label,
     const AuthInput& auth_input,
-    const AuthFactorMetadata& auth_factor_metadata) const {
+    const AuthFactorMetadata& auth_factor_metadata,
+    UserType user_type) const {
+  if (!IsCredentialVerifierSupported(block_types(), crypto_, user_type)) {
+    return nullptr;
+  }
   if (!auth_input.user_input.has_value()) {
     LOG(ERROR) << "Cannot construct a password verifier without a password";
     return nullptr;

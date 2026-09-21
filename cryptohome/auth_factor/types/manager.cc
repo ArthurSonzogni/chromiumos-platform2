@@ -40,7 +40,7 @@ std::unique_ptr<AuthFactorDriver> CreateDriver(
   // This is written using a switch to force full enum coverage.
   switch (auth_factor_type) {
     case AuthFactorType::kPassword:
-      return std::make_unique<PasswordAuthFactorDriver>();
+      return std::make_unique<PasswordAuthFactorDriver>(crypto);
     case AuthFactorType::kPin:
       return std::make_unique<PinAuthFactorDriver>(crypto);
     case AuthFactorType::kCryptohomeRecovery:

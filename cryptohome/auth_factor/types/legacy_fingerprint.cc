@@ -62,7 +62,7 @@ void LegacyFingerprintAuthFactorDriver::PrepareForAuthenticate(
 }
 
 bool LegacyFingerprintAuthFactorDriver::IsLightAuthSupported(
-    AuthIntent auth_intent) const {
+    AuthIntent auth_intent, UserType user_type) const {
   return auth_intent == AuthIntent::kWebAuthn ||
          auth_intent == AuthIntent::kVerifyOnly;
 }
@@ -71,7 +71,8 @@ std::unique_ptr<CredentialVerifier>
 LegacyFingerprintAuthFactorDriver::CreateCredentialVerifier(
     const std::string& auth_factor_label,
     const AuthInput& auth_input,
-    const AuthFactorMetadata& auth_factor_metadata) const {
+    const AuthFactorMetadata& auth_factor_metadata,
+    UserType user_type) const {
   if (!auth_factor_label.empty()) {
     LOG(ERROR) << "Legacy fingerprint verifiers cannot use labels";
     return nullptr;

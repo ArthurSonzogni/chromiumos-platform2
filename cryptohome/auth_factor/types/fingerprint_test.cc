@@ -473,7 +473,8 @@ TEST_F(FingerprintDriverTest, CreateCredentialVerifierFails) {
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
-  auto verifier = driver.CreateCredentialVerifier(kLabel, {}, {});
+  auto verifier = driver.CreateCredentialVerifier(
+      kLabel, {}, {}, AuthFactorDriver::UserType::kPersistent);
   EXPECT_THAT(verifier, IsNull());
 }
 

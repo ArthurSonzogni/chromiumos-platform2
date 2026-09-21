@@ -249,7 +249,8 @@ TEST_F(SmartCardDriverTest, CreateCredentialVerifierFailsWithoutDbus) {
                           .challenge_credential_auth_input = cc_input};
   auto verifier = driver.CreateCredentialVerifier(
       kLabel, auth_input,
-      {.metadata = SmartCardMetadata{.public_key_spki_der = kPublicKey}});
+      {.metadata = SmartCardMetadata{.public_key_spki_der = kPublicKey}},
+      AuthFactorDriver::UserType::kPersistent);
   EXPECT_THAT(verifier, IsNull());
 }
 
@@ -267,7 +268,8 @@ TEST_F(SmartCardDriverTest, CreateCredentialVerifierFailsWithoutHelper) {
                           .challenge_credential_auth_input = cc_input};
   auto verifier = driver.CreateCredentialVerifier(
       kLabel, auth_input,
-      {.metadata = SmartCardMetadata{.public_key_spki_der = kPublicKey}});
+      {.metadata = SmartCardMetadata{.public_key_spki_der = kPublicKey}},
+      AuthFactorDriver::UserType::kPersistent);
   EXPECT_THAT(verifier, IsNull());
 }
 
@@ -290,7 +292,8 @@ TEST_F(SmartCardDriverTest, CreateCredentialVerifier) {
       });
   auto verifier = driver.CreateCredentialVerifier(
       kLabel, auth_input,
-      {.metadata = SmartCardMetadata{.public_key_spki_der = kPublicKey}});
+      {.metadata = SmartCardMetadata{.public_key_spki_der = kPublicKey}},
+      AuthFactorDriver::UserType::kPersistent);
   ASSERT_THAT(verifier, NotNull());
   EXPECT_THAT(verifier->auth_factor_type(), Eq(AuthFactorType::kSmartCard));
   EXPECT_THAT(verifier->auth_factor_label(), Eq(kLabel));

@@ -67,9 +67,12 @@ absl::flat_hash_set<AuthIntent> GetSupportedIntents(
   // Check all of the intents against lightweight auth. Technically we could
   // probably just look at verify-only but we leave this up to the driver.
   absl::flat_hash_set<AuthIntent> supported_intents;
+  AuthFactorDriver::UserType user_type =
+      only_light_auth ? AuthFactorDriver::UserType::kEphemeral
+                      : AuthFactorDriver::UserType::kPersistent;
   for (AuthIntent intent : kAllAuthIntents) {
-    if (driver.IsLightAuthSupported(intent) ||
-        (!only_light_auth && driver.IsFullAuthSupported(intent))) {
+    if ((!only_light_auth && driver.IsFullAuthSupported(intent)) ||
+        driver.IsLightAuthSupported(intent, user_type)) {
       if (IsIntentEnabledBasedOnPolicy(driver, intent, user_policy)) {
         supported_intents.insert(intent);
       }

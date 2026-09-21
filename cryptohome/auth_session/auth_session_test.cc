@@ -908,6 +908,8 @@ class AuthSessionWithUssTest : public AuthSessionTest {
       const std::string& label,
       const std::string& password,
       AuthSession& auth_session) {
+    EXPECT_CALL(hwsec_, IsPinWeaverEnabled())
+        .WillRepeatedly(ReturnValue(false));
     EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
         .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
     EXPECT_CALL(
@@ -998,6 +1000,8 @@ class AuthSessionWithUssTest : public AuthSessionTest {
       const std::string& label,
       const std::string& password,
       AuthSession& auth_session) {
+    EXPECT_CALL(hwsec_, IsPinWeaverEnabled())
+        .WillRepeatedly(ReturnValue(false));
     EXPECT_CALL(auth_block_utility_,
                 GetAuthBlockTypeFromState(
                     AuthBlockStateTypeIs<TpmBoundToPcrAuthBlockState>()))
@@ -1037,6 +1041,8 @@ class AuthSessionWithUssTest : public AuthSessionTest {
 
   user_data_auth::CryptohomeErrorCode UpdatePasswordAuthFactor(
       const std::string& new_password, AuthSession& auth_session) {
+    EXPECT_CALL(hwsec_, IsPinWeaverEnabled())
+        .WillRepeatedly(ReturnValue(false));
     EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
         .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
     EXPECT_CALL(
@@ -1121,6 +1127,7 @@ class AuthSessionWithUssTest : public AuthSessionTest {
 
   user_data_auth::CryptohomeErrorCode AddPinAuthFactor(
       const std::string& pin, AuthSession& auth_session) {
+    EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
     EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
         .WillRepeatedly(ReturnValue(AuthBlockType::kPinWeaver));
     EXPECT_CALL(auth_block_utility_,
@@ -1314,6 +1321,7 @@ TEST_F(AuthSessionWithUssTest, AddPasswordAuthFactorViaUss) {
   // Test.
   // Setting the expectation that the auth block utility will create key
   // blobs.
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
   EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(
@@ -1411,6 +1419,7 @@ TEST_F(AuthSessionWithUssTest, AddPasswordAuthFactorViaAsyncUss) {
 
   // Test.
   // Setting the expectation that the auth block utility will create key blobs.
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
   EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(
@@ -1687,9 +1696,7 @@ TEST_F(AuthSessionWithUssTest, AddPasswordAndPinAuthFactorViaUss) {
               UnorderedElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
                                    Pair(kFakePinLabel, AuthFactorType::kPin)));
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
-  EXPECT_THAT(user_session->GetCredentialVerifiers(),
-              UnorderedElementsAre(
-                  IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
+  EXPECT_THAT(user_session->GetCredentialVerifiers(), IsEmpty());
   CryptohomeStatusOr<AuthFactor> loaded_pin_factor =
       auth_factor_manager_.LoadAuthFactor(SanitizeUserName(kFakeUsername),
                                           AuthFactorType::kPin, kFakePinLabel);
@@ -1752,6 +1759,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaUss) {
   // Test.
   // Setting the expectation that the auth block utility will derive key
   // blobs.
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<TpmBoundToPcrAuthBlockState>()))
@@ -1849,6 +1857,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUss) {
   // Test.
   // Setting the expectation that the auth block utility will derive key
   // blobs.
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<TpmBoundToPcrAuthBlockState>()))
@@ -2805,6 +2814,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticateSmartCardAuthFactor) {
 // `AuthIntent::kVerifyOnly` scenario, using a credential verifier.
 TEST_F(AuthSessionWithUssTest, LightweightPasswordAuthentication) {
   // Setup.
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
   // Add the user session along with a verifier that's configured to pass.
   auto user_session = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session, VerifyUser(SanitizeUserName(kFakeUsername)))
@@ -2851,6 +2861,7 @@ TEST_F(AuthSessionWithUssTest, LightweightPasswordAuthentication) {
 // a post action requesting repeating full auth should be returned.
 TEST_F(AuthSessionWithUssTest, LightweightPasswordPostAction) {
   // Setup.
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
   const ObfuscatedUsername obfuscated_username =
       SanitizeUserName(kFakeUsername);
   const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
@@ -2956,6 +2967,8 @@ TEST_F(AuthSessionWithUssTest, LightweightPasswordPostAction) {
   auto& [second_action, second_status] = second_authenticate_future.Get();
   EXPECT_THAT(second_status, IsOk());
   EXPECT_EQ(second_action.action_type, AuthSession::PostAuthActionType::kNone);
+  EXPECT_THAT(auth_session.authorized_intents(),
+              UnorderedElementsAre(AuthIntent::kVerifyOnly));
 }
 
 // Test that AuthenticateAuthFactor succeeds for the
@@ -4831,6 +4844,7 @@ TEST_F(AuthSessionWithUssTest, ReplaceAuthFactorWithFileFailure) {
   EXPECT_TRUE(auth_session.has_user_secret_stash());
 
   // Add the initial auth factor.
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
   EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(

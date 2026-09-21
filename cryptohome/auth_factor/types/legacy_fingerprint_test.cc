@@ -229,7 +229,8 @@ TEST_F(LegacyFingerprintDriverTest, CreateCredentialVerifierFailsWithLabel) {
   LegacyFingerprintAuthFactorDriver legacy_fp_driver(&fp_service_);
   AuthFactorDriver& driver = legacy_fp_driver;
 
-  auto verifier = driver.CreateCredentialVerifier("not-blank", {}, {});
+  auto verifier = driver.CreateCredentialVerifier(
+      "not-blank", {}, {}, AuthFactorDriver::UserType::kPersistent);
   EXPECT_THAT(verifier, IsNull());
 }
 
@@ -237,7 +238,8 @@ TEST_F(LegacyFingerprintDriverTest, CreateCredentialVerifier) {
   LegacyFingerprintAuthFactorDriver legacy_fp_driver(&fp_service_);
   AuthFactorDriver& driver = legacy_fp_driver;
 
-  auto verifier = driver.CreateCredentialVerifier("", {}, {});
+  auto verifier = driver.CreateCredentialVerifier(
+      "", {}, {}, AuthFactorDriver::UserType::kPersistent);
   ASSERT_THAT(verifier, NotNull());
   EXPECT_THAT(verifier->auth_factor_type(),
               Eq(AuthFactorType::kLegacyFingerprint));
@@ -269,7 +271,8 @@ TEST_F(LegacyFingerprintDriverTest, CreateCredentialVerifierWithBadAuth) {
   LegacyFingerprintAuthFactorDriver legacy_fp_driver(&fp_service_);
   AuthFactorDriver& driver = legacy_fp_driver;
 
-  auto verifier = driver.CreateCredentialVerifier("", {}, {});
+  auto verifier = driver.CreateCredentialVerifier(
+      "", {}, {}, AuthFactorDriver::UserType::kPersistent);
   ASSERT_THAT(verifier, NotNull());
   EXPECT_THAT(verifier->auth_factor_type(),
               Eq(AuthFactorType::kLegacyFingerprint));

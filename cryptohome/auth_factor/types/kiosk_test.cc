@@ -170,7 +170,8 @@ TEST_F(KioskDriverTest, CreateCredentialVerifierFails) {
   KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
 
-  auto verifier = driver.CreateCredentialVerifier(kLabel, {}, {});
+  auto verifier = driver.CreateCredentialVerifier(
+      kLabel, {}, {}, AuthFactorDriver::UserType::kPersistent);
   EXPECT_THAT(verifier, IsNull());
 }
 

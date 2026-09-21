@@ -239,10 +239,13 @@ void SetAuthIntentsForAuthFactorType(
     // for persistent users.
     bool intent_is_supported;
     if (is_persistent_user) {
-      intent_is_supported = factor_driver.IsFullAuthSupported(intent) ||
-                            factor_driver.IsLightAuthSupported(intent);
+      intent_is_supported =
+          factor_driver.IsFullAuthSupported(intent) ||
+          factor_driver.IsLightAuthSupported(
+              intent, AuthFactorDriver::UserType::kPersistent);
     } else if (is_ephemeral_user) {
-      intent_is_supported = factor_driver.IsLightAuthSupported(intent);
+      intent_is_supported = factor_driver.IsLightAuthSupported(
+          intent, AuthFactorDriver::UserType::kEphemeral);
     } else {
       intent_is_supported = false;
     }
@@ -3836,7 +3839,9 @@ void UserDataAuth::ListAuthFactors(
       }
       const AuthFactorDriver& factor_driver =
           auth_factor_driver_manager_->GetDriver(*type);
-      if (factor_driver.IsLightAuthSupported(AuthIntent::kVerifyOnly)) {
+      if (factor_driver.IsLightAuthSupported(
+              AuthIntent::kVerifyOnly,
+              AuthFactorDriver::UserType::kEphemeral)) {
         reply.add_supported_auth_factors(proto_type);
         supported_auth_factors.push_back(*type);
       }
@@ -3960,12 +3965,14 @@ void UserDataAuth::ModifyAuthFactorIntentsWithSession(
         continue;
       }
       if (is_ephemeral_user) {
-        if (!driver.IsLightAuthSupported(intent)) {
+        if (!driver.IsLightAuthSupported(
+                intent, AuthFactorDriver::UserType::kEphemeral)) {
           continue;
         }
       } else {
-        if (!driver.IsLightAuthSupported(intent) &&
-            !driver.IsFullAuthSupported(intent)) {
+        if (!driver.IsFullAuthSupported(intent) &&
+            !driver.IsLightAuthSupported(
+                intent, AuthFactorDriver::UserType::kPersistent)) {
           continue;
         }
       }

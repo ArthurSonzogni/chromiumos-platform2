@@ -106,11 +106,14 @@ class AuthFactorWithDriverTest : public ::testing::Test {
     EncryptedUss uss(uss_container);
     UserUssStorage user_uss_storage(uss_storage_, kObfuscatedUser);
     EXPECT_THAT(uss.ToStorage(user_uss_storage), IsOk());
+
+    ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_, IsPinWeaverEnabled()).WillByDefault(ReturnValue(false));
   }
 
   // Mocks for all of the manager dependencies.
   NiceMock<libstorage::MockPlatform> platform_;
-  hwsec::MockCryptohomeFrontend hwsec_;
+  NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   hwsec::MockPinWeaverManagerFrontend hwsec_pw_manager_;
   hwsec::MockRecoveryCryptoFrontend hwsec_recovery_crypto_;
   MockCryptohomeKeysManager cryptohome_keys_manager_;

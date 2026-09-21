@@ -17,6 +17,7 @@
 #include "cryptohome/auth_factor/types/common.h"
 #include "cryptohome/auth_session/intent.h"
 #include "cryptohome/credential_verifier.h"
+#include "cryptohome/crypto.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
 
@@ -75,20 +76,24 @@ class PasswordAuthFactorDriver final
       public AfDriverNoExpiration,
       public AfDriverNoRateLimiter {
  public:
-  PasswordAuthFactorDriver() = default;
+  explicit PasswordAuthFactorDriver(Crypto* crypto) : crypto_(crypto) {}
 
  private:
   bool IsSupportedByHardware() const override;
-  bool IsLightAuthSupported(AuthIntent auth_intent) const override;
+  bool IsLightAuthSupported(AuthIntent auth_intent,
+                            UserType user_type) const override;
   std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
       const std::string& auth_factor_label,
       const AuthInput& auth_input,
-      const AuthFactorMetadata& auth_factor_metadata) const override;
+      const AuthFactorMetadata& auth_factor_metadata,
+      UserType user_type) const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
       const CommonMetadata& common,
       const PasswordMetadata& typed_metadata) const override;
+
+  Crypto* crypto_;
 };
 
 }  // namespace cryptohome

@@ -50,11 +50,13 @@ class SmartCardAuthFactorDriver final
 
  private:
   bool IsSupportedByHardware() const override;
-  bool IsLightAuthSupported(AuthIntent auth_intent) const override;
+  bool IsLightAuthSupported(AuthIntent auth_intent,
+                            UserType user_type) const override;
   std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
       const std::string& auth_factor_label,
       const AuthInput& auth_input,
-      const AuthFactorMetadata& auth_factor_metadata) const override;
+      const AuthFactorMetadata& auth_factor_metadata,
+      UserType user_type) const override;
   bool NeedsResetSecret() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 

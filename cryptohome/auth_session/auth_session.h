@@ -187,6 +187,10 @@ class AuthSession final {
   // This function returns if the AuthSession is being setup for an ephemeral
   // user.
   bool ephemeral_user() const { return is_ephemeral_user_; }
+  AuthFactorDriver::UserType user_type() const {
+    return is_ephemeral_user_ ? AuthFactorDriver::UserType::kEphemeral
+                              : AuthFactorDriver::UserType::kPersistent;
+  }
 
   // Returns the key data with which this AuthSession is authenticated with.
   const KeyData& current_key_data() const { return key_data_; }

@@ -198,13 +198,15 @@ class AfDriverFullAuthIsRepeatable : public virtual AuthFactorDriver {
 // support verifiers.
 class AfDriverNoCredentialVerifier : public virtual AuthFactorDriver {
  private:
-  bool IsLightAuthSupported(AuthIntent auth_intent) const final {
+  bool IsLightAuthSupported(AuthIntent auth_intent,
+                            UserType user_type) const final {
     return false;
   }
   std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
       const std::string& auth_factor_label,
       const AuthInput& auth_input,
-      const AuthFactorMetadata& auth_factor_metadata) const final {
+      const AuthFactorMetadata& auth_factor_metadata,
+      UserType user_type) const final {
     return nullptr;
   }
 };
