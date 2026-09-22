@@ -14,6 +14,8 @@
 #include <string>
 #include <type_traits>
 
+#include <base/check_op.h>
+#include <base/numerics/checked_math.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/strings/stringprintf.h>
 
@@ -74,12 +76,14 @@ struct Rect {
 };
 
 struct Size {
+  static constexpr uint32_t kMaxDimension = 10000;
+
   uint32_t width;
   uint32_t height;
 
   Size() : width(0), height(0) {}
   Size(uint32_t w, uint32_t h) : width(w), height(h) {}
-  uint32_t area() const { return width * height; }
+  uint32_t area() const { return base::CheckMul(width, height).ValueOrDie(); }
   bool operator<(const Size& rhs) const {
     if (area() == rhs.area()) {
       return width < rhs.width;

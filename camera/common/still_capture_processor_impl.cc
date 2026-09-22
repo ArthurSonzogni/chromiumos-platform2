@@ -294,8 +294,17 @@ void StillCaptureProcessorImpl::QueuePendingRequest(
   base::span<const int32_t> thumbnail_size =
       request.GetMetadata<int32_t>(ANDROID_JPEG_THUMBNAIL_SIZE);
   if (thumbnail_size.size() == 2) {
-    req.thumbnail_size = {static_cast<uint32_t>(thumbnail_size[0]),
-                          static_cast<uint32_t>(thumbnail_size[1])};
+    int32_t width = thumbnail_size[0];
+    int32_t height = thumbnail_size[1];
+    if (width >= 0 && width <= static_cast<int32_t>(Size::kMaxDimension) &&
+        width % 2 == 0 && height >= 0 &&
+        height <= static_cast<int32_t>(Size::kMaxDimension) &&
+        height % 2 == 0) {
+      req.thumbnail_size = {static_cast<uint32_t>(width),
+                            static_cast<uint32_t>(height)};
+    } else {
+      LOGF(ERROR) << "Invalid JPEG thumbnail size: " << width << "x" << height;
+    }
   }
   base::span<const uint8_t> thumbnail_quality =
       request.GetMetadata<uint8_t>(ANDROID_JPEG_THUMBNAIL_QUALITY);
