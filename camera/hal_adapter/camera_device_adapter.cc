@@ -26,6 +26,7 @@
 #include <base/hash/hash.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
+#include <base/numerics/checked_math.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/synchronization/lock.h>
 #include <base/time/time.h>
@@ -1377,9 +1378,16 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
   }
 
   size_t num_planes = fds.size();
-  CHECK_LE(num_planes, kMaxPlanes);
-  CHECK_EQ(num_planes, strides.size());
-  CHECK_EQ(num_planes, offsets.size());
+  if (num_planes == 0 || num_planes > kMaxPlanes ||
+      strides.size() != num_planes || offsets.size() != num_planes) {
+    LOGF(ERROR) << "Invalid plane count (" << num_planes
+                << ") or mismatched strides/offsets size";
+    return -EINVAL;
+  }
+  if (width == 0 || height == 0) {
+    LOGF(ERROR) << "Invalid buffer dimensions: " << width << "x" << height;
+    return -EINVAL;
+  }
   std::unique_ptr<camera_buffer_handle_t> buffer_handle =
       std::make_unique<camera_buffer_handle_t>();
   buffer_handle->base.version = sizeof(buffer_handle->base);
@@ -1403,6 +1411,45 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
   if (!CameraBufferManager::GetInstance()->IsValidBuffer(buffer_handle->self)) {
     LOGF(ERROR) << "Invalid buffer handle";
     return -EINVAL;
+  }
+
+  uint32_t expected_num_planes =
+      CameraBufferManager::GetNumPlanes(buffer_handle->self);
+  if (num_planes != expected_num_planes) {
+    LOGF(ERROR) << "Plane count mismatch: expected " << expected_num_planes
+                << ", got " << num_planes;
+    return -EINVAL;
+  }
+
+  for (size_t i = 0; i < num_planes; ++i) {
+    int fd = buffer_handle->fds[i];
+    if (fd < 0) {
+      LOGF(ERROR) << "Invalid fd for plane " << i;
+      return -EINVAL;
+    }
+    off_t fd_size = lseek(fd, 0, SEEK_END);
+    if (fd_size <= 0) {
+      PLOGF(ERROR) << "Failed to query dmabuf size for plane " << i;
+      return -EINVAL;
+    }
+    lseek(fd, 0, SEEK_SET);
+
+    size_t plane_size =
+        CameraBufferManager::GetPlaneSize(buffer_handle->self, i);
+    if (plane_size == 0) {
+      LOGF(ERROR) << "Invalid or overflowing plane size for plane " << i;
+      return -EINVAL;
+    }
+
+    base::CheckedNumeric<size_t> plane_end = buffer_handle->offsets[i];
+    plane_end += plane_size;
+    if (!plane_end.IsValid() ||
+        plane_end.ValueOrDie() > static_cast<size_t>(fd_size)) {
+      LOGF(ERROR) << "Plane " << i << " geometry exceeds dmabuf size: offset="
+                  << buffer_handle->offsets[i] << ", size=" << plane_size
+                  << ", fd_size=" << fd_size;
+      return -EINVAL;
+    }
   }
 
   buffer_handle->state = kReturned;

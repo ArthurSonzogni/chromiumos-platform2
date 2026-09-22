@@ -18,6 +18,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/no_destructor.h>
+#include <base/numerics/checked_math.h>
 #include <drm_fourcc.h>
 #include <hardware/gralloc.h>
 #include <system/graphics.h>
@@ -492,8 +493,14 @@ size_t CameraBufferManager::GetPlaneSize(buffer_handle_t buffer, size_t plane) {
     default:
       vertical_subsampling = 1;
   }
-  return (handle->strides[plane] *
-          DIV_ROUND_UP(handle->height, vertical_subsampling));
+  base::CheckedNumeric<size_t> plane_size = handle->strides[plane];
+  plane_size *= DIV_ROUND_UP(handle->height, vertical_subsampling);
+  if (!plane_size.IsValid()) {
+    LOGF(ERROR) << "Plane size overflow: stride=" << handle->strides[plane]
+                << ", height=" << handle->height;
+    return 0;
+  }
+  return plane_size.ValueOrDie();
 }
 
 // static
