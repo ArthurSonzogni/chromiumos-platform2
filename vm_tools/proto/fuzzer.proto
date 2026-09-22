@@ -22,6 +22,8 @@ import "vm_crash.proto";
 message ContainerListenerFuzzerSingleAction {
   // Next id: 66
   // Skip [100-110]
+  reserved 62, 63;
+
   oneof input {
     // Calls to the ContainerListener service.
     ContainerStartupInfo container_startup_info = 1;
@@ -39,8 +41,6 @@ message ContainerListenerFuzzerSingleAction {
     ForwardSecurityKeyMessageRequest forward_security_key_message_request = 50;
     SelectFileRequest select_file_request = 51;
     ReportMetricsRequest report_metrics_request = 57;
-    InstallShaderCacheRequest install_shader_cache_request = 62;
-    UninstallShaderCacheRequest uninstall_shader_cache_request = 63;
     InhibitScreensaverInfo inhibit_screensaver_info = 64;
     UninhibitScreensaverInfo uninhibit_screensaver_info = 65;
 

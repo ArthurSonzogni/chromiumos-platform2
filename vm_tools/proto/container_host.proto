@@ -320,36 +320,6 @@ message ReportMetricsResponse {
   int64 error = 1;
 }
 
-// Request shader cache DLC installation and optionally mount in host-side VM
-// gpu cache.
-message InstallShaderCacheRequest {
-  // The security token the container was given.
-  string token = 1;
-  // Steam application id
-  uint64 steam_app_id = 2;
-  // If true, mount the DLC contents in host-side VM gpu cache
-  bool mount = 3;
-  // If true, wait for shader cache DLC installation (and mount) to complete.
-  bool wait = 4;
-}
-
-message UninstallShaderCacheRequest {
-  // The security token the container was given.
-  string token = 1;
-  // Steam application id
-  uint64 steam_app_id = 2;
-}
-
-message UnmountShaderCacheRequest {
-  // The security token the container was given.
-  string token = 1;
-  // Steam application id
-  uint64 steam_app_id = 2;
-  // If true, wait for unmount to complete.
-  bool wait = 3;
-}
-
-// Response from ReportMetrics.
 // Notifying host that sleep should be inhibited
 message InhibitScreensaverInfo {
   // The security token the container was given.
@@ -430,15 +400,6 @@ service ContainerListener {
   rpc SelectFile(SelectFileRequest) returns (SelectFileResponse);
 
   rpc ReportMetrics(ReportMetricsRequest) returns (ReportMetricsResponse);
-
-  // Called by the VM to trigger Shader DLC install.
-  rpc InstallShaderCache(InstallShaderCacheRequest) returns (EmptyMessage);
-
-  // Called by the VM to trigger Shader DLC uninstall.
-  rpc UninstallShaderCache(UninstallShaderCacheRequest) returns (EmptyMessage);
-
-  // Called by the VM to trigger Shader DLC uninstall.
-  rpc UnmountShaderCache(UnmountShaderCacheRequest) returns (EmptyMessage);
 
   // Called by VM to inhibit sleep.
   rpc InhibitScreensaver(InhibitScreensaverInfo) returns (EmptyMessage);

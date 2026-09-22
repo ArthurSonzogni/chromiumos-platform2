@@ -303,16 +303,6 @@ DEFINE_PROTO_FUZZER(
         break;
 
       case vm_tools::container::ContainerListenerFuzzerSingleAction::
-          kInstallShaderCacheRequest:
-        // TODO(b/373195749): fuzz InstallShaderCacheRequest
-        break;
-
-      case vm_tools::container::ContainerListenerFuzzerSingleAction::
-          kUninstallShaderCacheRequest:
-        // TODO(b/373195749): fuzz UninstallShaderCacheRequest
-        break;
-
-      case vm_tools::container::ContainerListenerFuzzerSingleAction::
           kInhibitScreensaverInfo:
         container_listener->InhibitScreensaver(
             &context, &action.inhibit_screensaver_info(), &response);
