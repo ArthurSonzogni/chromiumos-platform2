@@ -14,6 +14,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_path_watcher.h>
 #include <base/functional/callback_helpers.h>
+#include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/synchronization/lock.h>
 #include <base/task/sequenced_task_runner.h>
@@ -66,11 +67,23 @@ class CROS_CAMERA_EXPORT ReloadableConfigFile {
   bool IsValid() const;
 
  private:
+  struct WatcherContext : public base::RefCountedThreadSafe<WatcherContext> {
+    explicit WatcherContext(ReloadableConfigFile* parent) : parent(parent) {}
+
+    base::Lock lock;
+    ReloadableConfigFile* parent GUARDED_BY(lock) = nullptr;
+
+   private:
+    friend class base::RefCountedThreadSafe<WatcherContext>;
+    ~WatcherContext() = default;
+  };
+
   void ReadConfigFileLocked(const base::FilePath& file_path);
   void WriteConfigFileLocked(const base::FilePath& file_path);
   void OnConfigFileUpdated(const base::FilePath& file_path, bool error);
 
-  OptionsUpdateCallback options_update_callback_ = base::NullCallback();
+  OptionsUpdateCallback options_update_callback_ GUARDED_BY(options_lock_) =
+      base::NullCallback();
 
   // The default config file path. Usually this points to the device-specific
   // tuning file shipped with the OS image.
@@ -80,6 +93,7 @@ class CROS_CAMERA_EXPORT ReloadableConfigFile {
   base::FilePath override_config_file_path_;
   std::unique_ptr<base::FilePathWatcher> override_file_path_watcher_;
   scoped_refptr<base::SequencedTaskRunner> file_path_watcher_runner_;
+  scoped_refptr<WatcherContext> watcher_context_;
 
   // Stores JSON values from |default_config_file_path_| if the path is not
   // empty. Otherwise, |default_json_values_| is an empty dict.

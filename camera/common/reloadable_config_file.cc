@@ -17,7 +17,6 @@
 #include <base/functional/bind.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
-#include <base/synchronization/waitable_event.h>
 #include <base/task/sequenced_task_runner.h>
 
 namespace cros {
@@ -35,10 +34,18 @@ ReloadableConfigFile::ReloadableConfigFile(const Options& options)
     override_file_path_watcher_ = std::make_unique<base::FilePathWatcher>();
     CHECK(base::SequencedTaskRunner::HasCurrentDefault());
     file_path_watcher_runner_ = base::SequencedTaskRunner::GetCurrentDefault();
+    watcher_context_ = base::MakeRefCounted<WatcherContext>(this);
     bool ret = override_file_path_watcher_->Watch(
         override_config_file_path_, base::FilePathWatcher::Type::kNonRecursive,
-        base::BindRepeating(&ReloadableConfigFile::OnConfigFileUpdated,
-                            base::Unretained(this)));
+        base::BindRepeating(
+            [](scoped_refptr<WatcherContext> context,
+               const base::FilePath& file_path, bool error) {
+              base::AutoLock lock(context->lock);
+              if (context->parent) {
+                context->parent->OnConfigFileUpdated(file_path, error);
+              }
+            },
+            watcher_context_));
     DCHECK(ret) << "Can't monitor override config file path: "
                 << override_config_file_path_;
   }
@@ -49,8 +56,8 @@ ReloadableConfigFile::~ReloadableConfigFile() {
 }
 
 void ReloadableConfigFile::SetCallback(OptionsUpdateCallback callback) {
-  options_update_callback_ = std::move(callback);
   base::AutoLock lock(options_lock_);
+  options_update_callback_ = std::move(callback);
   if (json_values_.has_value()) {
     options_update_callback_.Run(*json_values_);
   }
@@ -59,6 +66,16 @@ void ReloadableConfigFile::SetCallback(OptionsUpdateCallback callback) {
 void ReloadableConfigFile::StopOverrideFileWatcher() {
   if (!override_file_path_watcher_) {
     return;
+  }
+
+  if (watcher_context_) {
+    base::AutoLock lock(watcher_context_->lock);
+    watcher_context_->parent = nullptr;
+  }
+
+  {
+    base::AutoLock lock(options_lock_);
+    options_update_callback_.Reset();
   }
 
   // base::FilePathWatcher needs to be started and stopped on the same sequence

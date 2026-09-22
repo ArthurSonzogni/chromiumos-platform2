@@ -182,11 +182,7 @@ HdrNetStreamManipulator::HdrNetStreamManipulator(
 
 HdrNetStreamManipulator::~HdrNetStreamManipulator() {
   // Stop watching the config override file before tearing down the GPU state so
-  // that no further OnOptionsUpdated() is delivered.  This narrows, but does
-  // not close, the window in which the file watcher sequence can run
-  // concurrently with destruction on the camera device ops thread.
-  // TODO(b/537016795): Make the watcher teardown synchronous in
-  // ReloadableConfigFile so the window is fully closed.
+  // that no further OnOptionsUpdated() is delivered.
   config_.StopOverrideFileWatcher();
 
   hdrnet_gpu_resources_->PostGpuTaskSync(
