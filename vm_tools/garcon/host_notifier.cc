@@ -5,10 +5,13 @@
 #include "vm_tools/garcon/host_notifier.h"
 
 #include <arpa/inet.h>
-#include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 #include <signal.h>
 #include <sys/signalfd.h>
 #include <sys/socket.h>
+
+// clang-format off
+#include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
+// clang-format on
 
 #include <algorithm>
 #include <cstdint>
@@ -179,75 +182,6 @@ bool HostNotifier::SelectFile(const std::string& type,
       std::make_move_iterator(select_file_response.mutable_files()->begin()),
       std::make_move_iterator(select_file_response.mutable_files()->end()),
       std::back_inserter(*files));
-  return true;
-}
-
-bool HostNotifier::InstallShaderCache(uint64_t steam_app_id,
-                                      bool mount,
-                                      bool wait) {
-  grpc::ClientContext ctx;
-
-  vm_tools::container::InstallShaderCacheRequest request;
-  EmptyMessage response;
-  request.set_token(token_);
-  request.set_steam_app_id(steam_app_id);
-  request.set_mount(mount);
-  request.set_wait(wait);
-
-  // Request Cicerone to download and install shader cache
-  grpc::Status status = stub_->InstallShaderCache(&ctx, request, &response);
-
-  if (!status.ok()) {
-    if (mount && wait) {
-      LOG(ERROR) << "Failed to install and mount shader cache: "
-                 << status.error_message();
-    } else {
-      LOG(ERROR) << "Failed to trigger shader cache installation: "
-                 << status.error_message();
-    }
-    return false;
-  }
-  if (mount && wait) {
-    // The requested mount op was waited on and returned with no errors.
-    LOG(INFO) << "Successfully installed and mounted shader cache DLC";
-  } else {
-    LOG(INFO) << "Successfully scheduled shader cache DLC for installation";
-  }
-  return true;
-}
-
-bool HostNotifier::UninstallShaderCache(uint64_t steam_app_id) {
-  grpc::ClientContext ctx;
-
-  vm_tools::container::UninstallShaderCacheRequest request;
-  EmptyMessage response;
-  request.set_token(token_);
-  request.set_steam_app_id(steam_app_id);
-
-  grpc::Status status = stub_->UninstallShaderCache(&ctx, request, &response);
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to unmount and uninstall shader cache: "
-               << status.error_message();
-    return false;
-  }
-  return true;
-}
-
-bool HostNotifier::UnmountShaderCache(uint64_t steam_app_id, bool wait) {
-  grpc::ClientContext ctx;
-
-  vm_tools::container::UnmountShaderCacheRequest request;
-  EmptyMessage response;
-  request.set_token(token_);
-  request.set_steam_app_id(steam_app_id);
-  request.set_wait(wait);
-
-  grpc::Status status = stub_->UnmountShaderCache(&ctx, request, &response);
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to queue unmount shader cache: "
-               << status.error_message();
-    return false;
-  }
   return true;
 }
 
@@ -606,25 +540,6 @@ void HostNotifier::NotifyHostOfPendingAppListUpdates() {
   }
 }
 
-void HostNotifier::HandleSteamApp(
-    std::unordered_set<uint64_t> found_steam_apps) {
-  for (auto app_id : found_steam_apps) {
-    if (installed_steam_apps_.find(app_id) == installed_steam_apps_.end()) {
-      LOG(INFO) << "Attempting to install shader cache for newly installed "
-                << "steam app";
-      InstallShaderCache(app_id, false, false);
-    }
-  }
-  for (auto app_id : installed_steam_apps_) {
-    if (found_steam_apps.find(app_id) == found_steam_apps.end()) {
-      LOG(INFO) << "Attempting to uninstall shader cache for removed steam app";
-      UninstallShaderCache(app_id);
-    }
-  }
-
-  installed_steam_apps_ = found_steam_apps;
-}
-
 void HostNotifier::SendAppListToHost() {
   if (send_app_list_to_host_in_progress_) {
     // Don't have multiple SendAppListToHost callback chains happening at the
@@ -646,8 +561,6 @@ void HostNotifier::SendAppListToHost() {
   // If we hit duplicate IDs, then we are supposed to use the first one only.
   std::set<std::string> unique_app_ids;
 
-  std::unordered_set<uint64_t> found_steam_apps;
-
   // Get the list of directories that we should search for .desktop files
   // recursively and then perform the search.
   std::vector<base::FilePath> search_paths =
@@ -668,11 +581,6 @@ void HostNotifier::SendAppListToHost() {
         LOG(WARNING) << "Failed parsing the .desktop file: "
                      << enum_path.value();
         continue;
-      }
-
-      // Found steam apps
-      if (desktop_file->steam_app_id()) {
-        found_steam_apps.emplace(desktop_file->steam_app_id());
       }
 
       // If we have already seen this desktop file ID then don't analyze this
@@ -763,7 +671,6 @@ void HostNotifier::SendAppListToHost() {
   // round.
   send_app_list_to_host_in_progress_ = true;
 
-  HandleSteamApp(found_steam_apps);
   RequestNextPackageIdOrCompleteUpdateApplicationList(
       std::move(callback_state));
 }

@@ -15,11 +15,11 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path_watcher.h>
 #include <base/files/scoped_file.h>
-#include <base/timer/timer.h>
+#include <base/memory/weak_ptr.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/timer/timer.h>
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/container_host.grpc.pb.h>
-#include <base/memory/weak_ptr.h>
 
 #include "vm_tools/garcon/ansible_playbook_application.h"
 #include "vm_tools/garcon/package_kit_proxy.h"
@@ -54,15 +54,6 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
   // Sends a gRPC call to the host to report metrics.
   bool ReportMetrics(vm_tools::container::ReportMetricsRequest request,
                      vm_tools::container::ReportMetricsResponse* response);
-
-  // Install Shader Cache DLC and optionally mount it
-  bool InstallShaderCache(uint64_t steam_app_id, bool mount, bool wait);
-
-  // Unmount and uninstall shader cache DLC
-  bool UninstallShaderCache(uint64_t steam_app_id);
-
-  // Unmount shader cache DLC
-  bool UnmountShaderCache(uint64_t steam_app_id, bool wait);
 
   // Sends a gRPC call to the host to request that sleep be inhibited.
   bool InhibitScreensaver(vm_tools::container::InhibitScreensaverInfo info);
@@ -240,9 +231,6 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
   base::RepeatingTimer free_disk_space_timer_;
 
   uint32_t sftp_vsock_port_ = 0;
-
-  void HandleSteamApp(std::unordered_set<uint64_t> found_steam_apps);
-  std::unordered_set<uint64_t> installed_steam_apps_;
 
   base::WeakPtrFactory<HostNotifier> weak_ptr_factory_{this};
 };

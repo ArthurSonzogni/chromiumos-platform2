@@ -2,22 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <iostream>
 #include <limits.h>
 #include <signal.h>
 #include <sys/socket.h>
 #include <syslog.h>
 #include <unistd.h>
 
+// clang-format off
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
-#include <vm_protos/proto_bindings/container_host.pb.h>
+// clang-format on
 
+#include <iostream>
 #include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_split.h>
+#include <vm_protos/proto_bindings/container_host.pb.h>
 
 // syslog.h and base/logging.h both try to #define LOG_INFO and LOG_WARNING.
 // We need to #undef at least these two before including base/logging.h.  The
@@ -38,6 +40,7 @@ const int kSyslogCritical = LOG_CRIT;
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/logging/logging_settings.h>
@@ -50,9 +53,8 @@ const int kSyslogCritical = LOG_CRIT;
 #include <base/task/single_thread_task_executor.h>
 #include <base/task/task_runner.h>
 #include <base/threading/thread.h>
-#include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 #include <chromeos/constants/vm_tools.h>
-#include <base/files/scoped_file.h>
+#include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 
 #include "google/protobuf/util/json_util.h"
 #include "vm_tools/common/paths.h"
@@ -76,13 +78,6 @@ constexpr char kSelectFileTypeSwitch[] = "type";
 constexpr char kSelectFileTitleSwitch[] = "title";
 constexpr char kSelectFilePathSwitch[] = "path";
 constexpr char kSelectFileExtensionsSwitch[] = "extensions";
-constexpr char kShaderSwitch[] = "borealis-shader-cache";
-constexpr char kShaderAppIDSwitch[] = "app-id";
-constexpr char kShaderInstallSwitch[] = "install";
-constexpr char kShaderUninstallSwitch[] = "uninstall";
-constexpr char kShaderMountSwitch[] = "mount";
-constexpr char kShaderUnmountSwitch[] = "unmount";
-constexpr char kShaderWaitSwitch[] = "wait";
 constexpr char kSftpServer[] = "/usr/lib/openssh/sftp-server";
 constexpr char kMetricsSwitch[] = "metrics";
 constexpr char kNoStartupNotifySwitch[] = "no_startup_notify";
@@ -266,20 +261,6 @@ void PrintUsage() {
             << "  --terminal: opens terminal\n"
             << "  --selectfile: open file dialog and return file: URL list\n"
             << "  --metrics: reports metrics to the host\n"
-            << "  --borealis-shader-cache: (un)install shader cache\n"
-            << "Borealis Shader Cache Switches "
-            << "(only with --client --borealis-shader-cache):\n"
-            << "  --app-id: Steam app ID\n"
-            << "  --install: (optional) Install shader cache DLC\n"
-            << "  --uninstall: (optional) Unmount and uninstall shader cache\n"
-            << "               DLC\n"
-            << "  --unmount: (optional) Unmount shader cache for this VM\n"
-            << "  --mount: (optional, use with --install) Upon shader cache\n"
-            << "           DLC installation, mount the DLC contents to VM's\n"
-            << "           GPU cache\n"
-            << "  --wait: (optional, use with --install or --unmount) Wait\n"
-            << "          for all the operations to complete, including DLC\n"
-            << "          download for --install\n"
             << "Select File Switches (only with --client --selectfile):\n"
             << "  --type: "
                "open-file|open-multi-file|saveas-file|folder|upload-folder\n"
@@ -349,86 +330,6 @@ int HandleMetricsArgs(std::vector<std::string> args,
   }
 
   return 0;
-}
-
-int HandleShaderCacheArgs(base::CommandLine* cl,
-                          vm_tools::garcon::HostNotifier* host_notifier) {
-  uint64_t app_id = 0;
-  std::string app_id_string = cl->GetSwitchValueNative(kShaderAppIDSwitch);
-  if (app_id_string.empty()) {
-    LOG(ERROR) << "Missing --" << kShaderAppIDSwitch << "=<Steam appid>";
-    return -1;
-  }
-  base::StringToUint64(app_id_string, &app_id);
-  if (app_id == 0) {
-    LOG(ERROR) << "Invalid app ID";
-    return -1;
-  }
-
-  auto flag_set = {kShaderInstallSwitch, kShaderUninstallSwitch,
-                   kShaderUnmountSwitch};
-  int flag_count = 0;
-  std::ostringstream flags_combined;
-  for (auto flag : flag_set) {
-    flag_count += cl->HasSwitch(flag);
-    flags_combined << flag << " ";
-  }
-  if (flag_count > 1) {
-    LOG(ERROR) << "Only one of the following flags is allowed: "
-               << flags_combined.str();
-    return -1;
-  } else if (flag_count == 0) {
-    LOG(ERROR) << "One of the following flags must be specified: "
-               << flags_combined.str();
-    return -1;
-  }
-
-  bool success = false;
-  if (cl->HasSwitch(kShaderInstallSwitch)) {
-    LOG(INFO) << "Installing shader cache for " << app_id_string;
-    if (cl->HasSwitch(kShaderMountSwitch)) {
-      LOG(INFO) << "Upon successful installation, shader cache will be mounted";
-    }
-    if (cl->HasSwitch(kShaderWaitSwitch)) {
-      LOG(INFO) << "Waiting for all operations to complete";
-    }
-    success = host_notifier->InstallShaderCache(
-        app_id, cl->HasSwitch(kShaderMountSwitch),
-        cl->HasSwitch(kShaderWaitSwitch));
-
-  } else if (cl->HasSwitch(kShaderUnmountSwitch)) {
-    LOG(INFO) << "Queuing unmount command for " << app_id_string
-              << " in the background. Shader cache will be unmounted once mesa"
-              << " stops using them.";
-    if (cl->HasSwitch(kShaderWaitSwitch)) {
-      LOG(INFO) << "Waiting for all operations to complete";
-    }
-    success = host_notifier->UnmountShaderCache(
-        app_id, cl->HasSwitch(kShaderWaitSwitch));
-
-  } else if (cl->HasSwitch(kShaderUninstallSwitch)) {
-    if (cl->HasSwitch(kShaderMountSwitch)) {
-      LOG(WARNING) << "Shader cache being uninstalled, ignoring --"
-                   << kShaderMountSwitch;
-    }
-    if (cl->HasSwitch(kShaderWaitSwitch)) {
-      LOG(WARNING) << "Shader cache uninstall always waits, --"
-                   << kShaderWaitSwitch << " flag is redundant";
-    }
-    if (cl->HasSwitch(kShaderUnmountSwitch)) {
-      LOG(WARNING) << "Shader cache uninstall always unmounts, --"
-                   << kShaderWaitSwitch << " flag is redundant";
-    }
-    LOG(INFO) << "Unmounting and uninstalling shader cache for "
-              << app_id_string;
-    success = host_notifier->UninstallShaderCache(app_id);
-  } else {
-    LOG(ERROR) << "No command specified, specify one of --"
-               << kShaderInstallSwitch << ", --" << kShaderUnmountSwitch
-               << ", --" << kShaderUninstallSwitch;
-  }
-
-  return success ? 0 : -1;
 }
 }  // namespace
 
@@ -518,8 +419,6 @@ int main(int argc, char** argv) {
       }
     } else if (cl->HasSwitch(kMetricsSwitch)) {
       return HandleMetricsArgs(cl->GetArgs(), host_notifier.get());
-    } else if (cl->HasSwitch(kShaderSwitch)) {
-      return HandleShaderCacheArgs(cl, host_notifier.get());
     }
     LOG(ERROR) << "Missing client switch for client mode.";
     PrintUsage();
