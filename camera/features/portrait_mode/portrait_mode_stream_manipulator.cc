@@ -525,14 +525,18 @@ void PortraitModeStreamManipulator::ResetOnThread() {
 
   still_capture_processor_->Reset();
 
+  if (portrait_mode_) {
+    portrait_mode_->Reset();
+  }
+  capture_contexts_.clear();
+  still_yuv_buffer_pool_.reset();
+  still_yuv_stream_.reset();
+
   portrait_mode_config_.reset();
   client_streams_.clear();
   blob_stream_ = nullptr;
   portrait_blob_stream_ = nullptr;
   yuv_stream_for_portrait_blob_ = nullptr;
-  still_yuv_stream_.reset();
-  still_yuv_buffer_pool_.reset();
-  capture_contexts_.clear();
 }
 
 void PortraitModeStreamManipulator::UploadMetricsOnThread() {

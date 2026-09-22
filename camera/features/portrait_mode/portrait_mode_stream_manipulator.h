@@ -102,9 +102,6 @@ class PortraitModeStreamManipulator : public StreamManipulator {
   StreamManipulator::Callbacks callbacks_;
   uint32_t partial_result_count_ = 0;
 
-  // PortraitModeEffect instance.
-  std::unique_ptr<PortraitModeEffect> portrait_mode_;
-
   // Fixed after ConfigureStreams().
   std::optional<PortraitModeConfig> portrait_mode_config_;
 
@@ -122,6 +119,11 @@ class PortraitModeStreamManipulator : public StreamManipulator {
 
   // Frame number corresponds to in-flight still image capture requests.
   std::map<uint32_t, std::unique_ptr<CaptureContext>> capture_contexts_;
+
+  // PortraitModeEffect instance. Declared after still_yuv_buffer_pool_ and
+  // capture_contexts_ so the worker thread is joined before buffer pools are
+  // freed on destruction.
+  std::unique_ptr<PortraitModeEffect> portrait_mode_;
 
   CameraThread thread_;
   Metrics metrics_;

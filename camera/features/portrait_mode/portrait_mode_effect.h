@@ -7,6 +7,9 @@
 #ifndef CAMERA_FEATURES_PORTRAIT_MODE_PORTRAIT_MODE_EFFECT_H_
 #define CAMERA_FEATURES_PORTRAIT_MODE_PORTRAIT_MODE_EFFECT_H_
 
+#include <atomic>
+#include <memory>
+
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/process/process.h>
@@ -57,6 +60,9 @@ class PortraitModeEffect {
                          mojom::PortraitModeSegResult* segmentation_result,
                          buffer_handle_t output_buffer);
 
+  // Cancels any in-flight processing and resets the worker thread.
+  void Reset();
+
  private:
   void UpdateSegmentationResult(
       mojom::PortraitModeSegResult* segmentation_result, const int* result);
@@ -73,6 +79,7 @@ class PortraitModeEffect {
       buffer_handle_t input_buffer,
       buffer_handle_t output_buffer,
       int orientation,
+      std::shared_ptr<std::atomic<bool>> is_cancelled,
       base::OnceCallback<void(int32_t)> task_completed_callback);
 
   CameraBufferManager* buffer_manager_;

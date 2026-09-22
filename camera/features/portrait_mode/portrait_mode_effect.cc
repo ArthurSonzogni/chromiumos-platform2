@@ -49,12 +49,18 @@ constexpr int kPortraitProcessorTimeoutMs = 15000;
 
 PortraitModeEffect::PortraitModeEffect()
     : buffer_manager_(CameraBufferManager::GetInstance()),
-      thread_("PortraitModeEffectThread") {
+      thread_("PortraitModeEffectThread", base::Thread::Restartable{}) {
   CHECK(thread_.Start());
 }
 
 PortraitModeEffect::~PortraitModeEffect() {
   thread_.Stop();
+}
+
+void PortraitModeEffect::Reset() {
+  thread_.Stop();
+  portrait_processor_init = false;
+  CHECK(thread_.Start());
 }
 
 int32_t PortraitModeEffect::ProcessRequest(
@@ -70,14 +76,16 @@ int32_t PortraitModeEffect::ProcessRequest(
   base::ScopedClosureRunner result_metadata_runner(
       base::BindOnce(&PortraitModeEffect::UpdateSegmentationResult,
                      base::Unretained(this), segmentation_result, &result));
+  auto is_cancelled = std::make_shared<std::atomic<bool>>(false);
   auto task_completed = Future<int32_t>::Create(nullptr);
   thread_.task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(&PortraitModeEffect::ProcessRequestAsync,
                      base::Unretained(this), input_buffer, output_buffer,
-                     base::checked_cast<int>(orientation),
+                     base::checked_cast<int>(orientation), is_cancelled,
                      GetFutureCallback(task_completed)));
   if (!task_completed->Wait(kPortraitProcessorTimeoutMs)) {
+    is_cancelled->store(true);
     result = -ETIMEDOUT;
     return result;
   }
@@ -246,10 +254,15 @@ void PortraitModeEffect::ProcessRequestAsync(
     buffer_handle_t input_buffer,
     buffer_handle_t output_buffer,
     int orientation,
+    std::shared_ptr<std::atomic<bool>> is_cancelled,
     base::OnceCallback<void(int32_t)> task_completed_callback) {
   CHECK(thread_.task_runner()->BelongsToCurrentThread());
   CHECK(input_buffer);
   CHECK(output_buffer);
+
+  if (is_cancelled->load()) {
+    return;
+  }
 
   if (!portrait_processor_init) {
     if (!portrait_processor_.Init()) {
@@ -259,28 +272,33 @@ void PortraitModeEffect::ProcessRequestAsync(
     portrait_processor_init = true;
   }
 
-  ScopedMapping input_mapping(input_buffer);
-  ScopedMapping output_mapping(output_buffer);
-  uint32_t width = input_mapping.width();
-  uint32_t height = input_mapping.height();
-  uint32_t v4l2_format = input_mapping.v4l2_format();
-  CHECK_EQ(output_mapping.width(), width);
-  CHECK_EQ(output_mapping.height(), height);
-  CHECK_EQ(output_mapping.v4l2_format(), v4l2_format);
-
   const uint32_t kRGBNumOfChannels = 3;
+  uint32_t width = 0;
+  uint32_t height = 0;
+  uint32_t v4l2_format = 0;
+  uint32_t rgb_buf_stride = 0;
 
   ResizableCpuBuffer input_rgb_buffer, output_rgb_buffer;
-  input_rgb_buffer.SetFormat(width, height, DRM_FORMAT_RGB888);
-  output_rgb_buffer.SetFormat(width, height, DRM_FORMAT_RGB888);
+  {
+    ScopedMapping input_mapping(input_buffer);
+    width = input_mapping.width();
+    height = input_mapping.height();
+    v4l2_format = input_mapping.v4l2_format();
 
-  uint32_t rgb_buf_stride = width * kRGBNumOfChannels;
+    input_rgb_buffer.SetFormat(width, height, DRM_FORMAT_RGB888);
+    output_rgb_buffer.SetFormat(width, height, DRM_FORMAT_RGB888);
+    rgb_buf_stride = width * kRGBNumOfChannels;
 
-  int result = ConvertYUVToRGB(input_mapping, input_rgb_buffer.plane(0).addr,
-                               rgb_buf_stride);
-  if (result != 0) {
-    LOGF(ERROR) << "Failed to convert from YUV to RGB";
-    std::move(task_completed_callback).Run(result);
+    int result = ConvertYUVToRGB(input_mapping, input_rgb_buffer.plane(0).addr,
+                                 rgb_buf_stride);
+    if (result != 0) {
+      LOGF(ERROR) << "Failed to convert from YUV to RGB";
+      std::move(task_completed_callback).Run(result);
+      return;
+    }
+  }
+
+  if (is_cancelled->load()) {
     return;
   }
 
@@ -299,17 +317,31 @@ void PortraitModeEffect::ProcessRequestAsync(
     // We assume the failure here is not containing a clear face. Returns 0
     // here with the status set in the vendor tag by |result_metadata_runner|
     LOGF(WARNING) << "Portrait processor failed with no human face detected.";
-    std::move(task_completed_callback).Run(-ECANCELED);
+    if (!is_cancelled->load()) {
+      std::move(task_completed_callback).Run(-ECANCELED);
+    }
     return;
   }
-  LOGF(INFO) << "Portrait processing finished, result: " << result;
+  LOGF(INFO) << "Portrait processing finished";
 
-  result = ConvertRGBToYUV(output_rgb_buffer.plane(0).addr, rgb_buf_stride,
-                           output_mapping);
+  if (is_cancelled->load()) {
+    LOGF(WARNING) << "Portrait processing timed out; skipping output conversion";
+    return;
+  }
+
+  ScopedMapping output_mapping(output_buffer);
+  CHECK_EQ(output_mapping.width(), width);
+  CHECK_EQ(output_mapping.height(), height);
+  CHECK_EQ(output_mapping.v4l2_format(), v4l2_format);
+
+  int result = ConvertRGBToYUV(output_rgb_buffer.plane(0).addr, rgb_buf_stride,
+                               output_mapping);
   if (result != 0) {
     LOGF(ERROR) << "Failed to convert from RGB to YUV";
   }
-  std::move(task_completed_callback).Run(result);
+  if (!is_cancelled->load()) {
+    std::move(task_completed_callback).Run(result);
+  }
 }
 
 }  // namespace cros

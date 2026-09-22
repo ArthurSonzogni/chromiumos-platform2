@@ -22,7 +22,8 @@ namespace cros {
 
 class CROS_CAMERA_EXPORT CameraThread {
  public:
-  explicit CameraThread(std::string name) : thread_(name) {}
+  explicit CameraThread(std::string name)
+      : thread_(name, base::Thread::Restartable{}) {}
 
   CameraThread(const CameraThread&) = delete;
   CameraThread& operator=(const CameraThread&) = delete;
