@@ -74,6 +74,7 @@ class RotateAndCropStreamManipulator : public StreamManipulator {
   bool ProcessCaptureResult(Camera3CaptureDescriptor result) override;
   void Notify(camera3_notify_msg_t msg) override;
   bool Flush() override;
+  scoped_refptr<base::SingleThreadTaskRunner> GetTaskRunner() override;
 
  private:
   void ResetBuffersOnThread();

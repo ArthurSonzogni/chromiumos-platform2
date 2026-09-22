@@ -324,6 +324,11 @@ bool RotateAndCropStreamManipulator::Flush() {
   return true;
 }
 
+scoped_refptr<base::SingleThreadTaskRunner>
+RotateAndCropStreamManipulator::GetTaskRunner() {
+  return thread_.task_runner();
+}
+
 void RotateAndCropStreamManipulator::ResetBuffersOnThread() {
   CHECK(thread_.IsCurrentThread());
 

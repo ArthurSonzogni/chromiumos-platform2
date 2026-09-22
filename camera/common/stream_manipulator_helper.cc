@@ -1228,25 +1228,10 @@ StreamManipulatorHelper::GetCaptureContext(uint32_t frame_number) {
 
 StreamManipulatorHelper::PrivateContext*
 StreamManipulatorHelper::GetPrivateContext(uint32_t frame_number) {
-  if (!task_runner_->RunsTasksInCurrentSequence()) {
-    PrivateContext* ret = nullptr;
-    base::WaitableEvent done;
-    task_runner_->PostTask(
-        FROM_HERE, base::BindOnce(&StreamManipulatorHelper::GetPrivateContext,
-                                  base::Unretained(this), frame_number)
-                       .Then(base::BindOnce(
-                           [](base::WaitableEvent* done, PrivateContext** ret,
-                              PrivateContext* result) {
-                             *ret = result;
-                             done->Signal();
-                           },
-                           base::Unretained(&done), base::Unretained(&ret))));
-    done.Wait();
-    return ret;
-  }
-
-  auto [ctx, ctx_remover] = GetCaptureContext(frame_number);
-  return ctx != nullptr ? ctx->private_context.get() : nullptr;
+  CHECK(task_runner_->RunsTasksInCurrentSequence());
+  auto it = capture_contexts_.find(frame_number);
+  return it != capture_contexts_.end() ? it->second->private_context.get()
+                                       : nullptr;
 }
 
 void StreamManipulatorHelper::ReturnCaptureResult(
