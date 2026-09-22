@@ -12,7 +12,9 @@
 #include <optional>
 #include <utility>
 
+#include <base/check_op.h>
 #include <base/functional/callback_helpers.h>
+#include <base/numerics/checked_math.h>
 #include <libyuv/scale.h>
 #include <sync/sync.h>
 
@@ -64,7 +66,16 @@ constexpr uint16_t kJpegCOM = 0xFFFE;
 void InsertJpegBlobDescriptor(buffer_handle_t jpeg_blob,
                               uint32_t jpeg_data_size) {
   ScopedMapping mapping(jpeg_blob);
+  if (!mapping.is_valid() || mapping.plane(0).addr == nullptr) {
+    LOGF(ERROR) << "Failed to map JPEG buffer for blob descriptor";
+    return;
+  }
   size_t buffer_size = CameraBufferManager::GetPlaneSize(jpeg_blob, 0);
+  if (buffer_size < sizeof(camera3_jpeg_blob_t)) {
+    LOGF(ERROR) << "Buffer size " << buffer_size
+                << " too small for camera3_jpeg_blob_t";
+    return;
+  }
   camera3_jpeg_blob_t* blob = reinterpret_cast<camera3_jpeg_blob_t*>(
       static_cast<uint8_t*>(mapping.plane(0).addr) + buffer_size -
       sizeof(camera3_jpeg_blob_t));
@@ -87,7 +98,7 @@ bool ParseAppSections(base::span<uint8_t> blob,
       return (*addr << 8) + *(addr + 1);
     };
 
-    if (src_addr + 2 > src_end) {
+    if (static_cast<size_t>(src_end - src_addr) < kJpegMarkerSize) {
       LOGF(ERROR) << "Incomplete marker";
       return false;
     }
@@ -113,14 +124,26 @@ bool ParseAppSections(base::span<uint8_t> blob,
       case kJpegDHT:
       case kJpegDQT:
       case kJpegDRI:
-      case kJpegSOS:
+      case kJpegSOS: {
         // Skip the marker and the payload.
-        if (src_addr + kJpegMarkerSize + kJpegLengthSize > src_end) {
+        if (static_cast<size_t>(src_end - src_addr) <
+            kJpegMarkerSize + kJpegLengthSize) {
           LOGF(ERROR) << "Invalid JPEG header";
           return false;
         }
-        src_addr += (kJpegMarkerSize + parse_word(src_addr + kJpegMarkerSize));
+        uint16_t payload_size = parse_word(src_addr + kJpegMarkerSize);
+        if (payload_size < kJpegLengthSize) {
+          LOGF(ERROR) << "Invalid JPEG segment length: " << payload_size;
+          return false;
+        }
+        size_t segment_size = kJpegMarkerSize + payload_size;
+        if (segment_size > static_cast<size_t>(src_end - src_addr)) {
+          LOGF(ERROR) << "Invalid JPEG header";
+          return false;
+        }
+        src_addr += segment_size;
         break;
+      }
 
       case kJpegAPP0:
       case kJpegAPP1:
@@ -140,13 +163,18 @@ bool ParseAppSections(base::span<uint8_t> blob,
       case kJpegAPP15:
       case kJpegCOM: {
         // Copy out the APPn/COM marker and payload.
-        if (src_addr + kJpegMarkerSize + kJpegLengthSize > src_end) {
+        if (static_cast<size_t>(src_end - src_addr) <
+            kJpegMarkerSize + kJpegLengthSize) {
           LOGF(ERROR) << "Invalid JPEG header";
           return false;
         }
-        size_t segment_size =
-            kJpegMarkerSize + parse_word(src_addr + kJpegMarkerSize);
-        if (src_addr + segment_size > src_end) {
+        uint16_t payload_size = parse_word(src_addr + kJpegMarkerSize);
+        if (payload_size < kJpegLengthSize) {
+          LOGF(ERROR) << "Invalid JPEG segment length: " << payload_size;
+          return false;
+        }
+        size_t segment_size = kJpegMarkerSize + payload_size;
+        if (segment_size > static_cast<size_t>(src_end - src_addr)) {
           LOGF(ERROR) << "Invalid JPEG header";
           return false;
         }
@@ -559,7 +587,88 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
 
   VLOGFID(1, frame_number) << "Producing JPEG";
   {
+    auto return_error = [&]() {
+      context->client_requested_buffer->status = CAMERA3_BUFFER_STATUS_ERROR;
+      Camera3CaptureDescriptor blob_result(camera3_capture_result_t{
+          .frame_number = static_cast<uint32_t>(frame_number),
+          .num_output_buffers = 1,
+          .output_buffers = &*context->client_requested_buffer,
+          .partial_result = 0,
+      });
+      result_callback_.Run(std::move(blob_result));
+      base::AutoLock lock(request_contexts_lock_);
+      request_contexts_.erase(frame_number);
+    };
+
     ScopedMapping result_mapping(*context->client_requested_buffer->buffer);
+    if (!result_mapping.is_valid() || result_mapping.plane(0).addr == nullptr) {
+      LOGF(ERROR) << "Cannot map client BLOB buffer";
+      return_error();
+      return;
+    }
+
+    const size_t buffer_size = result_mapping.plane(0).size;
+    if (buffer_size <= sizeof(camera3_jpeg_blob_t)) {
+      LOGF(ERROR) << "BLOB buffer size (" << buffer_size
+                  << ") is too small for camera3_jpeg_blob_t";
+      return_error();
+      return;
+    }
+
+    if (context->jpeg_blob_size < kJpegMarkerSize) {
+      LOGF(ERROR) << "Invalid JPEG blob size: " << context->jpeg_blob_size;
+      return_error();
+      return;
+    }
+
+    const size_t max_jpeg_size = buffer_size - sizeof(camera3_jpeg_blob_t);
+
+    // Prepare APP1 thumbnail if requested and available.
+    ExifUtils exif_utils;
+    bool has_custom_app1 = false;
+    if (context->thumbnail_size.area() > 0 &&
+        context->thumbnail_buffer.size() > 0) {
+      auto it = context->apps_segments_index.find(kJpegAPP1);
+      if (it != context->apps_segments_index.end()) {
+        if (!exif_utils.InitializeWithData(it->second)) {
+          LOGF(ERROR) << "Cannot load APPs segments";
+        } else if (!exif_utils.SetOrientation(context->orientation)) {
+          LOGF(ERROR) << "Cannot set orientation";
+        } else if (!exif_utils.GenerateApp1(context->thumbnail_buffer.data(),
+                                            context->thumbnail_buffer.size(),
+                                            ExifUtils::Compression::kJpeg)) {
+          LOGF(ERROR) << "Cannot generate APP1 segment with thumbnail";
+        } else {
+          has_custom_app1 = true;
+        }
+      }
+    }
+
+    // Verify that the total JPEG data fits into the client buffer.
+    base::CheckedNumeric<size_t> required_size = kJpegMarkerSize;  // kJpegSOF
+    for (const auto& [marker, segment] : context->apps_segments_index) {
+      if (marker == kJpegAPP0) {
+        continue;
+      }
+      if (marker == kJpegAPP1 && has_custom_app1) {
+        required_size +=
+            kJpegMarkerSize + kJpegLengthSize + exif_utils.GetApp1Length();
+      } else {
+        required_size += segment.size();
+      }
+    }
+    required_size += (context->jpeg_blob_size - kJpegMarkerSize);
+
+    if (!required_size.IsValid() ||
+        required_size.ValueOrDie() > max_jpeg_size) {
+      LOGF(ERROR) << "Total JPEG size ("
+                  << static_cast<size_t>(required_size.ValueOrDefault(0))
+                  << ") exceeds available BLOB buffer size (" << max_jpeg_size
+                  << ")";
+      return_error();
+      return;
+    }
+
     uint8_t* dst_start = result_mapping.plane(0).addr;
     uint8_t* dst_addr = dst_start;
 
@@ -576,27 +685,9 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
           break;
 
         case kJpegAPP1: {
-          if (context->thumbnail_size.area() > 0 &&
-              context->thumbnail_buffer.size() > 0) {
+          if (has_custom_app1) {
             VLOGFID(1, frame_number) << "Write JPEG segment 0x" << std::hex
                                      << it->first << " with thumbnail";
-            // Thumbnail requested and available, so replace the thumbnail.
-            ExifUtils exif_utils;
-            if (!exif_utils.InitializeWithData(it->second)) {
-              LOGF(ERROR) << "Cannot load APPs segments";
-              break;
-            }
-            if (!exif_utils.SetOrientation(context->orientation)) {
-              LOGF(ERROR) << "Cannot set orientation";
-              break;
-            }
-            if (!exif_utils.GenerateApp1(context->thumbnail_buffer.data(),
-                                         context->thumbnail_buffer.size(),
-                                         ExifUtils::Compression::kJpeg)) {
-              LOGF(ERROR) << "Cannot generate APP1 segment with thumbnail";
-              break;
-            }
-
             // Write the APP1 marker.
             dst_addr = WriteTwoBytes(dst_addr, kJpegAPP1);
 
@@ -627,6 +718,9 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
     std::copy(jpeg_mapping.plane(0).addr + kJpegMarkerSize,
               jpeg_mapping.plane(0).addr + context->jpeg_blob_size, dst_addr);
     dst_addr += (context->jpeg_blob_size - kJpegMarkerSize);
+
+    CHECK_EQ(static_cast<size_t>(dst_addr - dst_start),
+             static_cast<size_t>(required_size.ValueOrDie()));
 
     InsertJpegBlobDescriptor(*context->client_requested_buffer->buffer,
                              (dst_addr - dst_start));
