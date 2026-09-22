@@ -1388,6 +1388,10 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
     LOGF(ERROR) << "Invalid buffer dimensions: " << width << "x" << height;
     return -EINVAL;
   }
+  if (offsets[0] != 0) {
+    LOGF(ERROR) << "Plane 0 offset must be 0, got " << offsets[0];
+    return -EINVAL;
+  }
   std::unique_ptr<camera_buffer_handle_t> buffer_handle =
       std::make_unique<camera_buffer_handle_t>();
   buffer_handle->base.version = sizeof(buffer_handle->base);
@@ -1449,6 +1453,19 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
                   << buffer_handle->offsets[i] << ", size=" << plane_size
                   << ", fd_size=" << fd_size;
       return -EINVAL;
+    }
+
+    if (i > 0 && buffer_handle->offsets[i] != 0) {
+      size_t prev_plane_size =
+          CameraBufferManager::GetPlaneSize(buffer_handle->self, i - 1);
+      base::CheckedNumeric<size_t> min_offset = buffer_handle->offsets[i - 1];
+      min_offset += prev_plane_size;
+      if (!min_offset.IsValid() ||
+          buffer_handle->offsets[i] < min_offset.ValueOrDie()) {
+        LOGF(ERROR) << "Plane " << i << " offset (" << buffer_handle->offsets[i]
+                    << ") overlaps with preceding plane " << (i - 1);
+        return -EINVAL;
+      }
     }
   }
 
