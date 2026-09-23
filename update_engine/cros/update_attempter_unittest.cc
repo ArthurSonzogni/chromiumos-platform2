@@ -3361,6 +3361,43 @@ TEST_F(UpdateAttempterTest, AfterRepeatedInvalidatesUpdateOnError) {
   EXPECT_FALSE(attempter_.GetBootTimeAtUpdate(nullptr));
 }
 
+TEST_F(UpdateAttempterTest,
+       MigrateInstallAllowsInactiveSlotWhenNotHighestOffset) {
+  auto* fake_boot_control = FakeSystemState::Get()->fake_boot_control();
+  attempter_.pm_ = ProcessMode::MIGRATE;
+  attempter_.dlc_ids_ = {"migration-dlc"};
+
+  // Reject migration when the inactive slot is invalid or lacks a valid root
+  // partition number.
+  fake_boot_control->SetFirstInactiveSlot(BootControlInterface::kInvalidSlot);
+  fake_boot_control->SetCurrentPartition(3);
+  EXPECT_CALL(*processor_, EnqueueAction(_)).Times(0);
+  attempter_.Install();
+  EXPECT_EQ(UpdateStatus::IDLE, attempter_.status_);
+
+  fake_boot_control->SetFirstInactiveSlot(0);
+  fake_boot_control->SetCurrentPartition(-1);
+  EXPECT_CALL(*processor_, EnqueueAction(_)).Times(0);
+  attempter_.Install();
+  EXPECT_EQ(UpdateStatus::IDLE, attempter_.status_);
+
+  // Simulate booting from Slot B (1), so the inactive slot is Slot A (0).
+  fake_boot_control->SetCurrentSlot(1);
+  fake_boot_control->SetFirstInactiveSlot(0);
+  fake_boot_control->SetCurrentPartition(3);
+
+  EXPECT_CALL(*processor_,
+              EnqueueAction(Pointee(Property(&AbstractAction::Type,
+                                             InstallAction::StaticType()))))
+      .Times(1);
+  EXPECT_CALL(*processor_, StartProcessing()).Times(1);
+
+  attempter_.Install();
+  loop_.RunOnce(false);
+  EXPECT_EQ(UpdateStatus::CHECKING_FOR_UPDATE, attempter_.status_);
+  loop_.BreakLoop();
+}
+
 TEST_F(UpdateAttempterTest, CheckForInstallAllowsNormalAndMigrationInstalls) {
   FakeSystemState::Get()->fake_hardware()->SetIsOfficialBuild(false);
 

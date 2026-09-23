@@ -466,18 +466,14 @@ void UpdateAttempter::Install() {
 
   if (pm_ == ProcessMode::MIGRATE) {
     auto* boot_control = SystemState::Get()->boot_control();
-    auto last_slot = boot_control->GetHighestOffsetSlot(kPartitionNameRoot);
+    // InstallAction writes the migration payload into the first inactive root
+    // slot (Slot A when booted from B, or Slot B when booted from A). Validate
+    // that the inactive slot has a valid root partition regardless of offset.
     auto inactive_slot = boot_control->GetFirstInactiveSlot();
     if (inactive_slot == BootControlInterface::kInvalidSlot ||
-        last_slot == BootControlInterface::kInvalidSlot) {
+        boot_control->GetPartitionNumber(kPartitionNameRoot, inactive_slot) <
+            0) {
       LOG(ERROR) << "Unable to determine installation slot for the migration.";
-      return;
-    }
-    if (inactive_slot != last_slot) {
-      LOG(ERROR) << "Migration DLC must be installed in the last slot: "
-                 << boot_control->SlotName(last_slot)
-                 << ". First inactive slot: "
-                 << boot_control->SlotName(inactive_slot);
       return;
     }
   }
@@ -1541,10 +1537,19 @@ void UpdateAttempter::ProcessingDoneMigrate(const ActionProcessor* processor,
     LOG(ERROR) << "Unable to get the boot device.";
     return;
   }
-  const auto& last_slot =
-      boot_control->GetHighestOffsetSlot(kPartitionNameRoot);
-  const auto& last_root =
-      boot_control->GetPartitionNumber(kPartitionNameRoot, last_slot);
+  // Target the inactive root partition where InstallAction wrote the migration
+  // DLC payload, rather than assuming the highest-offset slot.
+  const auto inactive_slot = boot_control->GetFirstInactiveSlot();
+  if (inactive_slot == BootControlInterface::kInvalidSlot) {
+    LOG(ERROR) << "Unable to determine inactive slot for migration.";
+    return;
+  }
+  const auto inactive_root =
+      boot_control->GetPartitionNumber(kPartitionNameRoot, inactive_slot);
+  if (inactive_root < 0) {
+    LOG(ERROR) << "Unable to get root partition number for inactive slot.";
+    return;
+  }
 
   // Get partition layout.
   const auto& manifest = SystemState::Get()->dlc_utils()->GetDlcManifest(
@@ -1574,7 +1579,7 @@ void UpdateAttempter::ProcessingDoneMigrate(const ActionProcessor* processor,
     return;
   }
 
-  if (!installer::MigratePartition(boot_device, last_root, partitions_json,
+  if (!installer::MigratePartition(boot_device, inactive_root, partitions_json,
                                    /*revert=*/false)) {
     LOG(ERROR) << "Failed to update partitions.";
     return;
@@ -1585,7 +1590,7 @@ void UpdateAttempter::ProcessingDoneMigrate(const ActionProcessor* processor,
                                             kPartitionNameVbmetaA)) {
     LOG(ERROR) << "Failed to set the boot priority on " << kPartitionNameVbmetaA
                << ", restoring partitions.";
-    installer::MigratePartition(boot_device, last_root, partitions_json,
+    installer::MigratePartition(boot_device, inactive_root, partitions_json,
                                 /*revert=*/true);
     return;
   }

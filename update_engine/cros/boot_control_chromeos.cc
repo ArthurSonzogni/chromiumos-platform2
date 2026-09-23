@@ -617,32 +617,4 @@ bool BootControlChromeOS::IsLvmStackEnabled(brillo::LogicalVolumeManager* lvm) {
   return is_lvm_stack_enabled_.value();
 }
 
-BootControlInterface::Slot BootControlChromeOS::GetHighestOffsetSlot(
-    const std::string& partition_name) const {
-  BootControlInterface::Slot slot = kInvalidSlot;
-  uint64_t last_offset = 0;
-  for (BootControlInterface::Slot i = 0; i < num_slots_; ++i) {
-    int partition_num = GetPartitionNumber(partition_name, i);
-    if (partition_num < 0) {
-      continue;
-    }
-
-    CgptAddParams params = {
-        .drive_name = const_cast<char*>(boot_disk_name_.c_str()),
-        .partition = static_cast<uint32_t>(partition_num)};
-
-    int retval = CgptGetPartitionDetails(&params);
-    if (retval != CGPT_OK) {
-      continue;
-    }
-
-    if (slot == kInvalidSlot || params.begin > last_offset) {
-      last_offset = params.begin;
-      slot = i;
-    }
-  }
-
-  return slot;
-}
-
 }  // namespace chromeos_update_engine

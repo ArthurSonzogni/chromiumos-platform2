@@ -110,9 +110,6 @@ class FakeBootControl : public BootControlInterface {
   void SetFirstInactiveSlot(BootControlInterface::Slot slot) {
     first_inactive_slot_ = slot;
   }
-  void SetHighestOffsetSlot(BootControlInterface::Slot slot) {
-    highest_offset_slot_ = slot;
-  }
   void SetCurrentPartition(int partition_num) {
     current_partition_ = partition_num;
   }
@@ -152,11 +149,6 @@ class FakeBootControl : public BootControlInterface {
   }
   void SetIsLvmStackEnabled(bool enabled) { is_lvm_stack_enabled_ = enabled; }
 
-  BootControlInterface::Slot GetHighestOffsetSlot(
-      const std::string& partition_name) const override {
-    return highest_offset_slot_;
-  };
-
   int GetPartitionNumber(const std::string partition_name,
                          BootControlInterface::Slot slot) const override {
     return current_partition_;
@@ -166,7 +158,6 @@ class FakeBootControl : public BootControlInterface {
   BootControlInterface::Slot num_slots_{2};
   BootControlInterface::Slot current_slot_{0};
   BootControlInterface::Slot first_inactive_slot_{0};
-  BootControlInterface::Slot highest_offset_slot_{1};
   int current_partition_{0};
 
   std::vector<bool> is_bootable_;

@@ -62,8 +62,6 @@ class BootControlChromeOS : public BootControlInterface {
   std::string GetMiniOSPartitionName() override;
   bool SupportsMiniOSPartitions() override;
   bool IsLvmStackEnabled(brillo::LogicalVolumeManager* lvm) override;
-  BootControlInterface::Slot GetHighestOffsetSlot(
-      const std::string& partition_name) const override;
   int GetPartitionNumber(const std::string partition_name,
                          BootControlInterface::Slot slot) const override;
 

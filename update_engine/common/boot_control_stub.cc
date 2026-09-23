@@ -109,12 +109,6 @@ bool BootControlStub::IsLvmStackEnabled(brillo::LogicalVolumeManager* lvm) {
   return false;
 }
 
-BootControlInterface::Slot BootControlStub::GetHighestOffsetSlot(
-    const std::string& partition_name) const {
-  LOG(ERROR) << __FUNCTION__ << " should never be called.";
-  return 0;
-}
-
 int BootControlStub::GetPartitionNumber(const std::string partition_name,
                                         BootControlInterface::Slot slot) const {
   LOG(ERROR) << __FUNCTION__ << " should never be called.";

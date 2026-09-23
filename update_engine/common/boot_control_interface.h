@@ -119,10 +119,6 @@ class BootControlInterface {
   // Returns true if the LVM stack is enabled.
   virtual bool IsLvmStackEnabled(brillo::LogicalVolumeManager* lvm) = 0;
 
-  // Get the slot with the highest offset on the device.
-  virtual Slot GetHighestOffsetSlot(
-      const std::string& partition_name) const = 0;
-
   // Return the partition number for the passed |partition_name| and |slot|. In
   // case of invalid data, returns -1.
   virtual int GetPartitionNumber(const std::string partition_name,

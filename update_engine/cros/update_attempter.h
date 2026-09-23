@@ -415,6 +415,8 @@ class UpdateAttempter : public ActionProcessorDelegate,
   FRIEND_TEST(UpdateAttempterTest,
               DetermineExtendedUpdateValuePolicyAllowedTest);
   FRIEND_TEST(UpdateAttempterTest,
+              MigrateInstallAllowsInactiveSlotWhenNotHighestOffset);
+  FRIEND_TEST(UpdateAttempterTest,
               CheckForInstallAllowsNormalAndMigrationInstalls);
   FRIEND_TEST(UpdateAttempterTest, GetPartitionNumberFromLayout);
 
