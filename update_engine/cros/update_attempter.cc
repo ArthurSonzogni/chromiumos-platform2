@@ -12,6 +12,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -19,6 +20,7 @@
 #include <base/base64.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
@@ -1528,6 +1530,14 @@ std::optional<int> UpdateAttempter::GetPartitionNumberFromLayout(
 
 void UpdateAttempter::ProcessingDoneMigrate(const ActionProcessor* processor,
                                             ErrorCode code) {
+  DCHECK_EQ(code, ErrorCode::kSuccess);
+  base::ScopedClosureRunner reset_status_on_error(base::BindOnce(
+      [](UpdateAttempter* attempter) {
+        attempter->ResetUpdateStatus();
+        attempter->ScheduleUpdates();
+      },
+      base::Unretained(this)));
+
   // TODO(b/356338530): Create a `PartitionMigrateAction`.
   // Partition migration.
   // Get partition number.
@@ -1595,6 +1605,7 @@ void UpdateAttempter::ProcessingDoneMigrate(const ActionProcessor* processor,
     return;
   }
 
+  std::ignore = reset_status_on_error.Release();
   WriteUpdateCompletedMarker();
   prefs_->SetString(kPrefsUpdateCompletedIsMigration, "");
   SetStatusAndNotify(UpdateStatus::UPDATED_NEED_REBOOT);

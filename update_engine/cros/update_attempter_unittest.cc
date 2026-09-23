@@ -3468,4 +3468,27 @@ TEST_F(UpdateAttempterTest, GetPartitionNumberFromLayout) {
             std::nullopt);
 }
 
+TEST_F(UpdateAttempterTest, ProcessingDoneMigrateError) {
+  pd_params_.pm = ProcessMode::MIGRATE;
+  pd_params_.status = UpdateStatus::DOWNLOADING;
+  pd_params_.code = ErrorCode::kScaledInstallationError;
+  pd_params_.expected_exit_status = UpdateStatus::IDLE;
+
+  TestProcessingDone();
+  EXPECT_FALSE(prefs_->Exists(kPrefsUpdateCompletedIsMigration));
+}
+
+TEST_F(UpdateAttempterTest, ProcessingDoneMigrateFailureResetsStatus) {
+  // If InstallAction succeeds (ErrorCode::kSuccess) but ProcessingDoneMigrate
+  // aborts early (e.g. empty boot device path in FakeBootControl), status must
+  // reset to IDLE and schedule updates instead of staying in DOWNLOADING.
+  pd_params_.pm = ProcessMode::MIGRATE;
+  pd_params_.status = UpdateStatus::DOWNLOADING;
+  pd_params_.code = ErrorCode::kSuccess;
+  pd_params_.expected_exit_status = UpdateStatus::IDLE;
+
+  TestProcessingDone();
+  EXPECT_FALSE(prefs_->Exists(kPrefsUpdateCompletedIsMigration));
+}
+
 }  // namespace chromeos_update_engine
