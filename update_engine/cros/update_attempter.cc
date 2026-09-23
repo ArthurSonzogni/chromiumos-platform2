@@ -9,7 +9,9 @@
 #include <algorithm>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -17,6 +19,7 @@
 #include <base/base64.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -103,9 +106,12 @@ const char kScheduledAUTestURLRequest[] = "autest-scheduled";
 
 const char kMigrationDlcId[] = "migration-dlc";
 
-constexpr unsigned int kPartitionNumberBootA = 13;
-constexpr char kPartitionNameBootA[] = "boot_a";
+// vboot inspects GPT boot priority/tries attributes on vbmeta_a rather than
+// boot_a when booting migrated slots.
+constexpr char kPartitionNameVbmetaA[] = "vbmeta_a";
 constexpr char kPartitionNameRoot[] = "root";
+constexpr char kPartitionLabelKey[] = "label";
+constexpr char kPartitionNumKey[] = "num";
 
 constexpr std::string_view kPartitionsAttributePrefix = "_PARTITIONS_";
 
@@ -1497,6 +1503,33 @@ void UpdateAttempter::ProcessingDoneInstall(const ActionProcessor* processor,
   LOG(INFO) << "DLC successfully installed, no reboot needed.";
 }
 
+std::optional<int> UpdateAttempter::GetPartitionNumberFromLayout(
+    std::string_view partitions_json, std::string_view partition_label) {
+  auto parsed_json = base::JSONReader::Read(
+      partitions_json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+  if (!parsed_json || !parsed_json->is_list()) {
+    LOG(ERROR) << "Failed to parse partitions layout JSON.";
+    return std::nullopt;
+  }
+  for (const auto& item : parsed_json->GetList()) {
+    const auto* dict = item.GetIfDict();
+    if (!dict) {
+      continue;
+    }
+    const std::string* label = dict->FindString(kPartitionLabelKey);
+    if (!label || *label != partition_label) {
+      continue;
+    }
+    std::optional<int> num = dict->FindInt(kPartitionNumKey);
+    if (!num.has_value() || *num <= 0) {
+      LOG(ERROR) << "Invalid partition number for " << partition_label;
+      return std::nullopt;
+    }
+    return *num;
+  }
+  return std::nullopt;
+}
+
 void UpdateAttempter::ProcessingDoneMigrate(const ActionProcessor* processor,
                                             ErrorCode code) {
   // TODO(b/356338530): Create a `PartitionMigrateAction`.
@@ -1533,16 +1566,24 @@ void UpdateAttempter::ProcessingDoneMigrate(const ActionProcessor* processor,
     return;
   }
 
+  std::optional<int> vbmeta_a_partition =
+      GetPartitionNumberFromLayout(partitions_json, kPartitionNameVbmetaA);
+  if (!vbmeta_a_partition.has_value()) {
+    LOG(ERROR) << "Failed to get partition number for " << kPartitionNameVbmetaA
+               << " from partitions layout.";
+    return;
+  }
+
   if (!installer::MigratePartition(boot_device, last_root, partitions_json,
                                    /*revert=*/false)) {
     LOG(ERROR) << "Failed to update partitions.";
     return;
   }
 
-  // Set boot priority.
-  if (!boot_control->SetActiveBootPartition(kPartitionNumberBootA,
-                                            kPartitionNameBootA)) {
-    LOG(ERROR) << "Failed to set the boot priority on " << kPartitionNameBootA
+  // Set boot priority on vbmeta_a so vboot recognizes the migrated boot slot.
+  if (!boot_control->SetActiveBootPartition(*vbmeta_a_partition,
+                                            kPartitionNameVbmetaA)) {
+    LOG(ERROR) << "Failed to set the boot priority on " << kPartitionNameVbmetaA
                << ", restoring partitions.";
     installer::MigratePartition(boot_device, last_root, partitions_json,
                                 /*revert=*/true);

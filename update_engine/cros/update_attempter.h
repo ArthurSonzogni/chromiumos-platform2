@@ -8,8 +8,10 @@
 #include <time.h>
 
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -414,6 +416,14 @@ class UpdateAttempter : public ActionProcessorDelegate,
               DetermineExtendedUpdateValuePolicyAllowedTest);
   FRIEND_TEST(UpdateAttempterTest,
               CheckForInstallAllowsNormalAndMigrationInstalls);
+  FRIEND_TEST(UpdateAttempterTest, GetPartitionNumberFromLayout);
+
+  // Extracts the 1-based GPT partition number ("num") for |partition_label|
+  // from the decoded _PARTITIONS_ JSON layout array in a migration DLC
+  // manifest. Returns std::nullopt if the JSON is invalid or the partition is
+  // not found.
+  static std::optional<int> GetPartitionNumberFromLayout(
+      std::string_view partitions_json, std::string_view partition_label);
 
   // Returns the special flags to be added to ErrorCode values based on the
   // parameters used in the current update attempt.

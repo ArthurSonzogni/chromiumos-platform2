@@ -3386,4 +3386,49 @@ TEST_F(UpdateAttempterTest, CheckForInstallAllowsNormalAndMigrationInstalls) {
   EXPECT_TRUE(attempter_.forced_omaha_url_.empty());
 }
 
+TEST_F(UpdateAttempterTest, GetPartitionNumberFromLayout) {
+  constexpr char kValidLayout[] = R"([
+    {"num": 3, "label": "super", "size": "4068474880", "type": "raw"},
+    {"num": 13, "label": "boot_a", "size": "67108864", "type": "kernel"},
+    {"num": 14, "label": "boot_b", "size": "67108864", "type": "kernel"},
+    {"num": 15, "label": "vbmeta_a", "size": "4194304", "type": "vbmeta"},
+    {"num": 16, "label": "vbmeta_b", "size": "4194304", "type": "vbmeta"}
+  ])";
+  EXPECT_EQ(
+      UpdateAttempter::GetPartitionNumberFromLayout(kValidLayout, "vbmeta_a"),
+      15);
+  EXPECT_EQ(
+      UpdateAttempter::GetPartitionNumberFromLayout(kValidLayout, "boot_a"),
+      13);
+
+  constexpr char kCustomLayout[] = R"([
+    {"num": 3, "label": "super", "size": "4068474880", "type": "raw"},
+    {"num": 17, "label": "vbmeta_a", "size": "4194304", "type": "vbmeta"}
+  ])";
+  EXPECT_EQ(
+      UpdateAttempter::GetPartitionNumberFromLayout(kCustomLayout, "vbmeta_a"),
+      17);
+
+  // Missing partition label.
+  EXPECT_EQ(
+      UpdateAttempter::GetPartitionNumberFromLayout(kCustomLayout, "boot_a"),
+      std::nullopt);
+
+  // Malformed or invalid JSON inputs.
+  EXPECT_EQ(
+      UpdateAttempter::GetPartitionNumberFromLayout("not-json", "vbmeta_a"),
+      std::nullopt);
+  EXPECT_EQ(UpdateAttempter::GetPartitionNumberFromLayout("{}", "vbmeta_a"),
+            std::nullopt);
+  EXPECT_EQ(UpdateAttempter::GetPartitionNumberFromLayout(
+                R"([{"num": 0, "label": "vbmeta_a"}])", "vbmeta_a"),
+            std::nullopt);
+  EXPECT_EQ(UpdateAttempter::GetPartitionNumberFromLayout(
+                R"([{"num": -1, "label": "vbmeta_a"}])", "vbmeta_a"),
+            std::nullopt);
+  EXPECT_EQ(UpdateAttempter::GetPartitionNumberFromLayout(
+                R"([{"num": "15", "label": "vbmeta_a"}])", "vbmeta_a"),
+            std::nullopt);
+}
+
 }  // namespace chromeos_update_engine
