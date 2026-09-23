@@ -4,7 +4,9 @@
 
 #include "installer/partition_migrator.h"
 
+#include <cstring>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -328,6 +330,59 @@ TEST(PartitionMigratorTest, RevertMigration) {
       std::move(cgpt_manager));
 
   migrator->RevertMigration();
+}
+
+TEST(PartitionMigratorTest, ParsePartitionTypesForMigration) {
+  auto make_part_value = [](int num, const std::string& label,
+                            const std::string& size, const std::string& type) {
+    base::DictValue dict;
+    dict.Set("num", num);
+    dict.Set("label", label);
+    dict.Set("size", size);
+    dict.Set("type", type);
+    return base::Value(std::move(dict));
+  };
+
+  const Guid kVbmetaGuid = GPT_ENT_TYPE_ANDROID_VBMETA;
+  const Guid kBasicDataGuid = GPT_ENT_TYPE_BASIC_DATA;
+  const Guid kChromeosKernelGuid = GPT_ENT_TYPE_CHROMEOS_KERNEL;
+
+  // Partitions with type "vbmeta" (vbmeta_a and vbmeta_b) get the vbmeta GPT
+  // type GUID.
+  auto vbmeta_a =
+      ParsePartition(make_part_value(15, "vbmeta_a", "65536", "vbmeta"), 4096);
+  ASSERT_TRUE(vbmeta_a.has_value());
+  EXPECT_EQ(vbmeta_a->number, 15);
+  EXPECT_EQ(vbmeta_a->label, "vbmeta_a");
+  EXPECT_EQ(vbmeta_a->size, 16u);
+  EXPECT_EQ(0, memcmp(&vbmeta_a->type, &kVbmetaGuid, sizeof(Guid)));
+
+  auto vbmeta_b =
+      ParsePartition(make_part_value(16, "vbmeta_b", "65536", "vbmeta"), 4096);
+  ASSERT_TRUE(vbmeta_b.has_value());
+  EXPECT_EQ(0, memcmp(&vbmeta_b->type, &kVbmetaGuid, sizeof(Guid)));
+
+  // boot_a and boot_b use the type specified in the manifest.
+  auto boot_a =
+      ParsePartition(make_part_value(13, "boot_a", "67108864", "data"), 4096);
+  ASSERT_TRUE(boot_a.has_value());
+  EXPECT_EQ(0, memcmp(&boot_a->type, &kBasicDataGuid, sizeof(Guid)));
+
+  auto boot_b =
+      ParsePartition(make_part_value(14, "boot_b", "67108864", "kernel"), 4096);
+  ASSERT_TRUE(boot_b.has_value());
+  EXPECT_EQ(0, memcmp(&boot_b->type, &kChromeosKernelGuid, sizeof(Guid)));
+
+  // Non-boot_a/b kernel partitions still map to GPT_ENT_TYPE_CHROMEOS_KERNEL.
+  auto kern_a =
+      ParsePartition(make_part_value(2, "KERN-A", "33554432", "kernel"), 4096);
+  ASSERT_TRUE(kern_a.has_value());
+  EXPECT_EQ(0, memcmp(&kern_a->type, &kChromeosKernelGuid, sizeof(Guid)));
+
+  // Zero sector size must be rejected cleanly without dividing by zero.
+  EXPECT_FALSE(
+      ParsePartition(make_part_value(15, "vbmeta_a", "65536", "vbmeta"), 0)
+          .has_value());
 }
 
 }  // namespace installer

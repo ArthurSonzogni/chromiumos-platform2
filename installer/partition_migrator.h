@@ -7,12 +7,15 @@
 
 #include <sys/types.h>
 
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/values.h>
 #include <brillo/brillo_export.h>
 #include <installer/cgpt_manager.h>
 #include <vboot/cgpt_params.h>
@@ -42,6 +45,11 @@ struct Partition {
     LOG(INFO) << "  Type: " << guid_str;
   }
 };
+
+// Parses a partition dictionary from a migration layout JSON manifest,
+// converting the byte size into sectors of |sector_size| bytes.
+BRILLO_EXPORT std::optional<Partition> ParsePartition(
+    const base::Value& part_info, uint64_t sector_size);
 
 class BRILLO_EXPORT PartitionMigrator {
  public:

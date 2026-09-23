@@ -57,6 +57,7 @@ constexpr char kPartitionLabelKey[] = "label";
 constexpr char kPartitionSizeKey[] = "size";
 constexpr char kPartitionTypeKey[] = "type";
 constexpr char kPartitionTypeKernel[] = "kernel";
+constexpr char kPartitionTypeVbmeta[] = "vbmeta";
 
 constexpr char kReclaimedPartitionLabel[] = "super";
 
@@ -82,13 +83,17 @@ std::optional<uint64_t> GetSectorSize(const base::FilePath& device) {
   return size;
 }
 
-std::optional<installer::Partition> ParsePartition(const base::Value& part_info,
-                                                   uint64_t sector_size) {
-  if (!part_info.is_dict()) {
+}  // namespace
+
+namespace installer {
+
+std::optional<Partition> ParsePartition(const base::Value& part_info,
+                                        uint64_t sector_size) {
+  if (!part_info.is_dict() || sector_size == 0) {
     return std::nullopt;
   }
 
-  installer::Partition part;
+  Partition part;
   const auto& part_dict = part_info.GetDict();
   if (auto num = part_dict.FindInt(kPartitionNumKey)) {
     part.number = *num;
@@ -112,7 +117,11 @@ std::optional<installer::Partition> ParsePartition(const base::Value& part_info,
   }
 
   if (auto type = part_dict.FindString(kPartitionTypeKey)) {
-    if (*type == kPartitionTypeKernel) {
+    // Firmware (vboot) locates migrated boot slots via the vbmeta GPT type
+    // GUID on vbmeta_a/vbmeta_b.
+    if (*type == kPartitionTypeVbmeta) {
+      part.type = GPT_ENT_TYPE_ANDROID_VBMETA;
+    } else if (*type == kPartitionTypeKernel) {
       part.type = GPT_ENT_TYPE_CHROMEOS_KERNEL;
     } else {
       part.type = GPT_ENT_TYPE_BASIC_DATA;
@@ -125,7 +134,7 @@ std::optional<installer::Partition> ParsePartition(const base::Value& part_info,
   return part;
 }
 
-}  // namespace
+}  // namespace installer
 
 const PartitionNum PartitionNum::STATEFUL = PartitionNum(1);
 const PartitionNum PartitionNum::KERN_A = PartitionNum(2);
