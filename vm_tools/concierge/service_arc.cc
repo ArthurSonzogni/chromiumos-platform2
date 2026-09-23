@@ -587,7 +587,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
           std::move(shared_stub_vhost_user_front_param.value()))
       .EnableSmt(false /* enable */)
       .EnablePerVmCoreScheduling(request.use_per_vm_core_scheduling())
-      .SetWaylandSocket(request.vm().wayland_server())
+      .SetWaylandSocket()
       .SetSyslogTag(syslog_tag);
 
   base::FilePath kernel_path;
