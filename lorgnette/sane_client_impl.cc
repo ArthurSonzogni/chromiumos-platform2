@@ -42,6 +42,21 @@ SaneClientImpl::~SaneClientImpl() {
 std::optional<std::vector<ScannerInfo>> SaneClientImpl::ListDevices(
     brillo::ErrorPtr* error, bool local_only) {
   base::AutoLock auto_lock(lock_);
+
+  // Some SANE backends free and rebuild internal state during
+  // sane_get_devices(), which can corrupt open SANE_Handles from the same
+  // backend.  open_devices_ tracks every handle this SaneClient has handed
+  // out (across DeviceTracker::open_scanners_ *and* Manager::active_scans_),
+  // so it is the authoritative place to gate enumeration.
+  {
+    base::AutoLock devices_lock(open_devices_->first);
+    if (!open_devices_->second.empty()) {
+      LOG(WARNING) << __func__ << ": skipping sane_get_devices() while "
+                   << open_devices_->second.size() << " device(s) are open";
+      return std::vector<ScannerInfo>();
+    }
+  }
+
   const SANE_Device** device_list;
   SANE_Status status = libsane_->sane_get_devices(
       &device_list, local_only ? SANE_TRUE : SANE_FALSE);
