@@ -86,7 +86,7 @@ Padding FindPadding(const ::keymaster::AuthorizationSet& params) {
   keymaster_padding_t padding;
 
   if (!params.GetTagValue(::keymaster::TAG_PADDING, &padding)) {
-    return Padding ::kNone;
+    return Padding::kNone;
   }
 
   switch (padding) {
@@ -119,6 +119,7 @@ BlockMode FindBlockMode(const ::keymaster::AuthorizationSet& params) {
     case KM_MODE_GCM:
       return BlockMode::kUnsupported;
   }
+  return BlockMode::kUnsupported;
 }
 
 MechanismDescription CreateOperationDescription(
@@ -154,6 +155,7 @@ keymaster_error_t CrosKeyFactory::LoadKey(
       LOG(ERROR) << "Tried to load CrOS key but KeyData is not set.";
       return KM_ERROR_UNKNOWN_ERROR;
   }
+  return KM_ERROR_UNKNOWN_ERROR;
 }
 
 keymaster_error_t CrosKeyFactory::LoadKey(
@@ -181,6 +183,7 @@ keymaster_error_t CrosKeyFactory::LoadKey(
       LOG(WARNING) << "No factory for purpose=" << purpose;
       return nullptr;
   }
+  return nullptr;
 }
 
 keymaster_error_t CrosKeyFactory::GenerateKey(

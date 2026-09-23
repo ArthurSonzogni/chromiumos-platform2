@@ -33,6 +33,7 @@ OperationType ConvertKeymasterPurposeToOperationType(
     case KM_PURPOSE_WRAP:
       return OperationType::kUnsupported;
   }
+  return OperationType::kUnsupported;
 }
 
 Algorithm FindAlgorithm(const ::keymaster::AuthorizationSet& params) {
@@ -51,6 +52,7 @@ Algorithm FindAlgorithm(const ::keymaster::AuthorizationSet& params) {
     case KM_ALGORITHM_HMAC:
       return Algorithm::kUnsupported;
   }
+  return Algorithm::kUnsupported;
 }
 
 Digest FindDigest(const ::keymaster::AuthorizationSet& params) {
@@ -76,13 +78,14 @@ Digest FindDigest(const ::keymaster::AuthorizationSet& params) {
     case KM_DIGEST_SHA_2_224:
       return Digest::kUnsupported;
   }
+  return Digest::kUnsupported;
 }
 
 Padding FindPadding(const ::keymaster::AuthorizationSet& params) {
   keymaster_padding_t padding;
 
   if (!params.GetTagValue(::keymaster::TAG_PADDING, &padding)) {
-    return Padding ::kNone;
+    return Padding::kNone;
   }
 
   switch (padding) {
@@ -97,6 +100,7 @@ Padding FindPadding(const ::keymaster::AuthorizationSet& params) {
     case KM_PAD_RSA_PSS:
       return Padding::kUnsupported;
   }
+  return Padding::kUnsupported;
 }
 
 BlockMode FindBlockMode(const ::keymaster::AuthorizationSet& params) {
@@ -114,6 +118,7 @@ BlockMode FindBlockMode(const ::keymaster::AuthorizationSet& params) {
     case KM_MODE_GCM:
       return BlockMode::kUnsupported;
   }
+  return BlockMode::kUnsupported;
 }
 
 MechanismDescription CreateOperationDescription(
@@ -149,6 +154,7 @@ keymaster_error_t CrosKeyFactory::LoadKey(
       LOG(ERROR) << "Tried to load CrOS key but KeyData is not set.";
       return KM_ERROR_UNKNOWN_ERROR;
   }
+  return KM_ERROR_UNKNOWN_ERROR;
 }
 
 keymaster_error_t CrosKeyFactory::LoadKey(
@@ -173,6 +179,7 @@ keymaster_error_t CrosKeyFactory::LoadKey(
       LOG(WARNING) << "No factory for purpose=" << purpose;
       return nullptr;
   }
+  return nullptr;
 }
 
 keymaster_error_t CrosKeyFactory::GenerateKey(
