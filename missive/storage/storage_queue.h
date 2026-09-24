@@ -274,6 +274,8 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   virtual ~StorageQueue();
 
  private:
+  template <typename T, typename... Args>
+  friend scoped_refptr<T> base::MakeRefCounted(Args&&...);
   friend class base::RefCountedDeleteOnSequence<StorageQueue>;
   friend class base::DeleteHelper<StorageQueue>;
 

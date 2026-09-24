@@ -158,10 +158,7 @@ scoped_refptr<StorageQueue> StorageQueue::Create(const Settings& settings) {
       {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
 
   // Create StorageQueue object.
-  // Cannot use base::MakeRefCounted<StorageQueue>, because constructor is
-  // private.
-  return base::WrapRefCounted(
-      new StorageQueue(sequenced_task_runner, settings));
+  return base::MakeRefCounted<StorageQueue>(sequenced_task_runner, settings);
 }
 
 StorageQueue::StorageQueue(

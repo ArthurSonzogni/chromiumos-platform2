@@ -158,11 +158,10 @@ void QueueUploaderInterface::WrapInstantiatedUploader(
 // static
 scoped_refptr<QueuesContainer> QueuesContainer::Create(
     bool storage_degradation_enabled) {
-  // Cannot use MakeRefCounted, because constructor is declared private.
-  return base::WrapRefCounted(new QueuesContainer(
+  return base::MakeRefCounted<QueuesContainer>(
       storage_degradation_enabled,
       base::ThreadPool::CreateSequencedTaskRunner(
-          {base::TaskPriority::BEST_EFFORT, base::MayBlock()})));
+          {base::TaskPriority::BEST_EFFORT, base::MayBlock()}));
 }
 
 QueuesContainer::QueuesContainer(

@@ -57,6 +57,8 @@ class UploadClientImpl : public UploadClient {
       dbus::Response* response) const;
 
  private:
+  template <typename T, typename... Args>
+  friend scoped_refptr<T> base::MakeRefCounted(Args&&...);
   friend class base::RefCountedDeleteOnSequence<UploadClientImpl>;
   friend class base::DeleteHelper<UploadClientImpl>;
   void MaybeMakeCall(std::vector<EncryptedRecord> records,

@@ -115,6 +115,8 @@ class QueuesContainer
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner() const;
 
  private:
+  template <typename T, typename... Args>
+  friend scoped_refptr<T> base::MakeRefCounted(Args&&...);
   friend base::RefCountedDeleteOnSequence<QueuesContainer>;
   friend class base::DeleteHelper<QueuesContainer>;
 

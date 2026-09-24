@@ -106,7 +106,7 @@ void UploadClientImpl::Create(
             CHECK(bus->Connect());
             CHECK(bus->SetUpAsyncOperations());
             std::move(cb).Run(
-                base::WrapRefCounted(new UploadClientImpl(bus, chrome_proxy)));
+                base::MakeRefCounted<UploadClientImpl>(bus, chrome_proxy));
           },
           bus, base::Unretained(chrome_proxy), std::move(cb)));
 }
