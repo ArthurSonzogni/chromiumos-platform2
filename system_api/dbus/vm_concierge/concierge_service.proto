@@ -38,7 +38,7 @@ message VirtualMachineSpec {
 
   // Optional path to the wayland server which should be passed into the VM. If
   // absent the default path (${XDG_RUNTIME_DIR}/wayland-0) will be used.
-  string wayland_server = 6;
+  string wayland_server = 6 [deprecated = true];
 
   // ID of a DLC package that contains the BIOS img for this vm. If empty
   // an `FdType` of `BIOS` is used from the `fds` field in `StartVmRequest` for
