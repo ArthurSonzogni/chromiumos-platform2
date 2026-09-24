@@ -375,8 +375,8 @@ bool Verifier::VerifyDate(const std::vector<StringAtom>& parameters) {
 bool Verifier::VerifyGs(const std::vector<StringAtom>& parameters) {
   static constexpr std::array<std::string_view, 5> kBannedPrefixes = {
       "--permit-file-", "-I", "-c", "-o", "@"};
-  static constexpr std::array<std::string_view, 6> kBannedGsNames = {
-      "ALLOWPSTRANSPARENCY", "DELAYSAFER",       "NOSAFER",
+  static constexpr std::array<std::string_view, 7> kBannedGsNames = {
+      "ALLOWPSTRANSPARENCY", "DELAYSAFER",       "NOSAFER", "OUTPUTFILE",
       "OutputFile",          "OutputICCProfile", "stdout"};
   static constexpr std::array<char, 5> kGsNameSw = {'D', 'S', 'd', 's', 'p'};
   static constexpr std::array<char, 3> kFilenameSw = {'f', '+', '@'};

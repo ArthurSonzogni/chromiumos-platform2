@@ -186,6 +186,10 @@ TEST(Verifier, gsFail3) {
   EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=xyz.out -"));
 }
 
+TEST(Verifier, gsFailUppercaseOutputFile) {
+  EXPECT_FALSE(VerifyScript("gs -dSAFER -sOutputFile=- '-sOUTPUTFILE=xxx'"));
+}
+
 TEST(Verifier, gsFail4) {
   EXPECT_FALSE(VerifyScript("gs -dSAFER /var/spool/cups/somefile.ps"));
 }
