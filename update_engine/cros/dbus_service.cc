@@ -86,8 +86,9 @@ bool DBusUpdateEngineService::IsEligibleForMigration(ErrorPtr* error,
   return common_->IsEligibleForMigration(error, out_is_eligible);
 }
 
-bool DBusUpdateEngineService::Migrate(ErrorPtr* error) {
-  return common_->Migrate(error);
+bool DBusUpdateEngineService::Migrate(ErrorPtr* error,
+                                      const string& in_migration_url) {
+  return common_->Migrate(error, in_migration_url);
 }
 
 bool DBusUpdateEngineService::AttemptRollback(ErrorPtr* error,

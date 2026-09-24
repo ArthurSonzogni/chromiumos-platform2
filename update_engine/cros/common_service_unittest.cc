@@ -97,6 +97,25 @@ TEST_F(UpdateEngineServiceTest, AttemptInstallReturnsFalse) {
   EXPECT_FALSE(common_service_.AttemptInstall(&error_, "", {}));
 }
 
+TEST_F(UpdateEngineServiceTest, MigrateForwardsUrl) {
+  EXPECT_CALL(*mock_update_attempter_,
+              CheckForInstall(vector<string>{}, "http://127.0.0.1:8000",
+                              /*scaled=*/true, /*force_ota=*/false,
+                              /*migration=*/true))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(common_service_.Migrate(&error_, "http://127.0.0.1:8000"));
+  EXPECT_EQ(nullptr, error_);
+}
+
+TEST_F(UpdateEngineServiceTest, MigrateReturnsFalse) {
+  EXPECT_CALL(*mock_update_attempter_, CheckForInstall(_, _, _, _, _))
+      .WillOnce(Return(false));
+
+  EXPECT_FALSE(common_service_.Migrate(&error_, ""));
+  ASSERT_NE(nullptr, error_);
+}
+
 TEST_F(UpdateEngineServiceTest, SetDlcActiveValue) {
   EXPECT_CALL(*mock_update_attempter_, SetDlcActiveValue(_, _))
       .WillOnce(Return(true));

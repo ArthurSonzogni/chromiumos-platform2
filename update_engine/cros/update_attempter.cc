@@ -484,6 +484,9 @@ void UpdateAttempter::Install() {
                                                          : kDefaultSlotting,
       /*target=*/pm_ == ProcessMode::MIGRATE ? InstallAction::kRoot
                                              : InstallAction::kStateful);
+  if (pm_ == ProcessMode::MIGRATE) {
+    install_action->set_custom_url(forced_omaha_url_);
+  }
   install_action->set_delegate(this);
   SetOutPipe(install_action.get());
   processor_->EnqueueAction(std::move(install_action));

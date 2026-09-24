@@ -92,8 +92,8 @@ bool DBusUpdateEngineClient::IsEligibleForMigration(bool* out_is_eligible) {
   return proxy_->IsEligibleForMigration(out_is_eligible, nullptr);
 }
 
-bool DBusUpdateEngineClient::Migrate() {
-  return proxy_->Migrate(nullptr);
+bool DBusUpdateEngineClient::Migrate(const std::string& migration_url) {
+  return proxy_->Migrate(migration_url, nullptr);
 }
 
 bool DBusUpdateEngineClient::SetDlcActiveValue(bool is_active,

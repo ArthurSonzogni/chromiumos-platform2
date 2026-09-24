@@ -93,8 +93,13 @@ class InstallAction : public Action<InstallAction>, public HttpFetcherDelegate {
   InstallActionDelegate* delegate() const { return delegate_; }
   void set_delegate(InstallActionDelegate* delegate) { delegate_ = delegate; }
 
+  void set_custom_url(const std::string& custom_url) {
+    custom_url_ = custom_url;
+  }
+
  private:
   FRIEND_TEST(InstallActionTestSuite, TransferFailureFetchesFromBackup);
+  FRIEND_TEST(InstallActionTestSuite, CustomUrlDoesNotUseBackup);
 
   void StartInstallation(const std::string& url_to_fetch,
                          const std::string& sanitized_url);
@@ -132,6 +137,9 @@ class InstallAction : public Action<InstallAction>, public HttpFetcherDelegate {
   std::string manifest_dir_;
 
   InstallTarget target_ = kStateful;
+
+  // Optional custom URL to fetch the DLC artifact from.
+  std::string custom_url_;
 
   // Cached mirror partition info.
   std::string mirror_src_partition_;

@@ -48,6 +48,7 @@
       </arg>
     </method>
     <method name="Migrate">
+      <arg type="s" name="migration_url" direction="in" />
     </method>
     <method name="IsEligibleForMigration">
       <arg type="b" name="is_eligible" direction="out" />

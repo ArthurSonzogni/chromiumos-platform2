@@ -116,7 +116,8 @@ class UpdateEngineClient {
   virtual bool IsEligibleForMigration(bool* out_is_eligible) = 0;
 
   // Request the update_engine to do a migration install.
-  virtual bool Migrate() = 0;
+  bool Migrate() { return Migrate(""); }
+  virtual bool Migrate(const std::string& migration_url) = 0;
 
  protected:
   // Use CreateInstance().

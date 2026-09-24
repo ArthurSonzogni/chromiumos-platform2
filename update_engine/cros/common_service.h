@@ -47,7 +47,7 @@ class UpdateEngineService {
 
   bool IsEligibleForMigration(brillo::ErrorPtr* error, bool* out_is_eligible);
 
-  bool Migrate(brillo::ErrorPtr* error);
+  bool Migrate(brillo::ErrorPtr* error, const std::string& migration_url);
 
   bool AttemptRollback(brillo::ErrorPtr* error, bool in_powerwash);
 

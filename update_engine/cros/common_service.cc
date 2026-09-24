@@ -114,9 +114,10 @@ bool UpdateEngineService::IsEligibleForMigration(brillo::ErrorPtr* error,
   return true;
 }
 
-bool UpdateEngineService::Migrate(brillo::ErrorPtr* error) {
+bool UpdateEngineService::Migrate(brillo::ErrorPtr* error,
+                                  const string& migration_url) {
   if (!SystemState::Get()->update_attempter()->CheckForInstall(
-          {}, /*omaha_url=*/"", /*scaled=*/true, /*force_ota=*/false,
+          {}, migration_url, /*scaled=*/true, /*force_ota=*/false,
           /*migration=*/true)) {
     LogAndSetError(error, FROM_HERE, "Could not schedule migration install.");
     return false;

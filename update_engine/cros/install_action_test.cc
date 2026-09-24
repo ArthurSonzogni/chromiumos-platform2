@@ -345,4 +345,41 @@ TEST_P(InstallActionTestSuite, TransferFailureFetchesFromBackup) {
   EXPECT_FALSE(loop_.PendingTasks());
 }
 
+TEST_P(InstallActionTestSuite, CustomUrlDoesNotUseBackup) {
+  install_action_->set_custom_url("http://127.0.0.1:8000");
+
+  processor_.set_delegate(&delegate_);
+  processor_.EnqueueAction(std::move(install_action_));
+
+  mock_http_fetcher_->FailTransfer(404);
+
+  auto manifest = GetParam();
+  auto manifest_ptr = std::make_shared<imageloader::Manifest>();
+  manifest_ptr->ParseManifest(manifest);
+  ASSERT_TRUE(test_utils::WriteFileString(
+      tempdir_.GetPath().Append("etc/lsb-release").value(), kProperties));
+  delegate_.expected_code_ = ErrorCode::kScaledInstallationError;
+  delegate_.AddActionChecker(base::BindOnce([](AbstractAction* a) {
+    auto* ia = reinterpret_cast<InstallAction*>(a);
+    EXPECT_TRUE(ia->backup_urls_.empty());
+    EXPECT_EQ(ia->backup_url_index_, 0);
+  }));
+
+  ASSERT_TRUE(test_utils::WriteFileString(
+      tempdir_.GetPath().Append("foobar-dlc-device").value(), ""));
+  FakeSystemState::Get()->fake_boot_control()->SetPartitionDevice(
+      "dlc/foobar-dlc/package", 0,
+      tempdir_.GetPath().Append("foobar-dlc-device").value());
+  EXPECT_CALL(mock_dlc_utils_, GetDlcManifest(testing::_, testing::_))
+      .WillOnce(testing::Return(manifest_ptr));
+
+  loop_.PostTask(FROM_HERE, base::BindOnce(
+                                [](ActionProcessor* processor) {
+                                  processor->StartProcessing();
+                                },
+                                base::Unretained(&processor_)));
+  loop_.Run();
+  EXPECT_FALSE(loop_.PendingTasks());
+}
+
 }  // namespace chromeos_update_engine

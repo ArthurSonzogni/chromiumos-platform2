@@ -145,6 +145,12 @@ void InstallAction::PerformAction() {
 
   std::string url_to_fetch;
   std::string sanitized_url;
+  auto SetCustomUrl = [&](const auto& url_to_fetch_fn) {
+    url_to_fetch = url_to_fetch_fn(custom_url_);
+    sanitized_url = user_tied ? custom_url_ : url_to_fetch;
+    backup_urls_ = {};
+    backup_urls_sanitized_ = {};
+  };
   const auto& artifacts_meta = manifest_->artifacts_meta();
   if (artifacts_meta.valid) {
     auto UrlToFetch = [artifacts_meta](const std::string& url) -> std::string {
@@ -153,12 +159,16 @@ void InstallAction::PerformAction() {
           .Append(kDefaultArtifact)
           .value();
     };
-    url_to_fetch = UrlToFetch(kBandaidArtifactsMetaUrl);
-    sanitized_url = user_tied ? kUrlNameBandaidArtifactsMeta : url_to_fetch;
-    backup_urls_ = {UrlToFetch(kLorryArtifactsMetaUrl)};
-    backup_urls_sanitized_ =
-        user_tied ? std::vector<std::string>({kUrlNameLorryArtifactsMeta})
-                  : backup_urls_;
+    if (!custom_url_.empty()) {
+      SetCustomUrl(UrlToFetch);
+    } else {
+      url_to_fetch = UrlToFetch(kBandaidArtifactsMetaUrl);
+      sanitized_url = user_tied ? kUrlNameBandaidArtifactsMeta : url_to_fetch;
+      backup_urls_ = {UrlToFetch(kLorryArtifactsMetaUrl)};
+      backup_urls_sanitized_ =
+          user_tied ? std::vector<std::string>({kUrlNameLorryArtifactsMeta})
+                    : backup_urls_;
+    }
   } else {
     auto UrlToFetch = [this](const std::string& url) -> std::string {
       return base::FilePath(url)
@@ -169,11 +179,15 @@ void InstallAction::PerformAction() {
           .Append(kDefaultArtifact)
           .value();
     };
-    url_to_fetch = UrlToFetch(kBandaidUrl);
-    sanitized_url = user_tied ? kUrlNameBandaid : url_to_fetch;
-    backup_urls_ = {UrlToFetch(kLorryUrl)};
-    backup_urls_sanitized_ =
-        user_tied ? std::vector<std::string>({kUrlNameLorry}) : backup_urls_;
+    if (!custom_url_.empty()) {
+      SetCustomUrl(UrlToFetch);
+    } else {
+      url_to_fetch = UrlToFetch(kBandaidUrl);
+      sanitized_url = user_tied ? kUrlNameBandaid : url_to_fetch;
+      backup_urls_ = {UrlToFetch(kLorryUrl)};
+      backup_urls_sanitized_ =
+          user_tied ? std::vector<std::string>({kUrlNameLorry}) : backup_urls_;
+    }
   }
   StartInstallation(url_to_fetch, sanitized_url);
 }

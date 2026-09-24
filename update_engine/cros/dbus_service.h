@@ -46,7 +46,8 @@ class DBusUpdateEngineService
   bool IsEligibleForMigration(brillo::ErrorPtr* err,
                               bool* out_is_eligible) override;
 
-  bool Migrate(brillo::ErrorPtr* err) override;
+  bool Migrate(brillo::ErrorPtr* err,
+               const std::string& in_migration_url) override;
 
   bool AttemptRollback(brillo::ErrorPtr* error, bool in_powerwash) override;
 

@@ -546,11 +546,17 @@ int UpdateEngineClient::ProcessFlags() {
   }
 
   if (FLAGS_migrate) {
-    if (!client_->Migrate()) {
+    if (!client_->Migrate(FLAGS_omaha_url)) {
       LOG(ERROR) << "Failed to perform the migration";
       return 1;
     }
-    return 0;
+
+    LOG(INFO) << "Waiting for migration to complete.";
+
+    auto handler = new UpdateWaitHandler(true, client_.get());
+    handlers_.emplace_back(handler);
+    client_->RegisterStatusUpdateHandler(handler);
+    return kContinueRunning;
   }
 
   bool do_update_request = FLAGS_check_for_update || FLAGS_update ||

@@ -3361,4 +3361,29 @@ TEST_F(UpdateAttempterTest, AfterRepeatedInvalidatesUpdateOnError) {
   EXPECT_FALSE(attempter_.GetBootTimeAtUpdate(nullptr));
 }
 
+TEST_F(UpdateAttempterTest, CheckForInstallAllowsNormalAndMigrationInstalls) {
+  FakeSystemState::Get()->fake_hardware()->SetIsOfficialBuild(false);
+
+  EXPECT_TRUE(attempter_.CheckForInstall({"sample-dlc"}, "", /*scaled=*/true,
+                                         /*force_ota=*/false,
+                                         /*migration=*/false));
+  EXPECT_EQ(attempter_.pm_, ProcessMode::SCALED_INSTALL);
+
+  EXPECT_TRUE(attempter_.CheckForInstall({}, "http://127.0.0.1:8000",
+                                         /*scaled=*/true, /*force_ota=*/false,
+                                         /*migration=*/true));
+  EXPECT_EQ(attempter_.pm_, ProcessMode::MIGRATE);
+  EXPECT_EQ(attempter_.forced_omaha_url_, "http://127.0.0.1:8000");
+
+  // Official builds with dev features disabled must ignore custom migration
+  // URLs.
+  FakeSystemState::Get()->fake_hardware()->SetIsOfficialBuild(true);
+  FakeSystemState::Get()->fake_hardware()->SetAreDevFeaturesEnabled(false);
+  EXPECT_TRUE(attempter_.CheckForInstall({}, "http://127.0.0.1:8000",
+                                         /*scaled=*/true, /*force_ota=*/false,
+                                         /*migration=*/true));
+  EXPECT_EQ(attempter_.pm_, ProcessMode::MIGRATE);
+  EXPECT_TRUE(attempter_.forced_omaha_url_.empty());
+}
+
 }  // namespace chromeos_update_engine

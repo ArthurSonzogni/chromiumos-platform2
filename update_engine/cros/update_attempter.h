@@ -412,6 +412,8 @@ class UpdateAttempter : public ActionProcessorDelegate,
               DetermineExtendedUpdateValuePolicyNotAllowedTest);
   FRIEND_TEST(UpdateAttempterTest,
               DetermineExtendedUpdateValuePolicyAllowedTest);
+  FRIEND_TEST(UpdateAttempterTest,
+              CheckForInstallAllowsNormalAndMigrationInstalls);
 
   // Returns the special flags to be added to ErrorCode values based on the
   // parameters used in the current update attempt.

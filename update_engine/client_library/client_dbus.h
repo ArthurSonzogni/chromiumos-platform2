@@ -40,7 +40,8 @@ class DBusUpdateEngineClient : public UpdateEngineClient {
 
   bool IsEligibleForMigration(bool* out_is_eligible) override;
 
-  bool Migrate() override;
+  using UpdateEngineClient::Migrate;
+  bool Migrate(const std::string& migration_url) override;
 
   bool SetDlcActiveValue(bool is_active, const std::string& dlc_id) override;
 
