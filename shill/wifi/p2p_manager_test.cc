@@ -913,17 +913,21 @@ TEST_F(P2PManagerTest, Stop_ClearsDelegatesAndIgnoresLateGroupFinished) {
   KeyValueStore properties = DefaultGroupStartedProperties(kDefaultShillId);
   RpcIdentifier interface_path = properties.Get<RpcIdentifier>(
       WPASupplicant::kGroupStartedPropertyInterfaceObject);
-  MockP2PDevice* p2p_device = new NiceMock<MockP2PDevice>(
+  scoped_refptr<MockP2PDevice> p2p_device = new NiceMock<MockP2PDevice>(
       &manager_, LocalDevice::IfaceType::kP2PGO, "wlan0", 0, kDefaultShillId,
       WiFiPhy::Priority(0), event_cb_.Get());
 
-  CreateP2PGroup(p2p_device);
+  CreateP2PGroup(p2p_device.get());
   EXPECT_CALL(*p2p_device, GroupStarted(properties)).Times(1);
   PostGroupStarted(properties);
 
   EXPECT_EQ(p2p_manager_
                 ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
-            p2p_device);
+            p2p_device.get());
+
+  // Emulate late GroupFinished signal from wpa_supplicant.
+  // Must NOT invoke deleted p2p_device.
+  EXPECT_CALL(*p2p_device, GroupFinished(_)).Times(0);
 
   // Stop P2PManager (simulating P2PAllowed toggling or service stop).
   p2p_manager_->Stop();
@@ -933,9 +937,6 @@ TEST_F(P2PManagerTest, Stop_ClearsDelegatesAndIgnoresLateGroupFinished) {
   EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
             nullptr);
 
-  // Emulate late GroupFinished signal from wpa_supplicant.
-  // Must NOT invoke deleted p2p_device.
-  EXPECT_CALL(*p2p_device, GroupFinished(_)).Times(0);
   PostGroupFinished(kDefaultShillId);
 }
 
