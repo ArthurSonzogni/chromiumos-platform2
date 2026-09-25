@@ -9,8 +9,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
-#include <dbus/mock_object_manager.h>
 #include <dbus/mock_object_proxy.h>
+#include <dbus/object_manager.h>
 #include <gtest/gtest.h>
 #include "power_manager/powerd/testing/test_environment.h"
 
@@ -85,8 +85,11 @@ class BluezBatteryProviderTest : public TestEnvironment {
     // Expect that we monitor the liveness of BlueZ.
     EXPECT_CALL(*object_proxy_, SetNameOwnerChangedCallback(_)).Times(1);
 
-    // Provide a mock ObjectManager.
-    object_manager_ = base::MakeRefCounted<dbus::MockObjectManager>(
+    // Provide an ObjectManager.
+    EXPECT_CALL(*bus_, GetDBusTaskRunner())
+        .WillRepeatedly(Return(task_env()->GetMainThreadTaskRunner().get()));
+    EXPECT_CALL(*bus_, Connect()).WillRepeatedly(Return(false));
+    object_manager_ = dbus::ObjectManager::Create(
         bus_.get(),
         bluetooth_battery::kBluetoothBatteryProviderManagerServiceName,
         dbus::ObjectPath("/"));
@@ -97,22 +100,18 @@ class BluezBatteryProviderTest : public TestEnvironment {
             dbus::ObjectPath("/")))
         .WillOnce(Return(object_manager_.get()));
 
-    // Expect that we are listening to "org.bluez.BatteryProviderManager1" from
-    // BlueZ.
-    EXPECT_CALL(
-        *object_manager_,
-        RegisterInterface(
-            bluetooth_battery::kBluetoothBatteryProviderManagerInterface,
-            &bluez_battery_provider_))
-        .Times(1);
-
     // Trigger init.
     bluez_battery_provider_.Init(bus_);
+
+    // Expect that we are listening to "org.bluez.BatteryProviderManager1" from
+    // BlueZ.
+    EXPECT_TRUE(object_manager_->IsInterfaceRegisteredForTesting(
+        bluetooth_battery::kBluetoothBatteryProviderManagerInterface));
   }
 
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockExportedObject> exported_root_object_;
-  scoped_refptr<dbus::MockObjectManager> object_manager_;
+  scoped_refptr<dbus::ObjectManager> object_manager_;
   scoped_refptr<dbus::MockObjectProxy> object_proxy_;
 
   BluezBatteryProvider bluez_battery_provider_;
