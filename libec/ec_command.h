@@ -7,11 +7,13 @@
 
 #include <sys/ioctl.h>
 
+#include <algorithm>
 #include <cerrno>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <span>
 #include <string>
 #include <unordered_map>
 
@@ -148,10 +150,17 @@ class EcCommand : public EcCommandInterface {
     };
   };
 
+  // Commands with variable-length responses can override this.
+  virtual bool IsValidRespSize(uint32_t actual) const {
+    return actual == cmd_.insize;
+  }
+  virtual uint32_t ActualRespSize() const { return actual_resp_size_; }
+
   std::string ResultToString(uint32_t ec_cmd_result) const;
   bool ErrorTypeCanBeRetried(uint32_t ec_cmd_result);
 
  private:
+  bool ProcessResponse(uint32_t result, std::span<const uint8_t> resp);
   virtual int ioctl(int fd, uint32_t request, Data* data) {
     return ::ioctl(fd, request, data);
   }
@@ -166,7 +175,43 @@ class EcCommand : public EcCommandInterface {
   Params request_{};
   Response response_{};
   struct cros_ec_command_v2 cmd_{};
+  uint32_t actual_resp_size_ = 0;
 };
+
+template <typename Params, typename Response>
+bool EcCommand<Params, Response>::ProcessResponse(
+    uint32_t result, std::span<const uint8_t> resp) {
+  cmd_.result = result;
+
+  // Log errors returned from the EC. INVALID_COMMAND and INVALID_VERSION are
+  // commonly used to probe the EC thus more-or-less expected.
+  if (cmd_.result == EC_RES_INVALID_COMMAND ||
+      cmd_.result == EC_RES_INVALID_VERSION) {
+    LOG(INFO) << "cros_ec does not support cmd=0x" << std::hex << cmd_.command
+              << std::dec << " ver=" << cmd_.version;
+    return false;
+  }
+  if (cmd_.result != EC_RES_SUCCESS) {
+    LOG_IF(WARNING, cmd_.result != EC_RES_IN_PROGRESS)
+        << "cros_ec returned error=" << ResultToString(cmd_.result)
+        << " for cmd=0x" << std::hex << cmd_.command;
+    return false;
+  }
+
+  // Check size in addition to result code to guard against bugs in the
+  // command implementation. See ec_command_test.cc for details and example test
+  // cases.
+  if (!IsValidRespSize(static_cast<uint32_t>(resp.size()))) {
+    return false;
+  }
+
+  actual_resp_size_ = static_cast<uint32_t>(resp.size());
+  if (actual_resp_size_ > 0) {
+    memcpy(&response_, resp.data(),
+           std::min<size_t>(resp.size(), sizeof(response_)));
+  }
+  return true;
+}
 
 /**
  * @tparam Params request structure
@@ -182,6 +227,8 @@ class EcCommand : public EcCommandInterface {
 template <typename Params, typename Response>
 bool EcCommand<Params, Response>::Run(int ec_fd) {
   cmd_.result = kEcCommandUninitializedResult;
+  actual_resp_size_ = 0;
+  response_ = {};
 
   Data data = {.cmd = cmd_, .req = request_};
 
@@ -192,26 +239,9 @@ bool EcCommand<Params, Response>::Run(int ec_fd) {
     return false;
   }
 
-  cmd_.result = data.cmd.result;
-  response_ = data.resp;
-
-  // Log errors returned from the EC. INVALID_COMMAND and INVALID_VERSION are
-  // commonly used to probe the EC thus more-or-less expected.
-  if (cmd_.result == EC_RES_INVALID_COMMAND ||
-      cmd_.result == EC_RES_INVALID_VERSION) {
-    LOG(INFO) << "cros_ec does not support cmd=0x" << std::hex << cmd_.command
-              << std::dec << " ver=" << cmd_.version;
-  } else if (cmd_.result != EC_RES_SUCCESS &&
-             cmd_.result != EC_RES_IN_PROGRESS) {
-    LOG(WARNING) << "cros_ec returned error=" << ResultToString(cmd_.result)
-                 << " for cmd=0x" << std::hex << cmd_.command;
-  }
-
-  // Check size in addition to result code to guard against bugs in the
-  // command implementation. See ec_command_test.cc for details and example test
-  // cases.
-  return (static_cast<uint32_t>(ret) == cmd_.insize) &&
-         cmd_.result == EC_RES_SUCCESS;
+  return ProcessResponse(data.cmd.result,
+                         std::span(reinterpret_cast<const uint8_t*>(&data.resp),
+                                   static_cast<size_t>(ret)));
 }
 
 template <typename Params, typename Response>

@@ -4,12 +4,15 @@
 
 #include "libec/ec_command.h"
 
+#include <cstddef>
+#include <span>
 #include <string>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 using testing::_;
+using testing::Each;
 using testing::InvokeWithoutArgs;
 using testing::Return;
 
@@ -298,6 +301,77 @@ TEST(EcCommand, ResultString_Unknown) {
       });
   EXPECT_FALSE(mock.Run(kDummyFd));
   EXPECT_EQ(mock.ResultString(), "65535");
+}
+
+class MockVariableRespCommand
+    : public MockEcCommand<struct ec_params_fp_mode,
+                           struct ec_response_fp_mode> {
+ public:
+  MockVariableRespCommand() : MockEcCommand(EC_CMD_FP_MODE, 0, {.mode = 1}) {}
+  using EcCommand::ActualRespSize;
+
+ protected:
+  bool IsValidRespSize(uint32_t actual) const override {
+    return actual >= 1 && actual <= RespSize();
+  }
+};
+
+TEST(EcCommand, VariableRespSize_ShorterResponseSucceeds) {
+  MockVariableRespCommand mock;
+  EXPECT_EQ(mock.ActualRespSize(), 0);
+  EXPECT_CALL(mock, ioctl)
+      .WillOnce([](int, uint32_t, MockVariableRespCommand::Data* data) {
+        data->cmd.result = EC_RES_SUCCESS;
+        // Simulate dirty memory from the request or uninitialized buffer.
+        memset(&data->resp, 0xFF, sizeof(data->resp));
+        return 1;
+      });
+  EXPECT_TRUE(mock.Run(kDummyFd));
+  EXPECT_EQ(mock.ActualRespSize(), 1);
+
+  // Verify that only the first byte contains the payload (0xFF), and the
+  // remaining bytes are zero-initialized.
+  auto resp_bytes = std::as_bytes(std::span(mock.Resp(), 1));
+  EXPECT_EQ(resp_bytes[0], std::byte{0xFF});
+  EXPECT_THAT(resp_bytes.subspan(1), Each(std::byte{0x00}));
+}
+
+TEST(EcCommand, VariableRespSize_MaxResponseSucceeds) {
+  MockVariableRespCommand mock;
+  EXPECT_CALL(mock, ioctl)
+      .WillOnce([](int, uint32_t, MockVariableRespCommand::Data* data) {
+        data->cmd.result = EC_RES_SUCCESS;
+        memset(&data->resp, 0xEE, sizeof(data->resp));
+        return data->cmd.insize;
+      });
+  EXPECT_TRUE(mock.Run(kDummyFd));
+  EXPECT_EQ(mock.ActualRespSize(), mock.RespSize());
+  auto resp_bytes = std::as_bytes(std::span(mock.Resp(), 1));
+  EXPECT_THAT(resp_bytes, Each(std::byte{0xEE}));
+}
+
+TEST(EcCommand, VariableRespSize_ZeroSizeFails) {
+  MockVariableRespCommand mock;
+  EXPECT_CALL(mock, ioctl)
+      .WillOnce([](int, uint32_t, MockVariableRespCommand::Data* data) {
+        data->cmd.result = EC_RES_SUCCESS;
+        return 0;
+      });
+  EXPECT_FALSE(mock.Run(kDummyFd));
+  EXPECT_EQ(mock.ActualRespSize(), 0);
+}
+
+TEST(EcCommand, VariableRespSize_InvalidSizeFails) {
+  MockVariableRespCommand mock;
+  EXPECT_CALL(mock, ioctl)
+      .WillOnce([](int, uint32_t, MockVariableRespCommand::Data* data) {
+        data->cmd.result = EC_RES_SUCCESS;
+        data->resp.mode = 0xFF;
+        return data->cmd.insize + 1;
+      });
+  EXPECT_FALSE(mock.Run(kDummyFd));
+  EXPECT_EQ(mock.ActualRespSize(), 0);
+  EXPECT_EQ(mock.Resp()->mode, 0);
 }
 
 }  // namespace
