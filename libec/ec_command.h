@@ -16,6 +16,7 @@
 #include <span>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include <base/logging.h>
 #include <chromeos/ec/cros_ec_dev.h>
@@ -164,6 +165,15 @@ class EcCommand : public EcCommandInterface {
   virtual int ioctl(int fd, uint32_t request, Data* data) {
     return ::ioctl(fd, request, data);
   }
+  virtual int usb_bulk_transfer(libusb_device_handle* dev_handle,
+                                unsigned char endpoint,
+                                unsigned char* data,
+                                int length,
+                                int* transferred,
+                                unsigned int timeout) {
+    return ::libusb_bulk_transfer(dev_handle, endpoint, data, length,
+                                  transferred, timeout);
+  }
   int usb_xfer(const struct usb_endpoint& uep,
                void* outbuf,
                int outlen,
@@ -255,9 +265,8 @@ int EcCommand<Params, Response>::usb_xfer(const struct usb_endpoint& uep,
   /* Send data out */
   if (outbuf && outlen) {
     transferred = 0;
-    r = libusb_bulk_transfer(uep.dev_handle, uep.address,
-                             (unsigned char*)outbuf, outlen, &transferred,
-                             kUsbXferTimeoutMs);
+    r = usb_bulk_transfer(uep.dev_handle, uep.address, (unsigned char*)outbuf,
+                          outlen, &transferred, kUsbXferTimeoutMs);
     if (r < LIBUSB_SUCCESS) {
       LOG(ERROR) << "libusb_bulk_transfer: " << libusb_error_name(r);
       return -1;
@@ -272,18 +281,20 @@ int EcCommand<Params, Response>::usb_xfer(const struct usb_endpoint& uep,
   /* Read reply back */
   if (inbuf && inlen) {
     transferred = 0;
-    r = libusb_bulk_transfer(uep.dev_handle, uep.address | 0x80,
-                             (unsigned char*)inbuf, inlen, &transferred,
-                             kUsbXferTimeoutMs);
+    r = usb_bulk_transfer(uep.dev_handle, uep.address | LIBUSB_ENDPOINT_IN,
+                          (unsigned char*)inbuf, inlen, &transferred,
+                          kUsbXferTimeoutMs);
     if (r < LIBUSB_SUCCESS) {
       LOG(ERROR) << "libusb_bulk_transfer: " << libusb_error_name(r);
       return -1;
     }
-    if (transferred != inlen) {
-      LOG(ERROR) << "Received " << transferred << " of " << inlen << " bytes";
+    if (transferred < static_cast<int>(sizeof(struct ec_host_response))) {
+      LOG(ERROR) << "Received " << transferred << " bytes, expected at least "
+                 << sizeof(struct ec_host_response);
       return -1;
     }
-    VLOG(1) << "Received " << inlen << " bytes";
+    VLOG(1) << "Received " << transferred << " bytes";
+    return transferred - sizeof(struct ec_host_response);
   }
 
   return 0;
@@ -302,6 +313,8 @@ static inline int sum_bytes(const void* data, int length) {
 template <typename Params, typename Response>
 bool EcCommand<Params, Response>::Run(ec::EcUsbEndpointInterface& uep) {
   cmd_.result = kEcCommandUninitializedResult;
+  actual_resp_size_ = 0;
+  response_ = {};
 
   if (!uep.ClaimInterface()) {
     LOG(WARNING) << "Failed to claim USB interface";
@@ -309,14 +322,10 @@ bool EcCommand<Params, Response>::Run(ec::EcUsbEndpointInterface& uep) {
   }
 
   size_t req_len = sizeof(struct ec_host_request) + cmd_.outsize;
-  uint8_t* req_buf = reinterpret_cast<uint8_t*>(malloc(req_len));
-  if (req_buf == nullptr) {
-    LOG(ERROR) << "Failed to allocate memory for request";
-    uep.ReleaseInterface();
-    return false;
-  }
-  struct ec_host_request* req = (struct ec_host_request*)req_buf;
-  uint8_t* req_data = req_buf + sizeof(struct ec_host_request);
+  std::vector<uint8_t> req_buf(req_len, 0);
+  struct ec_host_request* req =
+      reinterpret_cast<struct ec_host_request*>(req_buf.data());
+  uint8_t* req_data = req_buf.data() + sizeof(struct ec_host_request);
 
   req->struct_version = EC_HOST_REQUEST_VERSION; /* 3 */
   req->checksum = 0;
@@ -330,34 +339,25 @@ bool EcCommand<Params, Response>::Run(ec::EcUsbEndpointInterface& uep) {
   req->checksum = (uint8_t)(-sum_bytes(req, req_len));
 
   size_t res_len = sizeof(struct ec_host_response) + cmd_.insize;
-  uint8_t* res_buf = reinterpret_cast<uint8_t*>(malloc(res_len));
-  if (res_buf == nullptr) {
-    LOG(ERROR) << "Failed to allocate memory for response";
-    free(req);
-    uep.ReleaseInterface();
-    return false;
-  }
-  struct ec_host_response* res = (struct ec_host_response*)res_buf;
-  uint8_t* res_data = res_buf + sizeof(struct ec_host_response);
-  memset(res_buf, 0, res_len);
+  std::vector<uint8_t> res_buf(res_len, 0);
+  struct ec_host_response* res =
+      reinterpret_cast<struct ec_host_response*>(res_buf.data());
 
-  if (usb_xfer(uep.GetEndpointPtr(), req, req_len, res, res_len)) {
+  int payload_size = usb_xfer(uep.GetEndpointPtr(), req, req_len, res, res_len);
+  bool success = false;
+  if (payload_size < 0) {
     LOG(ERROR) << "Command 0x" << std::hex << cmd_.command << std::dec
                << " over USB failed";
   } else {
-    cmd_.result = res->result;
-    if (cmd_.insize) {
-      memcpy(&response_, res_data, cmd_.insize);
-    }
+    auto resp_data = std::span(res_buf).subspan(
+        sizeof(struct ec_host_response), static_cast<size_t>(payload_size));
+    success = ProcessResponse(res->result, resp_data);
   }
-
-  free(req);
-  free(res);
 
   /* We may fail here but the command was successfully executed. */
   uep.ReleaseInterface();
 
-  return true;
+  return success;
 }
 
 template <typename Params, typename Response>

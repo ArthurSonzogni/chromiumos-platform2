@@ -309,6 +309,15 @@ class MockVariableRespCommand
  public:
   MockVariableRespCommand() : MockEcCommand(EC_CMD_FP_MODE, 0, {.mode = 1}) {}
   using EcCommand::ActualRespSize;
+  MOCK_METHOD(int,
+              usb_bulk_transfer,
+              (libusb_device_handle * dev_handle,
+               unsigned char endpoint,
+               unsigned char* data,
+               int length,
+               int* transferred,
+               unsigned int timeout),
+              (override));
 
  protected:
   bool IsValidRespSize(uint32_t actual) const override {
@@ -370,6 +379,102 @@ TEST(EcCommand, VariableRespSize_InvalidSizeFails) {
         return data->cmd.insize + 1;
       });
   EXPECT_FALSE(mock.Run(kDummyFd));
+  EXPECT_EQ(mock.ActualRespSize(), 0);
+  EXPECT_EQ(mock.Resp()->mode, 0);
+}
+
+TEST(EcCommand, VariableRespSize_UsbShorterResponseSucceeds) {
+  MockVariableRespCommand mock;
+  EcUsbEndpointStub uep;
+  EXPECT_CALL(mock, usb_bulk_transfer)
+      .WillOnce([](libusb_device_handle*, unsigned char, unsigned char*,
+                   int length, int* transferred, unsigned int) {
+        *transferred = length;
+        return LIBUSB_SUCCESS;
+      })
+      .WillOnce([](libusb_device_handle*, unsigned char, unsigned char* data,
+                   int length, int* transferred, unsigned int) {
+        memset(data, 0xFF, length);
+        auto* res = reinterpret_cast<struct ec_host_response*>(data);
+        res->result = EC_RES_SUCCESS;
+        res->data_len = 1;
+        *transferred = sizeof(struct ec_host_response) + 1;
+        return LIBUSB_SUCCESS;
+      });
+
+  EXPECT_TRUE(mock.Run(uep));
+  EXPECT_EQ(mock.Result(), EC_RES_SUCCESS);
+  EXPECT_EQ(mock.ActualRespSize(), 1);
+  auto resp_bytes = std::as_bytes(std::span(mock.Resp(), 1));
+  EXPECT_EQ(resp_bytes[0], std::byte{0xFF});
+  EXPECT_THAT(resp_bytes.subspan(1), Each(std::byte{0x00}));
+}
+
+TEST(EcCommand, VariableRespSize_UsbInvalidSizeFails) {
+  MockVariableRespCommand mock;
+  EcUsbEndpointStub uep;
+  EXPECT_CALL(mock, usb_bulk_transfer)
+      .WillOnce([](libusb_device_handle*, unsigned char, unsigned char*,
+                   int length, int* transferred, unsigned int) {
+        *transferred = length;
+        return LIBUSB_SUCCESS;
+      })
+      .WillOnce([](libusb_device_handle*, unsigned char, unsigned char* data,
+                   int length, int* transferred, unsigned int) {
+        memset(data, 0xFF, length);
+        auto* res = reinterpret_cast<struct ec_host_response*>(data);
+        res->result = EC_RES_SUCCESS;
+        *transferred = sizeof(struct ec_host_response);
+        return LIBUSB_SUCCESS;
+      });
+
+  EXPECT_FALSE(mock.Run(uep));
+  EXPECT_EQ(mock.Result(), EC_RES_SUCCESS);
+  EXPECT_EQ(mock.ActualRespSize(), 0);
+  EXPECT_EQ(mock.Resp()->mode, 0);
+}
+
+TEST(EcCommand, VariableRespSize_UsbCommandFailure) {
+  MockVariableRespCommand mock;
+  EcUsbEndpointStub uep;
+  EXPECT_CALL(mock, usb_bulk_transfer)
+      .WillOnce([](libusb_device_handle*, unsigned char, unsigned char*,
+                   int length, int* transferred, unsigned int) {
+        *transferred = length;
+        return LIBUSB_SUCCESS;
+      })
+      .WillOnce([](libusb_device_handle*, unsigned char, unsigned char* data,
+                   int length, int* transferred, unsigned int) {
+        memset(data, 0xFF, length);
+        auto* res = reinterpret_cast<struct ec_host_response*>(data);
+        res->result = EC_RES_ACCESS_DENIED;
+        *transferred = sizeof(struct ec_host_response);
+        return LIBUSB_SUCCESS;
+      });
+
+  EXPECT_FALSE(mock.Run(uep));
+  EXPECT_EQ(mock.Result(), EC_RES_ACCESS_DENIED);
+  EXPECT_EQ(mock.ActualRespSize(), 0);
+  EXPECT_EQ(mock.Resp()->mode, 0);
+}
+
+TEST(EcCommand, VariableRespSize_UsbShortHeaderFails) {
+  MockVariableRespCommand mock;
+  EcUsbEndpointStub uep;
+  EXPECT_CALL(mock, usb_bulk_transfer)
+      .WillOnce([](libusb_device_handle*, unsigned char, unsigned char*,
+                   int length, int* transferred, unsigned int) {
+        *transferred = length;
+        return LIBUSB_SUCCESS;
+      })
+      .WillOnce([](libusb_device_handle*, unsigned char, unsigned char* data,
+                   int length, int* transferred, unsigned int) {
+        *transferred = sizeof(struct ec_host_response) - 1;
+        return LIBUSB_SUCCESS;
+      });
+
+  EXPECT_FALSE(mock.Run(uep));
+  EXPECT_EQ(mock.Result(), kEcCommandUninitializedResult);
   EXPECT_EQ(mock.ActualRespSize(), 0);
   EXPECT_EQ(mock.Resp()->mode, 0);
 }
