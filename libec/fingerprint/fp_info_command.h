@@ -43,14 +43,15 @@ class BRILLO_EXPORT FpInfoCommand_v1
 class BRILLO_EXPORT FpInfoCommand_v2
     : public EcCommand<EmptyParam, struct fp_info::Params_v2> {
  public:
+  static constexpr uint32_t kHeaderSize = sizeof(struct fp_info::Header_v2);
+  static constexpr uint32_t kEntrySize = sizeof(struct fp_image_frame_params);
+
   FpInfoCommand_v2() : EcCommand(EC_CMD_FP_INFO, kVersionTwo) {
-    /* EC_CMD_FP_INFO v2 can return a variable amount of data. However, libec's
-     * EcCommand::Run() expects a fixed response size for validation. We set the
-     * expected response size to the maximum possible size. The EC firmware must
-     * pad the response to this size.
+    /* EC_CMD_FP_INFO v2 can return a variable amount of data depending on the
+     * firmware's FP_MAX_CAPTURE_TYPES. Set the response buffer size to the
+     * maximum possible size on the host.
      */
-    SetRespSize(sizeof(struct fp_info::Header_v2) +
-                FP_MAX_CAPTURE_TYPES * sizeof(struct fp_image_frame_params));
+    SetRespSize(kHeaderSize + FP_MAX_CAPTURE_TYPES * kEntrySize);
   }
   ~FpInfoCommand_v2() override = default;
 
@@ -59,6 +60,12 @@ class BRILLO_EXPORT FpInfoCommand_v2
   std::optional<TemplateInfo> template_info();
   int NumDeadPixels();
   FpSensorErrors GetFpSensorErrors();
+
+ protected:
+  bool IsValidRespSize(uint32_t actual) const override {
+    return actual >= kHeaderSize && actual <= RespSize() &&
+           (actual - kHeaderSize) % kEntrySize == 0;
+  }
 
  private:
   std::optional<SensorId> sensor_id_;

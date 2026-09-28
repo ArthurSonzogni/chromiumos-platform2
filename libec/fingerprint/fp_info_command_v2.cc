@@ -40,9 +40,18 @@ std::vector<SensorImage> FpInfoCommand_v2::sensor_image() {
     return sensor_image_;
   }
 
-  uint32_t count = Resp()->info.sensor_info.num_capture_types;
-  // FPMCU response is untrusted; clamp loop count to the protocol maximum.
-  count = std::min<uint32_t>(count, FP_MAX_CAPTURE_TYPES);
+  // FPMCU response is untrusted; clamp loop count to the protocol maximum
+  // and the number of entries actually received.
+  const uint32_t actual_resp_size = ActualRespSize();
+  if (actual_resp_size < kHeaderSize) {
+    return {};
+  }
+
+  const uint32_t received_entries =
+      (actual_resp_size - kHeaderSize) / kEntrySize;
+  const uint32_t count = std::min<uint32_t>(
+      {Resp()->info.sensor_info.num_capture_types,
+       static_cast<uint32_t>(FP_MAX_CAPTURE_TYPES), received_entries});
 
   for (uint32_t i = 0; i < count; ++i) {
     sensor_image_.emplace_back(

@@ -208,6 +208,7 @@ class FpInfoCommand_v2_SensorImageTest : public testing::Test {
   class MockFpInfoCommand_v2 : public FpInfoCommand_v2 {
    public:
     MOCK_METHOD(fp_info::Params_v2*, Resp, (), (override));
+    MOCK_METHOD(uint32_t, ActualRespSize, (), (const, override));
   };
   MockFpInfoCommand_v2 mock_fp_info_command;
 };
@@ -223,6 +224,8 @@ TEST_F(FpInfoCommand_v2_SensorImageTest, ZeroCaptureImages) {
                                                  .num_capture_types = 0,
                                              }}};
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
+  EXPECT_CALL(mock_fp_info_command, ActualRespSize)
+      .WillRepeatedly(Return(sizeof(resp)));
   EXPECT_TRUE(mock_fp_info_command.sensor_image().empty());
 }
 
@@ -244,6 +247,8 @@ TEST_F(FpInfoCommand_v2_SensorImageTest, ValidSensorImage) {
                                 .fp_capture_type = FP_CAPTURE_PATTERN0};
 
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
+  EXPECT_CALL(mock_fp_info_command, ActualRespSize)
+      .WillRepeatedly(Return(sizeof(resp)));
 
   EXPECT_THAT(
       mock_fp_info_command.sensor_image(),
@@ -274,6 +279,8 @@ TEST_F(FpInfoCommand_v2_SensorImageTest,
                                 .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE};
 
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
+  EXPECT_CALL(mock_fp_info_command, ActualRespSize)
+      .WillRepeatedly(Return(sizeof(resp)));
 
   auto images = mock_fp_info_command.sensor_image();
 
@@ -323,6 +330,133 @@ TEST_F(FpInfoCommand_v2_TemplateInfoTest, ValidTemplateInfo) {
                   .num_valid = 3,
                   .dirty = std::bitset<32>(1 << 3),
               }));
+}
+
+class FpInfoCommand_v2_RunTest : public testing::Test {
+ public:
+  static constexpr int kDummyFd = 0;
+  static constexpr int kHeaderSize = FpInfoCommand_v2::kHeaderSize;
+  static constexpr int kEntrySize = FpInfoCommand_v2::kEntrySize;
+  static constexpr int kShorterRespSize =
+      kHeaderSize + (FP_MAX_CAPTURE_TYPES - 1) * kEntrySize;
+  static constexpr int kMaxRespSize =
+      kHeaderSize + FP_MAX_CAPTURE_TYPES * kEntrySize;
+
+  class MockFpInfoCommand_v2 : public FpInfoCommand_v2 {
+   public:
+    using Data = EcCommand<EmptyParam, struct fp_info::Params_v2>::Data;
+    MOCK_METHOD(int, ioctl, (int fd, uint32_t request, Data* data), (override));
+  };
+  MockFpInfoCommand_v2 mock_fp_info_command;
+};
+
+TEST_F(FpInfoCommand_v2_RunTest, ZeroEntryResponseParses) {
+  EXPECT_CALL(mock_fp_info_command, ioctl)
+      .WillOnce([](int, uint32_t, MockFpInfoCommand_v2::Data* data) {
+        data->cmd.result = EC_RES_SUCCESS;
+        data->resp.info.sensor_info = {.vendor_id = 1,
+                                       .product_id = 2,
+                                       .model_id = 3,
+                                       .version = 4,
+                                       .num_capture_types = 1};
+        return kHeaderSize;
+      });
+
+  EXPECT_TRUE(mock_fp_info_command.Run(kDummyFd));
+  EXPECT_THAT(
+      mock_fp_info_command.sensor_id(),
+      Eq(SensorId{
+          .vendor_id = 1, .product_id = 2, .model_id = 3, .version = 4}));
+  EXPECT_THAT(mock_fp_info_command.sensor_image(), SizeIs(0));
+}
+
+TEST_F(FpInfoCommand_v2_RunTest, ShorterEntryResponseParses) {
+  EXPECT_CALL(mock_fp_info_command, ioctl)
+      .WillOnce([](int, uint32_t, MockFpInfoCommand_v2::Data* data) {
+        data->cmd.result = EC_RES_SUCCESS;
+        data->resp.info.sensor_info = {.vendor_id = 1,
+                                       .product_id = 2,
+                                       .model_id = 3,
+                                       .version = 4,
+                                       .num_capture_types = 1};
+        data->resp.image_frame_params[0] = {
+            .frame_size = 5120,
+            .pixel_format = 0x59455247,
+            .width = 64,
+            .height = 80,
+            .bpp = 8,
+            .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE};
+        return kShorterRespSize;
+      });
+
+  EXPECT_TRUE(mock_fp_info_command.Run(kDummyFd));
+  EXPECT_THAT(
+      mock_fp_info_command.sensor_id(),
+      Eq(SensorId{
+          .vendor_id = 1, .product_id = 2, .model_id = 3, .version = 4}));
+  EXPECT_THAT(
+      mock_fp_info_command.sensor_image(),
+      ElementsAre(SensorImage{.width = 64,
+                              .height = 80,
+                              .frame_size = 5120,
+                              .pixel_format = 0x59455247,
+                              .bpp = 8,
+                              .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE}));
+}
+
+TEST_F(FpInfoCommand_v2_RunTest, MaxEntryResponseParses) {
+  EXPECT_CALL(mock_fp_info_command, ioctl)
+      .WillOnce([](int, uint32_t, MockFpInfoCommand_v2::Data* data) {
+        data->cmd.result = EC_RES_SUCCESS;
+        data->resp.info.sensor_info.num_capture_types = 1;
+        data->resp.image_frame_params[0] = {
+            .frame_size = 5120,
+            .pixel_format = 0x59455247,
+            .width = 64,
+            .height = 80,
+            .bpp = 8,
+            .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE};
+        return kMaxRespSize;
+      });
+
+  EXPECT_TRUE(mock_fp_info_command.Run(kDummyFd));
+  EXPECT_THAT(
+      mock_fp_info_command.sensor_image(),
+      ElementsAre(SensorImage{.width = 64,
+                              .height = 80,
+                              .frame_size = 5120,
+                              .pixel_format = 0x59455247,
+                              .bpp = 8,
+                              .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE}));
+}
+
+TEST_F(FpInfoCommand_v2_RunTest,
+       ShorterResponseClampsCaptureCountToReceivedEntries) {
+  EXPECT_CALL(mock_fp_info_command, ioctl)
+      .WillOnce([](int, uint32_t, MockFpInfoCommand_v2::Data* data) {
+        data->cmd.result = EC_RES_SUCCESS;
+        data->resp.info.sensor_info.num_capture_types = FP_MAX_CAPTURE_TYPES;
+        return kShorterRespSize;
+      });
+
+  EXPECT_TRUE(mock_fp_info_command.Run(kDummyFd));
+  EXPECT_THAT(mock_fp_info_command.sensor_image(),
+              SizeIs(FP_MAX_CAPTURE_TYPES - 1));
+}
+
+TEST_F(FpInfoCommand_v2_RunTest, TruncatedAndMisalignedResponsesFail) {
+  for (int invalid_size :
+       {kHeaderSize - 1, kHeaderSize + 1, kShorterRespSize - 1,
+        kShorterRespSize + 1, kMaxRespSize + 1, kMaxRespSize + kEntrySize}) {
+    EXPECT_CALL(mock_fp_info_command, ioctl)
+        .WillOnce(
+            [invalid_size](int, uint32_t, MockFpInfoCommand_v2::Data* data) {
+              data->cmd.result = EC_RES_SUCCESS;
+              return invalid_size;
+            });
+    EXPECT_FALSE(mock_fp_info_command.Run(kDummyFd))
+        << "Unexpected success for response size " << invalid_size;
+  }
 }
 
 }  // namespace
