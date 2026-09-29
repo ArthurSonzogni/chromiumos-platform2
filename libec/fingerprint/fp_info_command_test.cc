@@ -65,6 +65,9 @@ class FpInfoCommandTest : public testing::Test {
 
   class MockFpInfoCommand_v3 : public FpInfoCommand_v3 {
    public:
+    MockFpInfoCommand_v3() {
+      ON_CALL(*this, ActualRespSize).WillByDefault(Return(RespSize()));
+    }
     MOCK_METHOD(ec::fp_info::Params_v3*, Resp, (), (override));
     MOCK_METHOD(uint32_t, ActualRespSize, (), (const, override));
     MOCK_METHOD(bool, Run, (int fd), (override));
@@ -443,8 +446,6 @@ TEST_F(FpInfoCommandTest, sensor_image_valid_v3) {
                                 .fp_capture_type = FP_CAPTURE_PATTERN0};
 
   EXPECT_CALL(*mock_fp_info_command_v3_, Resp).WillRepeatedly(Return(&resp));
-  EXPECT_CALL(*mock_fp_info_command_v3_, ActualRespSize)
-      .WillRepeatedly(Return(sizeof(resp)));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
       3, nullptr, nullptr, std::move(mock_fp_info_command_v3_));
 
@@ -545,8 +546,6 @@ TEST_F(FpInfoCommandTest, Parse_sensor_info_v3) {
   };
 
   EXPECT_CALL(*mock_fp_info_command_v3_, Resp).WillRepeatedly(Return(&resp));
-  EXPECT_CALL(*mock_fp_info_command_v3_, ActualRespSize)
-      .WillRepeatedly(Return(sizeof(resp)));
   auto fp_info_command = std::make_unique<ec::FpInfoCommand>(
       3, nullptr, nullptr, std::move(mock_fp_info_command_v3_));
 
