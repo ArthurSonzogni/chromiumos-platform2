@@ -2,25 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <sys/socket.h>
-#include <sys/types.h>
-
 #include <memory>
 #include <string>
 
-#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/uuid.h>
 
-#include "vm_tools/concierge/metrics/duration_recorder.h"
-#include "vm_tools/concierge/network/plugin_vm_network.h"
-#include "vm_tools/concierge/plugin_vm.h"
-#include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/service.h"
 #include "vm_tools/concierge/service_common.h"
-#include "vm_tools/concierge/service_start_vm_helper.h"
-#include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
 namespace vm_tools::concierge {
@@ -34,66 +23,6 @@ bool GetPluginStatefulDirectory(const VmId& vm_id,
                                 .Append(kPluginVmDir)
                                 .Append(vm_id.owner_id()),
                             "pvm", vm_id.name(), create, path_out);
-}
-
-bool GetPluginRuntimeDirectory(const std::string& vm_id,
-                               base::ScopedTempDir* runtime_dir_out) {
-  base::FilePath path;
-  if (GetPluginDirectory(base::FilePath("/run/pvm"), "", vm_id,
-                         true /*create */, &path)) {
-    // Take ownership of directory
-    CHECK(runtime_dir_out->Set(path));
-    return true;
-  }
-
-  return false;
-}
-
-bool GetPluginRootDirectory(const std::string& vm_id,
-                            base::ScopedTempDir* root_dir_out) {
-  base::FilePath path;
-  if (!base::CreateTemporaryDirInDir(base::FilePath(kRuntimeDir), "vm.",
-                                     &path)) {
-    PLOG(ERROR) << "Unable to create root directory for VM";
-    return false;
-  }
-
-  // Take ownership of directory
-  CHECK(root_dir_out->Set(path));
-  return true;
-}
-
-bool CreatePluginRootHierarchy(const base::FilePath& root_path) {
-  base::FilePath etc_dir(root_path.Append("etc"));
-  base::File::Error dir_error;
-  if (!CreateDirectoryAndGetError(etc_dir, &dir_error)) {
-    LOG(ERROR) << "Unable to create /etc in root directory for VM "
-               << base::File::ErrorToString(dir_error);
-    return false;
-  }
-
-  // Note that this will be dangling (or rather point to concierge's timezone
-  // instance) until crosvm bind mounts /var/lib/timezone and
-  // /usr/share/zoneinfo into plugin jail.
-  if (!base::CreateSymbolicLink(base::FilePath("/var/lib/timezone/localtime"),
-                                etc_dir.Append("localtime"))) {
-    PLOG(ERROR) << "Unable to create /etc/localtime symlink";
-    return false;
-  }
-
-  return true;
-}
-
-bool GetPlugin9PSocketPath(const std::string& vm_id, base::FilePath* path_out) {
-  base::FilePath runtime_dir;
-  if (!GetPluginDirectory(base::FilePath("/run/pvm"), "", vm_id,
-                          true /* create */, &runtime_dir)) {
-    LOG(ERROR) << "Unable to get runtime directory for 9P socket";
-    return false;
-  }
-
-  *path_out = runtime_dir.Append("9p.sock");
-  return true;
 }
 
 }  // namespace
@@ -113,161 +42,6 @@ void Service::StartPluginVm(
   response.set_failure_reason("Plugin VM is no longer supported");
 
   response_cb->Return(response);
-}
-
-StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
-                                               StartVmResponse& response) {
-  LOG(INFO) << "Received StartPluginVm request";
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  VmId vm_id(request.owner_id(), request.name());
-
-  // Get the stateful directory.
-  base::FilePath stateful_dir;
-  if (!GetPluginStatefulDirectory(vm_id, true /* create */, &stateful_dir)) {
-    LOG(ERROR) << "Unable to create stateful directory for VM";
-
-    response.set_failure_reason("Unable to create stateful directory");
-    return response;
-  }
-
-  // Get the directory for ISO images.
-  base::FilePath iso_dir;
-  if (!GetPluginIsoDirectory(vm_id, true /* create */, &iso_dir)) {
-    LOG(ERROR) << "Unable to create directory holding ISOs for VM";
-
-    response.set_failure_reason("Unable to create ISO directory");
-    return response;
-  }
-
-  // Create the runtime directory.
-  base::ScopedTempDir runtime_dir;
-  if (!GetPluginRuntimeDirectory(request.name(), &runtime_dir)) {
-    LOG(ERROR) << "Unable to create runtime directory for VM";
-
-    response.set_failure_reason("Unable to create runtime directory");
-    return response;
-  }
-
-  // Create the root directory.
-  base::ScopedTempDir root_dir;
-  if (!GetPluginRootDirectory(request.name(), &root_dir)) {
-    LOG(ERROR) << "Unable to create runtime directory for VM";
-
-    response.set_failure_reason("Unable to create runtime directory");
-    return response;
-  }
-
-  if (!CreatePluginRootHierarchy(root_dir.GetPath())) {
-    response.set_failure_reason("Unable to create plugin root hierarchy");
-    return response;
-  }
-
-  if (!PluginVm::WriteResolvConf(root_dir.GetPath().Append("etc"), nameservers_,
-                                 search_domains_)) {
-    LOG(ERROR) << "Unable to seed resolv.conf for the Plugin VM";
-
-    response.set_failure_reason("Unable to seed resolv.conf");
-    return response;
-  }
-
-  // Generate the token used by cicerone to identify the VM and write it to
-  // a VM specific directory that gets mounted into the VM.
-  std::string vm_token = base::Uuid::GenerateRandomV4().AsLowercaseString();
-  if (!base::WriteFile(runtime_dir.GetPath().Append("cicerone.token"),
-                       vm_token)) {
-    PLOG(ERROR) << "Failure writing out cicerone token to file";
-
-    response.set_failure_reason("Unable to set cicerone token");
-    return response;
-  }
-
-  base::FilePath p9_socket_path;
-  if (!GetPlugin9PSocketPath(request.name(), &p9_socket_path)) {
-    response.set_failure_reason("Internal error: unable to get 9P directory");
-    return response;
-  }
-
-  base::ScopedFD p9_socket =
-      PluginVm::CreateUnixSocket(p9_socket_path, SOCK_STREAM);
-  if (!p9_socket.is_valid()) {
-    LOG(ERROR) << "Failed creating 9P socket for file sharing";
-
-    response.set_failure_reason("Internal error: unable to create 9P socket");
-    return response;
-  }
-
-  std::unique_ptr<PluginVmNetwork> network = PluginVmNetwork::Create(
-      bus_, vm_id, static_cast<int>(request.subnet_index()));
-  if (!network) {
-    LOG(ERROR) << "Failed to allocate network resources for pluginvm";
-
-    response.set_failure_reason(
-        "Failed to allocate network resources for pluginvm");
-    return response;
-  }
-
-  std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy =
-      SeneschalServerProxy::CreateFdProxy(bus_, seneschal_service_proxy_,
-                                          p9_socket);
-  if (!seneschal_server_proxy) {
-    LOG(ERROR) << "Unable to start shared directory server";
-
-    response.set_failure_reason("Unable to start shared directory server");
-    return response;
-  }
-
-  // Build the plugin params.
-  std::vector<std::string> params(
-      std::make_move_iterator(request.mutable_params()->begin()),
-      std::make_move_iterator(request.mutable_params()->end()));
-
-  // Now start the VM.
-  SendVmStartingUpSignal(vm_id, apps::VmType::PLUGIN_VM, 0 /* cid */);
-
-  VmBuilder vm_builder;
-  vm_builder.SetCpus(request.cpus());
-  vm_builder.AppendCustomParam("--vcpu-cgroup-path",
-                               base::FilePath(kPluginVmVcpuCpuCgroup).value());
-  for (auto& param : params) {
-    // Because additional parameters may start with a '--', we should use
-    // --params=<Param> instead of --params <Param> to make explicit <Param>
-    // is a parameter for the plugin rather than just another parameter to
-    // the crosvm process.
-    vm_builder.AppendCustomParam(std::string("--params=") + param, "");
-  }
-
-  auto vm = PluginVm::Create(PluginVm::Config{
-      .id = vm_id,
-      .stateful_dir = std::move(stateful_dir),
-      .iso_dir = std::move(iso_dir),
-      .root_dir = root_dir.Take(),
-      .runtime_dir = runtime_dir.Take(),
-      .enable_vnet_hdr = request.net_options().enable_vnet_hdr(),
-      .bus = bus_,
-      .network = std::move(network),
-      .seneschal_server_proxy = std::move(seneschal_server_proxy),
-      .vm_permission_service_proxy = vm_permission_service_proxy_,
-      .vmplugin_service_proxy = vmplugin_service_proxy_,
-      .vm_builder = std::move(vm_builder)});
-  if (!vm) {
-    LOG(ERROR) << "Unable to start VM";
-    response.set_failure_reason("Unable to start VM");
-    return response;
-  }
-
-  NotifyCiceroneOfVmStarted(vm_id, 0 /* cid */, vm->pid(), std::move(vm_token),
-                            apps::VmType::PLUGIN_VM);
-
-  vms_[vm_id] = std::move(vm);
-
-  HandleControlSocketReady(vm_id);
-
-  response.set_success(true);
-  response.set_status(VM_STATUS_RUNNING);
-  *response.mutable_vm_info() = ToVmInfo(vms_[vm_id]->GetInfo(), true);
-
-  return response;
 }
 
 bool Service::RenamePluginVm(const VmId& old_id,

@@ -116,7 +116,6 @@
 #include "vm_tools/concierge/network/bruschetta_network.h"
 #include "vm_tools/concierge/network/guest_os_network.h"
 #include "vm_tools/concierge/network/termina_network.h"
-#include "vm_tools/concierge/plugin_vm.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/service_common.h"
@@ -3779,7 +3778,7 @@ void Service::SetVmCpuRestriction(
       success = TerminaVm::SetVmCpuRestriction(state);
       break;
     case CPU_CGROUP_PLUGINVM:
-      success = PluginVm::SetVmCpuRestriction(state);
+      LOG(WARNING) << "CPU_CGROUP_PLUGINVM is deprecated";
       break;
     case CPU_CGROUP_ARCVM:
       success = ArcVm::SetVmCpuRestriction(state, GetCpuQuota());
