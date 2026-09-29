@@ -258,6 +258,33 @@ TEST_F(PrefsTest, SetStringFileCreationFailure) {
   EXPECT_TRUE(base::DirectoryExists(prefs_dir_.Append(kKey)));
 }
 
+TEST_F(PrefsTest, SetStringSymlinkFailure) {
+  base::FilePath target = temp_dir_.GetPath().Append("symlink-target");
+  ASSERT_TRUE(base::WriteFile(target, "original"));
+  ASSERT_TRUE(base::CreateSymbolicLink(target, prefs_dir_.Append(kKey)));
+  EXPECT_FALSE(prefs_.SetString(kKey, "overwritten"));
+  string value;
+  EXPECT_TRUE(base::ReadFileToString(target, &value));
+  EXPECT_EQ("original", value);
+}
+
+TEST_F(PrefsTest, SetStringDanglingSymlinkFailure) {
+  base::FilePath target = temp_dir_.GetPath().Append("non-existent-target");
+  ASSERT_TRUE(base::CreateSymbolicLink(target, prefs_dir_.Append(kKey)));
+  EXPECT_FALSE(prefs_.SetString(kKey, "created"));
+  EXPECT_FALSE(base::PathExists(target));
+}
+
+TEST_F(PrefsTest, SetStringSymlinkDirFailure) {
+  base::ScopedTempDir outside_dir;
+  ASSERT_TRUE(outside_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(
+      base::CreateSymbolicLink(outside_dir.GetPath(), prefs_dir_.Append("ns")));
+  EXPECT_FALSE(
+      prefs_.SetString(prefs_.CreateSubKey({"ns", kKey}), "test value"));
+  EXPECT_FALSE(base::PathExists(outside_dir.GetPath().Append(kKey)));
+}
+
 TEST_F(PrefsTest, GetInt64) {
   ASSERT_TRUE(SetValue(kKey, " \n 25 \t "));
   int64_t value;

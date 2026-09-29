@@ -4,11 +4,17 @@
 
 #include "update_engine/common/prefs.h"
 
+#include <fcntl.h>
+#include <sys/stat.h>
+
 #include <algorithm>
+#include <utility>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -188,12 +194,44 @@ bool Prefs::FileStorage::GetSubKeys(const string& ns,
 bool Prefs::FileStorage::SetKey(const string& key, const string& value) {
   base::FilePath filename;
   TEST_AND_RETURN_FALSE(GetFileNameForKey(key, &filename));
-  if (!base::DirectoryExists(filename.DirName())) {
+  vector<string> components =
+      base::SplitString(key, string(1, kKeySeparator), base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
+  TEST_AND_RETURN_FALSE(!components.empty());
+  for (const auto& component : components) {
+    TEST_AND_RETURN_FALSE(!component.empty());
+  }
+
+  if (!base::DirectoryExists(prefs_dir_)) {
+    TEST_AND_RETURN_FALSE(!base::IsLink(prefs_dir_));
     // Only attempt to create the directory if it doesn't exist to avoid calls
     // to parent directories where we might not have permission to write to.
-    TEST_AND_RETURN_FALSE(base::CreateDirectory(filename.DirName()));
+    TEST_AND_RETURN_FALSE(base::CreateDirectory(prefs_dir_));
   }
-  TEST_AND_RETURN_FALSE(base::WriteFile(filename, value));
+
+  base::ScopedFD dir_fd(
+      HANDLE_EINTR(open(prefs_dir_.value().c_str(),
+                        O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)));
+  TEST_AND_RETURN_FALSE_ERRNO(dir_fd.is_valid());
+
+  for (size_t i = 0; i + 1 < components.size(); ++i) {
+    if (mkdirat(dir_fd.get(), components[i].c_str(), 0755) != 0 &&
+        errno != EEXIST) {
+      PLOG(ERROR) << "Failed to create directory " << components[i];
+      return false;
+    }
+    base::ScopedFD next_dir_fd(
+        HANDLE_EINTR(openat(dir_fd.get(), components[i].c_str(),
+                            O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)));
+    TEST_AND_RETURN_FALSE_ERRNO(next_dir_fd.is_valid());
+    dir_fd = std::move(next_dir_fd);
+  }
+
+  base::ScopedFD fd(HANDLE_EINTR(
+      openat(dir_fd.get(), components.back().c_str(),
+             O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, 0644)));
+  TEST_AND_RETURN_FALSE_ERRNO(fd.is_valid());
+  TEST_AND_RETURN_FALSE(base::WriteFileDescriptor(fd.get(), value));
   return true;
 }
 
