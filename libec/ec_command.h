@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <numeric>
 #include <span>
 #include <string>
 #include <unordered_map>
@@ -175,10 +176,8 @@ class EcCommand : public EcCommandInterface {
                                   transferred, timeout);
   }
   int usb_xfer(const struct usb_endpoint& uep,
-               void* outbuf,
-               int outlen,
-               void* inbuf,
-               int inlen);
+               std::span<uint8_t> outbuf,
+               std::span<uint8_t> inbuf);
 
   unsigned int kUsbXferTimeoutMs = 1000;
 
@@ -256,34 +255,34 @@ bool EcCommand<Params, Response>::Run(int ec_fd) {
 
 template <typename Params, typename Response>
 int EcCommand<Params, Response>::usb_xfer(const struct usb_endpoint& uep,
-                                          void* outbuf,
-                                          int outlen,
-                                          void* inbuf,
-                                          int inlen) {
+                                          std::span<uint8_t> outbuf,
+                                          std::span<uint8_t> inbuf) {
   int r, transferred;
 
   /* Send data out */
-  if (outbuf && outlen) {
+  if (!outbuf.empty()) {
     transferred = 0;
-    r = usb_bulk_transfer(uep.dev_handle, uep.address, (unsigned char*)outbuf,
-                          outlen, &transferred, kUsbXferTimeoutMs);
+    r = usb_bulk_transfer(uep.dev_handle, uep.address, outbuf.data(),
+                          static_cast<int>(outbuf.size()), &transferred,
+                          kUsbXferTimeoutMs);
     if (r < LIBUSB_SUCCESS) {
       LOG(ERROR) << "libusb_bulk_transfer: " << libusb_error_name(r);
       return -1;
     }
-    if (transferred != outlen) {
-      LOG(ERROR) << "Sent " << transferred << " of " << outlen << " bytes";
+    if (transferred != static_cast<int>(outbuf.size())) {
+      LOG(ERROR) << "Sent " << transferred << " of " << outbuf.size()
+                 << " bytes";
       return -1;
     }
-    VLOG(1) << "Sent " << outlen << " bytes";
+    VLOG(1) << "Sent " << outbuf.size() << " bytes";
   }
 
   /* Read reply back */
-  if (inbuf && inlen) {
+  if (!inbuf.empty()) {
     transferred = 0;
     r = usb_bulk_transfer(uep.dev_handle, uep.address | LIBUSB_ENDPOINT_IN,
-                          (unsigned char*)inbuf, inlen, &transferred,
-                          kUsbXferTimeoutMs);
+                          inbuf.data(), static_cast<int>(inbuf.size()),
+                          &transferred, kUsbXferTimeoutMs);
     if (r < LIBUSB_SUCCESS) {
       LOG(ERROR) << "libusb_bulk_transfer: " << libusb_error_name(r);
       return -1;
@@ -300,14 +299,8 @@ int EcCommand<Params, Response>::usb_xfer(const struct usb_endpoint& uep,
   return 0;
 }
 
-static inline int sum_bytes(const void* data, int length) {
-  const uint8_t* bytes = (const uint8_t*)data;
-  int sum = 0;
-
-  for (int i = 0; i < length; i++) {
-    sum += bytes[i];
-  }
-  return sum;
+static inline int sum_bytes(std::span<const uint8_t> data) {
+  return std::accumulate(data.begin(), data.end(), 0);
 }
 
 template <typename Params, typename Response>
@@ -325,7 +318,6 @@ bool EcCommand<Params, Response>::Run(ec::EcUsbEndpointInterface& uep) {
   std::vector<uint8_t> req_buf(req_len, 0);
   struct ec_host_request* req =
       reinterpret_cast<struct ec_host_request*>(req_buf.data());
-  uint8_t* req_data = req_buf.data() + sizeof(struct ec_host_request);
 
   req->struct_version = EC_HOST_REQUEST_VERSION; /* 3 */
   req->checksum = 0;
@@ -334,16 +326,17 @@ bool EcCommand<Params, Response>::Run(ec::EcUsbEndpointInterface& uep) {
   req->reserved = 0;
   req->data_len = cmd_.outsize;
   if (cmd_.outsize) {
-    memcpy(req_data, &request_, cmd_.outsize);
+    auto req_data = std::span(req_buf).subspan(sizeof(struct ec_host_request));
+    memcpy(req_data.data(), &request_, cmd_.outsize);
   }
-  req->checksum = (uint8_t)(-sum_bytes(req, req_len));
+  req->checksum = static_cast<uint8_t>(-sum_bytes(req_buf));
 
   size_t res_len = sizeof(struct ec_host_response) + cmd_.insize;
   std::vector<uint8_t> res_buf(res_len, 0);
   struct ec_host_response* res =
       reinterpret_cast<struct ec_host_response*>(res_buf.data());
 
-  int payload_size = usb_xfer(uep.GetEndpointPtr(), req, req_len, res, res_len);
+  int payload_size = usb_xfer(uep.GetEndpointPtr(), req_buf, res_buf);
   bool success = false;
   if (payload_size < 0) {
     LOG(ERROR) << "Command 0x" << std::hex << cmd_.command << std::dec
