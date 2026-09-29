@@ -207,6 +207,9 @@ class FpInfoCommand_v2_SensorImageTest : public testing::Test {
  public:
   class MockFpInfoCommand_v2 : public FpInfoCommand_v2 {
    public:
+    MockFpInfoCommand_v2() {
+      ON_CALL(*this, ActualRespSize).WillByDefault(Return(RespSize()));
+    }
     MOCK_METHOD(fp_info::Params_v2*, Resp, (), (override));
     MOCK_METHOD(uint32_t, ActualRespSize, (), (const, override));
   };
@@ -224,8 +227,6 @@ TEST_F(FpInfoCommand_v2_SensorImageTest, ZeroCaptureImages) {
                                                  .num_capture_types = 0,
                                              }}};
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
-  EXPECT_CALL(mock_fp_info_command, ActualRespSize)
-      .WillRepeatedly(Return(sizeof(resp)));
   EXPECT_TRUE(mock_fp_info_command.sensor_image().empty());
 }
 
@@ -247,8 +248,6 @@ TEST_F(FpInfoCommand_v2_SensorImageTest, ValidSensorImage) {
                                 .fp_capture_type = FP_CAPTURE_PATTERN0};
 
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
-  EXPECT_CALL(mock_fp_info_command, ActualRespSize)
-      .WillRepeatedly(Return(sizeof(resp)));
 
   EXPECT_THAT(
       mock_fp_info_command.sensor_image(),
@@ -279,8 +278,6 @@ TEST_F(FpInfoCommand_v2_SensorImageTest,
                                 .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE};
 
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
-  EXPECT_CALL(mock_fp_info_command, ActualRespSize)
-      .WillRepeatedly(Return(sizeof(resp)));
 
   auto images = mock_fp_info_command.sensor_image();
 
