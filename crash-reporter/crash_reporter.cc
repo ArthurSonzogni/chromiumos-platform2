@@ -24,6 +24,7 @@
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <libec/ec_command.h>
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_writer.h>
 
@@ -272,6 +273,10 @@ void EnterSandbox(bool write_proc, bool log_to_stderr) {
   }
   // Allow access to kmsg for unclean shutdown collector to write to kernel log.
   minijail_bind(j, "/dev/kmsg", "/dev/kmsg", 0);
+  // Allow access to /dev/cros_ec for ectool.
+  if (base::PathExists(paths::Get(ec::kCrosEcPath))) {
+    minijail_bind(j, ec::kCrosEcPath, ec::kCrosEcPath, 0);
+  }
   minijail_no_new_privs(j);
 
   // We need access to /sys/class/watchdog to determine if the device rebooted
