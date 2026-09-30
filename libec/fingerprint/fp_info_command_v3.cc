@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <algorithm>
+#include <span>
 #include <vector>
 
 #include "libec/fingerprint/fp_info_command.h"
@@ -40,8 +41,8 @@ std::vector<SensorImage> FpInfoCommand_v3::sensor_image() {
     return sensor_image_;
   }
 
-  // FPMCU response is untrusted; clamp loop count to the protocol maximum
-  // and the number of entries actually received.
+  // FPMCU response is untrusted; clamp loop count to the protocol maximum,
+  // the number of entries actually received, and the backing array size.
   const uint32_t actual_resp_size = ActualRespSize();
   if (actual_resp_size < kHeaderSize) {
     return {};
@@ -49,21 +50,23 @@ std::vector<SensorImage> FpInfoCommand_v3::sensor_image() {
 
   const uint32_t received_entries =
       (actual_resp_size - kHeaderSize) / kEntrySize;
+  const auto frames = std::span(Resp()->image_frame_params);
   const uint32_t count = std::min<uint32_t>(
       {Resp()->info.sensor_info.num_capture_types,
-       static_cast<uint32_t>(FP_MAX_CAPTURE_TYPES), received_entries});
+       static_cast<uint32_t>(FP_MAX_CAPTURE_TYPES), received_entries,
+       static_cast<uint32_t>(frames.size())});
 
-  for (uint32_t i = 0; i < count; ++i) {
-    sensor_image_.emplace_back(
-        SensorImage{.width = Resp()->image_frame_params[i].width,
-                    .height = Resp()->image_frame_params[i].height,
-                    .frame_size = Resp()->image_frame_params[i].frame_size,
-                    .image_data_offset_bytes =
-                        Resp()->image_frame_params[i].image_data_offset_bytes,
-                    .pixel_format = Resp()->image_frame_params[i].pixel_format,
-                    .bpp = Resp()->image_frame_params[i].bpp,
-                    .fp_capture_type = static_cast<enum fp_capture_type>(
-                        Resp()->image_frame_params[i].fp_capture_type)});
+  for (const auto& frame : frames.first(count)) {
+    sensor_image_.emplace_back(SensorImage{
+        .width = frame.width,
+        .height = frame.height,
+        .frame_size = frame.frame_size,
+        .image_data_offset_bytes = frame.image_data_offset_bytes,
+        .pixel_format = frame.pixel_format,
+        .bpp = frame.bpp,
+        .fp_capture_type =
+            static_cast<enum fp_capture_type>(frame.fp_capture_type),
+    });
   }
 
   return sensor_image_;
