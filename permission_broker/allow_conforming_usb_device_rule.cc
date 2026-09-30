@@ -350,7 +350,8 @@ Rule::Result AllowConformingUsbDeviceRule::ProcessTaggedDevice(
     LOG(INFO) << "Device was marked as internal, but climbing the hierarchy we "
                  "found an external ancestor.";
     return ALLOW_WITH_DETACH;
-  } else if (location == CrosUsbLocationProperty::kInternal) {
+  } else if (location == CrosUsbLocationProperty::kInternal &&
+             !IsDeviceAllowedInternal(device)) {
     return Rule::DENY;
   }
 

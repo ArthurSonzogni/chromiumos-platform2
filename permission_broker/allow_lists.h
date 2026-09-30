@@ -76,6 +76,10 @@ const DevicePolicy::UsbDeviceId kInternalAllowedIds[] = {
     {0x0c27, 0x3bfa},  // USB card reader
     {0x0554, 0x1001},  // Nuance PowerMic III
     {0xdf04, 0x0004},  // Nuance PowerMic III
+    {0x0a5c, 0x5842},  // Broadcom Corp 58200 (ControlVault3)
+    {0x0a5c, 0x5843},  // Broadcom Corp 58200 (ControlVault3)
+    {0x0a5c, 0x5864},  // Broadcom Corp 58200 (ControlVault3)
+    {0x0a5c, 0x5865},  // Broadcom Corp 58200 (ControlVault3)
 };
 
 const DevicePolicy::UsbDeviceId kWebHIDAllowedIds[] = {
