@@ -269,7 +269,7 @@ TEST_F(FpInfoCommand_v2_SensorImageTest,
        MaliciousLargeCaptureCountClampedToProtocolMax) {
   struct fp_info::Params_v2 resp{};
 
-  resp.info.sensor_info.num_capture_types = 100;
+  resp.info.sensor_info.num_capture_types = FP_MAX_CAPTURE_TYPES + 1;
   resp.image_frame_params[0] = {.frame_size = 5120,
                                 .pixel_format = 0x59455247,
                                 .width = 64,
@@ -278,6 +278,35 @@ TEST_F(FpInfoCommand_v2_SensorImageTest,
                                 .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE};
 
   EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
+
+  auto images = mock_fp_info_command.sensor_image();
+
+  ASSERT_THAT(images, SizeIs(FP_MAX_CAPTURE_TYPES));
+  EXPECT_THAT(images[0],
+              Eq(SensorImage{.width = 64,
+                             .height = 80,
+                             .frame_size = 5120,
+                             .pixel_format = 0x59455247,
+                             .bpp = 8,
+                             .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE}));
+}
+
+TEST_F(FpInfoCommand_v2_SensorImageTest,
+       LargeActualRespSizeClampedToProtocolMax) {
+  struct fp_info::Params_v2 resp{};
+
+  resp.info.sensor_info.num_capture_types = FP_MAX_CAPTURE_TYPES + 1;
+  resp.image_frame_params[0] = {.frame_size = 5120,
+                                .pixel_format = 0x59455247,
+                                .width = 64,
+                                .height = 80,
+                                .bpp = 8,
+                                .fp_capture_type = FP_CAPTURE_SIMPLE_IMAGE};
+
+  EXPECT_CALL(mock_fp_info_command, Resp).WillRepeatedly(Return(&resp));
+  EXPECT_CALL(mock_fp_info_command, ActualRespSize)
+      .WillRepeatedly(Return(mock_fp_info_command.RespSize() +
+                             FpInfoCommand_v2::kEntrySize));
 
   auto images = mock_fp_info_command.sensor_image();
 
