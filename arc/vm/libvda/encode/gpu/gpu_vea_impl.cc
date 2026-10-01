@@ -12,6 +12,7 @@
 #include <base/notreached.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
 #include "arc/vm/libvda/gbm_util.h"
@@ -249,7 +250,8 @@ void GpuVeaContext::EncodeOnIpcThread(vea_input_buffer_id_t input_buffer_id,
                                       std::vector<video_frame_plane_t> planes,
                                       uint64_t timestamp,
                                       bool force_keyframe) {
-  mojo::ScopedHandle handle_fd = mojo::WrapPlatformFile(std::move(fd));
+  mojo::ScopedHandle handle_fd =
+      mojo::WrapPlatformHandle(mojo::PlatformHandle(std::move(fd)));
   if (!handle_fd.is_valid()) {
     LOG(ERROR) << "Invalid input buffer handle.";
     return;
@@ -291,7 +293,8 @@ void GpuVeaContext::UseOutputBufferOnIpcThread(
     base::ScopedFD fd,
     uint32_t offset,
     uint32_t size) {
-  mojo::ScopedHandle handle_fd = mojo::WrapPlatformFile(std::move(fd));
+  mojo::ScopedHandle handle_fd =
+      mojo::WrapPlatformHandle(mojo::PlatformHandle(std::move(fd)));
   if (!handle_fd.is_valid()) {
     LOG(ERROR) << "Invalid output buffer handle.";
     return;
