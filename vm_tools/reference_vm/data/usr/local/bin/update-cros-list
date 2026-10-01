@@ -3,12 +3,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# This script runs at VM boot to keep the guest CrOS APT repository in sync
+# with the ChromeOS milestone from /opt/google/cros-containers/etc/lsb-release.
+
 set -eu -o pipefail
 
-SOURCES_PATH="/etc/apt/sources.list.d/cros.list"
-VM_TOOLS_LSB_RELEASE="/opt/google/cros-containers/etc/lsb-release"
+DEFAULT_SOURCES="/etc/apt/sources.list.d/cros.list"
+DEFAULT_LSB="/opt/google/cros-containers/etc/lsb-release"
+
+SOURCES_PATH="${SOURCES_PATH:-${DEFAULT_SOURCES}}"
+VM_TOOLS_LSB_RELEASE="${VM_TOOLS_LSB_RELEASE:-${DEFAULT_LSB}}"
 
 repo_version="$(grep -o -P 'cros-packages(-staging)?/\d+' "${SOURCES_PATH}")"
+repo_name="$(cut -d / -f 1 <<< "${repo_version}")"
 local_version="$(cut -d / -f 2 <<< "${repo_version}")"
 
 tools_version="$(
@@ -17,8 +24,51 @@ grep CHROMEOS_RELEASE_CHROME_MILESTONE "${VM_TOOLS_LSB_RELEASE}" \
 )"
 
 if [[ "${local_version}" -lt "${tools_version}" ]]; then
-  sed -i -e "s/${local_version}/${tools_version}/" "${SOURCES_PATH}"
-  echo "Updated CrOS repo milestone from ${local_version} to ${tools_version}"
+  # Wait for maitred to configure networking and write /run/resolv.conf.
+  # This service runs early at boot in parallel with maitred, so resolv.conf
+  # may not be ready immediately.
+  for _ in {1..50}; do
+    if [[ -s /etc/resolv.conf ]]; then
+      break
+    fi
+    sleep 0.1
+  done
+
+  suite="$(awk '{print $(NF-1)}' "${SOURCES_PATH}")"
+  target_version="${tools_version}"
+
+  # When ToT branches to a new milestone, the host tools_version is bumped
+  # immediately, but the APT repo on GCS may not exist yet until the Crostini
+  # branch tasks finish building and publishing packages to staging. Check
+  # if the tools_version repo is reachable, and fall back to (tools_version - 1)
+  # if not available to avoid breaking apt-get update in tests.
+  base_url="https://storage.googleapis.com/${repo_name}"
+  if ! curl --head --silent --fail --connect-timeout 5 --retry 2 \
+    --retry-delay 1 \
+    "${base_url}/${tools_version}/dists/${suite}/Release" >/dev/null; then
+    prev_version="$((tools_version - 1))"
+    if curl --head --silent --fail --connect-timeout 5 --retry 2 \
+      --retry-delay 1 \
+      "${base_url}/${prev_version}/dists/${suite}/Release" >/dev/null; then
+      echo "CrOS repo milestone ${tools_version} not available," \
+        "falling back to ${prev_version}"
+      target_version="${prev_version}"
+    else
+      # If neither version is reachable (e.g. offline boot or missing for
+      # multiple milestones), default to tools_version rather than silently
+      # pinning to an outdated milestone.
+      echo "Neither ${tools_version} nor ${prev_version} CrOS repo is" \
+        "available, defaulting to ${tools_version}"
+    fi
+  fi
+
+  if [[ "${local_version}" -lt "${target_version}" ]]; then
+    sed -i -e "s/${local_version}/${target_version}/" "${SOURCES_PATH}"
+    echo "Updated CrOS repo milestone from ${local_version} to" \
+      "${target_version}"
+  else
+    echo "Already at fallback milestone ${local_version}"
+  fi
 else
   echo "Already up-to-date"
 fi
