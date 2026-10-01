@@ -349,16 +349,6 @@ void QoSService::OnIPConfigChanged(const ShillClient::Device& shill_device) {
   MaybeRefreshDoHRules(shill_device);
 }
 
-void QoSService::OnBorealisVMStarted(const std::string_view ifname) {
-  // We don't need to check if QoS is enabled here since the iptables rules for
-  // Borealis won't have any effect when the service is not enabled.
-  datapath_->AddBorealisQoSRule(ifname);
-}
-
-void QoSService::OnBorealisVMStopped(const std::string_view ifname) {
-  datapath_->RemoveBorealisQoSRule(ifname);
-}
-
 void QoSService::SetConnmarkUpdaterForTesting(
     std::unique_ptr<ConnmarkUpdater> updater) {
   connmark_updater_ = std::move(updater);

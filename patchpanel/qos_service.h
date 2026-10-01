@@ -87,10 +87,6 @@ class QoSService {
   void OnDoHProvidersChanged();
   void OnIPConfigChanged(const ShillClient::Device& shill_device);
 
-  // Listening to Borealis VM start and stop event for application of QoS marks.
-  void OnBorealisVMStarted(const std::string_view ifname);
-  void OnBorealisVMStopped(const std::string_view ifname);
-
   // Set ConnmarkUpdater, only used for testing.
   void SetConnmarkUpdaterForTesting(std::unique_ptr<ConnmarkUpdater> updater);
 

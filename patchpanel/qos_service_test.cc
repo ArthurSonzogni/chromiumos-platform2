@@ -513,34 +513,6 @@ TEST_F(QoSServiceTest, UpdateDoHProvidersIPConfigChanged) {
   Mock::VerifyAndClearExpectations(dns_factory_);
 }
 
-TEST_F(QoSServiceTest, OnBorealisVMStarted) {
-  const auto borealis_ipv4_subnet =
-      net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29").value();
-  auto ipv4_subnet =
-      std::make_unique<Subnet>(borealis_ipv4_subnet, base::DoNothing());
-  CrostiniService::CrostiniDevice borealis_device(
-      CrostiniService::VMType::kBorealis, "vmtap1", std::move(ipv4_subnet),
-      nullptr);
-
-  EXPECT_CALL(datapath_, AddBorealisQoSRule("vmtap1"));
-
-  qos_svc_.OnBorealisVMStarted("vmtap1");
-}
-
-TEST_F(QoSServiceTest, OnBorealisVMStopped) {
-  const auto borealis_ipv4_subnet =
-      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29");
-  auto ipv4_subnet =
-      std::make_unique<Subnet>(borealis_ipv4_subnet, base::DoNothing());
-  CrostiniService::CrostiniDevice borealis_device(
-      CrostiniService::VMType::kBorealis, "vmtap1", std::move(ipv4_subnet),
-      nullptr);
-
-  EXPECT_CALL(datapath_, RemoveBorealisQoSRule("vmtap1"));
-
-  qos_svc_.OnBorealisVMStopped("vmtap1");
-}
-
 // QoSService can handle socket connection events correctly. When socket
 // connection event is received, call ConnmarkUpdater to handle the update
 // task.
