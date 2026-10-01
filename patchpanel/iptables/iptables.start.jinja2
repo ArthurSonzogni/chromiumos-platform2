@@ -10,7 +10,6 @@
 :qos_detect_static - [0:0]
 :qos_detect - [0:0]
 :qos_detect_doh - [0:0]
-:qos_detect_borealis - [0:0]
 :qos_apply_dscp - [0:0]
 
 -A PREROUTING -j qos_detect_static
@@ -68,9 +67,6 @@
   {#- detector. This will override the original fwmark on the packet (if the     #}
   {#- sender sets it) by intention.                                              #}
 -A qos_detect -j CONNMARK --restore-mark --nfmask 0xe0 --ctmask 0xe0
-  {#- Add a jump rule to the Borealis detection chain. Rules in this chain will  #}
-  {#- be installed dynamically in Datapath::{Add,Remove}BorealisQoSRule.         #}
--A qos_detect -j qos_detect_borealis
   {#- If the mark is not 0, skip the following detection.                        #}
 -A qos_detect -m mark ! --mark 0x0/0xe0 -j RETURN
   {#- Marking the first packet in the TCP handshake (SYN bit set and the ACK,RST  #}

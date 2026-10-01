@@ -1799,20 +1799,4 @@ TEST_F(DatapathTest, ModifyClatAcceptRules) {
   datapath_->ModifyClatAcceptRules(Iptables::Command::kA, "tun_nat64");
 }
 
-TEST_F(DatapathTest, AddBorealisQosRule) {
-  runner_.ExpectCallIptables(
-      IpFamily::kDual,
-      "mangle -A qos_detect_borealis "
-      "-i vmtap6 -j MARK --set-xmark 0x00000020/0x000000e0 -w");
-  datapath_->AddBorealisQoSRule("vmtap6");
-}
-
-TEST_F(DatapathTest, RemoveBorealisQosRule) {
-  runner_.ExpectCallIptables(
-      IpFamily::kDual,
-      "mangle -D qos_detect_borealis "
-      "-i vmtap6 -j MARK --set-xmark 0x00000020/0x000000e0 -w");
-  datapath_->RemoveBorealisQoSRule("vmtap6");
-}
-
 }  // namespace patchpanel
