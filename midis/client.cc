@@ -11,6 +11,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 #include <mojo/public/cpp/system/handle.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
@@ -102,7 +103,7 @@ mojo::ScopedHandle Client::CreateRequestPortFD(uint32_t card,
     return mojo::ScopedHandle();
   }
 
-  return mojo::WrapPlatformFile(std::move(clientfd));
+  return mojo::WrapPlatformHandle(mojo::PlatformHandle(std::move(clientfd)));
 }
 
 }  // namespace midis
