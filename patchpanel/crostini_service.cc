@@ -61,15 +61,12 @@ NetworkDevice::GuestType ProtoDeviceTypeFromVMType(
     CrostiniService::VMType vm_type) {
   switch (vm_type) {
     case CrostiniService::VMType::kTermina:
-      return NetworkDevice::TERMINA_VM;
-      break;
-    case CrostiniService::VMType::kParallels:
-      return NetworkDevice::PARALLELS_VM;
-      break;
     case CrostiniService::VMType::kBruschetta:
       // TODO(b/279994478): Clarify whether Bruschetta needs to
       // differentiate itself from Crostini devices on dbus.
       return NetworkDevice::TERMINA_VM;
+    case CrostiniService::VMType::kParallels:
+      return NetworkDevice::PARALLELS_VM;
   }
 }
 

@@ -17,7 +17,6 @@
 
 #include "patchpanel/connmark_updater.h"
 #include "patchpanel/conntrack_monitor.h"
-#include "patchpanel/crostini_service.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/shill_client.h"
 
