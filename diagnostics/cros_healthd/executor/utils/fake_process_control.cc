@@ -17,7 +17,9 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback_forward.h>
 #include <base/notreached.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 #include <mojo/public/cpp/system/handle.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 
 namespace diagnostics {
 
@@ -38,13 +40,13 @@ FakeProcessControl::FakeProcessControl() {
 }
 
 void FakeProcessControl::GetStdout(GetStdoutCallback callback) {
-  std::move(callback).Run(mojo::WrapPlatformFile(
-      base::ScopedPlatformFile(HANDLE_EINTR(dup(stdout_fd_.get())))));
+  std::move(callback).Run(mojo::WrapPlatformHandle(mojo::PlatformHandle(
+      base::ScopedPlatformFile(HANDLE_EINTR(dup(stdout_fd_.get()))))));
 }
 
 void FakeProcessControl::GetStderr(GetStderrCallback callback) {
-  std::move(callback).Run(mojo::WrapPlatformFile(
-      base::ScopedPlatformFile(HANDLE_EINTR(dup(stderr_fd_.get())))));
+  std::move(callback).Run(mojo::WrapPlatformHandle(mojo::PlatformHandle(
+      base::ScopedPlatformFile(HANDLE_EINTR(dup(stderr_fd_.get()))))));
 }
 
 void FakeProcessControl::GetReturnCode(GetReturnCodeCallback callback) {

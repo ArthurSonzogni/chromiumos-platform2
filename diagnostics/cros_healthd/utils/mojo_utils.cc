@@ -8,16 +8,16 @@
 
 #include <base/files/platform_file.h>
 #include <base/logging.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 #include <mojo/public/cpp/system/handle.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
 namespace diagnostics::mojo_utils {
 
 base::ScopedPlatformFile UnwrapMojoHandle(mojo::ScopedHandle handle) {
-  base::ScopedPlatformFile fd;
-  MojoResult mojo_result = mojo::UnwrapPlatformFile(std::move(handle), &fd);
-  if (mojo_result != MOJO_RESULT_OK) {
-    LOG(ERROR) << "Failed to unwrap handle: " << mojo_result;
+  auto fd = mojo::UnwrapPlatformHandle(std::move(handle)).TakeFD();
+  if (!fd.is_valid()) {
+    LOG(ERROR) << "Failed to unwrap handle";
     return base::ScopedPlatformFile();
   }
   return fd;

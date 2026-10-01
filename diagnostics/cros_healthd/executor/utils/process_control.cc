@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <bits/types/siginfo_t.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
 namespace diagnostics {
@@ -83,7 +84,7 @@ void ProcessControl::Kill() {
 mojo::ScopedHandle ProcessControl::GetMojoScopedHandle(int file_no) {
   base::ScopedPlatformFile other_fd(
       HANDLE_EINTR(dup(process_->GetOutputFd(file_no))));
-  return mojo::WrapPlatformFile(std::move(other_fd));
+  return mojo::WrapPlatformHandle(mojo::PlatformHandle(std::move(other_fd)));
 }
 
 }  // namespace diagnostics

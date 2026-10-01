@@ -16,6 +16,7 @@
 #include <base/memory/shared_memory_mapping.h>
 #include <base/unguessable_token.h>
 #include <mojo/public/c/system/types.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 #include <mojo/public/cpp/system/handle.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
@@ -23,9 +24,9 @@ namespace diagnostics {
 
 base::ReadOnlySharedMemoryMapping GetReadOnlySharedMemoryMappingFromMojoHandle(
     mojo::ScopedHandle handle) {
-  base::ScopedPlatformFile platform_file;
-  auto result = mojo::UnwrapPlatformFile(std::move(handle), &platform_file);
-  if (result != MOJO_RESULT_OK) {
+  base::ScopedPlatformFile platform_file =
+      mojo::UnwrapPlatformHandle(std::move(handle)).TakeFD();
+  if (!platform_file.is_valid()) {
     return base::ReadOnlySharedMemoryMapping();
   }
 
@@ -68,7 +69,8 @@ mojo::ScopedHandle CreateReadOnlySharedMemoryRegionMojoHandle(
   base::subtle::PlatformSharedMemoryRegion platform_shm =
       base::ReadOnlySharedMemoryRegion::TakeHandleForSerialization(
           std::move(read_only_region));
-  return mojo::WrapPlatformFile(platform_shm.PassPlatformHandle().fd);
+  return mojo::WrapPlatformHandle(
+      mojo::PlatformHandle(std::move(platform_shm.PassPlatformHandle().fd)));
 }
 
 }  // namespace diagnostics
