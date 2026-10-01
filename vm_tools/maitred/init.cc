@@ -199,100 +199,12 @@ constexpr struct {
     },
 #endif
     {
-        .source = "none",
+        .source = "cgroup2",
         .target = kCgroupRootDir,
-        .fstype = "tmpfs",
+        .fstype = "cgroup2",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "mode=0755",
+        .data = nullptr,
         .failure_is_fatal = true,
-    },
-    {
-        .source = "cgroup",
-        .target = "/sys/fs/cgroup/blkio",
-        .fstype = "cgroup",
-        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "blkio",
-        .failure_is_fatal = false,
-    },
-    {
-        .source = "cgroup",
-        .target = "/sys/fs/cgroup/cpu,cpuacct",
-        .fstype = "cgroup",
-        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "cpu,cpuacct",
-        .failure_is_fatal = true,
-    },
-    {
-        .source = "cgroup",
-        .target = "/sys/fs/cgroup/cpuset",
-        .fstype = "cgroup",
-        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "cpuset",
-        .failure_is_fatal = true,
-    },
-    {
-        .source = "cgroup",
-        .target = "/sys/fs/cgroup/devices",
-        .fstype = "cgroup",
-        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "devices",
-        .failure_is_fatal = true,
-    },
-    {
-        .source = "cgroup",
-        .target = "/sys/fs/cgroup/freezer",
-        .fstype = "cgroup",
-        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "freezer",
-        .failure_is_fatal = true,
-    },
-    {
-        .source = "cgroup",
-        .target = "/sys/fs/cgroup/hugetlb",
-        .fstype = "cgroup",
-        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "hugetlb",
-        .failure_is_fatal = false,
-    },
-    {
-        .source = "cgroup",
-        .target = "/sys/fs/cgroup/memory",
-        .fstype = "cgroup",
-        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "memory",
-        .failure_is_fatal = false,
-    },
-    {
-        .source = "cgroup",
-        .target = "/sys/fs/cgroup/net_cls,net_prio",
-        .fstype = "cgroup",
-        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "net_cls,net_prio",
-        .failure_is_fatal = false,
-    },
-    {
-        .source = "cgroup",
-        .target = "/sys/fs/cgroup/perf_event",
-        .fstype = "cgroup",
-        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "perf_event",
-        .failure_is_fatal = false,
-    },
-    {
-        .source = "cgroup",
-        .target = "/sys/fs/cgroup/pids",
-        .fstype = "cgroup",
-        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "pids",
-        .failure_is_fatal = false,
-    },
-    {
-        .source = "cgroup",
-        .target = "/sys/fs/cgroup/systemd",
-        .fstype = "cgroup",
-        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "none,name=systemd",
-        .failure_is_fatal = false,
     },
     {
         .source = "securityfs",
@@ -309,29 +221,6 @@ constexpr struct {
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
         .data = nullptr,
         .failure_is_fatal = false,
-    },
-};
-
-// Symlinks to be created on boot. It's done after all mounts have completed.
-constexpr struct {
-  const char* source;
-  const char* target;
-} symlinks[] = {
-    {
-        .source = "/sys/fs/cgroup/cpu,cpuacct",
-        .target = "/sys/fs/cgroup/cpu",
-    },
-    {
-        .source = "/sys/fs/cgroup/cpu,cpuacct",
-        .target = "/sys/fs/cgroup/cpuacct",
-    },
-    {
-        .source = "/sys/fs/cgroup/net_cls,net_prio",
-        .target = "/sys/fs/cgroup/net_cls",
-    },
-    {
-        .source = "/sys/fs/cgroup/net_cls,net_prio",
-        .target = "/sys/fs/cgroup/net_prio",
     },
 };
 
@@ -1427,15 +1316,6 @@ bool Init::Setup() {
       return false;
     }
 
-    // Create all the symlinks
-    for (const auto& sl : symlinks) {
-      if (symlink(sl.source, sl.target) != 0) {
-        PLOG(ERROR) << "Failed to create symlink: source " << sl.source
-                    << ", target " << sl.target;
-        return false;
-      }
-    }
-
     // Create all the directories.
     for (const auto& dir : boot_dirs) {
       if (mkdir(dir.path, dir.mode) != 0 && errno != EEXIST) {
@@ -1464,15 +1344,6 @@ bool Init::Setup() {
         PLOG(ERROR) << "Failed to mount overlay " << overlay.target;
         return false;
       }
-    }
-
-    // Enable hierarchial memory accounting for LXD.
-    base::FilePath use_hierarchy = base::FilePath(kCgroupRootDir)
-                                       .Append("memory")
-                                       .Append("memory.use_hierarchy");
-    if (!base::WriteFile(use_hierarchy, "1")) {
-      PLOG(ERROR) << "Failed to set use_hierarchy to 1 on memory cgroup";
-      return false;
     }
 
     // Maitred becomes the session leader if PID1.
