@@ -78,8 +78,7 @@ enum TrafficSource {
   kArcVpn = 0x24,
   // Bruschetta VMs.
   kBruschettaVM = 0x25,
-  // Borealis VMs.
-  kBorealisVM = 0x26,
+  // 0x26 was previously used for Borealis VMs.
   // WiFi Direct network.
   kWiFiDirect = 0x27,
   // WiFi local only hotspot network.
@@ -316,15 +315,15 @@ constexpr std::array<TrafficSource, 5> kLocalSources{
     {kChrome, kUser, kUpdateEngine, kSystem, kHostVpn}};
 
 // All forwarded sources
-constexpr std::array<TrafficSource, 9> kForwardedSources{
-    {kArc, kBorealisVM, kBruschettaVM, kCrostiniVM, kParallelsVM,
-     kTetherDownstream, kWiFiDirect, kWiFiLOHS, kArcVpn}};
+constexpr std::array<TrafficSource, 8> kForwardedSources{
+    {kArc, kBruschettaVM, kCrostiniVM, kParallelsVM, kTetherDownstream,
+     kWiFiDirect, kWiFiLOHS, kArcVpn}};
 
 // All sources
-constexpr std::array<TrafficSource, 14> kAllSources{
-    {kChrome, kUser, kUpdateEngine, kSystem, kHostVpn, kArc, kBorealisVM,
-     kBruschettaVM, kCrostiniVM, kParallelsVM, kTetherDownstream, kWiFiDirect,
-     kWiFiLOHS, kArcVpn}};
+constexpr std::array<TrafficSource, 13> kAllSources{
+    {kChrome, kUser, kUpdateEngine, kSystem, kHostVpn, kArc, kBruschettaVM,
+     kCrostiniVM, kParallelsVM, kTetherDownstream, kWiFiDirect, kWiFiLOHS,
+     kArcVpn}};
 
 // All sources for user traffic. For VPN drivers that only want to pass traffic
 // for specific users, these are the usernames that will be used to create the

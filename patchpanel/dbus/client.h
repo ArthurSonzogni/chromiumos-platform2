@@ -63,7 +63,6 @@ class BRILLO_EXPORT Client {
     kSystem,
     kVpn,
     kArc,
-    kBorealisVM,
     kBruschettaVM,
     kCrostiniVM,
     kParallelsVM,
@@ -73,13 +72,13 @@ class BRILLO_EXPORT Client {
   };
 
   static constexpr std::initializer_list<TrafficSource> kAllTrafficSources = {
-      TrafficSource::kUnknown,      TrafficSource::kChrome,
-      TrafficSource::kUser,         TrafficSource::kUpdateEngine,
-      TrafficSource::kSystem,       TrafficSource::kVpn,
-      TrafficSource::kArc,          TrafficSource::kBorealisVM,
-      TrafficSource::kBruschettaVM, TrafficSource::kCrostiniVM,
-      TrafficSource::kParallelsVM,  TrafficSource::kTethering,
-      TrafficSource::kWiFiDirect,   TrafficSource::kWiFiLOHS};
+      TrafficSource::kUnknown,    TrafficSource::kChrome,
+      TrafficSource::kUser,       TrafficSource::kUpdateEngine,
+      TrafficSource::kSystem,     TrafficSource::kVpn,
+      TrafficSource::kArc,        TrafficSource::kBruschettaVM,
+      TrafficSource::kCrostiniVM, TrafficSource::kParallelsVM,
+      TrafficSource::kTethering,  TrafficSource::kWiFiDirect,
+      TrafficSource::kWiFiLOHS};
 
   struct TrafficVector {
     uint64_t rx_bytes = 0;

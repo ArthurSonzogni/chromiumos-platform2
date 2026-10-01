@@ -42,7 +42,6 @@ class CrostiniService {
     kTermina,
     kParallels,
     kBruschetta,
-    kBorealis,
   };
 
   // Represents the virtual interface setup created for a VM connected to the

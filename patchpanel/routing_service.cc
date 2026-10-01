@@ -212,7 +212,6 @@ std::string_view TrafficSourceName(TrafficSource source) {
       base::MakeFixedFlatMap<TrafficSource, std::string_view>({
           {kArc, "ARC"},
           {kArcVpn, "ARC_VPN"},
-          {kBorealisVM, "BOREALIS_VM"},
           {kBruschettaVM, "BRUSCHETTA_VM"},
           {kChrome, "CHROME"},
           {kCrostiniVM, "CROSTINI_VM"},

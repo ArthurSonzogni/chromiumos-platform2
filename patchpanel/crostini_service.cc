@@ -52,8 +52,7 @@ std::optional<AutoDNATTarget> GetAutoDNATTarget(
     case CrostiniService::VMType::kParallels:
       return AutoDNATTarget::kParallels;
     case CrostiniService::VMType::kBruschetta:
-    case CrostiniService::VMType::kBorealis:
-      // There should not be attempt of auto DNAT into Bruschetta and Borealis
+      // There should not be attempt of auto DNAT into Bruschetta
       return std::nullopt;
   }
 }
@@ -68,9 +67,8 @@ NetworkDevice::GuestType ProtoDeviceTypeFromVMType(
       return NetworkDevice::PARALLELS_VM;
       break;
     case CrostiniService::VMType::kBruschetta:
-    case CrostiniService::VMType::kBorealis:
-      // TODO(b/279994478): Clarify whether Bruschetta and Borealis need to
-      // differentiate themselves from Crostini devices on dbus.
+      // TODO(b/279994478): Clarify whether Bruschetta needs to
+      // differentiate itself from Crostini devices on dbus.
       return NetworkDevice::TERMINA_VM;
   }
 }
@@ -455,8 +453,6 @@ TrafficSource CrostiniService::TrafficSourceFromVMType(
       return TrafficSource::kParallelsVM;
     case VMType::kBruschetta:
       return TrafficSource::kBruschettaVM;
-    case VMType::kBorealis:
-      return TrafficSource::kBorealisVM;
   }
 }
 
@@ -470,8 +466,6 @@ GuestMessage::GuestType CrostiniService::GuestMessageTypeFromVMType(
       return GuestMessage::PARALLELS_VM;
     case VMType::kBruschetta:
       return GuestMessage::BRUSCHETTA_VM;
-    case VMType::kBorealis:
-      return GuestMessage::BOREALIS_VM;
   }
 }
 
@@ -481,8 +475,7 @@ AddressManager::GuestType CrostiniService::AddressManagingTypeFromVMType(
   switch (vm_type) {
     case VMType::kTermina:
     case VMType::kBruschetta:
-    case VMType::kBorealis:
-      // Bruschetta and Borealis share the same address pool with Crostini.
+      // Bruschetta shares the same address pool with Crostini.
       return AddressManager::GuestType::kTerminaVM;
     case VMType::kParallels:
       return AddressManager::GuestType::kParallelsVM;
@@ -498,8 +491,6 @@ std::ostream& operator<<(std::ostream& stream,
       return stream << "Parallels";
     case CrostiniService::VMType::kBruschetta:
       return stream << "Bruschetta";
-    case CrostiniService::VMType::kBorealis:
-      return stream << "Borealis";
   }
 }
 

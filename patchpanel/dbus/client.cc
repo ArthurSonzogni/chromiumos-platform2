@@ -56,8 +56,6 @@ patchpanel::TrafficCounter::Source ConvertTrafficSource(
       return patchpanel::TrafficCounter::VPN;
     case Client::TrafficSource::kArc:
       return patchpanel::TrafficCounter::ARC;
-    case Client::TrafficSource::kBorealisVM:
-      return patchpanel::TrafficCounter::BOREALIS_VM;
     case Client::TrafficSource::kBruschettaVM:
       return patchpanel::TrafficCounter::BRUSCHETTA_VM;
     case Client::TrafficSource::kCrostiniVM:
@@ -88,8 +86,6 @@ Client::TrafficSource ConvertTrafficSource(
       return Client::TrafficSource::kVpn;
     case patchpanel::TrafficCounter::ARC:
       return Client::TrafficSource::kArc;
-    case patchpanel::TrafficCounter::BOREALIS_VM:
-      return Client::TrafficSource::kBorealisVM;
     case patchpanel::TrafficCounter::BRUSCHETTA_VM:
       return Client::TrafficSource::kBruschettaVM;
     case patchpanel::TrafficCounter::CROSTINI_VM:
@@ -102,6 +98,7 @@ Client::TrafficSource ConvertTrafficSource(
       return Client::TrafficSource::kWiFiDirect;
     case patchpanel::TrafficCounter::WIFI_LOHS:
       return Client::TrafficSource::kWiFiLOHS;
+    case patchpanel::TrafficCounter::BOREALIS_VM:
     default:
       return Client::TrafficSource::kUnknown;
   }
@@ -1970,8 +1967,6 @@ BRILLO_EXPORT std::ostream& operator<<(
       return stream << "VPN";
     case patchpanel::Client::TrafficSource::kArc:
       return stream << "ARC";
-    case patchpanel::Client::TrafficSource::kBorealisVM:
-      return stream << "Borealis";
     case patchpanel::Client::TrafficSource::kBruschettaVM:
       return stream << "Bruschetta";
     case patchpanel::Client::TrafficSource::kCrostiniVM:
