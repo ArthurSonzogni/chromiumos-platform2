@@ -807,10 +807,6 @@ class ClientImpl : public Client {
       uint64_t vm_id) override;
   bool NotifyBruschettaVmShutdown(uint64_t vm_id) override;
 
-  std::optional<BorealisAllocation> NotifyBorealisVmStartup(
-      uint32_t vm_id) override;
-  bool NotifyBorealisVmShutdown(uint32_t vm_id) override;
-
   std::pair<base::ScopedFD, Client::ConnectedNamespace> ConnectNamespace(
       pid_t pid,
       const std::string& outbound_ifname,
@@ -1240,15 +1236,6 @@ bool ClientImpl::NotifyBruschettaVmShutdown(uint64_t vm_id) {
     return false;
   }
   return true;
-}
-
-std::optional<Client::BorealisAllocation> ClientImpl::NotifyBorealisVmStartup(
-    uint32_t vm_id) {
-  return std::nullopt;
-}
-
-bool ClientImpl::NotifyBorealisVmShutdown(uint32_t vm_id) {
-  return false;
 }
 
 std::pair<base::ScopedFD, Client::ConnectedNamespace>

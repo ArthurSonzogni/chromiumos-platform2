@@ -246,20 +246,6 @@ TEST_F(ClientTest, NotifyBruschettaVmShutdown) {
   EXPECT_TRUE(result);
 }
 
-TEST_F(ClientTest, NotifyBorealisVmStartup) {
-  const uint32_t id = 6;
-
-  auto result = client_->NotifyBorealisVmStartup(id);
-  EXPECT_FALSE(result.has_value());
-}
-
-TEST_F(ClientTest, NotifyBorealisVmShutdown) {
-  const uint32_t id = 6;
-
-  const bool result = client_->NotifyBorealisVmShutdown(id);
-  EXPECT_FALSE(result);
-}
-
 TEST_F(ClientTest, ConnectNamespace_Fail) {
   const pid_t invalid_pid = 3456;
   const std::string outbound_ifname = "";

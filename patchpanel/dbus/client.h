@@ -286,20 +286,6 @@ class BRILLO_EXPORT Client {
     net_base::IPv4Address gateway_ipv4_address;
   };
 
-  // Contains the network IPv4 subnet assigned to a Borealis VM and the name
-  // of the tap device created by patchpanel for the VM. See
-  // BorealisVmStartupResponse in patchpanel_service.proto.
-  struct BorealisAllocation {
-    // Tap device interface name created for the VM.
-    std::string tap_device_ifname;
-    // The /30 IPv4 subnet assigned to the VM.
-    net_base::IPv4CIDR borealis_ipv4_subnet;
-    // The IPv4 address assigned to the VM, contained inside |ipv4_subnet|.
-    net_base::IPv4Address borealis_ipv4_address;
-    // The next hop IPv4 address for the VM, contained inside |ipv4_subnet|.
-    net_base::IPv4Address gateway_ipv4_address;
-  };
-
   // Contains the list of tap devices initially created by patchpanel as well as
   // the IPv4 address of the "arc0" legacy management interface.
   struct ArcVMAllocation {
@@ -398,10 +384,6 @@ class BRILLO_EXPORT Client {
   virtual std::optional<BruschettaAllocation> NotifyBruschettaVmStartup(
       uint64_t vm_id) = 0;
   virtual bool NotifyBruschettaVmShutdown(uint64_t vm_id) = 0;
-
-  virtual std::optional<BorealisAllocation> NotifyBorealisVmStartup(
-      uint32_t vm_id) = 0;
-  virtual bool NotifyBorealisVmShutdown(uint32_t vm_id) = 0;
 
   // Sends a ConnectNamespaceRequest for the given namespace pid. Returns a
   // pair with a valid ScopedFD and the ConnectedNamespace response

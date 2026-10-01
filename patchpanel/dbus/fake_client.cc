@@ -58,15 +58,6 @@ bool FakeClient::NotifyBruschettaVmShutdown(uint64_t vm_id) {
   return true;
 }
 
-std::optional<Client::BorealisAllocation> FakeClient::NotifyBorealisVmStartup(
-    uint32_t vm_id) {
-  return std::nullopt;
-}
-
-bool FakeClient::NotifyBorealisVmShutdown(uint32_t vm_id) {
-  return false;
-}
-
 std::pair<base::ScopedFD, Client::ConnectedNamespace>
 FakeClient::ConnectNamespace(pid_t pid,
                              const std::string& outbound_ifname,

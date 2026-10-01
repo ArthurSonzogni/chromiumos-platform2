@@ -48,10 +48,6 @@ class BRILLO_EXPORT FakeClient : public Client {
       uint64_t vm_id) override;
   bool NotifyBruschettaVmShutdown(uint64_t vm_id) override;
 
-  std::optional<Client::BorealisAllocation> NotifyBorealisVmStartup(
-      uint32_t vm_id) override;
-  bool NotifyBorealisVmShutdown(uint32_t vm_id) override;
-
   std::pair<base::ScopedFD, Client::ConnectedNamespace> ConnectNamespace(
       pid_t pid,
       const std::string& outbound_ifname,
