@@ -42,14 +42,14 @@ void CameraAlgorithmCallbackOpsImpl::Update(
   if (callback_ops_->update == nullptr) {
     LOGF(FATAL) << "Algorithm calls unregistered update callback";
   }
-  base::ScopedPlatformFile fd;
-  MojoResult mojo_result = mojo::UnwrapPlatformFile(std::move(buffer_fd), &fd);
-  if (mojo_result != MOJO_RESULT_OK) {
-    LOGF(ERROR) << "Failed to unwrap handle: " << mojo_result;
+  mojo::PlatformHandle handle =
+      mojo::UnwrapPlatformHandle(std::move(buffer_fd));
+  if (!handle.is_valid()) {
+    LOGF(ERROR) << "Failed to unwrap handle";
     return;
   }
   callback_ops_->update(callback_ops_, upd_id, upd_header.data(),
-                        upd_header.size(), fd.release());
+                        upd_header.size(), handle.ReleaseFD());
 }
 
 mojo::PendingRemote<mojom::CameraAlgorithmCallbackOps>
