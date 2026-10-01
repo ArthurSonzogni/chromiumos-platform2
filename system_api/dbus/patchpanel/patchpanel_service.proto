@@ -290,42 +290,6 @@ message BruschettaVmShutdownRequest {
 // Intentionally empty response.
 message BruschettaVmShutdownResponse {}
 
-// Notification that a Borealis VM is starting up.
-message BorealisVmStartupRequest {
-  // The content ID of the VM.
-  uint32 id = 1;
-}
-
-// Information required by Concierge to continue the Borealis VM startup.
-message BorealisVmStartupResponse {
-  // The TAP device to be used for the VM.
-  string tap_device_ifname = 1;
-
-  // The IPv4 subnet assigned to the VM.
-  IPv4Subnet ipv4_subnet = 2;
-
-  // The IPv4 address assigned to the VM, represented as 4 bytes in network
-  // order, contained inside |ipv4_subnet|.
-  bytes ipv4_address = 3;
-
-  // The IPv4 next hop gateway address for the VM, represented as 4 bytes in
-  // network order, contained inside |ipv4_subnet|.
-  bytes gateway_ipv4_address = 4;
-}
-
-// Notification that the Borealis VM is shutting down.
-// This message must also be sent if the startup process fails so any
-// allocated resources, including the subnets, are properly freed.
-message BorealisVmShutdownRequest {
-  // The CID of the Borealis VM; must match the PID that was sent at
-  // startup.
-  // Required.
-  uint32 id = 1;
-}
-
-// Intentionally empty response.
-message BorealisVmShutdownResponse {}
-
 // Request for connecting and routing a network namespace. The client must
 // append a valid file descriptor immediately after the serialized
 // ConnectNamespaceRequest proto. This file descriptor must remain valid for as
