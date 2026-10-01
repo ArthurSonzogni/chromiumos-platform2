@@ -52,17 +52,6 @@ void FillBruschettaAllocationProto(
       bruschetta_device.gateway_ipv4_address().ToByteString());
 }
 
-void FillBorealisAllocationProto(
-    const CrostiniService::CrostiniDevice& borealis_device,
-    BorealisVmStartupResponse* output) {
-  output->set_tap_device_ifname(borealis_device.tap_device_ifname());
-  FillSubnetProto(borealis_device.vm_ipv4_subnet(),
-                  output->mutable_ipv4_subnet());
-  output->set_ipv4_address(borealis_device.vm_ipv4_address().ToByteString());
-  output->set_gateway_ipv4_address(
-      borealis_device.gateway_ipv4_address().ToByteString());
-}
-
 void FillSubnetProto(const net_base::IPv4CIDR& cidr,
                      patchpanel::IPv4Subnet* output) {
   output->set_addr(cidr.address().ToByteString());

@@ -6,7 +6,6 @@
 #define PATCHPANEL_DBUS_MOCK_PATCHPANEL_PROXY_H_
 
 #include <gmock/gmock.h>
-
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/dbus-proxies.h"
@@ -270,37 +269,6 @@ class StubPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
       base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms) override {}
 
-  bool BorealisVmShutdown(
-      const patchpanel::BorealisVmShutdownRequest& in_request,
-      patchpanel::BorealisVmShutdownResponse* out_response,
-      brillo::ErrorPtr* error,
-      int timeout_ms) override {
-    return false;
-  }
-
-  void BorealisVmShutdownAsync(
-      const patchpanel::BorealisVmShutdownRequest& in_request,
-      base::OnceCallback<
-          void(const patchpanel::BorealisVmShutdownResponse& /*response*/)>
-          success_callback,
-      base::OnceCallback<void(brillo::Error*)> error_callback,
-      int timeout_ms) override {}
-
-  bool BorealisVmStartup(const patchpanel::BorealisVmStartupRequest& in_request,
-                         patchpanel::BorealisVmStartupResponse* out_response,
-                         brillo::ErrorPtr* error,
-                         int timeout_ms) override {
-    return false;
-  }
-
-  void BorealisVmStartupAsync(
-      const patchpanel::BorealisVmStartupRequest& in_request,
-      base::OnceCallback<
-          void(const patchpanel::BorealisVmStartupResponse& /*response*/)>
-          success_callback,
-      base::OnceCallback<void(brillo::Error*)> error_callback,
-      int timeout_ms) override {}
-
   bool SetDnsRedirectionRule(
       const patchpanel::SetDnsRedirectionRuleRequest& in_request,
       const base::ScopedFD& in_client_fd,
@@ -555,22 +523,6 @@ class MockPatchPanelProxy : public StubPatchPanelProxy {
               BruschettaVmStartup,
               (const BruschettaVmStartupRequest&,
                BruschettaVmStartupResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(bool,
-              BorealisVmShutdown,
-              (const BorealisVmShutdownRequest&,
-               BorealisVmShutdownResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(bool,
-              BorealisVmStartup,
-              (const BorealisVmStartupRequest&,
-               BorealisVmStartupResponse*,
                brillo::ErrorPtr*,
                int),
               (override));

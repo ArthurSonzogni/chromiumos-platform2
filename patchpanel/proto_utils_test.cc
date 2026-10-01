@@ -124,33 +124,6 @@ TEST_F(ProtoUtilsTest, FillBruschettaAllocationProto) {
             proto.ipv4_subnet().prefix_len());
 }
 
-TEST_F(ProtoUtilsTest, FillBorealisAllocationProto) {
-  const auto borealis_ipv4_subnet =
-      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29");
-  const auto borealis_ipv4_address =
-      *net_base::IPv4Address::CreateFromString("100.115.93.2");
-  const auto gateway_ipv4_address =
-      *net_base::IPv4Address::CreateFromString("100.115.93.1");
-  auto ipv4_subnet =
-      std::make_unique<Subnet>(borealis_ipv4_subnet, base::DoNothing());
-
-  CrostiniService::CrostiniDevice borealis_device(
-      CrostiniService::VMType::kBorealis, "vmtap1", std::move(ipv4_subnet),
-      nullptr);
-
-  BorealisVmStartupResponse proto;
-  FillBorealisAllocationProto(borealis_device, &proto);
-  ASSERT_EQ("vmtap1", proto.tap_device_ifname());
-  EXPECT_EQ(borealis_ipv4_address,
-            net_base::IPv4Address::CreateFromBytes(proto.ipv4_address()));
-  EXPECT_EQ(gateway_ipv4_address, net_base::IPv4Address::CreateFromBytes(
-                                      proto.gateway_ipv4_address()));
-  EXPECT_EQ(borealis_ipv4_subnet.address(),
-            net_base::IPv4Address::CreateFromBytes(proto.ipv4_subnet().addr()));
-  EXPECT_EQ(borealis_ipv4_subnet.prefix_length(),
-            proto.ipv4_subnet().prefix_len());
-}
-
 TEST_F(ProtoUtilsTest, FillNetworkClientInfoProto) {
   DownstreamClientInfo info;
   info.mac_addr = net_base::MacAddress(0x11, 0x22, 0x33, 0x44, 0x55, 0x66);

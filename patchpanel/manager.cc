@@ -615,27 +615,6 @@ void Manager::BruschettaVmShutdown(uint64_t vm_id) {
   StopCrosVm(vm_id, CrostiniService::VMType::kBruschetta);
 }
 
-const CrostiniService::CrostiniDevice* const Manager::BorealisVmStartup(
-    uint64_t vm_id) {
-  const auto* guest_device =
-      StartCrosVm(vm_id, CrostiniService::VMType::kBorealis);
-  if (!guest_device) {
-    LOG(ERROR) << "Failed to start Borealis VM network service";
-    return nullptr;
-  }
-  qos_svc_.OnBorealisVMStarted(guest_device->tap_device_ifname());
-  return guest_device;
-}
-
-void Manager::BorealisVmShutdown(uint64_t vm_id) {
-  const CrostiniService::CrostiniDevice* guest_device =
-      cros_svc_.GetDevice(vm_id);
-  if (guest_device) {
-    qos_svc_.OnBorealisVMStopped(guest_device->tap_device_ifname());
-  }
-  StopCrosVm(vm_id, CrostiniService::VMType::kBorealis);
-}
-
 std::map<CountersService::CounterKey, CountersService::Counter>
 Manager::GetTrafficCounters(const std::set<std::string>& shill_devices) const {
   return counters_svc_.GetCounters(shill_devices);

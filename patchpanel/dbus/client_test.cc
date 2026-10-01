@@ -249,16 +249,12 @@ TEST_F(ClientTest, NotifyBruschettaVmShutdown) {
 TEST_F(ClientTest, NotifyBorealisVmStartup) {
   const uint32_t id = 6;
 
-  EXPECT_CALL(*pp_proxy_, BorealisVmStartup(_, _, _, _)).Times(0);
-
   auto result = client_->NotifyBorealisVmStartup(id);
   EXPECT_FALSE(result.has_value());
 }
 
 TEST_F(ClientTest, NotifyBorealisVmShutdown) {
   const uint32_t id = 6;
-
-  EXPECT_CALL(*pp_proxy_, BorealisVmShutdown(_, _, _, _)).Times(0);
 
   const bool result = client_->NotifyBorealisVmShutdown(id);
   EXPECT_FALSE(result);

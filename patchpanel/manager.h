@@ -96,13 +96,6 @@ class Manager : public ForwardingService {
   // Handles notification indicating a Bruschetta VM is spinning down.
   void BruschettaVmShutdown(uint64_t vm_id);
 
-  // Handles notification indicating a Borealis VM is booting up.
-  const CrostiniService::CrostiniDevice* const BorealisVmStartup(
-      uint64_t vm_id);
-
-  // Handles notification indicating a Borealis VM is spinning down.
-  void BorealisVmShutdown(uint64_t vm_id);
-
   // Connects and routes an existing network namespace created via minijail or
   // through rtnetlink RTM_NEWNSID.
   ConnectNamespaceResponse ConnectNamespace(

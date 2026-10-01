@@ -94,10 +94,10 @@ enum class DbusUmaEvent {
   kBruschettaVmStartupSuccess = 38,
   kBruschettaVmShutdown = 39,
   kBruschettaVmShutdownSuccess = 40,
-  kBorealisVmStartup = 41,
-  kBorealisVmStartupSuccess = 42,
-  kBorealisVmShutdown = 43,
-  kBorealisVmShutdownSuccess = 44,
+  kBorealisVmStartup = 41,          // Deprecated
+  kBorealisVmStartupSuccess = 42,   // Deprecated
+  kBorealisVmShutdown = 43,         // Deprecated
+  kBorealisVmShutdownSuccess = 44,  // Deprecated
   kConfigureNetwork = 45,
   kConfigureNetworkSuccess = 46,
 

@@ -219,30 +219,6 @@
       </arg>
     </method>
 
-    <method name="BorealisVmShutdown">
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::BorealisVmShutdownRequest" />
-      </arg>
-      <arg name="response" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::BorealisVmShutdownResponse" />
-      </arg>
-    </method>
-
-    <method name="BorealisVmStartup">
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::BorealisVmStartupRequest" />
-      </arg>
-      <arg name="response" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::BorealisVmStartupResponse" />
-      </arg>
-    </method>
-
     <method name="SetDnsRedirectionRule">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
