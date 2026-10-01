@@ -64,7 +64,7 @@ std::optional<Client::BorealisAllocation> FakeClient::NotifyBorealisVmStartup(
 }
 
 bool FakeClient::NotifyBorealisVmShutdown(uint32_t vm_id) {
-  return true;
+  return false;
 }
 
 std::pair<base::ScopedFD, Client::ConnectedNamespace>

@@ -381,44 +381,6 @@ std::optional<Client::BruschettaAllocation> ConvertBruschettaAllocation(
   return bruschetta_alloc;
 }
 
-std::optional<Client::BorealisAllocation> ConvertBorealisAllocation(
-    const BorealisVmStartupResponse& in) {
-  if (in.tap_device_ifname().empty()) {
-    LOG(ERROR) << __func__ << ": No Borealis device interface found";
-    return std::nullopt;
-  }
-  if (!in.has_ipv4_subnet()) {
-    LOG(ERROR) << __func__ << ": No Borealis IPv4 subnet found";
-    return std::nullopt;
-  }
-  const auto borealis_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
-  const auto borealis_address =
-      net_base::IPv4Address::CreateFromBytes(in.ipv4_address());
-  const auto gateway_address =
-      net_base::IPv4Address::CreateFromBytes(in.gateway_ipv4_address());
-  if (!borealis_subnet) {
-    LOG(ERROR) << __func__ << ": Invalid Borealis IPv4 subnet";
-    return std::nullopt;
-  }
-  if (!borealis_address ||
-      !borealis_subnet->InSameSubnetWith(*borealis_address)) {
-    LOG(ERROR) << __func__ << ": Invalid Borealis IPv4 address";
-    return std::nullopt;
-  }
-  if (!gateway_address ||
-      !borealis_subnet->InSameSubnetWith(*gateway_address)) {
-    LOG(ERROR) << __func__ << ": Invalid Borealis gateway IPv4 address";
-    return std::nullopt;
-  }
-
-  Client::BorealisAllocation borealis_alloc;
-  borealis_alloc.tap_device_ifname = in.tap_device_ifname();
-  borealis_alloc.borealis_ipv4_subnet = *borealis_subnet;
-  borealis_alloc.borealis_ipv4_address = *borealis_address;
-  borealis_alloc.gateway_ipv4_address = *gateway_address;
-  return borealis_alloc;
-}
-
 std::optional<Client::NetworkClientInfo> ConvertNetworkClientInfo(
     const NetworkClientInfo& in) {
   auto out = std::make_optional<Client::NetworkClientInfo>();
@@ -1282,53 +1244,11 @@ bool ClientImpl::NotifyBruschettaVmShutdown(uint64_t vm_id) {
 
 std::optional<Client::BorealisAllocation> ClientImpl::NotifyBorealisVmStartup(
     uint32_t vm_id) {
-  BorealisVmStartupRequest request;
-  request.set_id(vm_id);
-
-  BorealisVmStartupResponse response;
-  brillo::ErrorPtr error;
-  const bool result = RunOnDBusThreadSync(base::BindOnce(
-      [](PatchPanelProxyInterface* proxy,
-         const BorealisVmStartupRequest& request,
-         BorealisVmStartupResponse* response, brillo::ErrorPtr* error) {
-        return proxy->BorealisVmStartup(request, response, error);
-      },
-      pp_proxy_.get(), request, &response, &error));
-
-  if (!result) {
-    LOG(ERROR) << __func__ << "(vm_id: " << vm_id
-               << "): Borealis VM network startup failed: "
-               << error->GetMessage();
-    return std::nullopt;
-  }
-
-  const auto network_alloc = ConvertBorealisAllocation(response);
-  if (!network_alloc) {
-    LOG(ERROR) << __func__ << "(vm_id: " << vm_id
-               << "): Failed to convert Borealis VM network configuration";
-  }
-  return network_alloc;
+  return std::nullopt;
 }
 
 bool ClientImpl::NotifyBorealisVmShutdown(uint32_t vm_id) {
-  BorealisVmShutdownRequest request;
-  request.set_id(vm_id);
-
-  BorealisVmShutdownResponse response;
-  brillo::ErrorPtr error;
-  const bool result = RunOnDBusThreadSync(base::BindOnce(
-      [](PatchPanelProxyInterface* proxy,
-         const BorealisVmShutdownRequest& request,
-         BorealisVmShutdownResponse* response, brillo::ErrorPtr* error) {
-        return proxy->BorealisVmShutdown(request, response, error);
-      },
-      pp_proxy_.get(), request, &response, &error));
-  if (!result) {
-    LOG(ERROR) << "Borealis VM network shutdown failed: "
-               << error->GetMessage();
-    return false;
-  }
-  return true;
+  return false;
 }
 
 std::pair<base::ScopedFD, Client::ConnectedNamespace>
