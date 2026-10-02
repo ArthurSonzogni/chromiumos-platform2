@@ -9,27 +9,28 @@
 
 #include <base/memory/shared_memory_mapping.h>
 #include <brillo/brillo_export.h>
-#include <mojo/public/cpp/system/handle.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 
 namespace diagnostics {
 
 // Allows to get access to the buffer in read only shared memory. It converts
-// mojo::Handle to base::ReadOnlySharedMemoryRegion.
+// `mojo::PlatformHandle` to `base::ReadOnlySharedMemoryMapping`.
 //
-// |handle| must be a valid mojo handle of the non-empty buffer in the shared
-// memory.
+// `handle` must be a valid mojo platform handle of the non-empty buffer in the
+// shared memory.
 //
-// Returns invalid |base::ReadOnlySharedMemoryMapping| if error.
+// Returns invalid `base::ReadOnlySharedMemoryMapping` if error.
 BRILLO_EXPORT base::ReadOnlySharedMemoryMapping
-GetReadOnlySharedMemoryMappingFromMojoHandle(mojo::ScopedHandle handle);
+GetReadOnlySharedMemoryMappingFromMojoHandle(mojo::PlatformHandle handle);
 
-// Allocates buffer in shared memory, copies |content| to the buffer and
-// converts shared buffer handle into |mojo::ScopedHandle|.
+// Allocates buffer in shared memory, copies `content` to the buffer and
+// converts shared buffer handle into `mojo::PlatformHandle`.
 //
 // Allocated shared memory is read only for another process.
 //
-// Returns invalid |mojo::ScopedHandle| if error happened or |content| is empty.
-BRILLO_EXPORT mojo::ScopedHandle CreateReadOnlySharedMemoryRegionMojoHandle(
+// Returns invalid `mojo::PlatformHandle` if error happened or `content` is
+// empty.
+BRILLO_EXPORT mojo::PlatformHandle CreateReadOnlySharedMemoryRegionMojoHandle(
     std::string_view content);
 
 }  // namespace diagnostics

@@ -17,6 +17,7 @@
 #include <base/time/default_tick_clock.h>
 #include <base/time/tick_clock.h>
 #include <base/time/time.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
 #include "diagnostics/cros_healthd/routines/noninteractive_routine_control.h"
@@ -53,7 +54,7 @@ class MemoryRoutine final : public NoninteractiveRoutineControl {
       ash::cros_healthd::mojom::MemoryResultPtr result);
 
   // Initialize variables needed to read stdout.
-  void SetUpStdout(mojo::ScopedHandle handle);
+  void SetUpStdout(mojo::PlatformHandle handle);
 
   // Read memtester return code and parses memtester output.
   void DetermineRoutineResult();

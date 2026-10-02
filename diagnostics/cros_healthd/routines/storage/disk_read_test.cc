@@ -205,7 +205,7 @@ class DiskReadRoutineAdapterTest : public DiskReadRoutineTest {
 
   RoutineService routine_service_{&mock_context_};
   std::unique_ptr<RoutineAdapter> routine_adapter_;
-  mojom::RoutineUpdate update_{0, mojo::ScopedHandle(),
+  mojom::RoutineUpdate update_{0, mojo::PlatformHandle(),
                                mojom::RoutineUpdateUnionPtr()};
 };
 

@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <mojo/public/cpp/system/handle.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
@@ -30,10 +30,10 @@ void VerifyNonInteractiveUpdate(
     const std::string& expected_status_message);
 
 // Gets content from a valid base::ReadOnlySharedMemoryMapping of passed
-// mojo::Handle.
+// `mojo::PlatformHandle`.
 // Makes an unnecessary copying of data, should be used only for testing.
 std::string GetStringFromValidReadOnlySharedMemoryMapping(
-    mojo::ScopedHandle handle);
+    mojo::PlatformHandle handle);
 
 }  // namespace diagnostics
 

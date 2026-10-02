@@ -56,7 +56,7 @@ class BatteryCapacityRoutineTest : public testing::Test {
  private:
   MockContext mock_context_;
   std::unique_ptr<DiagnosticRoutine> routine_;
-  mojom::RoutineUpdate update_{0, mojo::ScopedHandle(),
+  mojom::RoutineUpdate update_{0, mojo::PlatformHandle(),
                                mojom::RoutineUpdateUnionPtr()};
 };
 

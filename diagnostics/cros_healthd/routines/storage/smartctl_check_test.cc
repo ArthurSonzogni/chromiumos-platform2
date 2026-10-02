@@ -17,6 +17,7 @@
 #include <base/strings/stringprintf.h>
 #include <debugd/dbus-proxy-mocks.h>
 #include <gtest/gtest.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -44,7 +45,7 @@ std::string GetFakeSmartctlOutput(const int available_spare,
                             percentage_used);
 }
 
-void VerifyOutput(mojo::ScopedHandle handle,
+void VerifyOutput(mojo::PlatformHandle handle,
                   const int expected_available_spare,
                   const int expected_available_spare_threshold,
                   const int expected_percentage_used,
@@ -88,7 +89,7 @@ class SmartctlCheckRoutineTest : public testing::Test {
 
   mojom::RoutineUpdatePtr RunRoutineAndWaitForExit() {
     CHECK(routine_);
-    mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+    mojom::RoutineUpdate update{0, mojo::PlatformHandle(),
                                 mojom::RoutineUpdateUnionPtr()};
 
     routine_->Start();

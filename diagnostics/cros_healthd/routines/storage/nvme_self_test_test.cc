@@ -58,7 +58,7 @@ class NvmeSelfTestRoutineTest : public testing::Test {
   }
   void RunRoutineCancel() { routine_->Cancel(); }
   mojom::RoutineUpdatePtr RunRoutinePopulate() {
-    mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+    mojom::RoutineUpdate update{0, mojo::PlatformHandle(),
                                 mojom::RoutineUpdateUnionPtr()};
 
     routine_->PopulateStatusUpdate(/*include_output=*/true, update);

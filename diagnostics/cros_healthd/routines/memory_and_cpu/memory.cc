@@ -12,7 +12,7 @@
 #include <base/check.h>
 #include <base/containers/span.h>
 #include <base/files/file.h>
-#include <base/files/platform_file.h>
+#include <base/files/scoped_file.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
@@ -20,6 +20,7 @@
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 #include <re2/re2.h>
 
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
@@ -27,7 +28,6 @@
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
-#include "diagnostics/cros_healthd/utils/mojo_utils.h"
 #include "diagnostics/cros_healthd/utils/resource_queue.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -397,9 +397,8 @@ void MemoryRoutine::UpdatePercentage() {
   }
 }
 
-void MemoryRoutine::SetUpStdout(mojo::ScopedHandle handle) {
-  base::ScopedPlatformFile stdout_fd =
-      mojo_utils::UnwrapMojoHandle(std::move(handle));
+void MemoryRoutine::SetUpStdout(mojo::PlatformHandle handle) {
+  base::ScopedFD stdout_fd = handle.TakeFD();
   if (!stdout_fd.is_valid()) {
     return;
   }

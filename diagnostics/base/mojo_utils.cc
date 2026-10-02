@@ -15,17 +15,13 @@
 #include <base/memory/read_only_shared_memory_region.h>
 #include <base/memory/shared_memory_mapping.h>
 #include <base/unguessable_token.h>
-#include <mojo/public/c/system/types.h>
 #include <mojo/public/cpp/platform/platform_handle.h>
-#include <mojo/public/cpp/system/handle.h>
-#include <mojo/public/cpp/system/platform_handle.h>
 
 namespace diagnostics {
 
 base::ReadOnlySharedMemoryMapping GetReadOnlySharedMemoryMappingFromMojoHandle(
-    mojo::ScopedHandle handle) {
-  base::ScopedPlatformFile platform_file =
-      mojo::UnwrapPlatformHandle(std::move(handle)).TakeFD();
+    mojo::PlatformHandle handle) {
+  base::ScopedPlatformFile platform_file = handle.TakeFD();
   if (!platform_file.is_valid()) {
     return base::ReadOnlySharedMemoryMapping();
   }
@@ -47,10 +43,10 @@ base::ReadOnlySharedMemoryMapping GetReadOnlySharedMemoryMappingFromMojoHandle(
   return shm_region.Map();
 }
 
-mojo::ScopedHandle CreateReadOnlySharedMemoryRegionMojoHandle(
+mojo::PlatformHandle CreateReadOnlySharedMemoryRegionMojoHandle(
     std::string_view content) {
   if (content.empty()) {
-    return mojo::ScopedHandle();
+    return mojo::PlatformHandle();
   }
   base::MappedReadOnlyRegion region_mapping =
       base::ReadOnlySharedMemoryRegion::Create(content.length());
@@ -59,7 +55,7 @@ mojo::ScopedHandle CreateReadOnlySharedMemoryRegionMojoHandle(
   base::WritableSharedMemoryMapping writable_mapping =
       std::move(region_mapping.mapping);
   if (!read_only_region.IsValid() || !writable_mapping.IsValid()) {
-    return mojo::ScopedHandle();
+    return mojo::PlatformHandle();
   }
   memcpy(writable_mapping.GetMemoryAs<char>(), content.data(),
          content.length());
@@ -69,8 +65,7 @@ mojo::ScopedHandle CreateReadOnlySharedMemoryRegionMojoHandle(
   base::subtle::PlatformSharedMemoryRegion platform_shm =
       base::ReadOnlySharedMemoryRegion::TakeHandleForSerialization(
           std::move(read_only_region));
-  return mojo::WrapPlatformHandle(
-      mojo::PlatformHandle(std::move(platform_shm.PassPlatformHandle().fd)));
+  return mojo::PlatformHandle(std::move(platform_shm.PassPlatformHandle().fd));
 }
 
 }  // namespace diagnostics

@@ -19,6 +19,7 @@
 #include <base/time/time.h>
 #include <chromeos/mojo/service_constants.h>
 #include <metrics/metrics_library.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 
 #include "diagnostics/cros_healthd/routines/cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
@@ -126,7 +127,7 @@ void CrosHealthdDiagnosticsService::GetRoutineUpdate(
     mojom::DiagnosticRoutineCommandEnum command,
     bool include_output,
     GetRoutineUpdateCallback callback) {
-  mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+  mojom::RoutineUpdate update{0, mojo::PlatformHandle(),
                               mojom::RoutineUpdateUnionPtr()};
 
   auto itr = active_routines_.find(id);

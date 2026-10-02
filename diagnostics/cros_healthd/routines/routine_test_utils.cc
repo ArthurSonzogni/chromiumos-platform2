@@ -40,7 +40,7 @@ void VerifyNonInteractiveUpdate(
 }
 
 std::string GetStringFromValidReadOnlySharedMemoryMapping(
-    mojo::ScopedHandle handle) {
+    mojo::PlatformHandle handle) {
   CHECK(handle.is_valid());
   auto shm_mapping =
       GetReadOnlySharedMemoryMappingFromMojoHandle(std::move(handle));

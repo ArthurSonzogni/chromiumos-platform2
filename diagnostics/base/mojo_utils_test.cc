@@ -8,7 +8,7 @@
 #include <utility>
 
 #include <gtest/gtest.h>
-#include <mojo/public/cpp/system/handle.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 
 namespace diagnostics {
 namespace {
@@ -16,7 +16,7 @@ namespace {
 TEST(MojoUtilsTest, CreateMojoHandleAndRetrieveContent) {
   const std::string_view content("{\"key\": \"value\"}");
 
-  mojo::ScopedHandle handle =
+  mojo::PlatformHandle handle =
       CreateReadOnlySharedMemoryRegionMojoHandle(content);
   EXPECT_TRUE(handle.is_valid());
 
@@ -30,7 +30,7 @@ TEST(MojoUtilsTest, CreateMojoHandleAndRetrieveContent) {
 }
 
 TEST(MojoUtilsTest, GetReadOnlySharedMemoryRegionFromMojoInvalidHandle) {
-  mojo::ScopedHandle handle;
+  mojo::PlatformHandle handle;
   EXPECT_FALSE(handle.is_valid());
 
   auto shm_mapping =
@@ -39,7 +39,7 @@ TEST(MojoUtilsTest, GetReadOnlySharedMemoryRegionFromMojoInvalidHandle) {
 }
 
 TEST(MojoUtilsTest, CreateReadOnlySharedMemoryFromEmptyContent) {
-  mojo::ScopedHandle handle = CreateReadOnlySharedMemoryRegionMojoHandle("");
+  mojo::PlatformHandle handle = CreateReadOnlySharedMemoryRegionMojoHandle("");
   // Cannot create valid handle using empty content line.
   EXPECT_FALSE(handle.is_valid());
 }

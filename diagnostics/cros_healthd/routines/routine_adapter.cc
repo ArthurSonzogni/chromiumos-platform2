@@ -19,7 +19,7 @@
 #include <base/values.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/remote_set.h>
-#include <mojo/public/cpp/system/handle.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 
 #include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -142,7 +142,7 @@ base::DictValue ConvertRoutineDetailToOutputDict(
   }
 }
 
-mojo::ScopedHandle ConvertRoutineDetailToMojoHandle(
+mojo::PlatformHandle ConvertRoutineDetailToMojoHandle(
     const mojom::RoutineDetailPtr& detail) {
   std::string json;
   base::JSONWriter::Write(ConvertRoutineDetailToOutputDict(detail), &json);

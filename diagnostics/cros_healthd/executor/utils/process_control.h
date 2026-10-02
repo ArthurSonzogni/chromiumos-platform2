@@ -12,6 +12,7 @@
 
 #include <base/functional/callback_forward.h>
 #include <brillo/process/process_reaper.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 
 #include "diagnostics/cros_healthd/executor/utils/sandboxed_process.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
@@ -48,8 +49,8 @@ class ProcessControl : public ash::cros_healthd::mojom::ProcessControl {
   // Set the process as finished and run any pending callbacks.
   void SetProcessFinished(const siginfo_t& exit_status);
 
-  // Helper function to cast a file descriptor into mojo::ScopedHandle.
-  mojo::ScopedHandle GetMojoScopedHandle(int file_no);
+  // Helper function to wrap a file descriptor into mojo::PlatformHandle.
+  mojo::PlatformHandle GetPlatformHandle(int file_no);
   // The underlying process that is controlled by this object.
   std::unique_ptr<SandboxedProcess> process_;
   // Process Reaper is used to wait and get the return code of process.

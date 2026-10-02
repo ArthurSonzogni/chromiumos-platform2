@@ -228,7 +228,7 @@ class BluezBluetoothScanningRoutineTest : public testing::Test {
   std::map<dbus::ObjectPath, std::unique_ptr<org::bluez::Device1ProxyMock>>
       mock_device_proxies_;
   std::map<dbus::ObjectPath, bool> is_high_signal_device;
-  mojom::RoutineUpdate update_{0, mojo::ScopedHandle(),
+  mojom::RoutineUpdate update_{0, mojo::PlatformHandle(),
                                mojom::RoutineUpdateUnionPtr()};
 };
 

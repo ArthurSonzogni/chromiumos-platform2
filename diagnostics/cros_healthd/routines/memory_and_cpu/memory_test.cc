@@ -31,7 +31,7 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 #include <mojo/public/cpp/bindings/receiver.h>
-#include <mojo/public/cpp/system/handle.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
@@ -168,9 +168,8 @@ class MemoryRoutineAdapterTest : public MemoryRoutineTestBase {
     }
   }
 
-  // A utility function to parse a mojo::ScopedHandle into a base::DictValue.
-  base::DictValue GetJsonFromOutput(mojo::ScopedHandle output) {
-    EXPECT_TRUE(output->is_valid());
+  base::DictValue GetJsonFromOutput(mojo::PlatformHandle output) {
+    EXPECT_TRUE(output.is_valid());
 
     auto json = base::JSONReader::Read(
         GetStringFromValidReadOnlySharedMemoryMapping(std::move(output)),

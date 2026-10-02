@@ -12,7 +12,6 @@
 #include <base/posix/eintr_wrapper.h>
 #include <bits/types/siginfo_t.h>
 #include <mojo/public/cpp/platform/platform_handle.h>
-#include <mojo/public/cpp/system/platform_handle.h>
 
 namespace diagnostics {
 
@@ -48,11 +47,11 @@ void ProcessControl::SetProcessFinished(const siginfo_t& siginfo) {
 }
 
 void ProcessControl::GetStdout(GetStdoutCallback callback) {
-  std::move(callback).Run(GetMojoScopedHandle(STDOUT_FILENO));
+  std::move(callback).Run(GetPlatformHandle(STDOUT_FILENO));
 }
 
 void ProcessControl::GetStderr(GetStderrCallback callback) {
-  std::move(callback).Run(GetMojoScopedHandle(STDERR_FILENO));
+  std::move(callback).Run(GetPlatformHandle(STDERR_FILENO));
 }
 
 void ProcessControl::GetReturnCode(GetReturnCodeCallback callback) {
@@ -81,10 +80,10 @@ void ProcessControl::Kill() {
   }
 }
 
-mojo::ScopedHandle ProcessControl::GetMojoScopedHandle(int file_no) {
+mojo::PlatformHandle ProcessControl::GetPlatformHandle(int file_no) {
   base::ScopedPlatformFile other_fd(
       HANDLE_EINTR(dup(process_->GetOutputFd(file_no))));
-  return mojo::WrapPlatformHandle(mojo::PlatformHandle(std::move(other_fd)));
+  return mojo::PlatformHandle(std::move(other_fd));
 }
 
 }  // namespace diagnostics

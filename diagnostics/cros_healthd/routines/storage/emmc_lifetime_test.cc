@@ -16,6 +16,7 @@
 #include <base/strings/stringprintf.h>
 #include <debugd/dbus-proxy-mocks.h>
 #include <gtest/gtest.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/debugd_constants.h"
@@ -43,11 +44,11 @@ std::string GetFakeMmcOutput(const uint32_t pre_eol_info,
                             device_life_time_est_typ_a, pre_eol_info);
 }
 
-void VerifyOutput(mojo::ScopedHandle handle,
+void VerifyOutput(mojo::PlatformHandle handle,
                   const uint32_t expected_pre_eol_info,
                   const uint32_t expected_device_life_time_est_typ_a,
                   const uint32_t expected_device_life_time_est_typ_b) {
-  ASSERT_TRUE(handle->is_valid());
+  ASSERT_TRUE(handle.is_valid());
   const auto& json_output = base::JSONReader::Read(
       GetStringFromValidReadOnlySharedMemoryMapping(std::move(handle)),
       base::JSON_PARSE_CHROMIUM_EXTENSIONS);
@@ -79,7 +80,7 @@ class EmmcLifetimeRoutineTest : public testing::Test {
 
   mojom::RoutineUpdatePtr RunRoutineAndWaitForExit() {
     CHECK(routine_);
-    mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+    mojom::RoutineUpdate update{0, mojo::PlatformHandle(),
                                 mojom::RoutineUpdateUnionPtr()};
 
     routine_->Start();

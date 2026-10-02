@@ -51,7 +51,7 @@ class DnsResolverPresentRoutineTest : public testing::Test {
 
   mojom::RoutineUpdatePtr RunRoutineAndWaitForExit() {
     CHECK(routine_);
-    mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+    mojom::RoutineUpdate update{0, mojo::PlatformHandle(),
                                 mojom::RoutineUpdateUnionPtr()};
     routine_->Start();
     task_environment_.RunUntilIdle();

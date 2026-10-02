@@ -95,7 +95,7 @@ class SimpleRoutineTest : public testing::Test {
 
  private:
   std::unique_ptr<SimpleRoutine> routine_;
-  mojom::RoutineUpdate update_{0, mojo::ScopedHandle(),
+  mojom::RoutineUpdate update_{0, mojo::PlatformHandle(),
                                mojom::RoutineUpdateUnionPtr()};
 };
 

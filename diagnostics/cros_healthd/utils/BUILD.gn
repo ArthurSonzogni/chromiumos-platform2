@@ -24,7 +24,6 @@ source_set("utils") {
     "floss_utils.cc",
     "fwupd_utils.cc",
     "metrics_utils.cc",
-    "mojo_utils.cc",
     "procfs_utils.cc",
     "resource_queue.cc",
     "usb_utils.cc",

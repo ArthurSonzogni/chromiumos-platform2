@@ -170,7 +170,7 @@ class BluezBluetoothDiscoveryRoutineTest : public testing::Test {
 
  private:
   MockContext mock_context_;
-  mojom::RoutineUpdate update_{0, mojo::ScopedHandle(),
+  mojom::RoutineUpdate update_{0, mojo::PlatformHandle(),
                                mojom::RoutineUpdateUnionPtr()};
   StrictMock<org::chromium::bluetooth::ManagerProxyMock> mock_manager_proxy_;
 };

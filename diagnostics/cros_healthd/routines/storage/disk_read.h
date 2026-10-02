@@ -16,6 +16,7 @@
 #include <base/time/tick_clock.h>
 #include <base/types/expected.h>
 #include <brillo/errors/error.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
@@ -76,7 +77,7 @@ class DiskReadRoutine final : public NoninteractiveRoutineControl {
   // Handle the response of fio stderr.
   void HandleStderrResponse(
       base::OnceCallback<void(const std::string&)> response_cb,
-      mojo::ScopedHandle handle);
+      mojo::PlatformHandle handle);
 
   // Update the routine percentage.
   void UpdatePercentage();

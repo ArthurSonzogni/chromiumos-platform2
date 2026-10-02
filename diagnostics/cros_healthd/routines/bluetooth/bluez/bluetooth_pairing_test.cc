@@ -264,7 +264,7 @@ class BluezBluetoothPairingRoutineTest : public testing::Test {
       "0000110e-0000-1000-8000-00805f9b34fb",
       "0000111e-0000-1000-8000-00805f9b34fb",
       "00001200-0000-1000-8000-00805f9b34fb"};
-  mojom::RoutineUpdate update_{0, mojo::ScopedHandle(),
+  mojom::RoutineUpdate update_{0, mojo::PlatformHandle(),
                                mojom::RoutineUpdateUnionPtr()};
 };
 

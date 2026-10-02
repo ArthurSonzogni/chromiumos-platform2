@@ -13,6 +13,7 @@
 #include <base/cancelable_callback.h>
 #include <base/check.h>
 #include <base/containers/span.h>
+#include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
@@ -23,6 +24,7 @@
 #include <base/time/time.h>
 #include <base/types/expected.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 // NOLINTNEXTLINE(build/include_alpha) dbus-proxies.h needs spaced.pb.h
 #include <spaced/dbus-proxies.h>
@@ -32,7 +34,6 @@
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
-#include "diagnostics/cros_healthd/utils/mojo_utils.h"
 
 namespace diagnostics {
 
@@ -255,13 +256,13 @@ void DiskReadRoutine::HandleReturnCodeResponse(
       base::BindOnce(&DiskReadRoutine::HandleStderrResponse,
                      weak_ptr_factory_.GetWeakPtr(),
                      base::BindOnce(std::move(response_cb), return_code)),
-      mojo::ScopedHandle()));
+      mojo::PlatformHandle()));
 }
 
 void DiskReadRoutine::HandleStderrResponse(
     base::OnceCallback<void(const std::string&)> response_cb,
-    mojo::ScopedHandle handle) {
-  auto stderr_fd = mojo_utils::UnwrapMojoHandle(std::move(handle));
+    mojo::PlatformHandle handle) {
+  base::ScopedFD stderr_fd = handle.TakeFD();
   if (!stderr_fd.is_valid()) {
     std::move(response_cb).Run("Failed to access fio stderr");
     return;
