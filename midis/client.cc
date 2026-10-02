@@ -12,8 +12,6 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <mojo/public/cpp/platform/platform_handle.h>
-#include <mojo/public/cpp/system/handle.h>
-#include <mojo/public/cpp/system/platform_handle.h>
 
 #include "midis/constants.h"
 
@@ -71,14 +69,14 @@ void Client::ListDevices(ListDevicesCallback callback) {
 
 void Client::RequestPort(arc::mojom::MidisRequestPtr request,
                          RequestPortCallback callback) {
-  mojo::ScopedHandle handle = CreateRequestPortFD(
+  mojo::PlatformHandle handle = CreateRequestPortFD(
       request->card, request->device_num, request->subdevice_num);
   std::move(callback).Run(std::move(handle));
 }
 
 void Client::RequestPortDeprecated(arc::mojom::MidisRequestPtr request,
                                    RequestPortDeprecatedCallback callback) {
-  mojo::ScopedHandle handle = CreateRequestPortFD(
+  mojo::PlatformHandle handle = CreateRequestPortFD(
       request->card, request->device_num, request->subdevice_num);
   if (!handle.is_valid()) {
     return;
@@ -91,19 +89,19 @@ void Client::CloseDevice(arc::mojom::MidisRequestPtr request) {
                                           request->device_num);
 }
 
-mojo::ScopedHandle Client::CreateRequestPortFD(uint32_t card,
-                                               uint32_t device,
-                                               uint32_t subdevice) {
+mojo::PlatformHandle Client::CreateRequestPortFD(uint32_t card,
+                                                 uint32_t device,
+                                                 uint32_t subdevice) {
   base::ScopedFD clientfd = device_tracker_->AddClientToReadSubdevice(
       card, device, subdevice, client_id_);
   if (!clientfd.is_valid()) {
     LOG(ERROR) << "CreateRequestPortFD failed for device: " << device;
     // We don't delete the client here, because this could mean an issue with
     // the device h/w.
-    return mojo::ScopedHandle();
+    return mojo::PlatformHandle();
   }
 
-  return mojo::WrapPlatformHandle(mojo::PlatformHandle(std::move(clientfd)));
+  return mojo::PlatformHandle(std::move(clientfd));
 }
 
 }  // namespace midis

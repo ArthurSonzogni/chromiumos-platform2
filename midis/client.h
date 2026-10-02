@@ -15,6 +15,7 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 
 #include "midis/device.h"
 #include "midis/device_tracker.h"
@@ -51,12 +52,12 @@ class Client : public DeviceTracker::Observer, public arc::mojom::MidisServer {
                    RequestPortCallback callback) override;
   void CloseDevice(arc::mojom::MidisRequestPtr request) override;
 
-  // Function which returns a scoped handle when a port is requested,
+  // Function which returns a platform handle when a port is requested,
   // and an empty handle on error. This can be used by both
   // RequestPort and RequestPortDeprecated.
-  mojo::ScopedHandle CreateRequestPortFD(uint32_t card,
-                                         uint32_t device,
-                                         uint32_t subdevice);
+  mojo::PlatformHandle CreateRequestPortFD(uint32_t card,
+                                           uint32_t device,
+                                           uint32_t subdevice);
 
   // The DeviceTracker can be guaranteed to exist for the lifetime of the
   // service. As such, it is safe to maintain this pointer as a means to make
