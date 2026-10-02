@@ -48,6 +48,12 @@ void EnterMinijail(bool set_admin_caps) {
   minijail_bind(j.get(), "/dev", "/dev", 0);
   minijail_bind(j.get(), "/proc", "/proc", 0);
 
+  // Required to communicate with ChromeOS EC (e.g. CBI get/set).
+  if (base::PathExists(base::FilePath("/dev/cros_ec"))) {
+    minijail_bind(j.get(), "/dev/cros_ec", "/dev/cros_ec", 1);
+    minijail_add_fs_restriction_rw(j.get(), "/dev/cros_ec");
+  }
+
   minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs", 0, nullptr);
 
   // Required to read cros_config.
