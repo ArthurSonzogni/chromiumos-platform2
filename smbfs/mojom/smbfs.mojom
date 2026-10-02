@@ -96,7 +96,7 @@ struct Password {
   const int32 kMaxLength = 255;
 
   // File descriptor of pipe containing password.
-  handle fd;
+  handle<platform> fd;
   // Length of password stored in |fd|.
   int32 length;
 };

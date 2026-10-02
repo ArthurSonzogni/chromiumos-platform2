@@ -13,7 +13,7 @@
 #include <base/files/scoped_file.h>
 #include <base/numerics/safe_conversions.h>
 #include <libpasswordprovider/password.h>
-#include <mojo/public/cpp/system/platform_handle.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 
 #include "smbfs/mojom/smbfs.mojom.h"
 
@@ -22,14 +22,14 @@ namespace mojo {
 template <>
 struct StructTraits<smbfs::mojom::PasswordDataView,
                     std::unique_ptr<password_provider::Password>> {
-  static mojo::ScopedHandle fd(
+  static mojo::PlatformHandle fd(
       const std::unique_ptr<password_provider::Password>& password) {
     int fds[2];
     CHECK(base::CreateLocalNonBlockingPipe(fds));
     base::ScopedFD read_fd(fds[0]);
     base::ScopedFD write_fd(fds[1]);
     CHECK(base::WriteFileDescriptor(write_fd.get(), password->GetRaw()));
-    return mojo::WrapPlatformHandle(mojo::PlatformHandle(std::move(read_fd)));
+    return mojo::PlatformHandle(std::move(read_fd));
   }
 
   static int32_t length(
@@ -43,7 +43,7 @@ struct StructTraits<smbfs::mojom::PasswordDataView,
       return false;
     }
 
-    base::ScopedFD fd = mojo::UnwrapPlatformHandle(data.TakeFd()).TakeFD();
+    base::ScopedFD fd = data.TakeFd().TakeFD();
     *password = password_provider::Password::CreateFromFileDescriptor(
         fd.get(), data.length());
     return true;
