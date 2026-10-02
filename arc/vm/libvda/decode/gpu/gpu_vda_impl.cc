@@ -29,7 +29,6 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/platform/platform_handle.h>
-#include <mojo/public/cpp/system/platform_handle.h>
 #include <sys/eventfd.h>
 
 #include "arc/vm/libvda/decode/gpu/decode_helpers.h"
@@ -250,8 +249,7 @@ void GpuVdaContext::DecodeOnIpcThread(int32_t bitstream_id,
                                       uint32_t bytes_used) {
   DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
 
-  mojo::ScopedHandle handle_fd =
-      mojo::WrapPlatformHandle(mojo::PlatformHandle(std::move(fd)));
+  mojo::PlatformHandle handle_fd(std::move(fd));
   if (!handle_fd.is_valid()) {
     LOG(ERROR) << "Invalid bitstream handle.";
     return;
@@ -296,8 +294,7 @@ void GpuVdaContext::UseOutputBufferOnIpcThread(
     base::ScopedFD fd,
     std::vector<video_frame_plane_t> planes,
     uint64_t modifier) {
-  mojo::ScopedHandle handle_fd =
-      mojo::WrapPlatformHandle(mojo::PlatformHandle(std::move(fd)));
+  mojo::PlatformHandle handle_fd(std::move(fd));
   if (!handle_fd.is_valid()) {
     LOG(ERROR) << "Invalid output buffer handle.";
     return;

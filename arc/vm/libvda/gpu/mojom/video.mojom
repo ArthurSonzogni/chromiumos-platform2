@@ -18,8 +18,8 @@ interface VideoHost {
   // mojo child process and a token which can be used to create a message pipe
   // connected to a new VideoAcceleratorFactory.
   [MinVersion=4]
-  OnBootstrapVideoAcceleratorFactory@1() => (handle channel_handle,
-                                             string token);
+  OnBootstrapVideoAcceleratorFactory@1()
+      => (handle<platform> channel_handle, string token);
 };
 
 // Deprecated method IDs: 0
