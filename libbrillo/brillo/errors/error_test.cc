@@ -4,6 +4,8 @@
 
 #include <brillo/errors/error.h>
 
+#include <stdint.h>
+
 #include <utility>
 
 #include <base/location.h>
@@ -15,7 +17,8 @@ namespace {
 
 brillo::ErrorPtr GenerateNetworkError() {
   base::Location loc = base::Location::CreateForTesting(
-      "GenerateNetworkError", "error_test.cc", 15, ::base::GetProgramCounter());
+      "GenerateNetworkError", "error_test.cc", 15,
+      reinterpret_cast<uintptr_t>(::base::GetProgramCounter()));
   return Error::Create(loc, "network", "not_found", "Resource not found");
 }
 
