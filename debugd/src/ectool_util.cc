@@ -32,8 +32,7 @@ bool RunEctoolWithArgs(brillo::ErrorPtr* error,
   }
 
   // Minijail setup for ectool.
-  std::vector<std::string> parsed_args{"-c", "cap_sys_rawio=e", "-b",
-                                       "/dev/cros_ec"};
+  std::vector<std::string> parsed_args{"-b", "/dev/cros_ec"};
 
   ProcessWithOutput process;
   process.SandboxAs(user, user);
