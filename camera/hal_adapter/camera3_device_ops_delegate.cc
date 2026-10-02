@@ -98,7 +98,7 @@ void Camera3DeviceOpsDelegate::ProcessCaptureRequest(
       camera_device_adapter_->ProcessCaptureRequest(std::move(request)));
 }
 
-void Camera3DeviceOpsDelegate::Dump(mojo::ScopedHandle fd) {
+void Camera3DeviceOpsDelegate::Dump(mojo::PlatformHandle fd) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER();
 
@@ -122,7 +122,7 @@ void Camera3DeviceOpsDelegate::Flush(FlushCallback callback) {
 void Camera3DeviceOpsDelegate::RegisterBuffer(
     uint64_t buffer_id,
     mojom::Camera3DeviceOps::BufferType type,
-    std::vector<mojo::ScopedHandle> fds,
+    std::vector<mojo::PlatformHandle> fds,
     uint32_t drm_format,
     mojom::HalPixelFormat hal_pixel_format,
     uint32_t width,

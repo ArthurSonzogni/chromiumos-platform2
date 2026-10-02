@@ -43,13 +43,13 @@ class Camera3DeviceOpsDelegate
   void ProcessCaptureRequest(mojom::Camera3CaptureRequestPtr request,
                              ProcessCaptureRequestCallback callback) override;
 
-  void Dump(mojo::ScopedHandle fd) override;
+  void Dump(mojo::PlatformHandle fd) override;
 
   void Flush(FlushCallback callback) override;
 
   void RegisterBuffer(uint64_t buffer_id,
                       mojom::Camera3DeviceOps::BufferType type,
-                      std::vector<mojo::ScopedHandle> fds,
+                      std::vector<mojo::PlatformHandle> fds,
                       uint32_t drm_format,
                       mojom::HalPixelFormat hal_pixel_format,
                       uint32_t width,

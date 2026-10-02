@@ -48,7 +48,7 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
       InitializeCallback callback) override;
 
   // Implementation of mojom::CameraAlgorithmOps::RegisterBuffer interface
-  void RegisterBuffer(mojo::ScopedHandle buffer_fd,
+  void RegisterBuffer(mojo::PlatformHandle buffer_fd,
                       RegisterBufferCallback callback) override;
 
   // Implementation of mojom::CameraAlgorithmOps::Request interface
@@ -62,7 +62,7 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
   // Implementation of mojom::CameraAlgorithmOps::UpdateReturn interface
   void UpdateReturn(uint32_t upd_id,
                     uint32_t status,
-                    mojo::ScopedHandle buffer_fd) override;
+                    mojo::PlatformHandle buffer_fd) override;
 
   // Implementation of mojom::CameraAlgorithmOps::Deinitialize interface
   void Deinitialize() override;

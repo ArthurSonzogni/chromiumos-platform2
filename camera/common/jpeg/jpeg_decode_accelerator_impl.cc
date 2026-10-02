@@ -259,9 +259,8 @@ void JpegDecodeAcceleratorImpl::IPCBridge::Decode(int32_t buffer_id,
   const uint32_t num_planes = buffer_manager->GetNumPlanes(output_buffer);
   std::vector<mojom::DmaBufPlanePtr> planes(num_planes);
   for (uint32_t i = 0; i < num_planes; ++i) {
-    mojo::ScopedHandle fd_handle = mojo::WrapPlatformHandle(
-        mojo::PlatformHandle(base::ScopedPlatformFile(
-            HANDLE_EINTR(dup(output_buffer->data[i])))));
+    mojo::PlatformHandle fd_handle(base::ScopedPlatformFile(
+        HANDLE_EINTR(dup(output_buffer->data[i]))));
     const int32_t stride = base::checked_cast<int32_t>(
         buffer_manager->GetPlaneStride(output_buffer, i));
     const uint32_t offset = base::checked_cast<uint32_t>(
@@ -276,8 +275,8 @@ void JpegDecodeAcceleratorImpl::IPCBridge::Decode(int32_t buffer_id,
       buffer_manager->GetHeight(output_buffer), std::move(planes),
       /*has_modifier=*/true, buffer_manager->GetModifier(output_buffer));
 
-  mojo::ScopedHandle input_handle = mojo::WrapPlatformHandle(
-      mojo::PlatformHandle(base::ScopedPlatformFile(HANDLE_EINTR(dup(input_fd)))));
+  mojo::PlatformHandle input_handle(
+      base::ScopedPlatformFile(HANDLE_EINTR(dup(input_fd))));
 
   inflight_buffer_ids_.insert(buffer_id);
   jda_->DecodeWithDmaBuf(

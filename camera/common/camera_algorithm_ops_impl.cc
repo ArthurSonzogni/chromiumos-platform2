@@ -87,19 +87,17 @@ void CameraAlgorithmOpsImpl::Initialize(
   std::move(callback).Run(result);
 }
 
-void CameraAlgorithmOpsImpl::RegisterBuffer(mojo::ScopedHandle buffer_fd,
+void CameraAlgorithmOpsImpl::RegisterBuffer(mojo::PlatformHandle buffer_fd,
                                             RegisterBufferCallback callback) {
   DCHECK(cam_algo_);
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
-  mojo::PlatformHandle handle =
-      mojo::UnwrapPlatformHandle(std::move(buffer_fd));
-  if (!handle.is_valid()) {
+  if (!buffer_fd.is_valid()) {
     LOGF(ERROR) << "Failed to unwrap handle";
     std::move(callback).Run(-EBADF);
     return;
   }
-  int32_t result = cam_algo_->register_buffer(handle.ReleaseFD());
+  int32_t result = cam_algo_->register_buffer(buffer_fd.ReleaseFD());
   std::move(callback).Run(result);
 }
 
@@ -127,17 +125,15 @@ void CameraAlgorithmOpsImpl::DeregisterBuffers(
 
 void CameraAlgorithmOpsImpl::UpdateReturn(uint32_t upd_id,
                                           uint32_t status,
-                                          mojo::ScopedHandle buffer_fd) {
+                                          mojo::PlatformHandle buffer_fd) {
   DCHECK(cam_algo_);
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
-  mojo::PlatformHandle handle =
-      mojo::UnwrapPlatformHandle(std::move(buffer_fd));
-  if (!handle.is_valid()) {
+  if (!buffer_fd.is_valid()) {
     LOGF(ERROR) << "Failed to unwrap handle";
     return;
   }
-  cam_algo_->update_return(upd_id, status, handle.ReleaseFD());
+  cam_algo_->update_return(upd_id, status, buffer_fd.ReleaseFD());
 }
 
 void CameraAlgorithmOpsImpl::Deinitialize() {
@@ -210,8 +206,7 @@ void CameraAlgorithmOpsImpl::UpdateOnIPCThread(
   } else {
     callback_ops_->Update(
         upd_id, upd_header,
-        mojo::WrapPlatformHandle(
-            mojo::PlatformHandle(base::ScopedPlatformFile(buffer_fd))));
+        mojo::PlatformHandle(base::ScopedPlatformFile(buffer_fd)));
   }
 }
 

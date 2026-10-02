@@ -142,13 +142,13 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   int32_t ProcessCaptureRequest(mojom::Camera3CaptureRequestPtr request);
 
-  void Dump(mojo::ScopedHandle fd);
+  void Dump(mojo::PlatformHandle fd);
 
   int32_t Flush();
 
   int32_t RegisterBuffer(uint64_t buffer_id,
                          mojom::Camera3DeviceOps::BufferType type,
-                         std::vector<mojo::ScopedHandle> fds,
+                         std::vector<mojo::PlatformHandle> fds,
                          uint32_t drm_format,
                          mojom::HalPixelFormat hal_pixel_format,
                          uint32_t width,
@@ -213,7 +213,7 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   void FreeAllocatedStreamBuffers();
 
   int32_t RegisterBufferLocked(uint64_t buffer_id,
-                               std::vector<mojo::ScopedHandle> fds,
+                               std::vector<mojo::PlatformHandle> fds,
                                uint32_t drm_format,
                                mojom::HalPixelFormat hal_pixel_format,
                                uint32_t width,

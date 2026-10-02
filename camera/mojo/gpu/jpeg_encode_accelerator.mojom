@@ -43,13 +43,13 @@ interface JpegEncodeAccelerator {
   // encode status. |status| is the status code. |encoded_buffer_size| is the
   // actual size of the encoded JPEG.
   EncodeWithFD(int32 task_id,
-               handle input_fd,
+               handle<platform> input_fd,
                uint32 input_buffer_size,
                int32 coded_size_width,
                int32 coded_size_height,
-               handle exif_fd,
+               handle<platform> exif_fd,
                uint32 exif_buffer_size,
-               handle output_fd,
+               handle<platform> output_fd,
                uint32 output_buffer_size)
       => (int32 task_id, uint32 encoded_buffer_size, EncodeStatus status);
 
@@ -72,7 +72,7 @@ interface JpegEncodeAccelerator {
                    uint32 input_format,
                    array<DmaBufPlane> input_planes,
                    array<DmaBufPlane> output_planes,
-                   handle exif_handle,
+                   handle<platform> exif_handle,
                    uint32 exif_buffer_size,
                    int32 coded_size_width,
                    int32 coded_size_height,

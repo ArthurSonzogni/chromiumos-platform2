@@ -35,21 +35,19 @@ void CameraAlgorithmCallbackOpsImpl::Return(uint32_t req_id,
 void CameraAlgorithmCallbackOpsImpl::Update(
     uint32_t upd_id,
     const std::vector<uint8_t>& upd_header,
-    mojo::ScopedHandle buffer_fd) {
+    mojo::PlatformHandle buffer_fd) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(callback_ops_);
 
   if (callback_ops_->update == nullptr) {
     LOGF(FATAL) << "Algorithm calls unregistered update callback";
   }
-  mojo::PlatformHandle handle =
-      mojo::UnwrapPlatformHandle(std::move(buffer_fd));
-  if (!handle.is_valid()) {
+  if (!buffer_fd.is_valid()) {
     LOGF(ERROR) << "Failed to unwrap handle";
     return;
   }
   callback_ops_->update(callback_ops_, upd_id, upd_header.data(),
-                        upd_header.size(), handle.ReleaseFD());
+                        upd_header.size(), buffer_fd.ReleaseFD());
 }
 
 mojo::PendingRemote<mojom::CameraAlgorithmCallbackOps>

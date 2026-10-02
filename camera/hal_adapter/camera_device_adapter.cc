@@ -753,7 +753,7 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
   }
 }
 
-void CameraDeviceAdapter::Dump(mojo::ScopedHandle fd) {
+void CameraDeviceAdapter::Dump(mojo::PlatformHandle fd) {
   TRACE_HAL_ADAPTER();
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
@@ -761,7 +761,7 @@ void CameraDeviceAdapter::Dump(mojo::ScopedHandle fd) {
     return;
   }
 
-  base::ScopedFD dump_fd(mojo::UnwrapPlatformHandle(std::move(fd)).TakeFD());
+  base::ScopedFD dump_fd(fd.TakeFD());
   camera_device_->ops->dump(camera_device_, dump_fd.get());
 }
 
@@ -832,7 +832,7 @@ int32_t CameraDeviceAdapter::WaitForPendingRequests(base::TimeDelta timeout) {
 int32_t CameraDeviceAdapter::RegisterBuffer(
     uint64_t buffer_id,
     mojom::Camera3DeviceOps::BufferType type,
-    std::vector<mojo::ScopedHandle> fds,
+    std::vector<mojo::PlatformHandle> fds,
     uint32_t drm_format,
     mojom::HalPixelFormat hal_pixel_format,
     uint32_t width,
@@ -1318,7 +1318,7 @@ bool CameraDeviceAdapter::AllocateBuffersForStreams(
         auto dup_fd = DupWithCloExec(buffer_handle->data[plane]);
         CHECK(dup_fd.is_valid());
         mojo_buffer_handle->fds.push_back(
-            mojo::WrapPlatformHandle(mojo::PlatformHandle(std::move(dup_fd))));
+            mojo::PlatformHandle(std::move(dup_fd)));
         mojo_buffer_handle->strides.push_back(
             CameraBufferManager::GetPlaneStride(buffer_handle, plane));
         mojo_buffer_handle->offsets.push_back(
@@ -1363,7 +1363,7 @@ void CameraDeviceAdapter::FreeAllocatedStreamBuffers() {
 
 int32_t CameraDeviceAdapter::RegisterBufferLocked(
     uint64_t buffer_id,
-    std::vector<mojo::ScopedHandle> fds,
+    std::vector<mojo::PlatformHandle> fds,
     uint32_t drm_format,
     mojom::HalPixelFormat hal_pixel_format,
     uint32_t width,
@@ -1405,8 +1405,7 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
   buffer_handle->width = width;
   buffer_handle->height = height;
   for (size_t i = 0; i < num_planes; ++i) {
-    buffer_handle->fds[i] =
-        mojo::UnwrapPlatformHandle(std::move(fds[i])).ReleaseFD();
+    buffer_handle->fds[i] = fds[i].ReleaseFD();
     buffer_handle->strides[i] = strides[i];
     buffer_handle->offsets[i] = offsets[i];
   }

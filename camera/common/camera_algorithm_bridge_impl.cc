@@ -225,8 +225,7 @@ void CameraAlgorithmBridgeImpl::IPCBridge::RegisterBuffer(
     return;
   }
   remote_->RegisterBuffer(
-      mojo::WrapPlatformHandle(
-          mojo::PlatformHandle(base::ScopedPlatformFile(dup_fd))),
+      mojo::PlatformHandle(base::ScopedPlatformFile(dup_fd)),
       std::move(cb));
 }
 
@@ -263,8 +262,7 @@ void CameraAlgorithmBridgeImpl::IPCBridge::UpdateReturn(uint32_t upd_id,
   }
   remote_->UpdateReturn(
       upd_id, status,
-      mojo::WrapPlatformHandle(
-          mojo::PlatformHandle(base::ScopedPlatformFile(buffer_fd))));
+      mojo::PlatformHandle(base::ScopedPlatformFile(buffer_fd)));
 }
 
 void CameraAlgorithmBridgeImpl::IPCBridge::OnConnectionError() {

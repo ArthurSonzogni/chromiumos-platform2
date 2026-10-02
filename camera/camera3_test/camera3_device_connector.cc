@@ -449,11 +449,10 @@ ClientDeviceConnector::PrepareStreamBufferPtr(
         cros::CameraBufferManager::GetPlaneOffset(*buffer->buffer, i));
   }
   buffer_handle_t* native_handle = buffer->buffer;
-  std::vector<mojo::ScopedHandle> fds;
+  std::vector<mojo::PlatformHandle> fds;
   for (uint32_t i = 0; i < num_planes; i++) {
     int dup_fd = HANDLE_EINTR(dup((*native_handle)->data[i]));
-    fds.emplace_back(mojo::WrapPlatformHandle(
-        mojo::PlatformHandle(base::ScopedPlatformFile(dup_fd))));
+    fds.emplace_back(base::ScopedPlatformFile(dup_fd));
   }
   uint64_t buffer_id = reinterpret_cast<uint64_t>(native_handle);
   base::AutoLock bufferLock(buffer_handle_map_lock_);
@@ -678,17 +677,13 @@ int ClientDeviceConnector::DecodeStreamBufferPtr(
   buffer->buffer = buffer_handle_map_[buffer_id];
   buffer->status = static_cast<int>(buffer_ptr->status);
   if (buffer_ptr->acquire_fence.is_valid()) {
-    buffer->acquire_fence =
-        mojo::UnwrapPlatformHandle(std::move(buffer_ptr->acquire_fence))
-            .ReleaseFD();
+    buffer->acquire_fence = buffer_ptr->acquire_fence.ReleaseFD();
   } else {
     buffer->acquire_fence = -1;
   }
 
   if (buffer_ptr->release_fence.is_valid()) {
-    buffer->release_fence =
-        mojo::UnwrapPlatformHandle(std::move(buffer_ptr->release_fence))
-            .ReleaseFD();
+    buffer->release_fence = buffer_ptr->release_fence.ReleaseFD();
   } else {
     buffer->release_fence = -1;
   }

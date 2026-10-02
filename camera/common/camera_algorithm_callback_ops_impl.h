@@ -41,7 +41,7 @@ class CameraAlgorithmCallbackOpsImpl
   // is expected to be called on |CameraAlgorithmBridgeImpl::ipc_thread_|.
   void Update(uint32_t upd_id,
               const std::vector<uint8_t>& upd_header,
-              mojo::ScopedHandle buffer_fd) override;
+              mojo::PlatformHandle buffer_fd) override;
 
   // Create the local proxy of remote CameraAlgorithmCallbackOps interface
   // implementation. It is expected to be called on

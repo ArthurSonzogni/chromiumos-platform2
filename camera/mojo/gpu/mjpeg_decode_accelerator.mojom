@@ -34,7 +34,7 @@ interface MjpegDecodeAccelerator {
   // |src_offset|. The decoded result will be put into |dst_frame| backed by DMA
   // buffer. Returns the decode status |error| in the Mojo callback.
   DecodeWithDmaBuf@3(int32 task_id,
-                     handle src_dmabuf_fd,
+                     handle<platform> src_dmabuf_fd,
                      uint32 src_size,
                      uint32 src_offset,
                      DmaBufVideoFrame dst_frame) => (DecodeError error);

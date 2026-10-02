@@ -65,8 +65,8 @@ cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
   ret->status = static_cast<cros::mojom::Camera3BufferStatus>(buffer->status);
 
   if (buffer->acquire_fence != -1) {
-    ret->acquire_fence = mojo::WrapPlatformHandle(
-        mojo::PlatformHandle(base::ScopedPlatformFile(buffer->acquire_fence)));
+    ret->acquire_fence =
+        mojo::PlatformHandle(base::ScopedPlatformFile(buffer->acquire_fence));
     const_cast<camera3_stream_buffer_t*>(buffer)->acquire_fence = -1;
     if (!ret->acquire_fence.is_valid()) {
       LOGF(ERROR) << "Failed to wrap acquire_fence";
@@ -76,8 +76,8 @@ cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
   }
 
   if (buffer->release_fence != -1) {
-    ret->release_fence = mojo::WrapPlatformHandle(
-        mojo::PlatformHandle(base::ScopedPlatformFile(buffer->release_fence)));
+    ret->release_fence =
+        mojo::PlatformHandle(base::ScopedPlatformFile(buffer->release_fence));
     const_cast<camera3_stream_buffer_t*>(buffer)->release_fence = -1;
     if (!ret->release_fence.is_valid()) {
       LOGF(ERROR) << "Failed to wrap release_fence";
@@ -120,8 +120,7 @@ int DeserializeStreamBuffer(
   out_buffer->status = static_cast<int>(ptr->status);
 
   if (ptr->acquire_fence.is_valid()) {
-    out_buffer->acquire_fence =
-        mojo::UnwrapPlatformHandle(std::move(ptr->acquire_fence)).ReleaseFD();
+    out_buffer->acquire_fence = ptr->acquire_fence.ReleaseFD();
     if (out_buffer->acquire_fence == -1) {
       LOGF(ERROR) << "Failed to get acquire_fence";
       return -EINVAL;
@@ -131,8 +130,7 @@ int DeserializeStreamBuffer(
   }
 
   if (ptr->release_fence.is_valid()) {
-    out_buffer->release_fence =
-        mojo::UnwrapPlatformHandle(std::move(ptr->release_fence)).ReleaseFD();
+    out_buffer->release_fence = ptr->release_fence.ReleaseFD();
     if (out_buffer->release_fence == -1) {
       LOGF(ERROR) << "Failed to get release_fence";
       close(out_buffer->acquire_fence);

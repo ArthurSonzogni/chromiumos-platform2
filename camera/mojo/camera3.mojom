@@ -90,7 +90,7 @@ enum Camera3BufferStatus {
 // be used to map in userspace.
 struct CameraBufferHandle {
   uint64 buffer_id;
-  array<handle> fds;
+  array<handle<platform>> fds;
   uint32 drm_format;
   HalPixelFormat hal_pixel_format;
   uint32 width;
@@ -116,8 +116,8 @@ struct Camera3StreamBuffer {
   uint64 stream_id;
   uint64 buffer_id;
   Camera3BufferStatus status;
-  handle? acquire_fence;
-  handle? release_fence;
+  handle<platform>? acquire_fence;
+  handle<platform>? release_fence;
 
   [MinVersion=2]
   CameraBufferHandle? buffer_handle;
@@ -328,7 +328,7 @@ interface Camera3DeviceOps {
 
   // Dump() is called to gather various states and information about the camera
   // HAL; it is mainly for debug purpose.
-  Dump@4(handle fd);
+  Dump@4(handle<platform> fd);
 
   // Flush() is called to clear out any in-progress captures and return the
   // camera HAL to idle state.
@@ -353,7 +353,7 @@ interface Camera3DeviceOps {
   // buffer handles across different processes.
   RegisterBuffer@6(uint64 buffer_id,
                    BufferType type,
-                   array<handle> fds,
+                   array<handle<platform>> fds,
                    uint32 drm_format,
                    HalPixelFormat hal_pixel_format,
                    uint32 width,
