@@ -23,8 +23,7 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
-#include <mojo/public/cpp/system/handle.h>
-#include <mojo/public/cpp/system/platform_handle.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 
 #include "ocr/mojo/ocr_service.mojom.h"
 #include "ocr/ocr_service_impl.h"
@@ -40,16 +39,16 @@ constexpr char kTestImageRelativePath[] = "phototest.tif";
 // The name of the output pdf file.
 constexpr char kOutputPdfFilename[] = "phototest.pdf";
 
-mojo::ScopedHandle GetInputFileHandle(const std::string& input_filename) {
+mojo::PlatformHandle GetInputFileHandle(const std::string& input_filename) {
   base::ScopedFD input_fd(HANDLE_EINTR(
       open(input_filename.c_str(), O_RDONLY | O_NOFOLLOW | O_NOCTTY)));
-  return mojo::WrapPlatformHandle(mojo::PlatformHandle(std::move(input_fd)));
+  return mojo::PlatformHandle(std::move(input_fd));
 }
 
-mojo::ScopedHandle GetOutputFileHandle(const std::string& output_filename) {
+mojo::PlatformHandle GetOutputFileHandle(const std::string& output_filename) {
   base::ScopedFD out_fd(
       HANDLE_EINTR(open(output_filename.c_str(), O_CREAT | O_WRONLY, 0644)));
-  return mojo::WrapPlatformHandle(mojo::PlatformHandle(std::move(out_fd)));
+  return mojo::PlatformHandle(std::move(out_fd));
 }
 
 }  // namespace
@@ -83,10 +82,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // Construct request.
   const std::string input_image_filename = file_path.value();
-  mojo::ScopedHandle input_fd_handle = GetInputFileHandle(input_image_filename);
+  mojo::PlatformHandle input_fd_handle =
+      GetInputFileHandle(input_image_filename);
   const std::string output_filename =
       temp_dir_.GetPath().Append(kOutputPdfFilename).value();
-  mojo::ScopedHandle output_fd_handle = GetOutputFileHandle(output_filename);
+  mojo::PlatformHandle output_fd_handle = GetOutputFileHandle(output_filename);
   mojo_ipc::OcrConfigPtr ocr_config = mojo_ipc::OcrConfig::New();
   mojo_ipc::PdfRendererConfigPtr pdf_renderer_config =
       mojo_ipc::PdfRendererConfig::New();

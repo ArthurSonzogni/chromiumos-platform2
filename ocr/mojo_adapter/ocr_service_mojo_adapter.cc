@@ -12,7 +12,7 @@
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <mojo/public/cpp/bindings/remote.h>
-#include <mojo/public/cpp/system/handle.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 
 #include "ocr/mojo/ocr_service.mojom.h"
 #include "ocr/mojo_adapter/ocr_service_mojo_adapter_delegate.h"
@@ -37,8 +37,8 @@ class OcrServiceMojoAdapterImpl final : public OcrServiceMojoAdapter {
   // OcrServiceMojoAdapter:
   mojo_ipc::OpticalCharacterRecognitionServiceResponsePtr
   GenerateSearchablePdfFromImage(
-      mojo::ScopedHandle input_fd_handle,
-      mojo::ScopedHandle output_fd_handle,
+      mojo::PlatformHandle input_fd_handle,
+      mojo::PlatformHandle output_fd_handle,
       mojo_ipc::OcrConfigPtr ocr_config,
       mojo_ipc::PdfRendererConfigPtr pdf_renderer_config) override;
 
@@ -78,8 +78,8 @@ OcrServiceMojoAdapterImpl::OcrServiceMojoAdapterImpl(
 
 mojo_ipc::OpticalCharacterRecognitionServiceResponsePtr
 OcrServiceMojoAdapterImpl::GenerateSearchablePdfFromImage(
-    mojo::ScopedHandle input_fd_handle,
-    mojo::ScopedHandle output_fd_handle,
+    mojo::PlatformHandle input_fd_handle,
+    mojo::PlatformHandle output_fd_handle,
     mojo_ipc::OcrConfigPtr ocr_config,
     mojo_ipc::PdfRendererConfigPtr pdf_renderer_config) {
   if (!ocr_service_.is_bound() && !Connect()) {

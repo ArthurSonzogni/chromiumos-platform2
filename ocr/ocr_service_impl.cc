@@ -18,8 +18,7 @@
 #include <base/strings/stringprintf.h>
 #include <leptonica/allheaders.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
-#include <mojo/public/cpp/system/handle.h>
-#include <mojo/public/cpp/system/platform_handle.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 #include <tesseract/baseapi.h>
 #include <tesseract/renderer.h>
 
@@ -44,8 +43,8 @@ OcrServiceImpl::OcrServiceImpl() {
 OcrServiceImpl::~OcrServiceImpl() = default;
 
 void OcrServiceImpl::GenerateSearchablePdfFromImage(
-    mojo::ScopedHandle input_fd_handle,
-    mojo::ScopedHandle output_fd_handle,
+    mojo::PlatformHandle input_fd_handle,
+    mojo::PlatformHandle output_fd_handle,
     mojo_ipc::OcrConfigPtr ocr_config,
     mojo_ipc::PdfRendererConfigPtr pdf_renderer_config,
     GenerateSearchablePdfFromImageCallback callback) {
@@ -65,8 +64,7 @@ void OcrServiceImpl::GenerateSearchablePdfFromImage(
   }
 
   // Redirect the standard input to the input image file.
-  base::ScopedFD input_file(
-      mojo::UnwrapPlatformHandle(std::move(input_fd_handle)).TakeFD());
+  base::ScopedFD input_file = input_fd_handle.TakeFD();
   if (!input_file.is_valid()) {
     LOG(ERROR) << "Input ScopedFD extracted from Mojo handle is invalid.";
     response.result = mojo_ipc::OcrResultEnum::INPUT_FILE_ERROR;
@@ -87,8 +85,7 @@ void OcrServiceImpl::GenerateSearchablePdfFromImage(
 
   // Redirect the standard output to the output PDF file.
   int stdout_fd_copy = HANDLE_EINTR(dup(STDOUT_FILENO));
-  base::ScopedFD output_file(
-      mojo::UnwrapPlatformHandle(std::move(output_fd_handle)).TakeFD());
+  base::ScopedFD output_file = output_fd_handle.TakeFD();
   if (!output_file.is_valid()) {
     LOG(ERROR) << "Output ScopedFD extracted from Mojo handle is invalid.";
     response.result = mojo_ipc::OcrResultEnum::OUTPUT_FILE_ERROR;

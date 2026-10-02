@@ -58,8 +58,8 @@ interface OpticalCharacterRecognitionService {
   // * |pdf_renderer_config| - configuration for output PDF rendering
   // The response:
   // * |response| - processing routine status
-  GenerateSearchablePdfFromImage(handle input_fd_handle,
-                                 handle output_fd_handle,
+  GenerateSearchablePdfFromImage(handle<platform> input_fd_handle,
+                                 handle<platform> output_fd_handle,
                                  OcrConfig ocr_config,
                                  PdfRendererConfig pdf_renderer_config)
       => (OpticalCharacterRecognitionServiceResponse response);

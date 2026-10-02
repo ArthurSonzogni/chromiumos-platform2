@@ -8,7 +8,7 @@
 #include <base/functional/callback.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
-#include <mojo/public/cpp/system/handle.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 
 #include "ocr/mojo/ocr_service.mojom.h"
 
@@ -30,8 +30,8 @@ class OcrServiceImpl final
 
   // chromeos::ocr::mojom::OpticalCharacterRecognitionService:
   void GenerateSearchablePdfFromImage(
-      mojo::ScopedHandle input_fd_handle,
-      mojo::ScopedHandle output_fd_handle,
+      mojo::PlatformHandle input_fd_handle,
+      mojo::PlatformHandle output_fd_handle,
       chromeos::ocr::mojom::OcrConfigPtr ocr_config,
       chromeos::ocr::mojom::PdfRendererConfigPtr pdf_renderer_config,
       GenerateSearchablePdfFromImageCallback callback) override;

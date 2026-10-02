@@ -21,8 +21,7 @@
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
-#include <mojo/public/cpp/system/handle.h>
-#include <mojo/public/cpp/system/platform_handle.h>
+#include <mojo/public/cpp/platform/platform_handle.h>
 
 #include "ocr/mojo/ocr_service.mojom.h"
 #include "ocr/mojo_adapter/ocr_service_mojo_adapter.h"
@@ -31,23 +30,24 @@ namespace {
 
 namespace mojo_ipc = chromeos::ocr::mojom;
 
-mojo::ScopedHandle GetFileHandle(const base::FilePath& path, int oflag) {
+mojo::PlatformHandle GetFileHandle(const base::FilePath& path, int oflag) {
   base::ScopedFD fd(HANDLE_EINTR(open(path.value().c_str(), oflag, 0644)));
 
   if (fd.get() < 0) {
     PLOG(ERROR) << "Unable to open file: " << path.value();
-    return mojo::ScopedHandle();
+    return mojo::PlatformHandle();
   }
 
-  return mojo::WrapPlatformHandle(mojo::PlatformHandle(std::move(fd)));
+  return mojo::PlatformHandle(std::move(fd));
 }
 
-mojo::ScopedHandle GetInputFileHandle(const base::FilePath& input_filepath) {
+mojo::PlatformHandle GetInputFileHandle(const base::FilePath& input_filepath) {
   return GetFileHandle(input_filepath,
                        O_RDONLY | O_NOFOLLOW | O_NOCTTY | O_CLOEXEC);
 }
 
-mojo::ScopedHandle GetOutputFileHandle(const base::FilePath& output_filepath) {
+mojo::PlatformHandle GetOutputFileHandle(
+    const base::FilePath& output_filepath) {
   return GetFileHandle(output_filepath, O_CREAT | O_WRONLY | O_CLOEXEC);
 }
 
@@ -108,14 +108,15 @@ int main(int argc, char* argv[]) {
   }
 
   // Construct request.
-  mojo::ScopedHandle input_fd_handle = GetInputFileHandle(input_image_filename);
-  if (!input_fd_handle) {
+  mojo::PlatformHandle input_fd_handle =
+      GetInputFileHandle(input_image_filename);
+  if (!input_fd_handle.is_valid()) {
     return EXIT_FAILURE;
   }
 
-  mojo::ScopedHandle output_fd_handle =
+  mojo::PlatformHandle output_fd_handle =
       GetOutputFileHandle(output_pdf_filename);
-  if (!output_fd_handle) {
+  if (!output_fd_handle.is_valid()) {
     return EXIT_FAILURE;
   }
 
