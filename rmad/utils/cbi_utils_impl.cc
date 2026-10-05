@@ -95,24 +95,23 @@ bool CbiUtilsImpl::SetFirmwareConfig(uint32_t firmware_config) {
   return SetCbi(kCbiTagFirmwareConfig, firmware_config, 4);
 }
 
-bool CbiUtilsImpl::SetCbi(int tag, const std::string& value, int set_flag) {
-  std::vector<std::string> argv{kEctoolCmdPath,
-                                "cbi",
-                                "set",
-                                base::NumberToString(tag),
-                                value,
-                                "0",
-                                base::NumberToString(set_flag)};
+bool CbiUtilsImpl::SetCbi(int tag,
+                          const std::string& value,
+                          const std::string& set_flag) {
+  std::vector<std::string> argv{
+      kEctoolCmdPath, "cbi", "set",   base::NumberToString(tag),
+      value,          "0",   set_flag};
   static std::string unused_output;
   return cmd_utils_->GetOutput(argv, &unused_output);
 }
 
-bool CbiUtilsImpl::GetCbi(int tag, std::string* value, int get_flag) const {
+bool CbiUtilsImpl::GetCbi(int tag,
+                          std::string* value,
+                          const std::string& get_flag) const {
   CHECK(value != nullptr);
 
   std::vector<std::string> argv{kEctoolCmdPath, "cbi", "get",
-                                base::NumberToString(tag),
-                                base::NumberToString(get_flag)};
+                                base::NumberToString(tag), get_flag};
   if (!cmd_utils_->GetOutput(argv, value)) {
     return false;
   }
@@ -121,7 +120,10 @@ bool CbiUtilsImpl::GetCbi(int tag, std::string* value, int get_flag) const {
   return true;
 }
 
-bool CbiUtilsImpl::SetCbi(int tag, uint32_t value, int size, int set_flag) {
+bool CbiUtilsImpl::SetCbi(int tag,
+                          uint32_t value,
+                          int size,
+                          const std::string& set_flag) {
   CHECK_GE(size, 1);
   CHECK_LE(size, 8);
   CHECK(size == 8 || 1ull << (size * 8) > value);
@@ -132,17 +134,18 @@ bool CbiUtilsImpl::SetCbi(int tag, uint32_t value, int size, int set_flag) {
                                 base::NumberToString(tag),
                                 base::NumberToString(value),
                                 base::NumberToString(size),
-                                base::NumberToString(set_flag)};
+                                set_flag};
   static std::string unused_output;
   return cmd_utils_->GetOutput(argv, &unused_output);
 }
 
-bool CbiUtilsImpl::GetCbi(int tag, uint32_t* value, int get_flag) const {
+bool CbiUtilsImpl::GetCbi(int tag,
+                          uint32_t* value,
+                          const std::string& get_flag) const {
   CHECK(value != nullptr);
 
   std::vector<std::string> argv{kEctoolCmdPath, "cbi", "get",
-                                base::NumberToString(tag),
-                                base::NumberToString(get_flag)};
+                                base::NumberToString(tag), get_flag};
   std::string output;
   if (!cmd_utils_->GetOutput(argv, &output)) {
     return false;

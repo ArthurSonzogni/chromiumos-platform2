@@ -32,10 +32,19 @@ class CbiUtilsImpl : public CbiUtils {
   bool SetFirmwareConfig(uint32_t firmware_config) override;
 
  protected:
-  bool SetCbi(int tag, const std::string& value, int set_flag = 0);
-  bool GetCbi(int tag, std::string* value, int get_flag = 0) const;
-  bool SetCbi(int tag, uint32_t value, int size, int set_flag = 0);
-  bool GetCbi(int tag, uint32_t* value, int get_flag = 0) const;
+  bool SetCbi(int tag,
+              const std::string& value,
+              const std::string& set_flag = "none");
+  bool GetCbi(int tag,
+              std::string* value,
+              const std::string& get_flag = "none") const;
+  bool SetCbi(int tag,
+              uint32_t value,
+              int size,
+              const std::string& set_flag = "none");
+  bool GetCbi(int tag,
+              uint32_t* value,
+              const std::string& get_flag = "none") const;
 
  private:
   std::unique_ptr<CmdUtils> cmd_utils_;
