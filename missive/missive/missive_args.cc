@@ -215,29 +215,31 @@ void MissiveArgs::UpdateParameters(
   }
   {
     std::string compression_enabled;
-    std::string encryption_enabled;
-    std::string signature_verification_dev_enabled;
     std::string controlled_degradation;
     std::string legacy_storage_enabled;
     auto it = result.find(kStorageFeature.name);
     if (it != result.end() && it->second.enabled) {
       compression_enabled =
           FindValueOrEmpty(kCompressionEnabledParameter, it->second.params);
-      encryption_enabled =
-          FindValueOrEmpty(kEncryptionEnabledParameter, it->second.params);
       controlled_degradation =
           FindValueOrEmpty(kControlledDegradationParameter, it->second.params);
       legacy_storage_enabled =
           FindValueOrEmpty(kLegacyStorageEnabledParameter, it->second.params);
-      signature_verification_dev_enabled = FindValueOrEmpty(
-          kSignatureVerificationDevEnabledParameter, it->second.params);
+      // Feature parameters are supplied by Chrome, so they must not be able to
+      // weaken record encryption. Parameters that would control encryption or
+      // signature verification are ignored.
+      for (const char* ignored_parameter :
+           {kEncryptionEnabledParameter,
+            kSignatureVerificationDevEnabledParameter}) {
+        if (!FindValueOrEmpty(ignored_parameter, it->second.params).empty()) {
+          LOG(WARNING) << "Ignoring parameter " << ignored_parameter;
+        }
+      }
     }
     storage_parameters_.compression_enabled =
         BoolParameterValue(kCompressionEnabledParameter, compression_enabled,
                            kCompressionEnabledDefault);
-    storage_parameters_.encryption_enabled =
-        BoolParameterValue(kEncryptionEnabledParameter, encryption_enabled,
-                           kEncryptionEnabledDefault);
+    storage_parameters_.encryption_enabled = kEncryptionEnabledDefault;
     storage_parameters_.controlled_degradation = BoolParameterValue(
         kControlledDegradationParameter, controlled_degradation,
         kControlledDegradationDefault);
@@ -245,9 +247,7 @@ void MissiveArgs::UpdateParameters(
         legacy_storage_enabled.empty() ? kLegacyStorageEnabledDefault
                                        : legacy_storage_enabled;
     storage_parameters_.signature_verification_dev_enabled =
-        BoolParameterValue(kSignatureVerificationDevEnabledParameter,
-                           signature_verification_dev_enabled,
-                           kSignatureVerificationDevEnabledDefault);
+        kSignatureVerificationDevEnabledDefault;
   }
   {
     std::string blocking_destinations_enabled;

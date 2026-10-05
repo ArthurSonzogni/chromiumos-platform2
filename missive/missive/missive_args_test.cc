@@ -9,9 +9,9 @@
 
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
+#include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <base/time/time_delta_from_string.h>
-#include <base/test/task_environment.h>
 #include <featured/fake_platform_features.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -312,10 +312,11 @@ TEST_F(MissiveArgsTest, ExplicitStorageValues) {
   const auto& storage = get_storage.result();
   ASSERT_OK(storage) << storage.error();
   EXPECT_FALSE(storage.value().compression_enabled);
-  EXPECT_FALSE(storage.value().encryption_enabled);
   EXPECT_TRUE(storage.value().controlled_degradation);
   EXPECT_THAT(storage.value().legacy_storage_enabled, StrEq("SECURITY"));
-  EXPECT_TRUE(storage.value().signature_verification_dev_enabled);
+  // Encryption and signature verification parameters are ignored.
+  EXPECT_TRUE(storage.value().encryption_enabled);
+  EXPECT_FALSE(storage.value().signature_verification_dev_enabled);
 }
 
 TEST_F(MissiveArgsTest, BadStorageValues) {
@@ -422,10 +423,11 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
   {
     const auto& storage = update_storage.result();
     EXPECT_FALSE(storage.compression_enabled);
-    EXPECT_FALSE(storage.encryption_enabled);
     EXPECT_TRUE(storage.controlled_degradation);
     EXPECT_THAT(storage.legacy_storage_enabled, StrEq("SECURITY,IMMEDIATE"));
-    EXPECT_TRUE(storage.signature_verification_dev_enabled);
+    // Encryption and signature verification parameters are ignored.
+    EXPECT_TRUE(storage.encryption_enabled);
+    EXPECT_FALSE(storage.signature_verification_dev_enabled);
   }
 }
 

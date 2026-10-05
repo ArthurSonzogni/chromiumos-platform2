@@ -8,10 +8,10 @@
 #include <string>
 #include <vector>
 
-#include <base/memory/weak_ptr.h>
-#include <base/thread_annotations.h>
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
+#include <base/memory/weak_ptr.h>
+#include <base/thread_annotations.h>
 #include <base/threading/sequence_bound.h>
 #include <base/time/time.h>
 #include <featured/feature_library.h>
@@ -49,6 +49,8 @@ class MissiveArgs {
   // Storage feature parameters:
   static constexpr bool kCompressionEnabledDefault = true;
   static constexpr char kCompressionEnabledParameter[] = "compression_enabled";
+  // Encryption is always enabled: `kEncryptionEnabledParameter` is ignored,
+  // since feature parameters must not be able to weaken record encryption.
   static constexpr bool kEncryptionEnabledDefault = true;
   static constexpr char kEncryptionEnabledParameter[] = "encryption_enabled";
   static constexpr bool kControlledDegradationDefault = true;
@@ -57,6 +59,9 @@ class MissiveArgs {
   static const char* kLegacyStorageEnabledDefault;
   static constexpr char kLegacyStorageEnabledParameter[] =
       "legacy_storage_enabled";
+  // Signature verification always uses the production key:
+  // `kSignatureVerificationDevEnabledParameter` is ignored, for the same reason
+  // as `kEncryptionEnabledParameter`.
   static constexpr bool kSignatureVerificationDevEnabledDefault = false;
   static constexpr char kSignatureVerificationDevEnabledParameter[] =
       "signature_verification_dev_enabled";

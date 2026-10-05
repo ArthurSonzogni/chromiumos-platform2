@@ -503,7 +503,8 @@ TEST_F(MissiveImplTest, StorageDynamicParametersUpdateTest) {
   task_environment_.RunUntilIdle();
 
   EXPECT_FALSE(compression_module_->is_enabled());
-  EXPECT_FALSE(encryption_module_->is_enabled());
+  // Encryption cannot be disabled by feature parameters.
+  EXPECT_TRUE(encryption_module_->is_enabled());
 }
 
 TEST_F(MissiveImplTest, ConfigFileDynamicParametersUpdateTest) {
