@@ -105,12 +105,9 @@ constexpr char kCrashSenderDroppedDueToThrottlingId[] = "0000000000000001";
 // used before.
 constexpr mode_t kCrashSenderCreatedFileMode = 0644;
 
-// Opens |path| for writing, creating it if needed, without following symlinks
-// anywhere in the path. crash_sender runs as root but writes to directories
-// that unprivileged users can write to, so paths must be resolved with
-// O_NOFOLLOW rather than checked after the fact.
-std::optional<brillo::SafeFD> OpenFileForWritingSafely(
-    const base::FilePath& path, int extra_flags = 0) {
+// Opens |dir_path| without following symlinks anywhere in the path.
+std::optional<brillo::SafeFD> OpenDirectorySafely(
+    const base::FilePath& dir_path) {
   brillo::SafeFD::SafeFDResult root = brillo::SafeFD::Root();
   if (brillo::SafeFD::IsError(root.second)) {
     LOG(ERROR) << "Could not open root directory: "
@@ -118,22 +115,42 @@ std::optional<brillo::SafeFD> OpenFileForWritingSafely(
     return std::nullopt;
   }
 
-  brillo::SafeFD::SafeFDResult dir = root.first.OpenExistingDir(path.DirName());
+  brillo::SafeFD::SafeFDResult dir = root.first.OpenExistingDir(dir_path);
+  if (dir.second == brillo::SafeFD::Error::kDoesNotExist) {
+    return std::nullopt;
+  }
   if (brillo::SafeFD::IsError(dir.second)) {
-    LOG(ERROR) << "Could not safely open directory " << path.DirName().value()
-               << ": " << static_cast<int>(dir.second);
+    LOG(ERROR) << "Could not safely open directory " << dir_path.value() << ": "
+               << static_cast<int>(dir.second);
+    return std::nullopt;
+  }
+
+  return std::move(dir.first);
+}
+
+base::FilePath GetFdPath(const brillo::SafeFD& dir) {
+  return base::FilePath(base::StringPrintf("/proc/self/fd/%d", dir.get()));
+}
+
+// Opens |path| for writing, creating it if needed, without following symlinks
+// anywhere in the path. crash_sender runs as root but writes to directories
+// that unprivileged users can write to, so paths must be resolved with
+// O_NOFOLLOW rather than checked after the fact.
+std::optional<brillo::SafeFD> OpenFileForWritingSafely(
+    const base::FilePath& path, int extra_flags = 0) {
+  std::optional<brillo::SafeFD> dir = OpenDirectorySafely(path.DirName());
+  if (!dir.has_value()) {
     return std::nullopt;
   }
 
   const base::FilePath base_name = path.BaseName();
   const int flags = O_WRONLY | O_CLOEXEC | extra_flags;
-  brillo::SafeFD::SafeFDResult file =
-      dir.first.OpenExistingFile(base_name, flags);
+  brillo::SafeFD::SafeFDResult file = dir->OpenExistingFile(base_name, flags);
   if (file.second == brillo::SafeFD::Error::kDoesNotExist) {
     // MakeFile() creates with O_CREAT|O_EXCL|O_NOFOLLOW. It does not create
     // the parent directory, and ownership defaults to this process.
-    file = dir.first.MakeFile(base_name, kCrashSenderCreatedFileMode, getuid(),
-                              getgid(), flags);
+    file = dir->MakeFile(base_name, kCrashSenderCreatedFileMode, getuid(),
+                         getgid(), flags);
   }
   if (brillo::SafeFD::IsError(file.second)) {
     LOG(ERROR) << "Could not safely open " << path.value() << ": "
@@ -277,7 +294,12 @@ base::FilePath GetBasePartOfCrashFile(const base::FilePath& file_name) {
 }
 
 void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir) {
-  base::FileEnumerator iter(crash_dir, true /* recursive */,
+  std::optional<brillo::SafeFD> dir = OpenDirectorySafely(crash_dir);
+  if (!dir.has_value()) {
+    return;
+  }
+
+  base::FileEnumerator iter(GetFdPath(*dir), false /* recursive */,
                             base::FileEnumerator::FILES, "*");
   for (base::FilePath file = iter.Next(); !file.empty(); file = iter.Next()) {
     // Get the meta data file path.
@@ -294,7 +316,7 @@ void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir) {
 
     if (!base::PathExists(meta_file) && delta.InHours() >= 24) {
       LOG(INFO) << "Removing old orphaned file: " << file.value();
-      if (!base::DeleteFile(file)) {
+      if (brillo::SafeFD::IsError(dir->Unlink(file.BaseName().value()))) {
         PLOG(WARNING) << "Failed to remove " << file.value();
       }
     }
@@ -880,10 +902,14 @@ void Sender::RemoveReportFiles(const base::FilePath& meta_file) {
   if (!metrics_lib_->SendCrosEventToUMA(kUMAAttemptedCrashRemoval)) {
     LOG(WARNING) << "Failed to record crash removal attempt in UMA";
   }
-  base::FileEnumerator iter(meta_file.DirName(), false /* recursive */,
+  std::optional<brillo::SafeFD> dir = OpenDirectorySafely(meta_file.DirName());
+  if (!dir.has_value()) {
+    return;
+  }
+  base::FileEnumerator iter(GetFdPath(*dir), false /* recursive */,
                             base::FileEnumerator::FILES, pattern);
   for (base::FilePath file = iter.Next(); !file.empty(); file = iter.Next()) {
-    if (!base::DeleteFile(file)) {
+    if (brillo::SafeFD::IsError(dir->Unlink(file.BaseName().value()))) {
       PLOG(WARNING) << "Failed to remove " << file.value();
       // We may have failed to remove the file due to incorrect selinux config
       // on the directory. However, we may still be able to add files to it,

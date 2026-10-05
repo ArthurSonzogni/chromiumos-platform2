@@ -1081,6 +1081,46 @@ TEST_F(CrashSenderUtilTest, RemoveOrphanedCrashFiles) {
   EXPECT_FALSE(base::PathExists(old4_log));
 }
 
+TEST_F(CrashSenderUtilTest, RemoveOrphanedCrashFilesDoesNotFollowSymlinkedDir) {
+  const base::FilePath target_dir = test_dir_.Append("target_dir");
+  ASSERT_TRUE(base::CreateDirectory(target_dir));
+  const base::FilePath target_file = target_dir.Append("old.log");
+  ASSERT_TRUE(test_util::CreateFile(target_file, ""));
+  ASSERT_TRUE(test_util::TouchFileHelper(target_file,
+                                         base::Time::Now() - base::Days(30)));
+
+  const base::FilePath fallback_dir =
+      paths::Get(paths::kFallbackUserCrashDirectory);
+  ASSERT_TRUE(base::CreateDirectory(fallback_dir.DirName()));
+  ASSERT_TRUE(base::CreateSymbolicLink(target_dir, fallback_dir));
+  brillo::ClearLog();
+
+  RemoveOrphanedCrashFiles(fallback_dir);
+
+  EXPECT_TRUE(base::PathExists(target_file));
+  EXPECT_TRUE(brillo::FindLog("Could not safely open directory"));
+}
+
+TEST_F(CrashSenderUtilTest,
+       RemoveOrphanedCrashFilesDoesNotFollowSymlinkedSubdir) {
+  const base::FilePath target_dir = test_dir_.Append("target_dir");
+  ASSERT_TRUE(base::CreateDirectory(target_dir));
+  const base::FilePath target_file = target_dir.Append("old.log");
+  ASSERT_TRUE(test_util::CreateFile(target_file, ""));
+  ASSERT_TRUE(test_util::TouchFileHelper(target_file,
+                                         base::Time::Now() - base::Days(30)));
+
+  const base::FilePath crash_directory =
+      paths::Get(paths::kFallbackUserCrashDirectory);
+  ASSERT_TRUE(base::CreateDirectory(crash_directory));
+  ASSERT_TRUE(
+      base::CreateSymbolicLink(target_dir, crash_directory.Append("sub")));
+
+  RemoveOrphanedCrashFiles(crash_directory);
+
+  EXPECT_TRUE(base::PathExists(target_file));
+}
+
 TEST_F(CrashSenderUtilTest, ChooseAction) {
   ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
 
@@ -1765,6 +1805,29 @@ TEST_F(CrashSenderUtilTest, GetMetaFiles) {
   EXPECT_EQ(meta_3.value(), meta_files[1].value());
   EXPECT_EQ(meta_2.value(), meta_files[2].value());
   EXPECT_EQ(meta_1.value(), meta_files[3].value());
+}
+
+TEST_F(CrashSenderUtilTest, RemoveReportFilesDoesNotFollowSymlinkedDir) {
+  Sender::Options options;
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
+
+  const base::FilePath target_dir = test_dir_.Append("target_dir");
+  ASSERT_TRUE(base::CreateDirectory(target_dir));
+  const base::FilePath target_meta = target_dir.Append("foo.meta");
+  const base::FilePath target_log = target_dir.Append("foo.log");
+  ASSERT_TRUE(test_util::CreateFile(target_meta, ""));
+  ASSERT_TRUE(test_util::CreateFile(target_log, ""));
+
+  const base::FilePath crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(base::CreateDirectory(crash_directory.DirName()));
+  ASSERT_TRUE(base::CreateSymbolicLink(target_dir, crash_directory));
+
+  sender.RemoveReportFiles(crash_directory.Append("foo.meta"));
+
+  EXPECT_TRUE(base::PathExists(target_meta));
+  EXPECT_TRUE(base::PathExists(target_log));
 }
 
 TEST_F(CrashSenderUtilTest, IsTimestampNewEnough) {

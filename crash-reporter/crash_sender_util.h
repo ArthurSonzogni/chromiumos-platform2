@@ -238,6 +238,7 @@ class Sender : public SenderBase {
  private:
   friend class IsNetworkOnlineTest;
   FRIEND_TEST(CrashSenderUtilTest, RemoveReportFiles);
+  FRIEND_TEST(CrashSenderUtilTest, RemoveReportFilesDoesNotFollowSymlinkedDir);
   FRIEND_TEST(CrashSenderUtilTest, RemoveReportFilesUnderDryRunMode);
   FRIEND_TEST(CrashSenderUtilTest, FailRemoveReportFilesSendsMetric);
   FRIEND_TEST(CrashSenderUtilTest,
