@@ -134,8 +134,7 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
   EXPECT_TRUE(crostini->GetDevices().empty());
 
   // The virtual datapath for the Crostini VM can successfully start.
-  auto* device = crostini->Start(vm_id, CrostiniService::VMType::kTermina,
-                                 /*subnet_index=*/0);
+  auto* device = crostini->Start(vm_id, CrostiniService::VMType::kTermina);
   Mock::VerifyAndClearExpectations(datapath_.get());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
@@ -212,8 +211,7 @@ TEST_F(CrostiniServiceTest, StartStopBruschettaVM) {
   EXPECT_TRUE(crostini->GetDevices().empty());
 
   // The virtual datapath for the Bruschetta VM can successfully start.
-  auto* device = crostini->Start(vm_id, CrostiniService::VMType::kBruschetta,
-                                 /*subnet_index=*/0);
+  auto* device = crostini->Start(vm_id, CrostiniService::VMType::kBruschetta);
   Mock::VerifyAndClearExpectations(datapath_.get());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
@@ -294,8 +292,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   EXPECT_CALL(
       *forwarding_service_,
       StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
-  auto* device = crostini->Start(vm_id1, CrostiniService::VMType::kTermina,
-                                 /*subnet_index=*/0);
+  auto* device = crostini->Start(vm_id1, CrostiniService::VMType::kTermina);
   ASSERT_NE(nullptr, device);
   ASSERT_EQ("vmtap0", device->tap_device_ifname());
   auto it = guest_device_events_.find("vmtap0");
@@ -328,8 +325,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   EXPECT_CALL(
       *forwarding_service_,
       StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
-  device = crostini->Start(vm_id2, CrostiniService::VMType::kBruschetta,
-                           /*subnet_index=*/0);
+  device = crostini->Start(vm_id2, CrostiniService::VMType::kBruschetta);
   ASSERT_NE(nullptr, device);
   ASSERT_EQ("vmtap1", device->tap_device_ifname());
   it = guest_device_events_.find("vmtap1");
@@ -362,8 +358,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
       *forwarding_service_,
       StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap2"));
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
-  device = crostini->Start(vm_id3, CrostiniService::VMType::kTermina,
-                           /*subnet_index=*/0);
+  device = crostini->Start(vm_id3, CrostiniService::VMType::kTermina);
   ASSERT_NE(nullptr, device);
   ASSERT_EQ("vmtap2", device->tap_device_ifname());
   it = guest_device_events_.find("vmtap2");
@@ -486,10 +481,8 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
   EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
   EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
-  crostini->Start(vm_id1, CrostiniService::VMType::kTermina,
-                  /*subnet_index=*/0);
-  crostini->Start(vm_id2, CrostiniService::VMType::kBruschetta,
-                  /*subnet_index=*/0);
+  crostini->Start(vm_id1, CrostiniService::VMType::kTermina);
+  crostini->Start(vm_id2, CrostiniService::VMType::kBruschetta);
   Mock::VerifyAndClearExpectations(datapath_.get());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
@@ -617,9 +610,8 @@ TEST_F(CrostiniServiceTest, VMTypeConversions) {
 }
 
 TEST_F(CrostiniServiceTest, ConvertTerminaDevice) {
-  const uint32_t subnet_index = 0;
-  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
-      AddressManager::GuestType::kTerminaVM, subnet_index);
+  auto ipv4_subnet =
+      addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kTerminaVM);
   auto lxd_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kLXDContainer);
   auto expected_host_ipv4 =

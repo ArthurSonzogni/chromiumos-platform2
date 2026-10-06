@@ -481,8 +481,8 @@ class Datapath {
   bool ToggleInterface(std::string_view ifname, bool up);
 
   // Creates the base FORWARD filter rules and PREROUTING mangle rules for
-  // any downstream network interface (ARC, Crostini, Parallels,
-  // Bruschetta, ConnectNamespace, Tethering, LocalOnlyNetwork).
+  // any downstream network interface (ARC, Crostini, Bruschetta,
+  // ConnectNamespace, Tethering, LocalOnlyNetwork).
   // TODO(b/273749806): Create abstraction to represent the different types of
   // isolation in the FORWARD chain and in the OUTPUT chain instead of relying
   // on inspecting |source|, |int_ifname|, and |upstream_ifname|.

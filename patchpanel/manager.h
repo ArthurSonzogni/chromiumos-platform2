@@ -211,9 +211,7 @@ class Manager : public ForwardingService {
   void OnDnsRedirectionRulesAutoclose(int lifeline_fd);
 
   const CrostiniService::CrostiniDevice* StartCrosVm(
-      uint64_t vm_id,
-      CrostiniService::VMType vm_type,
-      uint32_t subnet_index = kAnySubnetIndex);
+      uint64_t vm_id, CrostiniService::VMType vm_type);
   void StopCrosVm(uint64_t vm_id, CrostiniService::VMType vm_type);
 
   std::vector<DownstreamClientInfo> GetDownstreamClientInfo(

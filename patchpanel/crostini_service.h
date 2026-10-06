@@ -28,7 +28,7 @@
 namespace patchpanel {
 
 // Crostini networking service handling address allocation, TAP device creation,
-// and patchpanel Device management for Crostini VMs (Termina VMs, Parallels
+// and patchpanel Device management for Crostini VMs (Termina VMs, Bruschetta
 // VMs). CrostiniService currently only supports one TAP device per VM instance.
 class CrostiniService {
  public:
@@ -128,9 +128,7 @@ class CrostiniService {
 
   ~CrostiniService();
 
-  const CrostiniDevice* Start(uint64_t vm_id,
-                              VMType vm_type,
-                              uint32_t subnet_index);
+  const CrostiniDevice* Start(uint64_t vm_id, VMType vm_type);
   void Stop(uint64_t vm_id);
 
   // Returns a single CrostiniDevice pointer created for the VM with id |vm_id|.
@@ -146,7 +144,7 @@ class CrostiniService {
       const ShillClient::Device* prev_device);
 
  private:
-  std::unique_ptr<CrostiniDevice> AddTAP(VMType vm_type, uint32_t subnet_index);
+  std::unique_ptr<CrostiniDevice> AddTAP(VMType vm_type);
 
   // Checks ADB sideloading status and set it to |adb_sideloading_enabled_|.
   // This function will call itself again if ADB sideloading status is not

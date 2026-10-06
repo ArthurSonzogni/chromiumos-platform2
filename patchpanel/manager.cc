@@ -525,8 +525,8 @@ void Manager::ArcVmShutdown(uint32_t cid) {
 }
 
 const CrostiniService::CrostiniDevice* Manager::StartCrosVm(
-    uint64_t vm_id, CrostiniService::VMType vm_type, uint32_t subnet_index) {
-  const auto* guest_device = cros_svc_.Start(vm_id, vm_type, subnet_index);
+    uint64_t vm_id, CrostiniService::VMType vm_type) {
+  const auto* guest_device = cros_svc_.Start(vm_id, vm_type);
   if (!guest_device) {
     return nullptr;
   }

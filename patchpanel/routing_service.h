@@ -54,7 +54,7 @@ enum TrafficSource {
   // Traffic corresponding to uid "chronos".
   kChrome = 1,
   // Other uids classified as "user" for traffic purposes: debugd, cups,
-  // tlsdate, pluginvm (Parallels), etc.
+  // tlsdate, pluginvm, etc.
   kUser = 2,
   // Traffic from Update engine.
   kUpdateEngine = 3,
@@ -156,8 +156,8 @@ std::string SourceFwmarkWithMask(TrafficSource source);
 //                     originated traffic by domain.
 // QoS (3bits): the QoS category of the packet, used by QoSService.
 // reserved(4bits): no usage at the moment.
-// legacy SNAT(1bit): legacy bit used for setting up SNAT for ARC, Crostini, and
-//                    Parallels VMs with iptables MASQUERADE.
+// legacy SNAT(1bit): legacy bit used for setting up SNAT for ARC and Crostini
+//                    VMs with iptables MASQUERADE.
 //
 // Note that bitfields are not a portable way to define a
 // stable Fwmark. Also note that the in-memory representation of values of
