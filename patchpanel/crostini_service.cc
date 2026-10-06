@@ -52,8 +52,6 @@ NetworkDevice::GuestType ProtoDeviceTypeFromVMType(
       // TODO(b/279994478): Clarify whether Bruschetta needs to
       // differentiate itself from Crostini devices on dbus.
       return NetworkDevice::TERMINA_VM;
-    case CrostiniService::VMType::kParallels:
-      return NetworkDevice::PARALLELS_VM;
   }
 }
 
@@ -382,8 +380,6 @@ TrafficSource CrostiniService::TrafficSourceFromVMType(
   switch (vm_type) {
     case VMType::kTermina:
       return TrafficSource::kCrostiniVM;
-    case VMType::kParallels:
-      return TrafficSource::kParallelsVM;
     case VMType::kBruschetta:
       return TrafficSource::kBruschettaVM;
   }
@@ -395,8 +391,6 @@ GuestMessage::GuestType CrostiniService::GuestMessageTypeFromVMType(
   switch (vm_type) {
     case VMType::kTermina:
       return GuestMessage::TERMINA_VM;
-    case VMType::kParallels:
-      return GuestMessage::PARALLELS_VM;
     case VMType::kBruschetta:
       return GuestMessage::BRUSCHETTA_VM;
   }
@@ -410,8 +404,6 @@ AddressManager::GuestType CrostiniService::AddressManagingTypeFromVMType(
     case VMType::kBruschetta:
       // Bruschetta shares the same address pool with Crostini.
       return AddressManager::GuestType::kTerminaVM;
-    case VMType::kParallels:
-      return AddressManager::GuestType::kParallelsVM;
   }
 }
 
@@ -420,8 +412,6 @@ std::ostream& operator<<(std::ostream& stream,
   switch (vm_type) {
     case CrostiniService::VMType::kTermina:
       return stream << "Termina";
-    case CrostiniService::VMType::kParallels:
-      return stream << "Parallels";
     case CrostiniService::VMType::kBruschetta:
       return stream << "Bruschetta";
   }

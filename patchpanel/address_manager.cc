@@ -75,10 +75,6 @@ net_base::MacAddress AddressManager::GenerateMacAddress(uint32_t index) {
 
 std::unique_ptr<Subnet> AddressManager::AllocateIPv4Subnet(GuestType guest,
                                                            uint32_t index) {
-  if (guest == GuestType::kParallelsVM) {
-    LOG(ERROR) << "Unsupported guest type " << guest;
-    return nullptr;
-  }
   if (index > 0) {
     LOG(ERROR) << ": Subnet indexing is not supported for guest " << guest;
     return nullptr;
@@ -175,8 +171,6 @@ std::ostream& operator<<(std::ostream& stream,
       return stream << "ARC_NET";
     case AddressManager::GuestType::kTerminaVM:
       return stream << "TERMINA_VM";
-    case AddressManager::GuestType::kParallelsVM:
-      return stream << "PARALLELS_VM";
     case AddressManager::GuestType::kLXDContainer:
       return stream << "LXD_CONTAINER";
     case AddressManager::GuestType::kNetns:

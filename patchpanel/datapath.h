@@ -132,7 +132,6 @@ enum class IpFamily {
 enum class AutoDNATTarget {
   kArc,
   kCrostini,
-  kParallels,
 };
 
 enum class DeviceMode {

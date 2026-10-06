@@ -70,8 +70,6 @@ enum TrafficSource {
   kArc = 0x20,
   // Crostini VMs and lxd containers.
   kCrostiniVM = 0x21,
-  // Parallels VMs.
-  kParallelsVM = 0x22,
   // A tethered downstream network.
   kTetherDownstream = 0x23,
   // Traffic emitted by Android VPNs for their tunnelled connections.
@@ -315,15 +313,14 @@ constexpr std::array<TrafficSource, 5> kLocalSources{
     {kChrome, kUser, kUpdateEngine, kSystem, kHostVpn}};
 
 // All forwarded sources
-constexpr std::array<TrafficSource, 8> kForwardedSources{
-    {kArc, kBruschettaVM, kCrostiniVM, kParallelsVM, kTetherDownstream,
-     kWiFiDirect, kWiFiLOHS, kArcVpn}};
+constexpr std::array<TrafficSource, 7> kForwardedSources{
+    {kArc, kBruschettaVM, kCrostiniVM, kTetherDownstream, kWiFiDirect,
+     kWiFiLOHS, kArcVpn}};
 
 // All sources
-constexpr std::array<TrafficSource, 13> kAllSources{
+constexpr std::array<TrafficSource, 12> kAllSources{
     {kChrome, kUser, kUpdateEngine, kSystem, kHostVpn, kArc, kBruschettaVM,
-     kCrostiniVM, kParallelsVM, kTetherDownstream, kWiFiDirect, kWiFiLOHS,
-     kArcVpn}};
+     kCrostiniVM, kTetherDownstream, kWiFiDirect, kWiFiLOHS, kArcVpn}};
 
 // All sources for user traffic. For VPN drivers that only want to pass traffic
 // for specific users, these are the usernames that will be used to create the

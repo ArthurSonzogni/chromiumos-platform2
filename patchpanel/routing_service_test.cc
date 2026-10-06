@@ -174,8 +174,6 @@ TEST_F(RoutingServiceTest, FwmarkSources) {
   EXPECT_EQ("0x00002000", Fwmark::FromSource(TrafficSource::kArc).ToString());
   EXPECT_EQ("0x00002100",
             Fwmark::FromSource(TrafficSource::kCrostiniVM).ToString());
-  EXPECT_EQ("0x00002200",
-            Fwmark::FromSource(TrafficSource::kParallelsVM).ToString());
   EXPECT_EQ("0x00002300",
             Fwmark::FromSource(TrafficSource::kTetherDownstream).ToString());
   EXPECT_EQ("0x00002400",

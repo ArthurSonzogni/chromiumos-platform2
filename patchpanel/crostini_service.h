@@ -40,7 +40,6 @@ class CrostiniService {
   enum class VMType {
     // Crostini Linux VM with a user LXD container.
     kTermina,
-    kParallels,
     kBruschetta,
   };
 

@@ -60,8 +60,6 @@ patchpanel::TrafficCounter::Source ConvertTrafficSource(
       return patchpanel::TrafficCounter::BRUSCHETTA_VM;
     case Client::TrafficSource::kCrostiniVM:
       return patchpanel::TrafficCounter::CROSTINI_VM;
-    case Client::TrafficSource::kParallelsVM:
-      return patchpanel::TrafficCounter::PARALLELS_VM;
     case Client::TrafficSource::kTethering:
       return patchpanel::TrafficCounter::TETHERING;
     case Client::TrafficSource::kWiFiDirect:
@@ -90,8 +88,6 @@ Client::TrafficSource ConvertTrafficSource(
       return Client::TrafficSource::kBruschettaVM;
     case patchpanel::TrafficCounter::CROSTINI_VM:
       return Client::TrafficSource::kCrostiniVM;
-    case patchpanel::TrafficCounter::PARALLELS_VM:
-      return Client::TrafficSource::kParallelsVM;
     case patchpanel::TrafficCounter::TETHERING:
       return Client::TrafficSource::kTethering;
     case patchpanel::TrafficCounter::WIFI_DIRECT:
@@ -99,6 +95,7 @@ Client::TrafficSource ConvertTrafficSource(
     case patchpanel::TrafficCounter::WIFI_LOHS:
       return Client::TrafficSource::kWiFiLOHS;
     case patchpanel::TrafficCounter::BOREALIS_VM:
+    case patchpanel::TrafficCounter::PARALLELS_VM:
     default:
       return Client::TrafficSource::kUnknown;
   }
@@ -1888,8 +1885,6 @@ BRILLO_EXPORT std::ostream& operator<<(
       return stream << "Bruschetta";
     case patchpanel::Client::TrafficSource::kCrostiniVM:
       return stream << "Crostini";
-    case patchpanel::Client::TrafficSource::kParallelsVM:
-      return stream << "Parallels";
     case patchpanel::Client::TrafficSource::kTethering:
       return stream << "Tethering";
     case patchpanel::Client::TrafficSource::kWiFiDirect:

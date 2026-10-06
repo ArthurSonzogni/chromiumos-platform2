@@ -216,7 +216,6 @@ std::string_view TrafficSourceName(TrafficSource source) {
           {kChrome, "CHROME"},
           {kCrostiniVM, "CROSTINI_VM"},
           {kHostVpn, "HOST_VPN"},
-          {kParallelsVM, "PARALLELS_VM"},
           {kSystem, "SYSTEM"},
           {kTetherDownstream, "TETHER_DOWNSTREAM"},
           {kUnknown, "UNKNOWN"},

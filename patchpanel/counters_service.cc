@@ -324,8 +324,6 @@ TrafficCounter::Source TrafficSourceToProto(TrafficSource source) {
       return TrafficCounter::CROSTINI_VM;
     case TrafficSource::kBruschettaVM:
       return TrafficCounter::BRUSCHETTA_VM;
-    case TrafficSource::kParallelsVM:
-      return TrafficCounter::PARALLELS_VM;
     case TrafficSource::kTetherDownstream:
       return TrafficCounter::TETHERING;
     case TrafficSource::kWiFiDirect:
@@ -358,8 +356,6 @@ TrafficSource ProtoToTrafficSource(TrafficCounter::Source source) {
       return TrafficSource::kBruschettaVM;
     case TrafficCounter::CROSTINI_VM:
       return TrafficSource::kCrostiniVM;
-    case TrafficCounter::PARALLELS_VM:
-      return TrafficSource::kParallelsVM;
     case TrafficCounter::TETHERING:
       return TrafficSource::kTetherDownstream;
     case TrafficCounter::WIFI_DIRECT:
@@ -368,6 +364,7 @@ TrafficSource ProtoToTrafficSource(TrafficCounter::Source source) {
       return TrafficSource::kWiFiLOHS;
     default:
     case TrafficCounter::BOREALIS_VM:
+    case TrafficCounter::PARALLELS_VM:
     case TrafficCounter::UNKNOWN:
       return TrafficSource::kUnknown;
   }

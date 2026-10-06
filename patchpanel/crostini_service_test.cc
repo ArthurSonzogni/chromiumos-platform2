@@ -606,23 +606,14 @@ TEST_F(CrostiniServiceTest, VMTypeConversions) {
   EXPECT_EQ(TrafficSource::kCrostiniVM,
             CrostiniService::TrafficSourceFromVMType(
                 CrostiniService::VMType::kTermina));
-  EXPECT_EQ(TrafficSource::kParallelsVM,
-            CrostiniService::TrafficSourceFromVMType(
-                CrostiniService::VMType::kParallels));
 
   EXPECT_EQ(GuestMessage::TERMINA_VM,
             CrostiniService::GuestMessageTypeFromVMType(
                 CrostiniService::VMType::kTermina));
-  EXPECT_EQ(GuestMessage::PARALLELS_VM,
-            CrostiniService::GuestMessageTypeFromVMType(
-                CrostiniService::VMType::kParallels));
 
   EXPECT_EQ(AddressManager::GuestType::kTerminaVM,
             CrostiniService::AddressManagingTypeFromVMType(
                 CrostiniService::VMType::kTermina));
-  EXPECT_EQ(AddressManager::GuestType::kParallelsVM,
-            CrostiniService::AddressManagingTypeFromVMType(
-                CrostiniService::VMType::kParallels));
 }
 
 TEST_F(CrostiniServiceTest, ConvertTerminaDevice) {

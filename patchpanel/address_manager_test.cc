@@ -101,7 +101,6 @@ TEST(AddressManager, SubnetIndexing) {
   EXPECT_EQ(nullptr, mgr.AllocateIPv4Subnet(GuestType::kTerminaVM, 1));
   EXPECT_EQ(nullptr, mgr.AllocateIPv4Subnet(GuestType::kLXDContainer, 1));
   EXPECT_EQ(nullptr, mgr.AllocateIPv4Subnet(GuestType::kNetns, 1));
-  EXPECT_EQ(nullptr, mgr.AllocateIPv4Subnet(GuestType::kParallelsVM, 1));
 }
 
 TEST(AddressManager, StableMacAddresses) {

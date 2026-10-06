@@ -45,8 +45,6 @@ class BRILLO_EXPORT AddressManager {
     kArcNet,
     /// Crostini VM root namespace.
     kTerminaVM,
-    // Parallels VMs.
-    kParallelsVM,
     // Crostini VM user containers.
     kLXDContainer,
     // Other network namespaces hosting minijailed host processes.

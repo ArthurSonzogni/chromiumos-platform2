@@ -65,7 +65,6 @@ class BRILLO_EXPORT Client {
     kArc,
     kBruschettaVM,
     kCrostiniVM,
-    kParallelsVM,
     kTethering,
     kWiFiDirect,
     kWiFiLOHS,
@@ -76,9 +75,8 @@ class BRILLO_EXPORT Client {
       TrafficSource::kUser,       TrafficSource::kUpdateEngine,
       TrafficSource::kSystem,     TrafficSource::kVpn,
       TrafficSource::kArc,        TrafficSource::kBruschettaVM,
-      TrafficSource::kCrostiniVM, TrafficSource::kParallelsVM,
-      TrafficSource::kTethering,  TrafficSource::kWiFiDirect,
-      TrafficSource::kWiFiLOHS};
+      TrafficSource::kCrostiniVM, TrafficSource::kTethering,
+      TrafficSource::kWiFiDirect, TrafficSource::kWiFiLOHS};
 
   struct TrafficVector {
     uint64_t rx_bytes = 0;

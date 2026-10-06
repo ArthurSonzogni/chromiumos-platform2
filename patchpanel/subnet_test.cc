@@ -26,11 +26,9 @@ namespace {
 
 constexpr net_base::IPv4Address kContainerBaseAddress(100, 115, 92, 192);
 constexpr net_base::IPv4Address kVmBaseAddress(100, 115, 92, 24);
-constexpr net_base::IPv4Address kParallelsBaseAddress(100, 115, 92, 128);
 
 constexpr uint32_t kContainerSubnetPrefixLength = 28;
 constexpr uint32_t kVmSubnetPrefixLength = 30;
-constexpr uint32_t kParallelsSubnetPrefixLength = 28;
 
 // kExpectedAvailableCount[i] == AvailableCount() for subnet with prefix_length
 // i.
@@ -127,22 +125,6 @@ TEST(SubtnetAddress, StringConversion) {
               vm_subnet.CIDRAtOffset(1));
     EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.26/30"),
               vm_subnet.CIDRAtOffset(2));
-  }
-
-  Subnet parallels_subnet(
-      *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-          kParallelsBaseAddress, kParallelsSubnetPrefixLength),
-      base::DoNothing());
-  EXPECT_EQ("100.115.92.128/28", parallels_subnet.base_cidr().ToString());
-  {
-    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.129/28"),
-              parallels_subnet.CIDRAtOffset(1));
-    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.130/28"),
-              parallels_subnet.CIDRAtOffset(2));
-    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.141/28"),
-              parallels_subnet.CIDRAtOffset(13));
-    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.142/28"),
-              parallels_subnet.CIDRAtOffset(14));
   }
 }
 

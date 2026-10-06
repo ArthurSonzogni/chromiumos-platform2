@@ -131,8 +131,6 @@ constexpr char kDropForwardToBruschettaChain[] = "drop_forward_to_bruschetta";
 // of hosted guests with the corresponding hierarchy.
 constexpr char kApplyAutoDNATToArcChain[] = "apply_auto_dnat_to_arc";
 constexpr char kApplyAutoDNATToCrostiniChain[] = "apply_auto_dnat_to_crostini";
-constexpr char kApplyAutoDNATToParallelsChain[] =
-    "apply_auto_dnat_to_parallels";
 // nat PREROUTING chain for egress traffic from downstream guests.
 constexpr char kRedirectDefaultDnsChain[] = "redirect_default_dns";
 // nat OUTPUT chain for egress traffic from processes running on the host.
@@ -170,8 +168,6 @@ std::string AutoDNATTargetChainName(AutoDNATTarget auto_dnat_target) {
       return kApplyAutoDNATToArcChain;
     case AutoDNATTarget::kCrostini:
       return kApplyAutoDNATToCrostiniChain;
-    case AutoDNATTarget::kParallels:
-      return kApplyAutoDNATToParallelsChain;
   }
 }
 
