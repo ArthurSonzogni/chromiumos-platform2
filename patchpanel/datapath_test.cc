@@ -1138,48 +1138,6 @@ TEST_F(DatapathTest, RemoveInboundIPv4DNATCrostini) {
                                    IPv4Address(1, 2, 3, 4));
 }
 
-TEST_F(DatapathTest, AddInboundIPv4DNATParallelsVm) {
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -A apply_auto_dnat_to_parallels -i eth0 -m socket "
-      "--nowildcard -j ACCEPT -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -A apply_auto_dnat_to_parallels -i eth0 -p tcp -j DNAT "
-      "--to-destination 1.2.3.4 -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -A apply_auto_dnat_to_parallels -i eth0 -p udp -j DNAT "
-      "--to-destination 1.2.3.4 -w");
-
-  ShillClient::Device eth_device;
-  eth_device.ifname = "eth0";
-
-  datapath_->AddInboundIPv4DNAT(AutoDNATTarget::kParallels, eth_device,
-                                IPv4Address(1, 2, 3, 4));
-}
-
-TEST_F(DatapathTest, RemoveInboundIPv4DNATParallelsVm) {
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -D apply_auto_dnat_to_parallels -i eth0 -m socket "
-      "--nowildcard -j ACCEPT -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -D apply_auto_dnat_to_parallels -i eth0 -p tcp -j DNAT "
-      "--to-destination 1.2.3.4 -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kIPv4,
-      "nat -D apply_auto_dnat_to_parallels -i eth0 -p udp -j DNAT "
-      "--to-destination 1.2.3.4 -w");
-
-  ShillClient::Device eth_device;
-  eth_device.ifname = "eth0";
-
-  datapath_->RemoveInboundIPv4DNAT(AutoDNATTarget::kParallels, eth_device,
-                                   IPv4Address(1, 2, 3, 4));
-}
-
 TEST_F(DatapathTest, MaskInterfaceFlags) {
   bool result = datapath_->MaskInterfaceFlags("foo0", IFF_DEBUG);
 

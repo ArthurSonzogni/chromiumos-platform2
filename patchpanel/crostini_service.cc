@@ -44,19 +44,6 @@ std::ostream& operator<<(
                 << "}";
 }
 
-std::optional<AutoDNATTarget> GetAutoDNATTarget(
-    CrostiniService::VMType guest_type) {
-  switch (guest_type) {
-    case CrostiniService::VMType::kTermina:
-      return AutoDNATTarget::kCrostini;
-    case CrostiniService::VMType::kParallels:
-      return AutoDNATTarget::kParallels;
-    case CrostiniService::VMType::kBruschetta:
-      // There should not be attempt of auto DNAT into Bruschetta
-      return std::nullopt;
-  }
-}
-
 NetworkDevice::GuestType ProtoDeviceTypeFromVMType(
     CrostiniService::VMType vm_type) {
   switch (vm_type) {
@@ -387,36 +374,6 @@ void CrostiniService::OnShillDefaultLogicalDeviceChanged(
   } else {
     default_logical_device_ = std::nullopt;
   }
-}
-
-void CrostiniService::StartAutoDNAT(
-    const CrostiniService::CrostiniDevice* virtual_device) {
-  if (!default_logical_device_) {
-    return;
-  }
-  auto dnat_target = GetAutoDNATTarget(virtual_device->type());
-  if (!dnat_target) {
-    LOG(ERROR) << __func__ << ": " << virtual_device->type()
-               << " is not a valid auto DNAT target.";
-    return;
-  }
-  datapath_->AddInboundIPv4DNAT(*dnat_target, *default_logical_device_,
-                                virtual_device->vm_ipv4_address());
-}
-
-void CrostiniService::StopAutoDNAT(
-    const CrostiniService::CrostiniDevice* virtual_device) {
-  if (!default_logical_device_) {
-    return;
-  }
-  auto dnat_target = GetAutoDNATTarget(virtual_device->type());
-  if (!dnat_target) {
-    LOG(ERROR) << __func__ << ": " << virtual_device->type()
-               << " is not a valid auto DNAT target.";
-    return;
-  }
-  datapath_->RemoveInboundIPv4DNAT(*dnat_target, *default_logical_device_,
-                                   virtual_device->vm_ipv4_address());
 }
 
 // static

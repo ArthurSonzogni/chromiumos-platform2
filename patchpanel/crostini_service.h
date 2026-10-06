@@ -161,11 +161,6 @@ class CrostiniService {
   void StartAdbPortForwarding(std::string_view ifname);
   void StopAdbPortForwarding(std::string_view ifname);
 
-  // Starts and stop automatic DNAT forwarding of inbound traffic into a
-  // Crostini virtual device. |crostini_device| must not be null.
-  void StartAutoDNAT(const CrostiniDevice* crostini_device);
-  void StopAutoDNAT(const CrostiniDevice* crostini_device);
-
   scoped_refptr<dbus::Bus> bus_;
   // IPv4 prefix and address manager, owned by Manager.
   AddressManager* addr_mgr_;

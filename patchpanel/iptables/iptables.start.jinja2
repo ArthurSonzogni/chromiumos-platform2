@@ -101,7 +101,6 @@ COMMIT
 :ingress_port_forwarding - [0:0]
 :apply_auto_dnat_to_arc - [0:0]
 :apply_auto_dnat_to_crostini - [0:0]
-:apply_auto_dnat_to_parallels - [0:0]
 {% endif -%}
 
 -A PREROUTING -j redirect_default_dns
@@ -109,10 +108,9 @@ COMMIT
   {#- "apply_auto_dnat_to_*" autoforwarding chains.                   #}
 {% if ipv4 -%}
 -A PREROUTING -j ingress_port_forwarding
-  {#- ARC default ingress forwarding is always first, Crostini second, and Parallels VM last. #}
+  {#- ARC default ingress forwarding is always first and Crostini second. #}
 -A PREROUTING -j apply_auto_dnat_to_arc
 -A PREROUTING -j apply_auto_dnat_to_crostini
--A PREROUTING -j apply_auto_dnat_to_parallels
 {% endif -%}
   {#- Set static SNAT rules for any traffic originated from a guest (ARC,       #}
   {#- Crostini, ...) or a connected namespace.                                  #}
