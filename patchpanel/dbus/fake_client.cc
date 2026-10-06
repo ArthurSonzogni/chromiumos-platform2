@@ -40,15 +40,6 @@ bool FakeClient::NotifyTerminaVmShutdown(uint32_t cid) {
   return true;
 }
 
-std::optional<Client::ParallelsAllocation> FakeClient::NotifyParallelsVmStartup(
-    uint64_t vm_id, int subnet_index) {
-  return std::nullopt;
-}
-
-bool FakeClient::NotifyParallelsVmShutdown(uint64_t vm_id) {
-  return false;
-}
-
 std::optional<Client::BruschettaAllocation>
 FakeClient::NotifyBruschettaVmStartup(uint64_t vm_id) {
   return std::nullopt;

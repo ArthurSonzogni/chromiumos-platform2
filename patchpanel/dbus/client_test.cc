@@ -159,21 +159,6 @@ TEST_F(ClientTest, NotifyTerminaVmShutdown) {
   EXPECT_TRUE(result);
 }
 
-TEST_F(ClientTest, NotifyParallelsVmStartup) {
-  const uint64_t id = 5;
-  const int subnet_index = 4;
-
-  auto result = client_->NotifyParallelsVmStartup(id, subnet_index);
-  EXPECT_FALSE(result.has_value());
-}
-
-TEST_F(ClientTest, NotifyParallelsVmShutdown) {
-  const uint64_t id = 5;
-
-  const bool result = client_->NotifyParallelsVmShutdown(id);
-  EXPECT_FALSE(result);
-}
-
 TEST_F(ClientTest, NotifyBruschettaVmStartup) {
   const uint64_t id = 5;
   const std::string tap_ifname = "vmtap2";

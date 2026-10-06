@@ -40,10 +40,6 @@ class BRILLO_EXPORT FakeClient : public Client {
       uint32_t cid) override;
   bool NotifyTerminaVmShutdown(uint32_t cid) override;
 
-  std::optional<Client::ParallelsAllocation> NotifyParallelsVmStartup(
-      uint64_t vm_id, int subnet_index) override;
-  bool NotifyParallelsVmShutdown(uint64_t vm_id) override;
-
   std::optional<Client::BruschettaAllocation> NotifyBruschettaVmStartup(
       uint64_t vm_id) override;
   bool NotifyBruschettaVmShutdown(uint64_t vm_id) override;

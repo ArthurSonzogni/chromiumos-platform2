@@ -771,10 +771,6 @@ class ClientImpl : public Client {
       uint32_t cid) override;
   bool NotifyTerminaVmShutdown(uint32_t cid) override;
 
-  std::optional<ParallelsAllocation> NotifyParallelsVmStartup(
-      uint64_t vm_id, int subnet_index) override;
-  bool NotifyParallelsVmShutdown(uint64_t vm_id) override;
-
   std::optional<BruschettaAllocation> NotifyBruschettaVmStartup(
       uint64_t vm_id) override;
   bool NotifyBruschettaVmShutdown(uint64_t vm_id) override;
@@ -1103,15 +1099,6 @@ bool ClientImpl::NotifyTerminaVmShutdown(uint32_t cid) {
     return false;
   }
   return true;
-}
-
-std::optional<Client::ParallelsAllocation> ClientImpl::NotifyParallelsVmStartup(
-    uint64_t vm_id, int subnet_index) {
-  return std::nullopt;
-}
-
-bool ClientImpl::NotifyParallelsVmShutdown(uint64_t vm_id) {
-  return false;
 }
 
 std::optional<Client::BruschettaAllocation>
