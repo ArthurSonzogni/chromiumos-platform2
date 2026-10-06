@@ -98,8 +98,8 @@ message NetworkDevice {
   // The name of the main virtual interface created by patchpanel for carrying
   // packets out of the guest environment and onto the host routing setup. For
   // ARC this corresponds to the virtual bridge used for that virtual device.
-  // For other crosvm guests (Termina, Crostini, Parallels VM, etc) this
-  // corresponds to the tap device used by crosvm virtio net stack.
+  // For other crosvm guests (Termina, Crostini, etc) this corresponds to the
+  // tap device used by crosvm virtio net stack.
   string ifname = 1;
 
   // The name of the physical interface to which the virtual device is mapped.
@@ -219,42 +219,6 @@ message TerminaVmShutdownRequest {
 // Intentionally empty response.
 message TerminaVmShutdownResponse {}
 
-// Notification that a Parallels VM is starting up.
-message ParallelsVmStartupRequest {
-  // The unique ID of the VM.
-  uint64 id = 1;
-
-  // The 1-based index of the desired subnet to allocate for use.
-  // Optional.
-  // TODO(b/236092161) Migrate to uint32.
-  int32 subnet_index = 2;
-}
-
-// Information required by Concierge to continue the Parallels VM startup.
-message ParallelsVmStartupResponse {
-  // The TAP device to be used for the VM.
-  string tap_device_ifname = 1;
-
-  // The IPv4 subnet assigned to the VM.
-  IPv4Subnet ipv4_subnet = 2;
-
-  // The IPv4 address assigned to the VM, represented as 4 bytes in network
-  // order, contained inside |ipv4_subnet|.
-  bytes ipv4_address = 3;
-};
-
-// Notification that the Parallels VM is shutting down.
-// This message must also be sent if the startup process fails so any
-// allocated resources, including the subnets, are properly freed.
-message ParallelsVmShutdownRequest {
-  // The unique ID of the Parallels VM; must match what was sent at startup.
-  // Required.
-  uint64 id = 1;
-}
-
-// Intentionally empty response.
-message ParallelsVmShutdownResponse {}
-
 // Notification that a Bruschetta VM is starting up.
 message BruschettaVmStartupRequest {
   // The unique ID of the VM.
@@ -311,9 +275,9 @@ message ConnectNamespaceRequest {
   // id.
   string outbound_physical_device = 2;
 
-  // If true, traffic originated from managed OSs (Termina VMs, ARC, Parallels
-  // VM) and from Chrome can be routed to this namespace, and traffic originated
-  // from this namespace can be routed to these other privilege domains.
+  // If true, traffic originated from managed OSs (Termina VMs, ARC) and from
+  // Chrome can be routed to this namespace, and traffic originated from this
+  // namespace can be routed to these other privilege domains.
   bool allow_user_traffic = 3;
 
   // This field specifies the routing behavior to use when (1)
@@ -573,7 +537,7 @@ message SetDnsRedirectionRuleRequest {
   enum RuleType {
     INVALID_RULE_TYPE = 0;
     // Rules for traffic from guests that track the default network (e.g.
-    // Crostini, Parallels VMs).
+    // Crostini).
     DEFAULT = 1;
     // Rules for traffic from ARC interfaces (e.g. arc_eth0, arc_wlan0).
     ARC = 2;

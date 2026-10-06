@@ -25,8 +25,6 @@ constexpr char kGetDevicesMethod[] = "GetDevices";
 constexpr char kGetDownstreamNetworkInfoMethod[] = "GetDownstreamNetworkInfo";
 constexpr char kGetTrafficCountersMethod[] = "GetTrafficCounters";
 constexpr char kModifyPortRuleMethod[] = "ModifyPortRule";
-constexpr char kParallelsVmShutdownMethod[] = "ParallelsVmShutdown";
-constexpr char kParallelsVmStartupMethod[] = "ParallelsVmStartup";
 constexpr char kNotifyAndroidInteractiveStateMethod[] =
     "NotifyAndroidInteractiveState";
 constexpr char kNotifyAndroidWifiMulticastLockChangeMethod[] =
