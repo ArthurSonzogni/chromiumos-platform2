@@ -315,31 +315,6 @@ std::optional<Client::TerminaAllocation> ConvertTerminaAllocation(
   return termina_alloc;
 }
 
-std::optional<Client::ParallelsAllocation> ConvertParallelsAllocation(
-    const ParallelsVmStartupResponse& in) {
-  if (!in.has_ipv4_subnet()) {
-    LOG(ERROR) << __func__ << ": No Parallels IPv4 subnet found";
-    return std::nullopt;
-  }
-  const auto parallels_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
-  const auto parallels_address =
-      net_base::IPv4Address::CreateFromBytes(in.ipv4_address());
-  if (!parallels_subnet) {
-    LOG(ERROR) << __func__ << ": Invalid Parallels IPv4 subnet";
-    return std::nullopt;
-  }
-  if (!parallels_address ||
-      !parallels_subnet->InSameSubnetWith(*parallels_address)) {
-    LOG(ERROR) << __func__ << ": Invalid Parallels IPv4 address";
-    return std::nullopt;
-  }
-  Client::ParallelsAllocation parallels_alloc;
-  parallels_alloc.tap_device_ifname = in.tap_device_ifname();
-  parallels_alloc.parallels_ipv4_subnet = *parallels_subnet;
-  parallels_alloc.parallels_ipv4_address = *parallels_address;
-  return parallels_alloc;
-}
-
 std::optional<Client::BruschettaAllocation> ConvertBruschettaAllocation(
     const BruschettaVmStartupResponse& in) {
   if (in.tap_device_ifname().empty()) {
@@ -1132,56 +1107,11 @@ bool ClientImpl::NotifyTerminaVmShutdown(uint32_t cid) {
 
 std::optional<Client::ParallelsAllocation> ClientImpl::NotifyParallelsVmStartup(
     uint64_t vm_id, int subnet_index) {
-  ParallelsVmStartupRequest request;
-  request.set_id(vm_id);
-  request.set_subnet_index(subnet_index);
-
-  ParallelsVmStartupResponse response;
-  brillo::ErrorPtr error;
-  const bool result = RunOnDBusThreadSync(base::BindOnce(
-      [](PatchPanelProxyInterface* proxy,
-         const ParallelsVmStartupRequest& request,
-         ParallelsVmStartupResponse* response, brillo::ErrorPtr* error) {
-        return proxy->ParallelsVmStartup(request, response, error);
-      },
-      pp_proxy_.get(), request, &response, &error));
-
-  if (!result) {
-    LOG(ERROR) << __func__ << "(cid: " << vm_id
-               << ", subnet_index: " << subnet_index
-               << "): Parallels VM network startup failed: "
-               << error->GetMessage();
-    return std::nullopt;
-  }
-
-  const auto network_alloc = ConvertParallelsAllocation(response);
-  if (!network_alloc) {
-    LOG(ERROR) << __func__ << "(cid: " << vm_id
-               << ", subnet_index: " << subnet_index
-               << "): Failed to convert Parallels VM network configuration";
-  }
-  return network_alloc;
+  return std::nullopt;
 }
 
 bool ClientImpl::NotifyParallelsVmShutdown(uint64_t vm_id) {
-  ParallelsVmShutdownRequest request;
-  request.set_id(vm_id);
-
-  ParallelsVmShutdownResponse response;
-  brillo::ErrorPtr error;
-  const bool result = RunOnDBusThreadSync(base::BindOnce(
-      [](PatchPanelProxyInterface* proxy,
-         const ParallelsVmShutdownRequest& request,
-         ParallelsVmShutdownResponse* response, brillo::ErrorPtr* error) {
-        return proxy->ParallelsVmShutdown(request, response, error);
-      },
-      pp_proxy_.get(), request, &response, &error));
-  if (!result) {
-    LOG(ERROR) << "ParallelsVM network shutdown failed: "
-               << error->GetMessage();
-    return false;
-  }
-  return true;
+  return false;
 }
 
 std::optional<Client::BruschettaAllocation>

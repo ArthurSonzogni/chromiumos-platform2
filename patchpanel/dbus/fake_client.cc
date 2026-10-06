@@ -46,7 +46,7 @@ std::optional<Client::ParallelsAllocation> FakeClient::NotifyParallelsVmStartup(
 }
 
 bool FakeClient::NotifyParallelsVmShutdown(uint64_t vm_id) {
-  return true;
+  return false;
 }
 
 std::optional<Client::BruschettaAllocation>

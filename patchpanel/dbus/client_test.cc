@@ -162,44 +162,20 @@ TEST_F(ClientTest, NotifyTerminaVmShutdown) {
 TEST_F(ClientTest, NotifyParallelsVmStartup) {
   const uint64_t id = 5;
   const int subnet_index = 4;
-  const auto parallels_ipv4_subnet =
-      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29");
-  const auto parallels_ipv4_address =
-      *net_base::IPv4Address::CreateFromString("100.115.93.2");
 
-  ParallelsVmStartupResponse response_proto;
-  response_proto.set_tap_device_ifname("vmtap2");
-  auto* response_subnet = response_proto.mutable_ipv4_subnet();
-  response_subnet->set_addr(parallels_ipv4_subnet.address().ToByteString());
-  response_subnet->set_prefix_len(
-      static_cast<uint32_t>(parallels_ipv4_subnet.prefix_length()));
-  response_proto.set_ipv4_address(parallels_ipv4_address.ToByteString());
-
-  EXPECT_CALL(*pp_proxy_,
-              ParallelsVmStartup(
-                  AllOf(Property(&ParallelsVmStartupRequest::id, id),
-                        Property(&ParallelsVmStartupRequest::subnet_index,
-                                 subnet_index)),
-                  _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(response_proto), Return(true)));
+  EXPECT_CALL(*pp_proxy_, ParallelsVmStartup(_, _, _, _)).Times(0);
 
   auto result = client_->NotifyParallelsVmStartup(id, subnet_index);
-  ASSERT_TRUE(result.has_value());
-  EXPECT_EQ("vmtap2", result->tap_device_ifname);
-  EXPECT_EQ(parallels_ipv4_subnet, result->parallels_ipv4_subnet);
-  EXPECT_EQ(parallels_ipv4_address, result->parallels_ipv4_address);
+  EXPECT_FALSE(result.has_value());
 }
 
 TEST_F(ClientTest, NotifyParallelsVmShutdown) {
   const uint64_t id = 5;
 
-  EXPECT_CALL(*pp_proxy_,
-              ParallelsVmShutdown(Property(&ParallelsVmShutdownRequest::id, id),
-                                  _, _, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(*pp_proxy_, ParallelsVmShutdown(_, _, _, _)).Times(0);
 
   const bool result = client_->NotifyParallelsVmShutdown(id);
-  EXPECT_TRUE(result);
+  EXPECT_FALSE(result);
 }
 
 TEST_F(ClientTest, NotifyBruschettaVmStartup) {
