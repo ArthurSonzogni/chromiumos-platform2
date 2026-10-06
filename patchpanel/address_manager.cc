@@ -31,8 +31,6 @@ namespace {
 // | 128-191 (/30) | Host netns | Used for netns hosting minijailed services   |
 // | 192-255 (/28) | Containers | 1st range Used by Crostini LXD containers    |
 // +---------------+------------+----------------------------------------------+
-//
-// The 100.115.93.0/24 subnet is reserved for Parallels VMs.
 
 // Prefix length of allocated subnet for static ULA IPv6 addresses.
 constexpr int kStaticIPv6PrefixLength = 64;
@@ -65,8 +63,6 @@ AddressManager::AddressManager() {
       GuestType::kLXDContainer,
       SubnetPool::New(
           *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.192/28"), 4));
-  parallels_pool_ = SubnetPool::New(
-      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29"), 32);
   lxd_fallback_pool_ = SubnetPool::New(
       *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.64/28"), 4);
   allocated_ipv6_subnets_.insert(kDnsProxySubnet);
@@ -80,7 +76,8 @@ net_base::MacAddress AddressManager::GenerateMacAddress(uint32_t index) {
 std::unique_ptr<Subnet> AddressManager::AllocateIPv4Subnet(GuestType guest,
                                                            uint32_t index) {
   if (guest == GuestType::kParallelsVM) {
-    return parallels_pool_->Allocate(index);
+    LOG(ERROR) << "Unsupported guest type " << guest;
+    return nullptr;
   }
   if (index > 0) {
     LOG(ERROR) << ": Subnet indexing is not supported for guest " << guest;

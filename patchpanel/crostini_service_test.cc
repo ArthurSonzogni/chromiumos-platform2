@@ -179,212 +179,6 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
   EXPECT_TRUE(crostini->GetDevices().empty());
 }
 
-TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
-  constexpr uint64_t vm_id = 102;
-  auto crostini = NewService();
-
-  ShillClient::Device wlan0_dev;
-  wlan0_dev.ifname = "wlan0";
-  crostini->OnShillDefaultLogicalDeviceChanged(&wlan0_dev, nullptr);
-
-  EXPECT_CALL(*datapath_, AddTunTap("", _, _, "crosvm", DeviceMode::kTap))
-      .WillOnce(Return("vmtap0"));
-  EXPECT_CALL(*datapath_, AddIPv4Route).Times(0);
-  EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kParallelsVM, _,
-                                       Eq(std::nullopt), Eq(std::nullopt),
-                                       Eq(std::nullopt)));
-  EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kParallels,
-                                 ShillDeviceHasInterfaceName("wlan0"),
-                                 net_base::IPv4Address(100, 115, 93, 2)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                             Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                               MulticastForwarder::Direction::kTwoWays));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
-
-  // There should be no virtual device before the VM starts.
-  ASSERT_EQ(nullptr, crostini->GetDevice(vm_id));
-  EXPECT_TRUE(crostini->GetDevices().empty());
-
-  // The virtual datapath for the Parallels VM can successfully start.
-  auto* device = crostini->Start(vm_id, CrostiniService::VMType::kParallels,
-                                 /*subnet_index=*/1);
-  ASSERT_NE(nullptr, device);
-  EXPECT_EQ("vmtap0", device->tap_device_ifname());
-  EXPECT_EQ(std::nullopt, device->lxd_ipv4_subnet());
-  EXPECT_EQ(std::nullopt, device->lxd_ipv4_address());
-  Mock::VerifyAndClearExpectations(datapath_.get());
-  Mock::VerifyAndClearExpectations(forwarding_service_.get());
-
-  auto it = guest_device_events_.find("vmtap0");
-  ASSERT_NE(guest_device_events_.end(), it);
-  EXPECT_EQ(NetworkDeviceChangedSignal::DEVICE_ADDED, it->second);
-  guest_device_events_.clear();
-
-  // After starting, there should be a virtual device.
-  EXPECT_EQ(device, crostini->GetDevice(vm_id));
-  auto devices = crostini->GetDevices();
-  ASSERT_FALSE(devices.empty());
-  EXPECT_EQ(device, devices[0]);
-
-  // The virtual datapath for the Parallels VM can successfully stop.
-  EXPECT_CALL(*datapath_, RemoveInterface("vmtap0"));
-  EXPECT_CALL(*datapath_,
-              StopRoutingDevice("vmtap0", TrafficSource::kParallelsVM));
-  EXPECT_CALL(*datapath_,
-              RemoveInboundIPv4DNAT(AutoDNATTarget::kParallels,
-                                    ShillDeviceHasInterfaceName("wlan0"),
-                                    net_base::IPv4Address(100, 115, 93, 2)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                              MulticastForwarder::Direction::kTwoWays));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
-  crostini->Stop(vm_id);
-  it = guest_device_events_.find("vmtap0");
-  ASSERT_NE(guest_device_events_.end(), it);
-  EXPECT_EQ(NetworkDeviceChangedSignal::DEVICE_REMOVED, it->second);
-
-  // After stopping the datapath setup, there should be no virtual device.
-  EXPECT_EQ(nullptr, crostini->GetDevice(vm_id));
-  EXPECT_TRUE(crostini->GetDevices().empty());
-}
-
-TEST_F(CrostiniServiceTest, StartAfterAbnormalStopParallelsVM) {
-  constexpr uint64_t vm_id = 102;
-  auto crostini = NewService();
-
-  ShillClient::Device wlan0_dev;
-  wlan0_dev.ifname = "wlan0";
-  crostini->OnShillDefaultLogicalDeviceChanged(&wlan0_dev, nullptr);
-
-  EXPECT_CALL(*datapath_, AddTunTap("", _, _, "crosvm", DeviceMode::kTap))
-      .WillOnce(Return("vmtap0"));
-  EXPECT_CALL(*datapath_, AddIPv4Route).Times(0);
-  EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kParallelsVM, _,
-                                       Eq(std::nullopt), Eq(std::nullopt),
-                                       Eq(std::nullopt)));
-  EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kParallels,
-                                 ShillDeviceHasInterfaceName("wlan0"),
-                                 net_base::IPv4Address(100, 115, 93, 2)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                             Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                               MulticastForwarder::Direction::kTwoWays));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
-
-  // There should be no virtual device before the VM starts.
-  ASSERT_EQ(nullptr, crostini->GetDevice(vm_id));
-  EXPECT_TRUE(crostini->GetDevices().empty());
-
-  // The virtual datapath for the Parallels VM can successfully start.
-  auto* device = crostini->Start(vm_id, CrostiniService::VMType::kParallels,
-                                 /*subnet_index=*/1);
-  ASSERT_NE(nullptr, device);
-  EXPECT_EQ("vmtap0", device->tap_device_ifname());
-  EXPECT_EQ(std::nullopt, device->lxd_ipv4_subnet());
-  EXPECT_EQ(std::nullopt, device->lxd_ipv4_address());
-  Mock::VerifyAndClearExpectations(datapath_.get());
-  Mock::VerifyAndClearExpectations(forwarding_service_.get());
-
-  auto it = guest_device_events_.find("vmtap0");
-  ASSERT_NE(guest_device_events_.end(), it);
-  EXPECT_EQ(NetworkDeviceChangedSignal::DEVICE_ADDED, it->second);
-  guest_device_events_.clear();
-
-  // After starting, there should be a virtual device.
-  EXPECT_EQ(device, crostini->GetDevice(vm_id));
-  auto devices = crostini->GetDevices();
-  ASSERT_FALSE(devices.empty());
-  EXPECT_EQ(device, devices[0]);
-
-  // In the abnormal stop and start case, new device is requested to start
-  // before the old device is deleted. In such cases, Parallel reuses the same
-  // vm_id (b/328561458). Crostini service shall stop the previous interface and
-  // start a new interface.
-  EXPECT_CALL(*datapath_, RemoveInterface("vmtap0"));
-  EXPECT_CALL(*datapath_,
-              StopRoutingDevice("vmtap0", TrafficSource::kParallelsVM));
-  EXPECT_CALL(*datapath_,
-              RemoveInboundIPv4DNAT(AutoDNATTarget::kParallels,
-                                    ShillDeviceHasInterfaceName("wlan0"),
-                                    net_base::IPv4Address(100, 115, 93, 2)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                              MulticastForwarder::Direction::kTwoWays));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
-
-  EXPECT_CALL(*datapath_, AddTunTap("", _, _, "crosvm", DeviceMode::kTap))
-      .WillOnce(Return("vmtap0"));
-  EXPECT_CALL(*datapath_, AddIPv4Route).Times(0);
-  EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kParallelsVM, _,
-                                       Eq(std::nullopt), Eq(std::nullopt),
-                                       Eq(std::nullopt)));
-  EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kParallels,
-                                 ShillDeviceHasInterfaceName("wlan0"),
-                                 net_base::IPv4Address(100, 115, 93, 2)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                             Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                               MulticastForwarder::Direction::kTwoWays));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
-
-  auto* device_new = crostini->Start(vm_id, CrostiniService::VMType::kParallels,
-                                     /*subnet_index=*/1);
-  ASSERT_NE(nullptr, device_new);
-  EXPECT_EQ("vmtap0", device_new->tap_device_ifname());
-  EXPECT_EQ(std::nullopt, device_new->lxd_ipv4_subnet());
-  EXPECT_EQ(std::nullopt, device_new->lxd_ipv4_address());
-  Mock::VerifyAndClearExpectations(datapath_.get());
-  Mock::VerifyAndClearExpectations(forwarding_service_.get());
-
-  auto it_new = guest_device_events_.find("vmtap0");
-  ASSERT_NE(guest_device_events_.end(), it_new);
-  EXPECT_EQ(NetworkDeviceChangedSignal::DEVICE_ADDED, it_new->second);
-  guest_device_events_.clear();
-
-  // After restarting, there should be a virtual device.
-  EXPECT_EQ(device_new, crostini->GetDevice(vm_id));
-  auto devices_new = crostini->GetDevices();
-  ASSERT_FALSE(devices_new.empty());
-  EXPECT_EQ(device_new, devices_new[0]);
-}
-
 TEST_F(CrostiniServiceTest, StartStopBruschettaVM) {
   constexpr uint64_t vm_id = 101;
   auto crostini = NewService();
@@ -514,18 +308,15 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   // After starting, there should be a virtual device for that VM.
   ASSERT_EQ(device, crostini->GetDevice(vm_id1));
 
-  // Start Parallels VM.
+  // Start Bruschetta VM.
   EXPECT_CALL(*datapath_, AddTunTap("", _, _, "crosvm", DeviceMode::kTap))
       .WillOnce(Return("vmtap1"));
-  EXPECT_CALL(*datapath_, AddIPv4Route).WillRepeatedly(Return(true));
+  EXPECT_CALL(*datapath_, AddIPv4Route).Times(0);
   EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap1", TrafficSource::kParallelsVM, _,
-                                       Eq(std::nullopt), Eq(std::nullopt),
+              StartRoutingDeviceAsUser("vmtap1", TrafficSource::kBruschettaVM,
+                                       _, Eq(std::nullopt), Eq(std::nullopt),
                                        Eq(std::nullopt)));
-  EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kParallels,
-                                 ShillDeviceHasInterfaceName("wlan0"),
-                                 net_base::IPv4Address(100, 115, 93, 2)));
+  EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
   EXPECT_CALL(
       *forwarding_service_,
       StartIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1",
@@ -537,7 +328,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   EXPECT_CALL(
       *forwarding_service_,
       StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
-  device = crostini->Start(vm_id2, CrostiniService::VMType::kParallels,
+  device = crostini->Start(vm_id2, CrostiniService::VMType::kBruschetta,
                            /*subnet_index=*/0);
   ASSERT_NE(nullptr, device);
   ASSERT_EQ("vmtap1", device->tap_device_ifname());
@@ -592,7 +383,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
     if (dev->tap_device_ifname() == "vmtap0") {
       ASSERT_EQ(CrostiniService::VMType::kTermina, dev->type());
     } else if (dev->tap_device_ifname() == "vmtap1") {
-      ASSERT_EQ(CrostiniService::VMType::kParallels, dev->type());
+      ASSERT_EQ(CrostiniService::VMType::kBruschetta, dev->type());
     } else if (dev->tap_device_ifname() == "vmtap2") {
       ASSERT_EQ(CrostiniService::VMType::kTermina, dev->type());
     } else {
@@ -647,14 +438,11 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   guest_device_events_.clear();
   Mock::VerifyAndClearExpectations(datapath_.get());
 
-  // Stop Parallels VM. Its virtual device is destroyed.
+  // Stop Bruschetta VM. Its virtual device is destroyed.
   EXPECT_CALL(*datapath_, RemoveInterface("vmtap1"));
   EXPECT_CALL(*datapath_,
-              StopRoutingDevice("vmtap1", TrafficSource::kParallelsVM));
-  EXPECT_CALL(*datapath_,
-              RemoveInboundIPv4DNAT(AutoDNATTarget::kParallels,
-                                    ShillDeviceHasInterfaceName("wlan0"),
-                                    net_base::IPv4Address(100, 115, 93, 2)));
+              StopRoutingDevice("vmtap1", TrafficSource::kBruschettaVM));
+  EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT).Times(0);
   EXPECT_CALL(
       *forwarding_service_,
       StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
@@ -678,10 +466,9 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
 TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
   constexpr uint64_t vm_id1 = 101;
   constexpr uint64_t vm_id2 = 102;
-  const auto parallels_addr = net_base::IPv4Address(100, 115, 93, 2);
   auto crostini = NewService();
 
-  // Start a Crostini VM and a Parallels VM.
+  // Start a Crostini VM and a Bruschetta VM.
   EXPECT_CALL(*datapath_, AddIPv4Route).WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_, AddTunTap("", _, _, "crosvm", DeviceMode::kTap))
       .WillOnce(Return("vmtap0"))
@@ -691,8 +478,8 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
                                        Eq(std::nullopt), Eq(std::nullopt),
                                        Eq(std::nullopt)));
   EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap1", TrafficSource::kParallelsVM, _,
-                                       Eq(std::nullopt), Eq(std::nullopt),
+              StartRoutingDeviceAsUser("vmtap1", TrafficSource::kBruschettaVM,
+                                       _, Eq(std::nullopt), Eq(std::nullopt),
                                        Eq(std::nullopt)));
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
   EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
@@ -701,7 +488,7 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
 
   crostini->Start(vm_id1, CrostiniService::VMType::kTermina,
                   /*subnet_index=*/0);
-  crostini->Start(vm_id2, CrostiniService::VMType::kParallels,
+  crostini->Start(vm_id2, CrostiniService::VMType::kBruschetta,
                   /*subnet_index=*/0);
   Mock::VerifyAndClearExpectations(datapath_.get());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
@@ -709,10 +496,7 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
   // A logical default Device is available.
   ShillClient::Device wlan0_dev;
   wlan0_dev.ifname = "wlan0";
-  EXPECT_CALL(
-      *datapath_,
-      AddInboundIPv4DNAT(AutoDNATTarget::kParallels,
-                         ShillDeviceHasInterfaceName("wlan0"), parallels_addr));
+  EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
   EXPECT_CALL(
       *forwarding_service_,
       StartIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
@@ -742,14 +526,8 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
   // The logical default Device changes.
   ShillClient::Device eth0_dev;
   eth0_dev.ifname = "eth0";
-  EXPECT_CALL(*datapath_,
-              RemoveInboundIPv4DNAT(AutoDNATTarget::kParallels,
-                                    ShillDeviceHasInterfaceName("wlan0"),
-                                    parallels_addr));
-  EXPECT_CALL(
-      *datapath_,
-      AddInboundIPv4DNAT(AutoDNATTarget::kParallels,
-                         ShillDeviceHasInterfaceName("eth0"), parallels_addr));
+  EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT).Times(0);
+  EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
   EXPECT_CALL(
       *forwarding_service_,
       StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
@@ -798,10 +576,7 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
   // The logical default Device is not available anymore.
-  EXPECT_CALL(*datapath_,
-              RemoveInboundIPv4DNAT(AutoDNATTarget::kParallels,
-                                    ShillDeviceHasInterfaceName("eth0"),
-                                    parallels_addr));
+  EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT).Times(0);
   EXPECT_CALL(
       *forwarding_service_,
       StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap0"));
@@ -880,36 +655,6 @@ TEST_F(CrostiniServiceTest, ConvertTerminaDevice) {
   EXPECT_EQ(expected_base_cidr.prefix_length(),
             proto_device.ipv4_subnet().prefix_len());
   EXPECT_EQ(NetworkDevice::TERMINA_VM, proto_device.guest_type());
-}
-
-TEST_F(CrostiniServiceTest, ConvertParallelsDevice) {
-  const uint32_t subnet_index = 1;
-  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
-      AddressManager::GuestType::kParallelsVM, subnet_index);
-  auto expected_host_ipv4 =
-      ipv4_subnet->CIDRAtOffset(1)->address().ToInAddr().s_addr;
-  auto expected_guest_ipv4 =
-      ipv4_subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr;
-  auto expected_base_cidr = ipv4_subnet->base_cidr();
-  auto parallels_device = std::make_unique<CrostiniService::CrostiniDevice>(
-      CrostiniService::VMType::kParallels, "vmtap1", std::move(ipv4_subnet),
-      nullptr);
-
-  NetworkDevice proto_device;
-  parallels_device->ConvertToProto(&proto_device);
-  EXPECT_EQ("vmtap1", proto_device.ifname());
-  // Convention for Crostini Devices is to reuse the virtual interface name in
-  // place of the interface name of the upstream network used by ARC Devices.
-  EXPECT_EQ("vmtap1", proto_device.phys_ifname());
-  EXPECT_EQ("", proto_device.guest_ifname());
-  EXPECT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
-  EXPECT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
-  EXPECT_EQ(expected_base_cidr.address(),
-            net_base::IPv4Address::CreateFromBytes(
-                proto_device.ipv4_subnet().addr()));
-  EXPECT_EQ(expected_base_cidr.prefix_length(),
-            proto_device.ipv4_subnet().prefix_len());
-  EXPECT_EQ(NetworkDevice::PARALLELS_VM, proto_device.guest_type());
 }
 
 }  // namespace

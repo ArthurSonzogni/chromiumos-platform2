@@ -82,9 +82,8 @@ TEST_F(ProtoUtilsTest, FillBruschettaAllocationProto) {
   auto ipv4_subnet =
       std::make_unique<Subnet>(bruschetta_ipv4_subnet, base::DoNothing());
 
-  // TODO(b/279994478): Add kBruschetta at VMType.
   CrostiniService::CrostiniDevice bruschetta_device(
-      CrostiniService::VMType::kParallels, "vmtap1", std::move(ipv4_subnet),
+      CrostiniService::VMType::kBruschetta, "vmtap1", std::move(ipv4_subnet),
       nullptr);
 
   BruschettaVmStartupResponse proto;

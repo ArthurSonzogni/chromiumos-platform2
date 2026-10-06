@@ -22,7 +22,6 @@ TEST(AddressManager, BaseAddresses) {
       {GuestType::kArc0, net_base::IPv4Address(100, 115, 92, 0)},
       {GuestType::kArcNet, net_base::IPv4Address(100, 115, 92, 4)},
       {GuestType::kTerminaVM, net_base::IPv4Address(100, 115, 92, 24)},
-      {GuestType::kParallelsVM, net_base::IPv4Address(100, 115, 93, 0)},
       {GuestType::kLXDContainer, net_base::IPv4Address(100, 115, 92, 192)},
       {GuestType::kNetns, net_base::IPv4Address(100, 115, 92, 128)},
   };
@@ -36,9 +35,9 @@ TEST(AddressManager, BaseAddresses) {
 
 TEST(AddressManager, AddressesPerSubnet) {
   std::map<GuestType, size_t> addrs = {
-      {GuestType::kArc0, 2},          {GuestType::kArcNet, 2},
-      {GuestType::kTerminaVM, 2},     {GuestType::kParallelsVM, 6},
-      {GuestType::kLXDContainer, 14}, {GuestType::kNetns, 2},
+      {GuestType::kArc0, 2},      {GuestType::kArcNet, 2},
+      {GuestType::kTerminaVM, 2}, {GuestType::kLXDContainer, 14},
+      {GuestType::kNetns, 2},
   };
   AddressManager mgr;
   for (const auto a : addrs) {
@@ -50,11 +49,8 @@ TEST(AddressManager, AddressesPerSubnet) {
 
 TEST(AddressManager, SubnetsPerPool) {
   std::map<GuestType, size_t> addrs = {
-      {GuestType::kArc0, 1},
-      {GuestType::kArcNet, 5},
-      {GuestType::kTerminaVM, 10},
-      {GuestType::kParallelsVM, 32},
-      {GuestType::kLXDContainer, 4 + 4},
+      {GuestType::kArc0, 1},       {GuestType::kArcNet, 5},
+      {GuestType::kTerminaVM, 10}, {GuestType::kLXDContainer, 4 + 4},
       {GuestType::kNetns, 16},
   };
   AddressManager mgr;
@@ -105,7 +101,7 @@ TEST(AddressManager, SubnetIndexing) {
   EXPECT_EQ(nullptr, mgr.AllocateIPv4Subnet(GuestType::kTerminaVM, 1));
   EXPECT_EQ(nullptr, mgr.AllocateIPv4Subnet(GuestType::kLXDContainer, 1));
   EXPECT_EQ(nullptr, mgr.AllocateIPv4Subnet(GuestType::kNetns, 1));
-  EXPECT_NE(nullptr, mgr.AllocateIPv4Subnet(GuestType::kParallelsVM, 1));
+  EXPECT_EQ(nullptr, mgr.AllocateIPv4Subnet(GuestType::kParallelsVM, 1));
 }
 
 TEST(AddressManager, StableMacAddresses) {

@@ -165,9 +165,6 @@ const CrostiniService::CrostiniDevice* CrostiniService::Start(
   if (adb_sideloading_enabled_) {
     StartAdbPortForwarding(dev->tap_device_ifname());
   }
-  if (vm_type == VMType::kParallels) {
-    StartAutoDNAT(dev.get());
-  }
 
   LOG(INFO) << __func__ << " " << vm_info << ": VM network service started on "
             << dev->tap_device_ifname()
@@ -208,9 +205,6 @@ void CrostiniService::Stop(uint64_t vm_id) {
   datapath_->StopRoutingDevice(tap_ifname, TrafficSourceFromVMType(vm_type));
   if (adb_sideloading_enabled_) {
     StopAdbPortForwarding(tap_ifname);
-  }
-  if (vm_type == VMType::kParallels) {
-    StopAutoDNAT(it->second.get());
   }
   datapath_->RemoveInterface(tap_ifname);
   devices_.erase(it);
@@ -388,25 +382,10 @@ void CrostiniService::OnShillDefaultLogicalDeviceChanged(
     }
   }
 
-  // b/197930417: Update Auto DNAT rules if a Parallels VM is running.
-  const CrostiniDevice* parallels_device = nullptr;
-  for (const auto& [_, dev] : devices_) {
-    if (dev->type() == VMType::kParallels) {
-      parallels_device = dev.get();
-      break;
-    }
-  }
-
-  if (parallels_device) {
-    StopAutoDNAT(parallels_device);
-  }
   if (new_device) {
     default_logical_device_ = *new_device;
   } else {
     default_logical_device_ = std::nullopt;
-  }
-  if (parallels_device) {
-    StartAutoDNAT(parallels_device);
   }
 }
 

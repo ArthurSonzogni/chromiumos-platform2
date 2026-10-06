@@ -99,9 +99,6 @@ class BRILLO_EXPORT AddressManager {
   // All subnet pools used for guest that do not require any specific subnet.
   // Allocation is automatic.
   std::map<GuestType, std::unique_ptr<SubnetPool>> pools_;
-  // Separate subnet pool for Parallel VMs which require allocating subnets at
-  // specific offsets.
-  std::unique_ptr<SubnetPool> parallels_pool_;
   // Separate subnet pool used for LXD containers as a fallback when the first
   // pool is exhausted.
   std::unique_ptr<SubnetPool> lxd_fallback_pool_;
