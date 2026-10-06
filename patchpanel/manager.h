@@ -82,13 +82,6 @@ class Manager : public ForwardingService {
   // Handles notification indicating a Termina VM is spinning down.
   void TerminaVmShutdown(uint64_t vm_id);
 
-  // Handles notification indicating a Parallels VM is booting up.
-  const CrostiniService::CrostiniDevice* const ParallelsVmStartup(
-      uint64_t vm_id, uint32_t subnet_index);
-
-  // Handles notification indicating a Parallels VM is spinning down.
-  void ParallelsVmShutdown(uint64_t vm_id);
-
   // Handles notification indicating a Bruschetta VM is booting up.
   const CrostiniService::CrostiniDevice* const BruschettaVmStartup(
       uint64_t vm_id);

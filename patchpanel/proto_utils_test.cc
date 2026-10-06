@@ -72,30 +72,6 @@ TEST_F(ProtoUtilsTest, FillTerminaAllocationProto) {
             proto.container_ipv4_subnet().prefix_len());
 }
 
-TEST_F(ProtoUtilsTest, FillParallelsAllocationProto) {
-  const uint32_t subnet_index = 0;
-  const auto parallels_ipv4_subnet =
-      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29");
-  const auto parallels_ipv4_address =
-      *net_base::IPv4Address::CreateFromString("100.115.93.2");
-
-  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
-      AddressManager::GuestType::kParallelsVM, subnet_index);
-  auto parallels_device = std::make_unique<CrostiniService::CrostiniDevice>(
-      CrostiniService::VMType::kParallels, "vmtap1", std::move(ipv4_subnet),
-      nullptr);
-
-  ParallelsVmStartupResponse proto;
-  FillParallelsAllocationProto(*parallels_device, &proto);
-  ASSERT_EQ("vmtap1", proto.tap_device_ifname());
-  EXPECT_EQ(parallels_ipv4_address,
-            net_base::IPv4Address::CreateFromBytes(proto.ipv4_address()));
-  EXPECT_EQ(parallels_ipv4_subnet.address(),
-            net_base::IPv4Address::CreateFromBytes(proto.ipv4_subnet().addr()));
-  EXPECT_EQ(parallels_ipv4_subnet.prefix_length(),
-            proto.ipv4_subnet().prefix_len());
-}
-
 TEST_F(ProtoUtilsTest, FillBruschettaAllocationProto) {
   const auto bruschetta_ipv4_subnet =
       *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29");

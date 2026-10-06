@@ -205,38 +205,6 @@ class StubPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
       base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms) override {}
 
-  bool ParallelsVmShutdown(
-      const patchpanel::ParallelsVmShutdownRequest& in_request,
-      patchpanel::ParallelsVmShutdownResponse* out_response,
-      brillo::ErrorPtr* error,
-      int timeout_ms) override {
-    return false;
-  }
-
-  void ParallelsVmShutdownAsync(
-      const patchpanel::ParallelsVmShutdownRequest& in_request,
-      base::OnceCallback<
-          void(const patchpanel::ParallelsVmShutdownResponse& /*response*/)>
-          success_callback,
-      base::OnceCallback<void(brillo::Error*)> error_callback,
-      int timeout_ms) override {}
-
-  bool ParallelsVmStartup(
-      const patchpanel::ParallelsVmStartupRequest& in_request,
-      patchpanel::ParallelsVmStartupResponse* out_response,
-      brillo::ErrorPtr* error,
-      int timeout_ms) override {
-    return false;
-  }
-
-  void ParallelsVmStartupAsync(
-      const patchpanel::ParallelsVmStartupRequest& in_request,
-      base::OnceCallback<
-          void(const patchpanel::ParallelsVmStartupResponse& /*response*/)>
-          success_callback,
-      base::OnceCallback<void(brillo::Error*)> error_callback,
-      int timeout_ms) override {}
-
   bool BruschettaVmShutdown(
       const patchpanel::BruschettaVmShutdownRequest& in_request,
       patchpanel::BruschettaVmShutdownResponse* out_response,
@@ -491,22 +459,6 @@ class MockPatchPanelProxy : public StubPatchPanelProxy {
               (const ConnectNamespaceRequest&,
                const base::ScopedFD&,
                ConnectNamespaceResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(bool,
-              ParallelsVmShutdown,
-              (const ParallelsVmShutdownRequest&,
-               ParallelsVmShutdownResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(bool,
-              ParallelsVmStartup,
-              (const ParallelsVmStartupRequest&,
-               ParallelsVmStartupResponse*,
                brillo::ErrorPtr*,
                int),
               (override));

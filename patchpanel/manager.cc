@@ -585,21 +585,6 @@ void Manager::TerminaVmShutdown(uint64_t vm_id) {
   StopCrosVm(vm_id, CrostiniService::VMType::kTermina);
 }
 
-const CrostiniService::CrostiniDevice* const Manager::ParallelsVmStartup(
-    uint64_t vm_id, uint32_t subnet_index) {
-  const auto* guest_device =
-      StartCrosVm(vm_id, CrostiniService::VMType::kParallels, subnet_index);
-  if (!guest_device) {
-    LOG(ERROR) << "Failed to start Parallels VM network service";
-    return nullptr;
-  }
-  return guest_device;
-}
-
-void Manager::ParallelsVmShutdown(uint64_t vm_id) {
-  StopCrosVm(vm_id, CrostiniService::VMType::kParallels);
-}
-
 const CrostiniService::CrostiniDevice* const Manager::BruschettaVmStartup(
     uint64_t vm_id) {
   const auto* guest_device =

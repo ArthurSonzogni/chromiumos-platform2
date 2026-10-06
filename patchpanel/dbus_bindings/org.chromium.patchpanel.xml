@@ -171,30 +171,6 @@
       </arg>
     </method>
 
-    <method name="ParallelsVmShutdown">
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ParallelsVmShutdownRequest" />
-      </arg>
-      <arg name="response" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ParallelsVmShutdownResponse" />
-      </arg>
-    </method>
-
-    <method name="ParallelsVmStartup">
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ParallelsVmStartupRequest" />
-      </arg>
-      <arg name="response" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ParallelsVmStartupResponse" />
-      </arg>
-    </method>
-
     <method name="BruschettaVmShutdown">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">

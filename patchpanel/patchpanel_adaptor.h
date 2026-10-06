@@ -74,10 +74,6 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
       const TrafficCountersRequest& request) const override;
   ModifyPortRuleResponse ModifyPortRule(
       const ModifyPortRuleRequest& request) override;
-  ParallelsVmShutdownResponse ParallelsVmShutdown(
-      const ParallelsVmShutdownRequest& request) override;
-  ParallelsVmStartupResponse ParallelsVmStartup(
-      const ParallelsVmStartupRequest& request) override;
   BruschettaVmShutdownResponse BruschettaVmShutdown(
       const BruschettaVmShutdownRequest& request) override;
   BruschettaVmStartupResponse BruschettaVmStartup(

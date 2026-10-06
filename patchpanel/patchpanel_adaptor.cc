@@ -254,45 +254,6 @@ ModifyPortRuleResponse PatchpanelAdaptor::ModifyPortRule(
   return response;
 }
 
-ParallelsVmShutdownResponse PatchpanelAdaptor::ParallelsVmShutdown(
-    const ParallelsVmShutdownRequest& request) {
-  LOG(INFO) << "Parallels VM shutting down";
-  RecordDbusEvent(DbusUmaEvent::kParallelsVmShutdown);
-
-  manager_->ParallelsVmShutdown(request.id());
-
-  RecordDbusEvent(DbusUmaEvent::kParallelsVmShutdownSuccess);
-  return {};
-}
-
-ParallelsVmStartupResponse PatchpanelAdaptor::ParallelsVmStartup(
-    const ParallelsVmStartupRequest& request) {
-  const int subnet_index = request.subnet_index();
-  const uint64_t vm_id = request.id();
-  LOG(INFO) << __func__ << "(cid: " << vm_id
-            << ", subnet_index: " << subnet_index << ")";
-  RecordDbusEvent(DbusUmaEvent::kParallelsVmStartup);
-
-  if (subnet_index < 0) {
-    LOG(ERROR) << __func__ << "(cid: " << vm_id
-               << ", subnet_index: " << subnet_index
-               << "): Invalid subnet index";
-    return {};
-  }
-  const auto* const parallels_device =
-      manager_->ParallelsVmStartup(vm_id, static_cast<uint32_t>(subnet_index));
-  if (!parallels_device) {
-    LOG(ERROR) << __func__ << "(cid: " << vm_id
-               << ", subnet_index: " << subnet_index
-               << "): Failed to create virtual Device";
-    return {};
-  }
-  ParallelsVmStartupResponse response;
-  FillParallelsAllocationProto(*parallels_device, &response);
-  RecordDbusEvent(DbusUmaEvent::kParallelsVmStartupSuccess);
-  return response;
-}
-
 BruschettaVmShutdownResponse PatchpanelAdaptor::BruschettaVmShutdown(
     const BruschettaVmShutdownRequest& request) {
   LOG(INFO) << "Bruschetta VM shutting down";

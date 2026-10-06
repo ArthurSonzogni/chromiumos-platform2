@@ -27,12 +27,6 @@ void FillTerminaAllocationProto(
     const CrostiniService::CrostiniDevice& termina_device,
     TerminaVmStartupResponse* output);
 
-// Fills a protobuf ParallelsVmStartupResponse object with the given
-// |parallels_device| Device.
-void FillParallelsAllocationProto(
-    const CrostiniService::CrostiniDevice& parallels_device,
-    ParallelsVmStartupResponse* output);
-
 // Fills a protobuf BruschettaVmStartupResponse object with the given
 // |Bruschetta_device| Device.
 void FillBruschettaAllocationProto(

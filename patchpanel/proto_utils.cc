@@ -32,15 +32,6 @@ void FillTerminaAllocationProto(
       termina_device.lxd_ipv4_address()->ToByteString());
 }
 
-void FillParallelsAllocationProto(
-    const CrostiniService::CrostiniDevice& parallels_device,
-    ParallelsVmStartupResponse* output) {
-  output->set_tap_device_ifname(parallels_device.tap_device_ifname());
-  FillSubnetProto(parallels_device.vm_ipv4_subnet(),
-                  output->mutable_ipv4_subnet());
-  output->set_ipv4_address(parallels_device.vm_ipv4_address().ToByteString());
-}
-
 void FillBruschettaAllocationProto(
     const CrostiniService::CrostiniDevice& bruschetta_device,
     BruschettaVmStartupResponse* output) {

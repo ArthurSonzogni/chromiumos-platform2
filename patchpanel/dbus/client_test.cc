@@ -163,16 +163,12 @@ TEST_F(ClientTest, NotifyParallelsVmStartup) {
   const uint64_t id = 5;
   const int subnet_index = 4;
 
-  EXPECT_CALL(*pp_proxy_, ParallelsVmStartup(_, _, _, _)).Times(0);
-
   auto result = client_->NotifyParallelsVmStartup(id, subnet_index);
   EXPECT_FALSE(result.has_value());
 }
 
 TEST_F(ClientTest, NotifyParallelsVmShutdown) {
   const uint64_t id = 5;
-
-  EXPECT_CALL(*pp_proxy_, ParallelsVmShutdown(_, _, _, _)).Times(0);
 
   const bool result = client_->NotifyParallelsVmShutdown(id);
   EXPECT_FALSE(result);

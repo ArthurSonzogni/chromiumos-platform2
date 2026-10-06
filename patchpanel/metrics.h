@@ -66,10 +66,10 @@ enum class DbusUmaEvent {
   kTerminaVmStartupSuccess = 10,
   kTerminaVmShutdown = 11,
   kTerminaVmShutdownSuccess = 12,
-  kParallelsVmStartup = 13,
-  kParallelsVmStartupSuccess = 14,
-  kParallelsVmShutdown = 15,
-  kParallelsVmShutdownSuccess = 16,
+  kParallelsVmStartup = 13,          // Deprecated
+  kParallelsVmStartupSuccess = 14,   // Deprecated
+  kParallelsVmShutdown = 15,         // Deprecated
+  kParallelsVmShutdownSuccess = 16,  // Deprecated
   kTagSocket = 17,
   kTagSocketSuccess = 18,
   kConnectNamespace = 19,
