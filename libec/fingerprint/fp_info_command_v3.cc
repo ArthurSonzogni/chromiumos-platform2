@@ -57,11 +57,16 @@ std::vector<SensorImage> FpInfoCommand_v3::sensor_image() {
        static_cast<uint32_t>(frames.size())});
 
   for (const auto& frame : frames.first(count)) {
+    // b/569733038: Passing `frame.image_data_offset_bytes` directly to
+    // std::optional's constructor binds a reference to a packed struct member,
+    // which results in undefined behavior if `frame` isn't suitably aligned.
+    // Copy into a local to guarantee correct alignment.
+    const uint32_t image_data_offset_bytes = frame.image_data_offset_bytes;
     sensor_image_.emplace_back(SensorImage{
         .width = frame.width,
         .height = frame.height,
         .frame_size = frame.frame_size,
-        .image_data_offset_bytes = frame.image_data_offset_bytes,
+        .image_data_offset_bytes = image_data_offset_bytes,
         .pixel_format = frame.pixel_format,
         .bpp = frame.bpp,
         .fp_capture_type =
