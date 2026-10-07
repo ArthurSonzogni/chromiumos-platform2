@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -147,7 +148,7 @@ bool PortTracker::RevokeTcpPortAccess(uint16_t port, const std::string& iface) {
       .input_dst_port = port,
       .input_ifname = iface,
   };
-  return RevokePortRule(key);
+  return RevokePortRule(key, kAccessRule);
 }
 
 bool PortTracker::RevokeUdpPortAccess(uint16_t port, const std::string& iface) {
@@ -156,7 +157,7 @@ bool PortTracker::RevokeUdpPortAccess(uint16_t port, const std::string& iface) {
       .input_dst_port = port,
       .input_ifname = iface,
   };
-  return RevokePortRule(key);
+  return RevokePortRule(key, kAccessRule);
 }
 
 bool PortTracker::AddPortRule(const PortRule& rule, int dbus_fd) {
@@ -219,7 +220,7 @@ void PortTracker::RevokeAllPortRules() {
     all_rules.push_back(kv.second);
   }
   for (const PortRuleKey& key : all_rules) {
-    RevokePortRule(key);
+    RevokePortRule(key, std::nullopt);
   }
 
   CHECK(!HasActiveRules()) << "Failed to revoke all port rules";
@@ -241,7 +242,7 @@ bool PortTracker::ReleaseLoopbackTcpPort(uint16_t port) {
       .input_dst_port = port,
       .input_ifname = kLocalhost,
   };
-  return RevokePortRule(key);
+  return RevokePortRule(key, kLockdownRule);
 }
 
 bool PortTracker::StartTcpPortForwarding(uint16_t input_dst_port,
@@ -283,7 +284,7 @@ bool PortTracker::StopTcpPortForwarding(uint16_t input_dst_port,
       .input_dst_port = input_dst_port,
       .input_ifname = input_ifname,
   };
-  return RevokePortRule(key);
+  return RevokePortRule(key, kForwardingRule);
 }
 
 bool PortTracker::StopUdpPortForwarding(uint16_t input_dst_port,
@@ -293,7 +294,7 @@ bool PortTracker::StopUdpPortForwarding(uint16_t input_dst_port,
       .input_dst_port = input_dst_port,
       .input_ifname = input_ifname,
   };
-  return RevokePortRule(key);
+  return RevokePortRule(key, kForwardingRule);
 }
 
 bool PortTracker::ValidatePortRule(const PortRule& rule) {
@@ -371,7 +372,7 @@ void PortTracker::OnFileDescriptorReadable(int fd) {
     LOG(ERROR) << "File descriptor " << fd << " was not being tracked";
     DeleteLifelineFd(fd);
   } else {
-    if (!RevokePortRule(lifeline_fds_[fd])) {
+    if (!RevokePortRule(lifeline_fds_[fd], std::nullopt)) {
       DeleteLifelineFd(fd);
     }
   }
@@ -415,13 +416,21 @@ bool PortTracker::HasActiveRules() {
   return !lifeline_fds_.empty();
 }
 
-bool PortTracker::RevokePortRule(const PortRuleKey key) {
-  if (port_rules_.find(key) == port_rules_.end()) {
+bool PortTracker::RevokePortRule(const PortRuleKey key,
+                                 std::optional<PortRuleType> expected_type) {
+  const auto iter = port_rules_.find(key);
+  if (iter == port_rules_.end()) {
     LOG(ERROR) << "No port rule found for " << key;
     return false;
   }
 
-  PortRule rule = port_rules_[key];
+  PortRule rule = iter->second;
+  if (expected_type.has_value() && rule.type != *expected_type) {
+    LOG(ERROR) << "Cannot revoke " << RuleTypeName(rule.type) << " as "
+               << RuleTypeName(*expected_type) << " for " << key;
+    return false;
+  }
+
   bool deleted = DeleteLifelineFd(rule.lifeline_fd);
   if (!deleted) {
     LOG(ERROR) << "Failed to delete watcher for file descriptor "

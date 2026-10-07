@@ -8,6 +8,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -117,9 +118,12 @@ class PortTracker {
   bool AddPortRule(const PortRule& rule, int dbus_fd);
   bool ValidatePortRule(const PortRule& rule);
 
-  // Revoke port rule keyed by |key|. Create a copy of |key| to prevent
-  // accidentally deleting |key| through |lifeline_fds_| or |port_rules_|.
-  bool RevokePortRule(const PortRuleKey key);
+  // Revoke the port rule keyed by |key| if its type matches |expected_type|
+  // (or unconditionally if |expected_type| is std::nullopt).
+  // Create a copy of |key| to prevent accidentally deleting |key| through
+  // |lifeline_fds_| or |port_rules_|.
+  bool RevokePortRule(const PortRuleKey key,
+                      std::optional<PortRuleType> expected_type);
 
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
 

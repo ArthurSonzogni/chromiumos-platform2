@@ -288,6 +288,28 @@ TEST_F(PortTrackerTest, ReleaseLoopbackTcpPort_EpollFailure) {
   ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
 
+TEST_F(PortTrackerTest, LockdownCannotBeRevokedByOtherRuleTypeApis) {
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd))
+      .WillOnce(Return(tracked_fd));
+  EXPECT_CALL(port_tracker_, ModifyPortRule(_, _)).WillOnce(Return(true));
+  ASSERT_TRUE(port_tracker_.LockDownLoopbackTcpPort(tcp_port, dbus_fd));
+  ASSERT_TRUE(port_tracker_.HasActiveRules());
+  testing::Mock::VerifyAndClearExpectations(&port_tracker_);
+
+  EXPECT_CALL(port_tracker_, DeleteLifelineFd(_)).Times(0);
+  EXPECT_CALL(port_tracker_, ModifyPortRule(_, _)).Times(0);
+  EXPECT_FALSE(port_tracker_.RevokeTcpPortAccess(tcp_port, "lo"));
+  EXPECT_FALSE(port_tracker_.StopTcpPortForwarding(tcp_port, "lo"));
+  EXPECT_TRUE(port_tracker_.HasActiveRules());
+  testing::Mock::VerifyAndClearExpectations(&port_tracker_);
+
+  EXPECT_CALL(port_tracker_, DeleteLifelineFd(tracked_fd))
+      .WillOnce(Return(true));
+  EXPECT_CALL(port_tracker_, ModifyPortRule(_, _)).WillOnce(Return(true));
+  EXPECT_TRUE(port_tracker_.ReleaseLoopbackTcpPort(tcp_port));
+  EXPECT_FALSE(port_tracker_.HasActiveRules());
+}
+
 TEST_F(PortTrackerTest, StartPortForwarding_BaseSuccessCase) {
   EXPECT_CALL(port_tracker_, ModifyPortRule(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(5));
