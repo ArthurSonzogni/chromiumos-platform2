@@ -357,6 +357,7 @@ class CellularCapability3gpp {
   FRIEND_TEST(CellularCapability3gppTest, ProfilesChanged);
   FRIEND_TEST(CellularCapability3gppTest, ProfilesChangedIgnoreUser);
   FRIEND_TEST(CellularCapability3gppTest, ProfilesChangedIgnoreByType);
+  FRIEND_TEST(CellularCapability3gppTest, ProfilesChangedResumeAttachApnRetry);
   FRIEND_TEST(CellularCapability3gppTest, PropertiesChanged);
   FRIEND_TEST(CellularCapability3gppTest, SignalPropertiesChanged);
   FRIEND_TEST(CellularCapability3gppTest, Reset);
@@ -606,6 +607,9 @@ class CellularCapability3gpp {
   // requests.
   bool pending_non_user_attach_request_ = false;
   bool deferred_fallback_attach_needed_ = true;
+  // Set when |StopModem| cancels an active |try_next_attach_apn_callback_| so
+  // the attach APN retry can be resumed when the modem restarts.
+  bool attach_apn_retry_cancelled_on_stop_ = false;
   // The value is true while the dbus call to set the initial EPS bearer
   // settings is in progress.
   bool is_set_initial_eps_bearer_settings_in_progress_ = false;
@@ -628,7 +632,8 @@ class CellularCapability3gpp {
   // needs to try all of them until the UE is registered in the network.
   base::CancelableOnceClosure try_next_attach_apn_callback_;
 
-  base::WeakPtrFactory<CellularCapability3gpp> sim_request_weak_ptr_factory_{this};
+  base::WeakPtrFactory<CellularCapability3gpp> sim_request_weak_ptr_factory_{
+      this};
   base::WeakPtrFactory<CellularCapability3gpp> weak_ptr_factory_{this};
 };
 

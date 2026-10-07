@@ -1700,6 +1700,83 @@ TEST_F(CellularCapability3gppTest, ProfilesChangedIgnoreByType) {
   EXPECT_EQ(1, std::ranges::count(*capability_->profiles_, expected_profile4));
 }
 
+TEST_F(CellularCapability3gppTest, ProfilesChangedResumeAttachApnRetry) {
+  mm1::MockModemProxy* modem_proxy = modem_proxy_.get();
+  EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
+  InitProxies();
+
+  constexpr char kApn1[] = "internet";
+  brillo::VariantDictionary profile1;
+  profile1[CellularBearer::kMMApnTypeProperty] =
+      static_cast<uint32_t>(MM_BEARER_APN_TYPE_DEFAULT);
+  profile1[CellularBearer::kMMApnProperty] = std::string(kApn1);
+
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown())
+      .Times(AtLeast(1));
+  capability_->OnProfilesChanged({profile1});
+  Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
+
+  // Simulate an active attach APN retry timer with remaining candidate APNs.
+  Stringmap current_apn;
+  current_apn[kApnProperty] = "attach_apn_1";
+  Stringmap next_apn;
+  next_apn[kApnProperty] = "attach_apn_2";
+  Stringmap fallback_apn;
+  fallback_apn[kApnProperty] = "attach_apn_3";
+  capability_->attach_apn_try_list_.push_back(current_apn);
+  capability_->attach_apn_try_list_.push_back(next_apn);
+  capability_->attach_apn_try_list_.push_back(fallback_apn);
+  capability_->ScheduleNextAttach(Error(Error::kSuccess));
+  EXPECT_EQ(2u, capability_->attach_apn_try_list_.size());
+  EXPECT_FALSE(capability_->try_next_attach_apn_callback_.IsCancelled());
+  EXPECT_FALSE(capability_->attach_apn_retry_cancelled_on_stop_);
+
+  // Stopping the modem cancels the active attach APN retry timer and records
+  // that it was interrupted by StopModem.
+  EXPECT_CALL(*modem_proxy,
+              SetPowerState(MM_MODEM_POWER_STATE_LOW, _,
+                            CellularCapability3gpp::kTimeoutSetPowerState))
+      .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeSetPowerState));
+  Error error;
+  StopModem(&error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(capability_->try_next_attach_apn_callback_.IsCancelled());
+  EXPECT_TRUE(capability_->attach_apn_retry_cancelled_on_stop_);
+
+  // Re-initialize proxies as StartModem() would before listing profiles.
+  modem_3gpp_proxy_ =
+      std::make_unique<NiceMock<mm1::MockModemModem3gppProxy>>();
+  modem_3gpp_profile_manager_proxy_ =
+      std::make_unique<NiceMock<mm1::MockModemModem3gppProfileManagerProxy>>();
+  modem_proxy_ = std::make_unique<mm1::MockModemProxy>();
+  mm1::MockModemModem3gppProxy* modem_3gpp_proxy = modem_3gpp_proxy_.get();
+  EXPECT_CALL(*modem_proxy_, set_state_changed_callback(_));
+  InitProxies();
+
+  // When the modem restarts (e.g. after system resume) and reports the same
+  // profile list while still unregistered, SetNextAttachApn() should be
+  // invoked immediately to try the next candidate APN ("attach_apn_2") and
+  // schedule the timer for the remaining APN ("attach_apn_3").
+  ResultCallback set_callback;
+  EXPECT_CALL(*modem_3gpp_proxy,
+              SetInitialEpsBearerSettings(HasApn("attach_apn_2"), _))
+      .WillOnce(
+          WithArg<1>([&](ResultCallback cb) { set_callback = std::move(cb); }));
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown()).Times(0);
+  capability_->OnProfilesChanged({profile1});
+  EXPECT_FALSE(capability_->attach_apn_retry_cancelled_on_stop_);
+  ASSERT_FALSE(set_callback.is_null());
+  std::move(set_callback).Run(Error(Error::kSuccess));
+  EXPECT_EQ(1u, capability_->attach_apn_try_list_.size());
+  EXPECT_FALSE(capability_->try_next_attach_apn_callback_.IsCancelled());
+
+  // Subsequent unchanged OnProfilesChanged calls should not re-trigger.
+  EXPECT_CALL(*modem_3gpp_proxy, SetInitialEpsBearerSettings(_, _)).Times(0);
+  capability_->try_next_attach_apn_callback_.Cancel();
+  capability_->OnProfilesChanged({profile1});
+  EXPECT_TRUE(capability_->try_next_attach_apn_callback_.IsCancelled());
+}
+
 TEST_F(CellularCapability3gppTest, SetInitialEpsBearer) {
   constexpr char kTestApn[] = "test_apn";
   KeyValueStore properties;
@@ -2781,21 +2858,24 @@ TEST_F(CellularCapability3gppTest, DropStaleSimPropertiesReplies) {
   sim_properties2.Set<std::string>(MM_SIM_PROPERTY_EID, kEid2);
   SetSimProperties(kSimPath2, sim_properties2);
 
-  // Issue first UpdateSims with 2 slots, but DO NOT dispatch pending events yet.
+  // Issue first UpdateSims with 2 slots, but DO NOT dispatch pending events
+  // yet.
   KeyValueStore modem_properties1;
   modem_properties1.Set<RpcIdentifier>(MM_MODEM_PROPERTY_SIM, kSimPath1);
   RpcIdentifiers slots1 = {kSimPath1, kSimPath2};
   modem_properties1.Set<RpcIdentifiers>(MM_MODEM_PROPERTY_SIMSLOTS, slots1);
   capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties1);
 
-  // Issue second UpdateSims with only 1 slot before first set of callbacks dispatch.
+  // Issue second UpdateSims with only 1 slot before first set of callbacks
+  // dispatch.
   KeyValueStore modem_properties2;
   modem_properties2.Set<RpcIdentifier>(MM_MODEM_PROPERTY_SIM, kSimPath1);
   RpcIdentifiers slots2 = {kSimPath1};
   modem_properties2.Set<RpcIdentifiers>(MM_MODEM_PROPERTY_SIMSLOTS, slots2);
   capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties2);
 
-  // Dispatch all events. First run's callbacks should be dropped (invalidated weak ptr).
+  // Dispatch all events. First run's callbacks should be dropped (invalidated
+  // weak ptr).
   dispatcher_.DispatchPendingEvents();
 
   const KeyValueStores& sim_slot_info = cellular_->sim_slot_info_for_testing();
@@ -2822,7 +2902,8 @@ TEST_F(CellularCapability3gppTest, GetSimPropertiesFailed) {
   capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties);
   dispatcher_.DispatchPendingEvents();
 
-  // OnAllSimPropertiesReceived should still be called despite kSimPath2 failing.
+  // OnAllSimPropertiesReceived should still be called despite kSimPath2
+  // failing.
   const KeyValueStores& sim_slot_info = cellular_->sim_slot_info_for_testing();
   ASSERT_EQ(2u, sim_slot_info.size());
   EXPECT_EQ(sim_slot_info[0].Get<std::string>(kSIMSlotInfoICCID), kIccid1);

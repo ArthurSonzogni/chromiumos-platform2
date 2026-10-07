@@ -527,6 +527,7 @@ void CellularCapability3gpp::StopModem(ResultCallback callback) {
   }
   if (!try_next_attach_apn_callback_.IsCancelled()) {
     try_next_attach_apn_callback_.Cancel();
+    attach_apn_retry_cancelled_on_stop_ = true;
     SLOG(this, 2) << __func__ << " Cancelled next attach APN retry.";
   }
   pending_non_user_attach_request_ = false;
@@ -1977,7 +1978,8 @@ void CellularCapability3gpp::UpdateSims() {
   LOG(INFO) << __func__ << " Sim path: " << sim_path_.value()
             << " SimSlots: " << sim_slots_.size();
 
-  // Invalidate any in-flight SIM property requests from previous UpdateSims() runs.
+  // Invalidate any in-flight SIM property requests from previous UpdateSims()
+  // runs.
   sim_request_weak_ptr_factory_.InvalidateWeakPtrs();
 
   // Clear current properties and requests.
@@ -2042,7 +2044,8 @@ void CellularCapability3gpp::OnAllSimPropertiesReceived() {
     if (slot >= num_slots) {
       // A late GetAll reply may carry a slot index bound before |sim_slots_|
       // was shrunk by a subsequent PropertiesChanged(SimSlots). Drop it.
-      LOG(WARNING) << __func__ << ": stale slot " << slot << " >= " << num_slots;
+      LOG(WARNING) << __func__ << ": stale slot " << slot
+                   << " >= " << num_slots;
       continue;
     }
     sim_slot_properties[slot] = iter.second;
@@ -2349,13 +2352,21 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
     profiles_->push_back(std::move(apn_info));
   }
 
-  // Ignore if the built profiles are the same as the ones we already had.
+  // When the built profiles are the same as the ones we already had, check
+  // if there is APN retry being interrupted by modem stop. If so and the modem
+  // is not registered yet, continue to try the remaining APN(s).
   // The first time we receive a profile list (|old_profiles| would be unset)
   // must never be ignored, because we rely on it to set the initial EPS bearer
   // settings at least once.
   // We don't care about the order of the list at this point.
   if (old_profiles && *profiles_ == *old_profiles) {
     LOG(INFO) << "No update in stored profiles";
+    if (attach_apn_retry_cancelled_on_stop_ && !IsRegistered() &&
+        !attach_apn_try_list_.empty()) {
+      attach_apn_retry_cancelled_on_stop_ = false;
+      SLOG(this, 2) << "Resuming deferred Attach APN retry after modem start";
+      SetNextAttachApn();
+    }
     return;
   }
 
@@ -2397,6 +2408,7 @@ void CellularCapability3gpp::DelayedFallbackAttach() {
 void CellularCapability3gpp::ConfigureAttachApn(bool user_triggered) {
   SLOG(this, 3) << __func__;
   deferred_fallback_attach_needed_ = false;
+  attach_apn_retry_cancelled_on_stop_ = false;
   // Set the new parameters for the initial EPS bearer (e.g. LTE Attach APN)
   // An empty list will result on clearing the Attach APN by |SetNextAttachApn|
   attach_apn_try_list_ = cellular()->BuildAttachApnTryList();
@@ -2491,10 +2503,12 @@ void CellularCapability3gpp::On3gppRegistrationChanged(
   SLOG(this, 3) << "opercode=" << operator_code
                 << ", opername=" << operator_name;
 
-  if (IsRegisteredState(state) &&
-      !try_next_attach_apn_callback_.IsCancelled()) {
-    SLOG(this, 2) << "Modem is registered. Cancelling next attach APN try.";
-    try_next_attach_apn_callback_.Cancel();
+  if (IsRegisteredState(state)) {
+    attach_apn_retry_cancelled_on_stop_ = false;
+    if (!try_next_attach_apn_callback_.IsCancelled()) {
+      SLOG(this, 2) << "Modem is registered. Cancelling next attach APN try.";
+      try_next_attach_apn_callback_.Cancel();
+    }
   }
 
   if (IsRegisteredState(state) && cellular()->service()) {
@@ -2862,9 +2876,9 @@ void CellularCapability3gpp::RequestSimProperties(size_t slot,
 }
 
 void CellularCapability3gpp::OnGetSimPropertiesFailed(RpcIdentifier sim_path,
-                                                       const Error& error) {
-  LOG(ERROR) << "Error fetching SIM properties for " << sim_path.value()
-             << ": " << error;
+                                                      const Error& error) {
+  LOG(ERROR) << "Error fetching SIM properties for " << sim_path.value() << ": "
+             << error;
   pending_sim_requests_.erase(sim_path);
   if (pending_sim_requests_.empty()) {
     OnAllSimPropertiesReceived();
