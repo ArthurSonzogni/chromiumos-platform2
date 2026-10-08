@@ -7,7 +7,9 @@
 #include <syslog.h>
 #include <unistd.h>
 
+#include <mutex>  // NOLINT(build/c++11)
 #include <string>
+#include <utility>
 
 // syslog.h and base/logging.h both try to #define LOG_INFO and LOG_WARNING.
 // We need to #undef at least these two before including base/logging.h.  The
@@ -28,12 +30,20 @@ const int kSyslogCritical = LOG_CRIT;
 #include <base/logging.h>
 #include <base/logging/logging_settings.h>
 
-static std::string s_ident;        // NOLINT(runtime/string)
-static std::string s_accumulated;  // NOLINT(runtime/string)
+static std::string s_ident;  // NOLINT(runtime/string)
 static bool s_accumulate;
 static bool s_log_to_syslog;
 static bool s_log_to_stderr;
 static bool s_log_header;
+
+static constinit std::mutex s_accumulated_lock;
+static std::string s_accumulated;  // NOLINT(runtime/string)
+
+template <typename Fn>
+static decltype(auto) with_accumulated_buffer(Fn&& f) {
+  std::lock_guard<std::mutex> lock(s_accumulated_lock);
+  return std::forward<Fn>(f)(s_accumulated);
+}
 
 static bool HandleMessage(int severity,
                           const char* /* file */,
@@ -80,7 +90,11 @@ static bool HandleMessage(int severity,
     }
   }
   if (s_accumulate) {
-    s_accumulated.append(str);
+    with_accumulated_buffer([&](std::string& buf) {
+      if (s_accumulate) {
+        buf.append(str);
+      }
+    });
   }
   return !s_log_to_stderr && severity != kSyslogCritical;
 }
@@ -124,12 +138,14 @@ void LogToString(bool enabled) {
   s_accumulate = enabled;
 }
 std::string GetLog() {
-  return s_accumulated;
+  return with_accumulated_buffer([](const std::string& buf) { return buf; });
 }
 void ClearLog() {
-  s_accumulated.clear();
+  with_accumulated_buffer([](std::string& buf) { buf.clear(); });
 }
 bool FindLog(const char* string) {
-  return s_accumulated.find(string) != std::string::npos;
+  return with_accumulated_buffer([&](const std::string& buf) {
+    return buf.find(string) != std::string::npos;
+  });
 }
 }  // namespace brillo
