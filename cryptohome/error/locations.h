@@ -1609,6 +1609,14 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthSessionNotFound = 2200,
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionNotActivity = 2201,
+  /* ./auth_factor/types/password.cc */
+  kLocAuthFactorPasswordGetFactorDelayMissingLabel = 2202,
+  /* ./auth_factor/types/password.cc */
+  kLocAuthFactorPasswordGetFactorDelayReadFailed = 2203,
+  /* ./auth_factor/types/password.cc */
+  kLocAuthFactorPasswordGetFactorDelayWrongFactorType = 2204,
+  /* ./auth_factor/types/password.cc */
+  kLocAuthFactorPasswordGetFactorDelayInvalidBlockState = 2205,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.
@@ -2051,53 +2059,53 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthUserNonexistentInGetRecoverableKeyStores = 3425,
   /* =Obsolete= */
   kLocGenKeyStoreNotImplemented = 3426,
-  /* ./recoverable_key_store/generate.cc */
+  /* =Obsolete= */
   kLocGenKeyStoreGenSecurityDomainKeyFailed = 3427,
-  /* ./recoverable_key_store/generate.cc */
+  /* =Obsolete= */
   kLocGenKeyStoreGenKeyStoreMetadataFailed = 3428,
-  /* ./recoverable_key_store/generate.cc */
+  /* =Obsolete= */
   kLocGenKeyStoreGenKeyStoreParamsFailed = 3429,
-  /* ./recoverable_key_store/generate.cc */
+  /* =Obsolete= */
   kLocGenKeyStoreGenWrappedRecoveryKeyFailed = 3430,
-  /* ./auth_blocks/recoverable_key_store.cc */
+  /* =Obsolete= */
   kLocRecoverableKeyStoreCreateInvalidParams = 3431,
-  /* ./auth_blocks/recoverable_key_store.cc */
+  /* =Obsolete= */
   kLocRecoverableKeyStoreCreateGetCertFailed = 3432,
-  /* ./auth_blocks/recoverable_key_store.cc */
+  /* =Obsolete= */
   kLocRecoverableKeyStoreCreateGenerateFailed = 3433,
-  /* ./auth_blocks/recoverable_key_store.cc */
+  /* =Obsolete= */
   kLocRecoverableKeyStoreCreateSerializeFailed = 3434,
-  /* ./auth_blocks/recoverable_key_store.cc */
+  /* =Obsolete= */
   kLocRecoverableKeyStoreUpdateGetCertFailed = 3435,
-  /* ./auth_session/auth_session.cc */
+  /* =Obsolete= */
   kLocRateLimiterNoSecurityDomainKeysInAuthInputForAdd = 3436,
-  /* ./auth_blocks/recoverable_key_store.cc */
+  /* =Obsolete= */
   kLocRecoverableKeyStoreUpdateParseStateFailed = 3437,
   /* ./auth_blocks/challenge_credential_auth_block.cc */
   kLocChalCredAuthBlockNoMetadataInCreate = 3438,
   /* ./auth_factor/verifiers/smart_card.cc */
   kLocSmartCardVerifierNoMetadata = 3439,
-  /* ./auth_session/auth_session.cc */
+  /* =Obsolete= */
   kLocCreateKeyStoreNoDomainKeys = 3440,
-  /* ./auth_session/auth_session.cc */
+  /* =Obsolete= */
   kLocCreateKeyStoreNoProvider = 3441,
-  /* ./auth_session/auth_session.cc */
+  /* =Obsolete= */
   kLocCreateKeyStoreCreateKeyStoreFailed = 3442,
-  /* ./auth_session/auth_session.cc */
+  /* =Obsolete= */
   kLocUpdateKeyStoreNoDomainKeys = 3443,
-  /* ./auth_session/auth_session.cc */
+  /* =Obsolete= */
   kLocUpdateKeyStoreNoProvider = 3444,
-  /* ./auth_session/auth_session.cc */
+  /* =Obsolete= */
   kLocUpdateKeyStoreCreateKeyStoreFailed = 3445,
-  /* ./auth_session/auth_session.cc */
+  /* =Obsolete= */
   kLocUpdateKeyStoreUpdateKeyStoreFailed = 3446,
-  /* ./auth_session/auth_session.cc */
+  /* =Obsolete= */
   kLocUpdateKeyStoreUpdateNotNeeded = 3447,
-  /* ./auth_session/auth_session.cc */
+  /* =Obsolete= */
   kLocUpdateKeyStoreSaveFactorFailed = 3448,
-  /* ./auth_blocks/recoverable_key_store.cc */
+  /* =Obsolete= */
   kLocRecoverableKeyStoreCreateNoHashInfo = 3449,
-  /* ./auth_blocks/recoverable_key_store.cc */
+  /* =Obsolete= */
   kLocRecoverableKeyStoreCreateDontCreate = 3450,
   /* ./auth_factor/types/fingerprint.cc */
   kLocAuthFactorFingerprintIsExpiredNoExpiration = 3451,

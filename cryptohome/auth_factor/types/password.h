@@ -10,6 +10,7 @@
 #include <string>
 
 #include <base/containers/span.h>
+#include <base/time/time.h>
 
 #include "cryptohome/auth_factor/label_arity.h"
 #include "cryptohome/auth_factor/metadata.h"
@@ -72,7 +73,6 @@ class PasswordAuthFactorDriver final
       public AfDriverFullAuthIsRepeatable<true>,
       public AfDriverWithConfigurableIntents<AuthIntentSequence<>,
                                              AuthIntentSequence<>>,
-      public AfDriverNoDelay,
       public AfDriverNoExpiration,
       public AfDriverNoRateLimiter {
  public:
@@ -87,6 +87,10 @@ class PasswordAuthFactorDriver final
       const AuthInput& auth_input,
       const AuthFactorMetadata& auth_factor_metadata,
       UserType user_type) const override;
+  bool IsDelaySupported() const override;
+  CryptohomeStatusOr<base::TimeDelta> GetFactorDelay(
+      const ObfuscatedUsername& username,
+      const AuthFactor& factor) const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(

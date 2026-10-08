@@ -191,6 +191,8 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
         .WillByDefault(ReturnOk<TPMError>());
     ON_CALL(system_apis_.hwsec_pw_manager, InsertCredential(_, _, _, _, _, _))
         .WillByDefault(ReturnValue(0));
+    ON_CALL(system_apis_.hwsec_pw_manager, GetDelayInSeconds(_))
+        .WillByDefault(ReturnValue(0));
   }
 
   void CreateAuthSessionManager(AuthBlockUtility* auth_block_utility) {

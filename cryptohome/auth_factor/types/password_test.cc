@@ -4,9 +4,11 @@
 
 #include "cryptohome/auth_factor/types/password.h"
 
+#include <limits>
 #include <vector>
 
 #include <base/test/test_future.h>
+#include <base/time/time.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -36,6 +38,7 @@ using ::testing::Optional;
 
 class PasswordDriverTest : public AuthFactorDriverGenericTest {
  protected:
+  static constexpr uint64_t kLeLabel = 0xdeadbeefbaadf00d;
   const brillo::SecureBlob kPassword{"the password"};
   const brillo::SecureBlob kWrongPassword{"not the password"};
 };
@@ -157,18 +160,115 @@ TEST_F(PasswordDriverTest, AlwaysSupportedByHardware) {
   EXPECT_THAT(driver.IsSupportedByHardware(), IsTrue());
 }
 
-TEST_F(PasswordDriverTest, GetDelayFails) {
+TEST_F(PasswordDriverTest, GetDelayFailsWithWrongFactorType) {
   PasswordAuthFactorDriver password_driver(&crypto_);
   AuthFactorDriver& driver = password_driver;
 
-  AuthFactor factor(AuthFactorType::kPassword, kLabel,
-                    CreateMetadataWithType<PasswordMetadata>(),
-                    {.state = TpmEccAuthBlockState()});
+  AuthFactor factor(AuthFactorType::kPin, kLabel,
+                    CreateMetadataWithType<PinMetadata>(),
+                    {.state = PinWeaverAuthBlockState()});
 
   auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
   ASSERT_THAT(delay_in_ms, NotOk());
   EXPECT_THAT(delay_in_ms.status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
+TEST_F(PasswordDriverTest, GetDelayFailsWithWrongBlockState) {
+  PasswordAuthFactorDriver password_driver(&crypto_);
+  AuthFactorDriver& driver = password_driver;
+
+  for (const auto& state :
+       {AuthBlockState{},
+        AuthBlockState{.state = ChallengeCredentialAuthBlockState()},
+        AuthBlockState{.state = CryptohomeRecoveryAuthBlockState()},
+        AuthBlockState{.state = FingerprintAuthBlockState()}}) {
+    AuthFactor factor(AuthFactorType::kPassword, kLabel,
+                      CreateMetadataWithType<PasswordMetadata>(), state);
+
+    auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
+    ASSERT_THAT(delay_in_ms, NotOk());
+    EXPECT_THAT(delay_in_ms.status()->local_legacy_error(),
+                Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+  }
+}
+
+TEST_F(PasswordDriverTest, GetDelayZeroWithNonPinWeaverBlocks) {
+  PasswordAuthFactorDriver password_driver(&crypto_);
+  AuthFactorDriver& driver = password_driver;
+
+  for (const auto& state :
+       {AuthBlockState{.state = TpmEccAuthBlockState()},
+        AuthBlockState{.state = TpmBoundToPcrAuthBlockState()},
+        AuthBlockState{.state = TpmNotBoundToPcrAuthBlockState()},
+        AuthBlockState{.state = DoubleWrappedCompatAuthBlockState()},
+        AuthBlockState{.state = ScryptAuthBlockState()}}) {
+    AuthFactor factor(AuthFactorType::kPassword, kLabel,
+                      CreateMetadataWithType<PasswordMetadata>(), state);
+
+    auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
+    ASSERT_THAT(delay_in_ms, IsOk());
+    EXPECT_THAT(delay_in_ms->is_zero(), IsTrue());
+  }
+}
+
+TEST_F(PasswordDriverTest, GetDelayFailsWithoutLeLabel) {
+  PasswordAuthFactorDriver password_driver(&crypto_);
+  AuthFactorDriver& driver = password_driver;
+
+  AuthFactor factor(AuthFactorType::kPassword, kLabel,
+                    CreateMetadataWithType<PasswordMetadata>(),
+                    {.state = PinWeaverAuthBlockState()});
+
+  auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
+  ASSERT_THAT(delay_in_ms, NotOk());
+  EXPECT_THAT(delay_in_ms.status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
+TEST_F(PasswordDriverTest, GetDelayInfinite) {
+  PasswordAuthFactorDriver password_driver(&crypto_);
+  AuthFactorDriver& driver = password_driver;
+
+  AuthFactor factor(AuthFactorType::kPassword, kLabel,
+                    CreateMetadataWithType<PasswordMetadata>(),
+                    {.state = PinWeaverAuthBlockState({.le_label = kLeLabel})});
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
+      .WillOnce(ReturnValue(std::numeric_limits<uint32_t>::max()));
+
+  auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
+  ASSERT_THAT(delay_in_ms, IsOk());
+  EXPECT_THAT(delay_in_ms->is_max(), IsTrue());
+}
+
+TEST_F(PasswordDriverTest, GetDelayFinite) {
+  PasswordAuthFactorDriver password_driver(&crypto_);
+  AuthFactorDriver& driver = password_driver;
+
+  AuthFactor factor(AuthFactorType::kPassword, kLabel,
+                    CreateMetadataWithType<PasswordMetadata>(),
+                    {.state = PinWeaverAuthBlockState({.le_label = kLeLabel})});
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
+      .WillOnce(ReturnValue(10));
+
+  auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
+  ASSERT_THAT(delay_in_ms, IsOk());
+  EXPECT_THAT(*delay_in_ms, Eq(base::Seconds(10)));
+}
+
+TEST_F(PasswordDriverTest, GetDelayZero) {
+  PasswordAuthFactorDriver password_driver(&crypto_);
+  AuthFactorDriver& driver = password_driver;
+
+  AuthFactor factor(AuthFactorType::kPassword, kLabel,
+                    CreateMetadataWithType<PasswordMetadata>(),
+                    {.state = PinWeaverAuthBlockState({.le_label = kLeLabel})});
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
+      .WillOnce(ReturnValue(0));
+
+  auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
+  ASSERT_THAT(delay_in_ms, IsOk());
+  EXPECT_THAT(delay_in_ms->is_zero(), IsTrue());
 }
 
 TEST_F(PasswordDriverTest, GetExpirationFails) {

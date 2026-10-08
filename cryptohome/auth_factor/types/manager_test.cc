@@ -496,10 +496,38 @@ TEST_F(AuthFactorDriverManagerTest, NeedsRateLimiter) {
                 "All types of AuthFactorType are not all included here");
 }
 
-// Test AuthFactorDriver::IsDelaySupported. We do this here instead of in a
-// per-driver test because the check is trivial enough that one test is simpler
-// to validate than N separate tests.
-TEST_F(AuthFactorDriverManagerTest, IsDelaySupported) {
+// Test AuthFactorDriver::IsDelaySupported for systems with Pinweaver. We do
+// this here instead of in a per-driver test because the check is trivial enough
+// that one test is simpler to validate than N separate tests.
+TEST_F(AuthFactorDriverManagerTest, IsDelaySupportedPinweaver) {
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
+
+  auto is_delayable = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).IsDelaySupported();
+  };
+
+  EXPECT_THAT(is_delayable(AuthFactorType::kPassword), IsTrue());
+  EXPECT_THAT(is_delayable(AuthFactorType::kPin), IsTrue());
+  EXPECT_THAT(is_delayable(AuthFactorType::kCryptohomeRecovery), IsTrue());
+  EXPECT_THAT(is_delayable(AuthFactorType::kKiosk), IsFalse());
+  EXPECT_THAT(is_delayable(AuthFactorType::kSmartCard), IsFalse());
+  EXPECT_THAT(is_delayable(AuthFactorType::kLegacyFingerprint), IsFalse());
+  EXPECT_THAT(is_delayable(AuthFactorType::kFingerprint), IsTrue());
+
+  EXPECT_THAT(is_delayable(AuthFactorType::kUnspecified), IsFalse());
+
+  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
+                "All types of AuthFactorType are not all included here");
+}
+
+// Test AuthFactorDriver::IsDelaySupported for systems without Pinweaver. We do
+// this here instead of in a per-driver test because the check is trivial enough
+// that one test is simpler to validate than N separate tests.
+TEST_F(AuthFactorDriverManagerTest, IsDelaySupportedNoPinweaver) {
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
+
   auto is_delayable = [this](AuthFactorType type) {
     return manager_.GetDriver(type).IsDelaySupported();
   };

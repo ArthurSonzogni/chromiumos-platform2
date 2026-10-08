@@ -5,20 +5,44 @@
 #include "cryptohome/auth_factor/types/password.h"
 
 #include <algorithm>
+#include <limits>
 #include <memory>
 #include <string>
 #include <utility>
+#include <variant>
+
+#include <absl/functional/overload.h>
+#include <base/time/time.h>
+#include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
+#include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/label_arity.h"
 #include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/auth_factor/verifiers/scrypt.h"
 #include "cryptohome/auth_session/intent.h"
+#include "cryptohome/error/action.h"
+#include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/error/cryptohome_tpm_error.h"
+#include "cryptohome/error/locations.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {
 namespace {
+
+using ::cryptohome::error::CryptohomeError;
+using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::hwsec_foundation::status::MakeStatus;
+
+bool IsPinWeaverUsed(base::span<const AuthBlockType> block_types,
+                     Crypto* crypto) {
+  return std::find(block_types.begin(), block_types.end(),
+                   AuthBlockType::kPinWeaver) != block_types.end() &&
+         PinWeaverAuthBlock::IsSupported(*crypto->GetHwsec()).ok();
+}
 
 bool IsCredentialVerifierSupported(base::span<const AuthBlockType> block_types,
                                    Crypto* crypto,
@@ -26,13 +50,34 @@ bool IsCredentialVerifierSupported(base::span<const AuthBlockType> block_types,
   switch (user_type) {
     case AuthFactorDriver::UserType::kEphemeral:
       return true;
-    case AuthFactorDriver::UserType::kPersistent: {
-      bool is_pinweaver_used =
-          std::find(block_types.begin(), block_types.end(),
-                    AuthBlockType::kPinWeaver) != block_types.end() &&
-          PinWeaverAuthBlock::IsSupported(*crypto->GetHwsec()).ok();
-      return !is_pinweaver_used;
-    }
+    case AuthFactorDriver::UserType::kPersistent:
+      return !IsPinWeaverUsed(block_types, crypto);
+  }
+}
+
+CryptohomeStatusOr<base::TimeDelta> GetPinWeaverFactorDelay(
+    const PinWeaverAuthBlockState& state, Crypto* crypto) {
+  if (!state.le_label) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorPasswordGetFactorDelayMissingLabel),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+  // Try and extract the delay from pinweaver manager.
+  auto delay_in_seconds =
+      crypto->GetPinWeaverManager()->GetDelayInSeconds(*state.le_label);
+  if (!delay_in_seconds.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthFactorPasswordGetFactorDelayReadFailed))
+        .Wrap(MakeStatus<error::CryptohomeTPMError>(
+            std::move(delay_in_seconds).err_status()));
+  }
+  // Return the extracted time, handling the max value case.
+  if (*delay_in_seconds == std::numeric_limits<uint32_t>::max()) {
+    return base::TimeDelta::Max();
+  } else {
+    return base::Seconds(*delay_in_seconds);
   }
 }
 
@@ -81,6 +126,44 @@ PasswordAuthFactorDriver::CreateCredentialVerifier(
     return nullptr;
   }
   return verifier;
+}
+
+bool PasswordAuthFactorDriver::IsDelaySupported() const {
+  return IsPinWeaverUsed(block_types(), crypto_);
+}
+
+CryptohomeStatusOr<base::TimeDelta> PasswordAuthFactorDriver::GetFactorDelay(
+    const ObfuscatedUsername& username, const AuthFactor& factor) const {
+  // Do all the error checks to make sure the input is useful.
+  if (factor.type() != type()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorPasswordGetFactorDelayWrongFactorType),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+  return std::visit<CryptohomeStatusOr<base::TimeDelta>>(
+      absl::Overload(
+          [this](const PinWeaverAuthBlockState& state) {
+            return GetPinWeaverFactorDelay(state, crypto_);
+          },
+          [](const TpmEccAuthBlockState&) { return base::TimeDelta(); },
+          [](const TpmBoundToPcrAuthBlockState&) { return base::TimeDelta(); },
+          [](const TpmNotBoundToPcrAuthBlockState&) {
+            return base::TimeDelta();
+          },
+          [](const DoubleWrappedCompatAuthBlockState&) {
+            return base::TimeDelta();
+          },
+          [](const ScryptAuthBlockState&) { return base::TimeDelta(); },
+          [](const auto&) -> CryptohomeStatusOr<base::TimeDelta> {
+            return MakeStatus<CryptohomeError>(
+                CRYPTOHOME_ERR_LOC(
+                    kLocAuthFactorPasswordGetFactorDelayInvalidBlockState),
+                ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+                user_data_auth::CryptohomeErrorCode::
+                    CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+          }),
+      factor.auth_block_state().state);
 }
 
 AuthFactorLabelArity PasswordAuthFactorDriver::GetAuthFactorLabelArity() const {
