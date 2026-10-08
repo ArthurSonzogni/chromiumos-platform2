@@ -66,7 +66,6 @@ class AdbProxy : public brillo::DBusDaemon {
   std::unique_ptr<net_base::Socket> src_;
   std::deque<std::unique_ptr<net_base::SocketForwarder>> fwd_;
 
-  GuestMessage::GuestType arc_type_;
   std::optional<uint32_t> arcvm_vsock_cid_;
 
   bool dev_mode_enabled_;

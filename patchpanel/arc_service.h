@@ -39,12 +39,6 @@ constexpr char kArcbr0Ifname[] = "arcbr0";
 
 class ArcService {
  public:
-  // Types of the ARC device.
-  enum class ArcType {
-    // VM
-    kVM,
-  };
-
   // Helper class for storing some configuration data for an ArcDevice before
   // the ArcDevice is created.
   class ArcConfig {
@@ -83,8 +77,7 @@ class ArcService {
     // The static IPv4 subnet allocated for the ArcDevice for the host and guest
     // facing interfaces.
     std::unique_ptr<Subnet> ipv4_subnet_;
-    // For ARCVM, the interface name of the TAP device associated the ArcDevice.
-    // Always empty for the ARC container.
+    // The interface name of the TAP device associated with the ArcDevice.
     std::string tap_;
   };
 
@@ -92,8 +85,7 @@ class ArcService {
   // created for every host Network exposed to ARC.
   class ArcDevice {
    public:
-    ArcDevice(ArcType type,
-              std::optional<net_base::Technology> technology,
+    ArcDevice(std::optional<net_base::Technology> technology,
               std::optional<std::string_view> shill_device_ifname,
               std::string_view arc_device_ifname,
               net_base::MacAddress arc_device_mac_address,
@@ -101,9 +93,6 @@ class ArcService {
               std::string_view bridge_ifname,
               std::string_view guest_device_ifname);
     ~ArcDevice();
-
-    // The type of this ARC device indicating it was created
-    ArcType type() const { return type_; }
 
     // Technology of the underlying physical device of the virtual device, if it
     // exists.
@@ -123,9 +112,7 @@ class ArcService {
       return shill_device_ifname_;
     }
     // The interface name of the virtual interface created on the host for this
-    // ARC device. For the container this corresponds to the half of the veth
-    // pair visible on the host. For ARC VM this corresponds to the tap device
-    // used by crosvm.
+    // ARC device, corresponding to the tap device used by crosvm.
     const std::string& arc_device_ifname() const { return arc_device_ifname_; }
     // MAC address of the virtual interface created on the host for this ARC
     // device.
@@ -135,9 +122,8 @@ class ArcService {
     // The name of the bridge created for this ARC device and to which the
     // virtual interface is attached to on the host.
     const std::string& bridge_ifname() const { return bridge_ifname_; }
-    // The interface name of the virtual interface inside the ARC environment.
-    // For the container this corresponds to the other half of the veth pair.
-    // For ARC VM this corresponds to a virtio interface.
+    // The interface name of the virtual interface inside the ARC environment,
+    // corresponding to a virtio interface.
     const std::string& guest_device_ifname() const {
       return guest_device_ifname_;
     }
@@ -161,7 +147,6 @@ class ArcService {
     void ConvertToProto(NetworkDevice* output) const;
 
    private:
-    ArcType type_;
     std::optional<net_base::Technology> technology_;
     std::optional<std::string> shill_device_ifname_;
     std::string arc_device_ifname_;
@@ -196,13 +181,11 @@ class ArcService {
   using ArcDeviceChangeHandler = base::RepeatingCallback<void(
       const ShillClient::Device&, const ArcDevice&, ArcDeviceEvent)>;
 
-  // Returns the ARC bridge interface name for the given interface. Software
-  // bridges are used both for the ARC container and for ARCVM.
+  // Returns the ARC bridge interface name for the given interface.
   static std::string ArcBridgeName(const ShillClient::Device& device);
 
   // All pointers are required, cannot be null, and are owned by the caller.
-  ArcService(ArcType arc_type,
-             Datapath* datapath,
+  ArcService(Datapath* datapath,
              AddressManager* addr_mgr,
              ForwardingService* forwarding_service,
              MetricsLibraryInterface* metrics,
@@ -213,24 +196,24 @@ class ArcService {
 
   ~ArcService();
 
-  // Starts ArcService.
-  bool Start(uint32_t id);
+  // Starts ArcService for the ARCVM instance with vsock CID |cid|.
+  bool Start(uint32_t cid);
 
-  // Stops ArcService.
-  void Stop(uint32_t id);
+  // Stops ArcService for the ARCVM instance with vsock CID |cid|.
+  void Stop(uint32_t cid);
 
   // Returns the IPv4 address of the "arc0" legacy management interface.
   std::optional<net_base::IPv4Address> GetArc0IPv4Address() const;
 
   // Returns the list of static tap device ifnames that patchpanel has created
-  // for ARCVM at VM start. This list is empty for the ARC container.
+  // for ARCVM at VM start.
   std::vector<std::string> GetStaticTapDevices() const;
 
   // Returns a list of all patchpanel ARC Devices currently managed by this
   // service and attached to a shill Device.
   std::vector<const ArcDevice*> GetDevices() const;
 
-  // Returns true if the service has been started for ARC container or ARCVM.
+  // Returns true if the service has been started for ARCVM.
   bool IsStarted() const;
 
   // Build and configure the ARC datapath for the upstream network interface
@@ -268,15 +251,10 @@ class ArcService {
   void AllocateAddressConfigs();
 
   // Starts the packet datapath on the host for the ARC device |arc_device|.
-  // If ARC is running in container mode, the veth interface
-  // |arc_device_ifname| is also created together with its counterpart inside
-  // the container. Otherwise if ARC is running in VM mode, the tap device must
-  // already exist.
+  // The tap device must already exist.
   void StartArcDeviceDatapath(std::string_view logging_tag,
                               const ArcDevice& arc_device);
-  // Stops the packet datapath on the host for the ARC device |arc_device|. If
-  // ARC is running in container mode, the veth interface |arc_device_ifname| is
-  // also destroyed.
+  // Stops the packet datapath on the host for the ARC device |arc_device|.
   void StopArcDeviceDatapath(std::string_view logging_tag,
                              const ArcDevice& arc_device);
 
@@ -290,8 +268,6 @@ class ArcService {
   FRIEND_TEST(ArcServiceTest, NotStarted_AddRemoveDevice);
   FRIEND_TEST(ArcServiceTest, VmImpl_ArcvmInterfaceMapping);
 
-  // Type of ARC environment.
-  const ArcType arc_type_;
   // Routing and iptables controller service, owned by Manager.
   Datapath* datapath_;
   // IPv4 prefix and address manager, owned by Manager.
@@ -318,7 +294,7 @@ class ArcService {
   // The ARC Devices corresponding to the host upstream network interfaces,
   // keyed by upstream interface name.
   std::map<std::string, ArcDevice> devices_;
-  // Guest interface manager for ARCVM. Not used for ARC container.
+  // Guest interface manager for ARCVM.
   std::unique_ptr<GuestIfManager> guest_if_manager_;
   // The static IPv4 configuration for the "arc0" management ArcDevice. This
   // configuration is always assigned if ARC is running.
@@ -328,7 +304,7 @@ class ArcService {
   // not associated with any given shill physical Device and is always created.
   // This ARC device is defined iff ARC is running.
   std::optional<ArcDevice> arc0_device_;
-  // The PID of the ARC container instance or the CID of ARCVM instance.
+  // The CID of the ARCVM instance.
   uint32_t id_;
   // All shill Devices currently managed by shill, keyed by shill Device name.
   std::map<std::string, ShillClient::Device> shill_devices_;
@@ -343,7 +319,6 @@ class ArcService {
 
 std::ostream& operator<<(std::ostream& stream,
                          const ArcService::ArcDevice& arc_device);
-std::ostream& operator<<(std::ostream& stream, ArcService::ArcType arc_type);
 
 }  // namespace patchpanel
 

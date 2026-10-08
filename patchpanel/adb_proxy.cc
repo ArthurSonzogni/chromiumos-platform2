@@ -11,7 +11,6 @@
 
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
 #include <utility>
 
@@ -49,17 +48,13 @@ constexpr int kDbusTimeoutMs = 200;
 constexpr int kAdbSideloadMaxTry = 5;
 constexpr base::TimeDelta kAdbSideloadUpdateDelay = base::Milliseconds(5000);
 
-const std::set<GuestMessage::GuestType> kArcGuestTypes{GuestMessage::ARC_VM};
-
 bool IsDevModeEnabled() {
   return VbGetSystemPropertyInt("cros_debug") == 1;
 }
 }  // namespace
 
 AdbProxy::AdbProxy(base::ScopedFD control_fd)
-    : msg_dispatcher_(std::move(control_fd)),
-      arc_type_(GuestMessage::UNKNOWN_GUEST),
-      arcvm_vsock_cid_(std::nullopt) {
+    : msg_dispatcher_(std::move(control_fd)), arcvm_vsock_cid_(std::nullopt) {
   msg_dispatcher_.RegisterFailureHandler(base::BindRepeating(
       &AdbProxy::OnParentProcessExit, weak_factory_.GetWeakPtr()));
 
@@ -95,7 +90,6 @@ void AdbProxy::Reset() {
   src_.reset();
   fwd_.clear();
   arcvm_vsock_cid_ = std::nullopt;
-  arc_type_ = GuestMessage::UNKNOWN_GUEST;
 }
 
 void AdbProxy::OnFileCanReadWithoutBlocking() {
@@ -126,42 +120,33 @@ void AdbProxy::OnFileCanReadWithoutBlocking() {
 }
 
 std::unique_ptr<net_base::Socket> AdbProxy::Connect() const {
-  switch (arc_type_) {
-    case GuestMessage::ARC_VM: {
-      if (!arcvm_vsock_cid_.has_value()) {
-        LOG(ERROR) << "Undefined ARCVM CID";
-        return nullptr;
-      }
-      struct sockaddr_vm addr_vm = {0};
-      addr_vm.svm_family = AF_VSOCK;
-      addr_vm.svm_port = kVsockPort;
-      addr_vm.svm_cid = arcvm_vsock_cid_.value();
-      std::unique_ptr<net_base::Socket> dst =
-          net_base::Socket::Create(AF_VSOCK, SOCK_STREAM);
-      if (!dst) {
-        PLOG(ERROR) << "Failed to create VSOCK socket";
-        return nullptr;
-      }
-      if (dst->Connect((const struct sockaddr*)&addr_vm, sizeof(addr_vm))) {
-        LOG(INFO) << "Established adbd connection to " << addr_vm;
-        return dst;
-      }
-      PLOG(WARNING) << "Failed to connect VSOCK socket to adbd at " << addr_vm
-                    << " - falling back to TCP";
-      break;
-    }
-    default:
-      LOG(DFATAL) << "Unexpected ARC guest type";
-      return nullptr;
+  if (!arcvm_vsock_cid_.has_value()) {
+    LOG(ERROR) << "Undefined ARCVM CID";
+    return nullptr;
   }
+  struct sockaddr_vm addr_vm = {0};
+  addr_vm.svm_family = AF_VSOCK;
+  addr_vm.svm_port = kVsockPort;
+  addr_vm.svm_cid = arcvm_vsock_cid_.value();
+  std::unique_ptr<net_base::Socket> dst =
+      net_base::Socket::Create(AF_VSOCK, SOCK_STREAM);
+  if (!dst) {
+    PLOG(ERROR) << "Failed to create VSOCK socket";
+    return nullptr;
+  }
+  if (dst->Connect((const struct sockaddr*)&addr_vm, sizeof(addr_vm))) {
+    LOG(INFO) << "Established adbd connection to " << addr_vm;
+    return dst;
+  }
+  PLOG(WARNING) << "Failed to connect VSOCK socket to adbd at " << addr_vm
+                << " - falling back to TCP";
 
   // Fallback to TCP.
   struct sockaddr_in addr_in = {0};
   addr_in.sin_family = AF_INET;
   addr_in.sin_port = htons(kTcpConnectPort);
   addr_in.sin_addr = kTcpAddr.ToInAddr();
-  std::unique_ptr<net_base::Socket> dst =
-      net_base::Socket::Create(AF_INET, SOCK_STREAM);
+  dst = net_base::Socket::Create(AF_INET, SOCK_STREAM);
   if (!dst) {
     PLOG(ERROR) << "Failed to create TCP socket";
     return nullptr;
@@ -194,21 +179,20 @@ void AdbProxy::OnGuestMessage(const SubprocessMessage& root_msg) {
     return;
   }
 
-  if (kArcGuestTypes.find(msg.type()) == kArcGuestTypes.end()) {
+  if (msg.type() != GuestMessage::ARC_VM) {
     return;
   }
 
   // On ARC down, cull any open connections and stop listening.
   if (msg.event() == GuestMessage::STOP) {
-    if (msg.type() == GuestMessage::ARC_VM && !arcvm_vsock_cid_.has_value()) {
+    if (!arcvm_vsock_cid_.has_value()) {
       LOG(WARNING)
           << "Received STOP message for ARC_VM but ARCVM CID was undefined";
       return;
     }
     // The stop message for ARCVM may be sent after a new VM is started. Only
     // stop if the CID matched the latest started ARCVM CID.
-    if (msg.type() == GuestMessage::ARC_VM &&
-        msg.arcvm_vsock_cid() != arcvm_vsock_cid_.value()) {
+    if (msg.arcvm_vsock_cid() != arcvm_vsock_cid_.value()) {
       LOG(WARNING) << "Mismatched ARCVM CIDs " << arcvm_vsock_cid_.value()
                    << " != " << msg.arcvm_vsock_cid();
       return;
@@ -217,7 +201,6 @@ void AdbProxy::OnGuestMessage(const SubprocessMessage& root_msg) {
     return;
   }
 
-  arc_type_ = msg.type();
   arcvm_vsock_cid_ = msg.arcvm_vsock_cid();
 
   // On ARC up, start accepting connections.
@@ -307,7 +290,7 @@ void AdbProxy::CheckAdbSideloadingStatus(int num_try) {
   }
 
   // If ADB sideloading is enabled and ARC guest is started, start listening.
-  if (arc_type_ != GuestMessage::UNKNOWN_GUEST) {
+  if (arcvm_vsock_cid_.has_value()) {
     Listen();
   }
 }

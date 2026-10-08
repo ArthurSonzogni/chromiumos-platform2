@@ -43,8 +43,6 @@ constexpr int kIPv6RestartDelayMs = 300;
 constexpr ConntrackMonitor::EventType kConntrackEvents[] = {
     ConntrackMonitor::EventType::kNew};
 
-constexpr ArcService::ArcType kArcType = ArcService::ArcType::kVM;
-
 }  // namespace
 
 MulticastForwardingControlMessage::Direction
@@ -94,8 +92,7 @@ Manager::Manager(const base::FilePath& cmd_path,
                                                        shill_client_.get(),
                                                        &ipv6_svc_,
                                                        &counters_svc_)),
-      arc_svc_(kArcType,
-               &datapath_,
+      arc_svc_(&datapath_,
                &addr_mgr_,
                this,
                metrics_,
@@ -441,11 +438,6 @@ void Manager::OnDoHProvidersChanged() {
 
 std::optional<patchpanel::ArcVmStartupResponse> Manager::ArcVmStartup(
     uint32_t cid) {
-  if (kArcType != ArcService::ArcType::kVM) {
-    LOG(ERROR) << __func__ << " called but ARCVM is not enabled";
-    return std::nullopt;
-  }
-
   if (!arc_svc_.Start(cid)) {
     return std::nullopt;
   }
@@ -470,11 +462,6 @@ std::optional<patchpanel::ArcVmStartupResponse> Manager::ArcVmStartup(
 }
 
 void Manager::ArcVmShutdown(uint32_t cid) {
-  if (kArcType != ArcService::ArcType::kVM) {
-    LOG(ERROR) << __func__ << " called but ARCVM is not enabled";
-    return;
-  }
-
   multicast_metrics_.OnARCStopped();
 
   GuestMessage msg;
