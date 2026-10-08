@@ -352,9 +352,6 @@ class BRILLO_EXPORT Client {
   virtual void RegisterProcessChangedCallback(
       base::RepeatingCallback<void(bool)> callback) = 0;
 
-  virtual bool NotifyArcStartup(pid_t pid) = 0;
-  virtual bool NotifyArcShutdown() = 0;
-
   virtual std::optional<ArcVMAllocation> NotifyArcVmStartup(uint32_t cid) = 0;
   virtual bool NotifyArcVmShutdown(uint32_t cid) = 0;
 

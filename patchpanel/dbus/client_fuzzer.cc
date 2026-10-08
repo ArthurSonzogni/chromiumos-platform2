@@ -62,7 +62,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   FuzzedDataProvider provider(data, size);
 
   while (provider.remaining_bytes() > 0) {
-    client->NotifyArcStartup(provider.ConsumeIntegral<pid_t>());
     client->NotifyArcVmStartup(provider.ConsumeIntegral<uint32_t>());
     client->NotifyArcVmShutdown(provider.ConsumeIntegral<uint32_t>());
     client->NotifyTerminaVmStartup(provider.ConsumeIntegral<uint32_t>());

@@ -757,9 +757,6 @@ class ClientImpl : public Client {
   void RegisterProcessChangedCallback(
       base::RepeatingCallback<void(bool)> callback) override;
 
-  bool NotifyArcStartup(pid_t pid) override;
-  bool NotifyArcShutdown() override;
-
   std::optional<Client::ArcVMAllocation> NotifyArcVmStartup(
       uint32_t cid) override;
   bool NotifyArcVmShutdown(uint32_t cid) override;
@@ -954,14 +951,6 @@ void ClientImpl::OnOwnerChanged(const std::string& old_owner,
   if (!owner_callback_.is_null()) {
     owner_callback_.Run(true);
   }
-}
-
-bool ClientImpl::NotifyArcStartup(pid_t pid) {
-  return false;
-}
-
-bool ClientImpl::NotifyArcShutdown() {
-  return false;
 }
 
 std::optional<Client::ArcVMAllocation> ClientImpl::NotifyArcVmStartup(

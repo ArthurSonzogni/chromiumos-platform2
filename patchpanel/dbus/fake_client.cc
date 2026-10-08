@@ -14,14 +14,6 @@ void FakeClient::RegisterOnAvailableCallback(
 void FakeClient::RegisterProcessChangedCallback(
     base::RepeatingCallback<void(bool)> callback) {}
 
-bool FakeClient::NotifyArcStartup(pid_t) {
-  return false;
-}
-
-bool FakeClient::NotifyArcShutdown() {
-  return false;
-}
-
 std::optional<Client::ArcVMAllocation> FakeClient::NotifyArcVmStartup(
     uint32_t cid) {
   return std::nullopt;

@@ -53,18 +53,6 @@ class ClientTest : public testing::Test {
   std::shared_ptr<brillo::http::MockTransport> http_transport_;
 };
 
-TEST_F(ClientTest, NotifyArcStartup) {
-  const pid_t pid = 3456;
-
-  const bool result = client_->NotifyArcStartup(pid);
-  EXPECT_FALSE(result);
-}
-
-TEST_F(ClientTest, NotifyArcShutdown) {
-  const bool result = client_->NotifyArcShutdown();
-  EXPECT_FALSE(result);
-}
-
 TEST_F(ClientTest, NotifyArcVmStartup) {
   const uint32_t cid = 5;
   const auto arc0_addr =

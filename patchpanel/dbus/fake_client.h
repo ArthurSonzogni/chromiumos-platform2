@@ -29,9 +29,6 @@ class BRILLO_EXPORT FakeClient : public Client {
   void RegisterProcessChangedCallback(
       base::RepeatingCallback<void(bool)> callback) override;
 
-  bool NotifyArcStartup(pid_t pid) override;
-  bool NotifyArcShutdown() override;
-
   std::optional<Client::ArcVMAllocation> NotifyArcVmStartup(
       uint32_t cid) override;
   bool NotifyArcVmShutdown(uint32_t cid) override;
