@@ -376,16 +376,12 @@ class Datapath {
   virtual bool AddAdbPortAccessRule(std::string_view ifname);
   virtual void DeleteAdbPortAccessRule(std::string_view ifname);
 
-  // Enables or disables netfilter conntrack helpers.
-  virtual bool SetConntrackHelpers(bool enable_helpers);
   // Allows (or stops allowing) loopback IPv4 addresses as valid sources or
   // destinations during IPv4 routing for |ifname|. This lets connections
   // originated from guests like ARC or Crostini be accepted on the host and
   // should be used carefully in conjunction with firewall port access rules to
   // only allow very specific connection patterns.
   virtual bool SetRouteLocalnet(std::string_view ifname, bool enable);
-  // Adds all |modules| into the kernel using modprobe.
-  virtual bool ModprobeAll(const std::vector<std::string>& modules);
 
   // Create (or delete) DNAT rules for sending unsolicited traffic inbound on
   // interface |ifname| to |ipv4_addr| using the nat PREROUTING subchain

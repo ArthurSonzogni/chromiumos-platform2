@@ -82,24 +82,6 @@ class MinijailProcessRunnerTest : public ::testing::Test {
   MockSystem* system_;  // Owned by |runner_|.
 };
 
-TEST_F(MinijailProcessRunnerTest, modprobe_all) {
-  uint64_t caps = CAP_TO_MASK(CAP_SYS_MODULE);
-  EXPECT_CALL(mj_, New);
-  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")))
-      .WillOnce(Return(true));
-  EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
-  EXPECT_CALL(mj_, RunAndDestroy(
-                       _,
-                       ElementsAre(StrEq("/usr/bin/modprobe"), StrEq("-a"),
-                                   StrEq("module1"), StrEq("module2"), nullptr),
-                       _));
-  EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
-
-  std::vector<std::string> mods = {"module1", "module2"};
-  EXPECT_TRUE(runner_->modprobe_all(mods));
-}
-
 TEST_F(MinijailProcessRunnerTest, ip) {
   auto set_expectations_for_ip = [this]() -> void {
     uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);

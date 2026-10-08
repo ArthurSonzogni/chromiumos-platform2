@@ -33,7 +33,6 @@ namespace patchpanel {
 namespace {
 
 constexpr char kUnprivilegedUser[] = "nobody";
-constexpr uint64_t kModprobeCapMask = CAP_TO_MASK(CAP_SYS_MODULE);
 constexpr uint64_t kNetRawCapMask = CAP_TO_MASK(CAP_NET_RAW);
 constexpr uint64_t kNetAdminCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
 constexpr uint64_t kNetRawAdminCapMask =
@@ -61,7 +60,6 @@ constexpr char kIp6tablesPath[] = "/sbin/ip6tables";
 constexpr std::string_view kIptablesRestorePath = "/sbin/iptables-restore";
 constexpr std::string_view kIp6tablesRestorePath = "/sbin/ip6tables-restore";
 
-constexpr char kModprobePath[] = "/usr/bin/modprobe";
 constexpr char kConntrackPath[] = "/usr/sbin/conntrack";
 
 constexpr char kIptablesSeccompFilterPath[] =
@@ -467,16 +465,6 @@ int MinijailedProcessRunner::RunIptables(std::string_view iptables_path,
   UseIptablesSeccompFilter(jail);
 
   return RunSyncDestroy(args, mj_, jail, log_failures, output);
-}
-
-int MinijailedProcessRunner::modprobe_all(base::span<const std::string> modules,
-                                          bool log_failures) {
-  minijail* jail = mj_->New();
-  CHECK(mj_->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser));
-  mj_->UseCapabilities(jail, kModprobeCapMask);
-  std::vector<std::string_view> args = {kModprobePath, "-a"};
-  args.insert(args.end(), modules.begin(), modules.end());
-  return RunSyncDestroy(args, mj_, jail, log_failures, nullptr);
 }
 
 int MinijailedProcessRunner::ip_netns_add(std::string_view netns_name,

@@ -2089,18 +2089,9 @@ void Datapath::DeleteAdbPortAccessRule(std::string_view ifname) {
                                kAdbProxyTcpListenPort, ifname);
 }
 
-bool Datapath::SetConntrackHelpers(const bool enable_helpers) {
-  return system_->SysNetSet(System::SysNet::kConntrackHelper,
-                            enable_helpers ? "1" : "0");
-}
-
 bool Datapath::SetRouteLocalnet(std::string_view ifname, const bool enable) {
   return system_->SysNetSet(System::SysNet::kIPv4RouteLocalnet,
                             enable ? "1" : "0", ifname);
-}
-
-bool Datapath::ModprobeAll(const std::vector<std::string>& modules) {
-  return process_runner_->modprobe_all(modules) == 0;
 }
 
 bool Datapath::ModifyPortRule(

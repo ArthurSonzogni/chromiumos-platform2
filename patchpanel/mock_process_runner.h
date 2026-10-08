@@ -80,10 +80,6 @@ class MockProcessRunner : public MinijailedProcessRunner {
               (std::string_view netns_name, bool log_failures),
               (override));
   MOCK_METHOD(int,
-              modprobe_all,
-              (base::span<const std::string> modules, bool log_failures),
-              (override));
-  MOCK_METHOD(int,
               conntrack,
               (std::string_view command,
                base::span<const std::string> argv,

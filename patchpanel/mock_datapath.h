@@ -111,20 +111,12 @@ class MockDatapath : public Datapath {
                const net_base::IPv4CIDR& cidr),
               (override));
   MOCK_METHOD(bool,
-              SetConntrackHelpers,
-              (const bool enable_helpers),
-              (override));
-  MOCK_METHOD(bool,
               SetRouteLocalnet,
               (std::string_view ifname, const bool enable),
               (override));
   MOCK_METHOD(std::string,
               DumpIptables,
               (IpFamily family, Iptables::Table table),
-              (override));
-  MOCK_METHOD(bool,
-              ModprobeAll,
-              (const std::vector<std::string>& modules),
               (override));
   MOCK_METHOD(void,
               AddInboundIPv4DNAT,

@@ -25,9 +25,7 @@ MockDatapath::MockDatapath(MinijailedProcessRunner* process_runner,
   ON_CALL(*this, MaskInterfaceFlags).WillByDefault(Return(true));
   ON_CALL(*this, AddIPv4RouteToTable).WillByDefault(Return(true));
   ON_CALL(*this, AddIPv4Route).WillByDefault(Return(true));
-  ON_CALL(*this, SetConntrackHelpers).WillByDefault(Return(true));
   ON_CALL(*this, SetRouteLocalnet).WillByDefault(Return(true));
-  ON_CALL(*this, ModprobeAll).WillByDefault(Return(true));
   ON_CALL(*this, AddChain).WillByDefault(Return(true));
   ON_CALL(*this, RemoveChain).WillByDefault(Return(true));
   ON_CALL(*this, FlushChain).WillByDefault(Return(true));

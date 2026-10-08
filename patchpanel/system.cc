@@ -33,9 +33,6 @@ namespace {
 // /proc/sys/ paths used for System::SysNetSet() and System::SysNetGet().
 // Enables/Disables IPv4 forwarding between interfaces.
 constexpr char kSysNetIPv4ForwardingPath[] = "/proc/sys/net/ipv4/ip_forward";
-// /proc/sys path for controlling connection tracking helper modules
-constexpr char kSysNetConntrackHelperPath[] =
-    "/proc/sys/net/netfilter/nf_conntrack_helper";
 // Enables/Disables IPv6.
 constexpr char kSysNetDisableIPv6Path[] =
     "/proc/sys/net/ipv6/conf/all/disable_ipv6";
@@ -139,10 +136,6 @@ pid_t System::WaitPid(pid_t pid, int* wstatus, int options) {
   return waitpid(pid, wstatus, options);
 }
 
-int System::Chown(const char* pathname, uid_t owner, gid_t group) {
-  return chown(pathname, owner, group);
-}
-
 base::ScopedFD System::OpenTunDev() {
   return base::ScopedFD(open(kTunDev, O_RDWR | O_NONBLOCK));
 }
@@ -194,8 +187,6 @@ std::string System::SysNetPath(SysNet target, std::string_view iface) const {
         return "";
       }
       return base::StringPrintf(kSysNetIPv6AcceptRaPath, iface.data());
-    case SysNet::kConntrackHelper:
-      return kSysNetConntrackHelperPath;
     case SysNet::kIPv6Disable:
       return kSysNetDisableIPv6Path;
     case SysNet::kIPv6ProxyNDP:
@@ -266,15 +257,6 @@ bool System::WriteConfigFile(base::FilePath path, std::string_view contents) {
 
 bool System::IsEbpfEnabled() const {
   return base::PathExists(base::FilePath(kBPFPath));
-}
-
-std::unique_ptr<System::ScopedNS> System::EnterMountNS(pid_t pid) {
-  int nstype = CLONE_NEWNS;
-  const std::string current_path = "/proc/self/ns/mnt";
-  const std::string target_path = "/proc/" + std::to_string(pid) + "/ns/mnt";
-  auto ns =
-      base::WrapUnique(new ScopedNSImpl(nstype, current_path, target_path));
-  return ns->valid() ? std::move(ns) : nullptr;
 }
 
 std::unique_ptr<System::ScopedNS> System::EnterNetworkNS(pid_t pid) {

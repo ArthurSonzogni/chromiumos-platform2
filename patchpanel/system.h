@@ -49,8 +49,6 @@ class System {
     kIPv6AcceptRA,
     // Used for modifying "net.ipv6.conf.all.forwarding"
     kIPv6Forward,
-    // Used for enabling netfilter connection tracking helper modules.
-    kConntrackHelper,
     // Used for modifying "net.ipv6.conf.all.disable_ipv6"
     kIPv6Disable,
     // Used for modifying "net.ipv6.conf.all.proxy_ndp"
@@ -99,8 +97,6 @@ class System {
 
   virtual pid_t WaitPid(pid_t pid, int* wstatus, int options = 0);
 
-  virtual int Chown(const char* pathname, uid_t owner, gid_t group);
-
   // Simple wrappers around if_nametoindex which returns a signed int instead
   // of an unsigned int to avoid static casts.
   virtual int IfNametoindex(const char* ifname);
@@ -125,10 +121,9 @@ class System {
   // Returns if the eBPF is enabled on the system.
   virtual bool IsEbpfEnabled() const;
 
-  // Records the current mount (network) namespace and enters another namespace
+  // Records the current network namespace and enters another namespace
   // identified by the input argument. Will go back to the current namespace if
   // the returned object goes out of scope. Returns nullptr on failure.
-  virtual std::unique_ptr<ScopedNS> EnterMountNS(pid_t pid);
   virtual std::unique_ptr<ScopedNS> EnterNetworkNS(pid_t pid);
   virtual std::unique_ptr<ScopedNS> EnterNetworkNS(std::string_view netns_name);
 };

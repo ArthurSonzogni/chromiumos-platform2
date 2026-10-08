@@ -21,8 +21,6 @@ TEST(SystemTest, SysNetPath) {
             "/proc/sys/net/ipv6/conf/eth0/accept_ra");
   EXPECT_EQ(system.SysNetPath(System::SysNet::kIPv6Forward),
             "/proc/sys/net/ipv6/conf/all/forwarding");
-  EXPECT_EQ(system.SysNetPath(System::SysNet::kConntrackHelper),
-            "/proc/sys/net/netfilter/nf_conntrack_helper");
   EXPECT_EQ(system.SysNetPath(System::SysNet::kIPv6Disable),
             "/proc/sys/net/ipv6/conf/all/disable_ipv6");
   EXPECT_EQ(system.SysNetPath(System::SysNet::kIPv6ProxyNDP),

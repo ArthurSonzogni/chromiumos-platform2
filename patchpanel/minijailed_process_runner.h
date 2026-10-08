@@ -155,10 +155,6 @@ class MinijailedProcessRunner {
                         bool log_failures = true,
                         std::string* output = nullptr);
 
-  // Installs all |modules| via modprobe.
-  virtual int modprobe_all(base::span<const std::string> modules,
-                           bool log_failures = true);
-
   // Creates a new named network namespace with name |netns_name|.
   virtual int ip_netns_add(std::string_view netns_name,
                            bool log_failures = true);

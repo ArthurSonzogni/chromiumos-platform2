@@ -1221,14 +1221,6 @@ TEST_F(DatapathTest, SetVpnLockdown) {
   datapath_->SetVpnLockdown(false);
 }
 
-TEST_F(DatapathTest, SetConntrackHelpers) {
-  EXPECT_CALL(system_, SysNetSet(System::SysNet::kConntrackHelper, "1", ""));
-  EXPECT_CALL(system_, SysNetSet(System::SysNet::kConntrackHelper, "0", ""));
-
-  datapath_->SetConntrackHelpers(true);
-  datapath_->SetConntrackHelpers(false);
-}
-
 TEST_F(DatapathTest, StartDnsRedirection_Default) {
   runner_.ExpectCallIptables(
       IpFamily::kIPv4,
@@ -1635,14 +1627,6 @@ TEST_F(DatapathTest, SetRouteLocalnet) {
 
   datapath_->SetRouteLocalnet("eth0", true);
   datapath_->SetRouteLocalnet("wlan0", false);
-}
-
-TEST_F(DatapathTest, ModprobeAll) {
-  EXPECT_CALL(runner_, modprobe_all(ElementsAre("ip6table_filter", "ah6",
-                                                "esp6", "nf_nat_ftp"),
-                                    _));
-
-  datapath_->ModprobeAll({"ip6table_filter", "ah6", "esp6", "nf_nat_ftp"});
 }
 
 TEST_F(DatapathTest, ModifyPortRule) {
