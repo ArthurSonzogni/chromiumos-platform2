@@ -13,8 +13,6 @@ constexpr char kPatchPanelServicePath[] = "/org/chromium/PatchPanel";
 constexpr char kPatchPanelServiceName[] = "org.chromium.PatchPanel";
 
 // Exported methods.
-constexpr char kArcShutdownMethod[] = "ArcShutdown";
-constexpr char kArcStartupMethod[] = "ArcStartup";
 constexpr char kArcVmShutdownMethod[] = "ArcVmShutdown";
 constexpr char kArcVmStartupMethod[] = "ArcVmStartup";
 constexpr char kConnectNamespaceMethod[] = "ConnectNamespace";
