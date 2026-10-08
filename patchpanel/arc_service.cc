@@ -266,8 +266,6 @@ bool ArcService::Start(uint32_t id) {
     return false;
   }
   switch (arc_type_) {
-    case ArcType::kContainer:
-      return false;
     case ArcType::kVM: {
       // Allocate TAP devices for all configs.
       std::vector<std::string> tap_ifnames;
@@ -538,8 +536,6 @@ std::ostream& operator<<(std::ostream& stream,
 
 std::ostream& operator<<(std::ostream& stream, ArcService::ArcType arc_type) {
   switch (arc_type) {
-    case ArcService::ArcType::kContainer:
-      return stream << "ARC Container";
     case ArcService::ArcType::kVM:
       return stream << "ARCVM";
   }

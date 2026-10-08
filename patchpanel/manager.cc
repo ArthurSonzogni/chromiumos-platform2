@@ -43,11 +43,7 @@ constexpr int kIPv6RestartDelayMs = 300;
 constexpr ConntrackMonitor::EventType kConntrackEvents[] = {
     ConntrackMonitor::EventType::kNew};
 
-#if USE_ARCVM
 constexpr ArcService::ArcType kArcType = ArcService::ArcType::kVM;
-#else
-constexpr ArcService::ArcType kArcType = ArcService::ArcType::kContainer;
-#endif
 
 }  // namespace
 

@@ -73,7 +73,7 @@ message BroadcastForwardingControlMessage {
 message GuestMessage {
   enum GuestType {
     UNKNOWN_GUEST = 0;
-    ARC = 1;         // ARC++ Container (P & higher)
+    reserved 1;
     ARC_VM = 2;      // ARC VM
     TERMINA_VM = 3;  // Crostini Termina VM
     reserved 4;
@@ -88,8 +88,7 @@ message GuestMessage {
   }
   required GuestEvent event = 2;
 
-  // The PID of the ARC++ container.
-  optional int32 arc_pid = 3;
+  reserved 3;
 
   // The VSOCK CID of the ARCVM.
   optional uint32 arcvm_vsock_cid = 4;

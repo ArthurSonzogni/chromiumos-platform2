@@ -49,8 +49,7 @@ constexpr int kDbusTimeoutMs = 200;
 constexpr int kAdbSideloadMaxTry = 5;
 constexpr base::TimeDelta kAdbSideloadUpdateDelay = base::Milliseconds(5000);
 
-const std::set<GuestMessage::GuestType> kArcGuestTypes{GuestMessage::ARC,
-                                                       GuestMessage::ARC_VM};
+const std::set<GuestMessage::GuestType> kArcGuestTypes{GuestMessage::ARC_VM};
 
 bool IsDevModeEnabled() {
   return VbGetSystemPropertyInt("cros_debug") == 1;

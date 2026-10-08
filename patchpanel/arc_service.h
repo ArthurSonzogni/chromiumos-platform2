@@ -34,9 +34,6 @@ namespace patchpanel {
 
 // Name of the ARC legacy management interface.
 constexpr char kArc0Ifname[] = "arc0";
-// Name of the veth interface (host facing) used with the ARC legacy management
-// interface for ARC container.
-constexpr char kVethArc0Ifname[] = "vetharc0";
 // Name of the bridge used with the ARC legacy management interface.
 constexpr char kArcbr0Ifname[] = "arcbr0";
 
@@ -44,8 +41,6 @@ class ArcService {
  public:
   // Types of the ARC device.
   enum class ArcType {
-    // Container
-    kContainer,
     // VM
     kVM,
   };

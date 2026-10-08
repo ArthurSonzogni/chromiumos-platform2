@@ -179,10 +179,7 @@ static_library("libpatchpanel") {
   ]
   configs += [ ":target_defaults" ]
   cflags = [ "-Wconversion" ]
-  defines = [
-    "USE_ARCVM=${use.arcvm}",
-    "USE_ARCVM_NIC_HOTPLUG=${nic_hotplug}",
-  ]
+  defines = [ "USE_ARCVM_NIC_HOTPLUG=${nic_hotplug}" ]
 
   # Workaround for b/266863330: disable PCH when the user generates
   # compilation database for an editor.
