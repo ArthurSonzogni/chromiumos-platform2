@@ -7,7 +7,6 @@
 #include <linux/vm_sockets.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <sys/un.h>
 #include <sysexits.h>
 
 #include <memory>
@@ -45,8 +44,6 @@ constexpr uint16_t kTcpConnectPort = 5555;
 constexpr net_base::IPv4Address kTcpAddr(100, 115, 92, 2);
 constexpr uint32_t kVsockPort = 5555;
 constexpr int kMaxConn = 16;
-// Reference: "device/google/cheets2/init.usb.rc".
-constexpr char kUnixConnectAddr[] = "/run/arc/adb/adb.sock";
 constexpr int kDbusTimeoutMs = 200;
 // The maximum number of ADB sideloading query failures before stopping.
 constexpr int kAdbSideloadMaxTry = 5;
@@ -131,25 +128,6 @@ void AdbProxy::OnFileCanReadWithoutBlocking() {
 
 std::unique_ptr<net_base::Socket> AdbProxy::Connect() const {
   switch (arc_type_) {
-    case GuestMessage::ARC: {
-      struct sockaddr_un addr_un = {0};
-      addr_un.sun_family = AF_UNIX;
-      snprintf(addr_un.sun_path, sizeof(addr_un.sun_path), "%s",
-               kUnixConnectAddr);
-      std::unique_ptr<net_base::Socket> dst =
-          net_base::Socket::Create(AF_UNIX, SOCK_STREAM);
-      if (!dst) {
-        PLOG(ERROR) << "Failed to create UNIX domain socket";
-        return nullptr;
-      }
-      if (dst->Connect((const struct sockaddr*)&addr_un, sizeof(addr_un))) {
-        LOG(INFO) << "Established adbd connection to " << addr_un;
-        return dst;
-      }
-      PLOG(WARNING) << "Failed to connect UNIX domain socket to adbd: "
-                    << kUnixConnectAddr << " - falling back to TCP";
-      break;
-    }
     case GuestMessage::ARC_VM: {
       if (!arcvm_vsock_cid_.has_value()) {
         LOG(ERROR) << "Undefined ARCVM CID";

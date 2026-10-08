@@ -201,10 +201,6 @@ class ArcService {
   using ArcDeviceChangeHandler = base::RepeatingCallback<void(
       const ShillClient::Device&, const ArcDevice&, ArcDeviceEvent)>;
 
-  // Returns for given interface name the host name of a ARC veth pair. Pairs of
-  // veth interfaces are only used for the ARC conhtainer.
-  static std::string ArcVethHostName(const ShillClient::Device& device);
-
   // Returns the ARC bridge interface name for the given interface. Software
   // bridges are used both for the ARC container and for ARCVM.
   static std::string ArcBridgeName(const ShillClient::Device& device);
@@ -275,8 +271,6 @@ class ArcService {
   // Creates ARC interface configurations for all available IPv4 subnets which
   // will be assigned to ARC Devices as they are added.
   void AllocateAddressConfigs();
-
-  void RefreshMacAddressesInConfigs();
 
   // Starts the packet datapath on the host for the ARC device |arc_device|.
   // If ARC is running in container mode, the veth interface
