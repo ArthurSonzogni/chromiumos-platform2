@@ -957,41 +957,11 @@ void ClientImpl::OnOwnerChanged(const std::string& old_owner,
 }
 
 bool ClientImpl::NotifyArcStartup(pid_t pid) {
-  ArcStartupRequest request;
-  request.set_pid(pid);
-
-  // TODO(b/284076578): Check if we can call the DBus method asynchronously.
-  ArcStartupResponse response;
-  brillo::ErrorPtr error;
-  const bool result = RunOnDBusThreadSync(base::BindOnce(
-      [](PatchPanelProxyInterface* proxy, const ArcStartupRequest& request,
-         ArcStartupResponse* response, brillo::ErrorPtr* error) {
-        return proxy->ArcStartup(request, response, error);
-      },
-      pp_proxy_.get(), request, &response, &error));
-  if (!result) {
-    LOG(ERROR) << "ARC network startup failed: " << error->GetMessage();
-    return false;
-  }
-
-  return true;
+  return false;
 }
 
 bool ClientImpl::NotifyArcShutdown() {
-  // TODO(b/284076578): Check if we can call the DBus method asynchronously.
-  brillo::ErrorPtr error;
-  const bool result = RunOnDBusThreadSync(base::BindOnce(
-      [](PatchPanelProxyInterface* proxy, brillo::ErrorPtr* error) {
-        ArcShutdownResponse response;
-        return proxy->ArcShutdown({}, &response, error);
-      },
-      pp_proxy_.get(), &error));
-  if (!result) {
-    LOG(ERROR) << "ARC network shutdown failed: " << error->GetMessage();
-    return false;
-  }
-
-  return true;
+  return false;
 }
 
 std::optional<Client::ArcVMAllocation> ClientImpl::NotifyArcVmStartup(

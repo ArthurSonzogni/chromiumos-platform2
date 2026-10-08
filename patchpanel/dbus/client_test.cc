@@ -55,19 +55,17 @@ class ClientTest : public testing::Test {
 
 TEST_F(ClientTest, NotifyArcStartup) {
   const pid_t pid = 3456;
-  EXPECT_CALL(*pp_proxy_,
-              ArcStartup(Property(&ArcStartupRequest::pid, pid), _, _, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(*pp_proxy_, ArcStartup(_, _, _, _)).Times(0);
 
   const bool result = client_->NotifyArcStartup(pid);
-  EXPECT_TRUE(result);
+  EXPECT_FALSE(result);
 }
 
 TEST_F(ClientTest, NotifyArcShutdown) {
-  EXPECT_CALL(*pp_proxy_, ArcShutdown(_, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*pp_proxy_, ArcShutdown(_, _, _, _)).Times(0);
 
   const bool result = client_->NotifyArcShutdown();
-  EXPECT_TRUE(result);
+  EXPECT_FALSE(result);
 }
 
 TEST_F(ClientTest, NotifyArcVmStartup) {

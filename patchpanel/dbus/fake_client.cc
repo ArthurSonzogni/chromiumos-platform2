@@ -15,11 +15,11 @@ void FakeClient::RegisterProcessChangedCallback(
     base::RepeatingCallback<void(bool)> callback) {}
 
 bool FakeClient::NotifyArcStartup(pid_t) {
-  return true;
+  return false;
 }
 
 bool FakeClient::NotifyArcShutdown() {
-  return true;
+  return false;
 }
 
 std::optional<Client::ArcVMAllocation> FakeClient::NotifyArcVmStartup(
