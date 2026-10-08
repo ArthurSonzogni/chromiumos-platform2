@@ -63,29 +63,6 @@ void PatchpanelAdaptor::RegisterAsync(
   dbus_object_.RegisterAsync(std::move(cb));
 }
 
-ArcShutdownResponse PatchpanelAdaptor::ArcShutdown(
-    const ArcShutdownRequest& request) {
-  LOG(INFO) << "ARC++ shutting down";
-  RecordDbusEvent(DbusUmaEvent::kArcShutdown);
-
-  manager_->ArcShutdown();
-  RecordDbusEvent(DbusUmaEvent::kArcShutdownSuccess);
-  return {};
-}
-
-ArcStartupResponse PatchpanelAdaptor::ArcStartup(
-    const ArcStartupRequest& request) {
-  LOG(INFO) << "ARC++ starting up";
-  RecordDbusEvent(DbusUmaEvent::kArcStartup);
-
-  if (!manager_->ArcStartup(request.pid())) {
-    LOG(ERROR) << "Failed to start ARC++ network service";
-  } else {
-    RecordDbusEvent(DbusUmaEvent::kArcStartupSuccess);
-  }
-  return {};
-}
-
 ArcVmShutdownResponse PatchpanelAdaptor::ArcVmShutdown(
     const ArcVmShutdownRequest& request) {
   LOG(INFO) << "ARCVM shutting down";

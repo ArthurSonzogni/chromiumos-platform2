@@ -64,12 +64,6 @@ class Manager : public ForwardingService {
   // Queries the list of virtual devices managed by patchpanel.
   GetDevicesResponse GetDevices() const;
 
-  // Handles notification indicating ARC++ is booting up.
-  bool ArcStartup(pid_t pid);
-
-  // Handles notification indicating ARC++ is spinning down.
-  void ArcShutdown();
-
   // Handles notification indicating ARCVM is booting up.
   std::optional<patchpanel::ArcVmStartupResponse> ArcVmStartup(uint32_t cid);
 

@@ -18,35 +18,6 @@ namespace patchpanel {
 
 class StubPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
  public:
-  bool ArcShutdown(const patchpanel::ArcShutdownRequest& in_request,
-                   patchpanel::ArcShutdownResponse* out_response,
-                   brillo::ErrorPtr* error,
-                   int timeout_ms) override {
-    return false;
-  }
-
-  void ArcShutdownAsync(
-      const patchpanel::ArcShutdownRequest& in_request,
-      base::OnceCallback<
-          void(const patchpanel::ArcShutdownResponse& /*response*/)>
-          success_callback,
-      base::OnceCallback<void(brillo::Error*)> error_callback,
-      int timeout_ms) override {}
-
-  bool ArcStartup(const patchpanel::ArcStartupRequest& in_request,
-                  patchpanel::ArcStartupResponse* out_response,
-                  brillo::ErrorPtr* error,
-                  int timeout_ms) override {
-    return false;
-  }
-
-  void ArcStartupAsync(
-      const patchpanel::ArcStartupRequest& in_request,
-      base::OnceCallback<void(
-          const patchpanel::ArcStartupResponse& /*response*/)> success_callback,
-      base::OnceCallback<void(brillo::Error*)> error_callback,
-      int timeout_ms) override {}
-
   bool ArcVmShutdown(const patchpanel::ArcVmShutdownRequest& in_request,
                      patchpanel::ArcVmShutdownResponse* out_response,
                      brillo::ErrorPtr* error,
@@ -425,18 +396,6 @@ class MockPatchPanelProxy : public StubPatchPanelProxy {
  public:
   MockPatchPanelProxy();
   ~MockPatchPanelProxy() override;
-
-  MOCK_METHOD(
-      bool,
-      ArcShutdown,
-      (const ArcShutdownRequest&, ArcShutdownResponse*, brillo::ErrorPtr*, int),
-      (override));
-
-  MOCK_METHOD(
-      bool,
-      ArcStartup,
-      (const ArcStartupRequest&, ArcStartupResponse*, brillo::ErrorPtr*, int),
-      (override));
 
   MOCK_METHOD(bool,
               ArcVmShutdown,

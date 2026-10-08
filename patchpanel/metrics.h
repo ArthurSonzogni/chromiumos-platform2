@@ -54,10 +54,10 @@ constexpr char kMulticastARCWiFiSSDPInactiveCountMetrics[] =
 // UMA metrics events for |kDbusUmaEventMetrics|;
 enum class DbusUmaEvent {
   kUnknown = 0,
-  kArcStartup = 1,
-  kArcStartupSuccess = 2,
-  kArcShutdown = 3,
-  kArcShutdownSuccess = 4,
+  kArcStartup = 1,          // Deprecated
+  kArcStartupSuccess = 2,   // Deprecated
+  kArcShutdown = 3,         // Deprecated
+  kArcShutdownSuccess = 4,  // Deprecated
   kArcVmStartup = 5,
   kArcVmStartupSuccess = 6,
   kArcVmShutdown = 7,

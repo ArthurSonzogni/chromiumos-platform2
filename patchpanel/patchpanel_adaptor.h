@@ -49,8 +49,6 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
 
   // Implements org::chromium::PatchPanelInterface, which are mapping to the
   // exported D-Bus methods.
-  ArcShutdownResponse ArcShutdown(const ArcShutdownRequest& request) override;
-  ArcStartupResponse ArcStartup(const ArcStartupRequest& request) override;
   ArcVmShutdownResponse ArcVmShutdown(
       const ArcVmShutdownRequest& request) override;
   ArcVmStartupResponse ArcVmStartup(

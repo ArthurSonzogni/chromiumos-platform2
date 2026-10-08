@@ -443,40 +443,6 @@ void Manager::OnDoHProvidersChanged() {
   qos_svc_.OnDoHProvidersChanged();
 }
 
-bool Manager::ArcStartup(pid_t pid) {
-  if (pid < 0) {
-    LOG(ERROR) << "Invalid ARC pid: " << pid;
-    return false;
-  }
-
-  if (!arc_svc_.Start(static_cast<uint32_t>(pid))) {
-    return false;
-  }
-
-  GuestMessage msg;
-  msg.set_event(GuestMessage::START);
-  msg.set_type(GuestMessage::ARC);
-  msg.set_arc_pid(pid);
-  SendGuestMessage(msg);
-
-  multicast_metrics_.OnARCStarted();
-
-  return true;
-}
-
-void Manager::ArcShutdown() {
-  multicast_metrics_.OnARCStopped();
-
-  GuestMessage msg;
-  msg.set_event(GuestMessage::STOP);
-  msg.set_type(GuestMessage::ARC);
-  SendGuestMessage(msg);
-
-  // After the ARC container has stopped, the pid is not known anymore.
-  // The pid argument is ignored by ArcService.
-  arc_svc_.Stop(0);
-}
-
 std::optional<patchpanel::ArcVmStartupResponse> Manager::ArcVmStartup(
     uint32_t cid) {
   if (kArcType != ArcService::ArcType::kVM) {
