@@ -6,6 +6,8 @@
 #define POWER_MANAGER_TOOLS_BATTERY_SAVER_PROTO_UTIL_H_
 
 #include <algorithm>
+#include <cstdint>
+#include <iterator>
 #include <optional>
 #include <string>
 #include <vector>
