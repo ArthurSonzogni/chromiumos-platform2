@@ -665,7 +665,7 @@ TEST_F(ArcKeyMintContextTest, UpgradeKeyBlobWithOsVersion) {
   ASSERT_EQ(error, KM_ERROR_OK);
 
   // Verify the old blob can't be used after a system upgrade.
-  context_->SetSystemVersion(kOsVersion, kOsPatchlevel + 1);
+  context_->SetSystemVersionForTesting(kOsVersion, kOsPatchlevel + 1);
   ::keymaster::GetKeyCharacteristicsRequest characteristicsRequest1(
       kKeyMintMessageVersion);
   characteristicsRequest1.SetKeyMaterial(generated_key);
@@ -801,7 +801,7 @@ TEST_F(ArcKeyMintContextTest, UpgradeKeyBlobLowerVersionError) {
   ASSERT_EQ(error, KM_ERROR_OK);
 
   // Downgrade the system to a previous version.
-  context_->SetSystemVersion(kOsVersion, kOsPatchlevel - 1);
+  context_->SetSystemVersionForTesting(kOsVersion, kOsPatchlevel - 1);
 
   // Verify the old blob becomes invalid.
   ::keymaster::GetKeyCharacteristicsRequest characteristicsRequest1(
@@ -832,10 +832,8 @@ TEST_F(ArcKeyMintContextTest,
   keymaster_error_t error = generateTestKey(&keymint_, &generated_key);
   ASSERT_EQ(error, KM_ERROR_OK);
 
-  context_->SetBootPatchlevelForTesting(kBootPatchlevel);
-
-  // Downgrade the system to a previous version.
-  context_->SetSystemVersion(kOsVersion, kVendorPatchlevel - 1);
+  // Downgrade the vendor patchlevel.
+  context_->SetVendorPatchlevelForTesting(kVendorPatchlevel - 1);
 
   // Verify the old blob becomes invalid.
   ::keymaster::GetKeyCharacteristicsRequest characteristicsRequest1(
@@ -866,10 +864,8 @@ TEST_F(ArcKeyMintContextTest,
   keymaster_error_t error = generateTestKey(&keymint_, &generated_key);
   ASSERT_EQ(error, KM_ERROR_OK);
 
-  context_->SetBootPatchlevelForTesting(kBootPatchlevel);
-
-  // Downgrade the system to a previous version.
-  context_->SetSystemVersion(kOsVersion, kBootPatchlevel - 1);
+  // Downgrade the boot patchlevel.
+  context_->SetBootPatchlevelForTesting(kBootPatchlevel - 1);
 
   // Verify the old blob becomes invalid.
   ::keymaster::GetKeyCharacteristicsRequest characteristicsRequest1(
@@ -1403,5 +1399,39 @@ TEST_F(ArcKeyMintContextTest, GetVerifiedBootParams_Success) {
 
   // Cleanup.
   TearDownDBus();
+}
+
+TEST_F(ArcKeyMintContextTest, SetSystemVersion_Success) {
+  EXPECT_EQ(KM_ERROR_OK, context_->SetSystemVersion(kOsVersion, kOsPatchlevel));
+  // Calling with the same version and patchlevel is idempotent and succeeds.
+  EXPECT_EQ(KM_ERROR_OK, context_->SetSystemVersion(kOsVersion, kOsPatchlevel));
+}
+
+TEST_F(ArcKeyMintContextTest, SetSystemVersion_CannotSetToDifferentValue) {
+  EXPECT_EQ(KM_ERROR_OK, context_->SetSystemVersion(kOsVersion, kOsPatchlevel));
+  // Attempting to change OS version fails.
+  EXPECT_EQ(KM_ERROR_INVALID_ARGUMENT,
+            context_->SetSystemVersion(kOsVersion + 1, kOsPatchlevel));
+  // Attempting to change OS patchlevel fails.
+  EXPECT_EQ(KM_ERROR_INVALID_ARGUMENT,
+            context_->SetSystemVersion(kOsVersion, kOsPatchlevel + 1));
+}
+
+TEST_F(ArcKeyMintContextTest, SetVendorPatchlevel_CannotSetToDifferentValue) {
+  EXPECT_EQ(KM_ERROR_OK, context_->SetVendorPatchlevel(kVendorPatchlevel));
+  // Calling with the same value is idempotent and succeeds.
+  EXPECT_EQ(KM_ERROR_OK, context_->SetVendorPatchlevel(kVendorPatchlevel));
+  // Attempting to change vendor patchlevel fails.
+  EXPECT_EQ(KM_ERROR_INVALID_ARGUMENT,
+            context_->SetVendorPatchlevel(kVendorPatchlevel + 1));
+}
+
+TEST_F(ArcKeyMintContextTest, SetBootPatchlevel_CannotSetToDifferentValue) {
+  EXPECT_EQ(KM_ERROR_OK, context_->SetBootPatchlevel(kBootPatchlevel));
+  // Calling with the same value is idempotent and succeeds.
+  EXPECT_EQ(KM_ERROR_OK, context_->SetBootPatchlevel(kBootPatchlevel));
+  // Attempting to change boot patchlevel fails.
+  EXPECT_EQ(KM_ERROR_INVALID_ARGUMENT,
+            context_->SetBootPatchlevel(kBootPatchlevel + 1));
 }
 }  // namespace arc::keymint::context

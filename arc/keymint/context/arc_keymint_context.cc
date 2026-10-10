@@ -790,6 +790,13 @@ keymaster_error_t ArcKeyMintContext::SetSerialNumber(
 
 keymaster_error_t ArcKeyMintContext::SetSystemVersion(uint32_t os_version,
                                                       uint32_t os_patchlevel) {
+  if (system_version_set_ &&
+      (os_version != os_version_ || os_patchlevel != os_patchlevel_)) {
+    LOG(ERROR) << "System version was already set. Can't set it to a "
+                  "different value.";
+    return KM_ERROR_INVALID_ARGUMENT;
+  }
+  system_version_set_ = true;
   os_version_ = os_version;
   os_patchlevel_ = os_patchlevel;
   if (pure_soft_remote_provisioning_context_ != nullptr) {
@@ -1213,6 +1220,12 @@ ArcKeyMintContext::GetVerifiedBootParams(keymaster_error_t* error) const {
 ::keymaster::KeymasterEnforcement* ArcKeyMintContext::enforcement_policy() {
   return reinterpret_cast<::keymaster::KeymasterEnforcement*>(
       arc_enforcement_policy_.get());
+}
+
+void ArcKeyMintContext::SetSystemVersionForTesting(uint32_t os_version,
+                                                   uint32_t os_patchlevel) {
+  system_version_set_ = false;
+  SetSystemVersion(os_version, os_patchlevel);
 }
 
 void ArcKeyMintContext::SetVendorPatchlevelForTesting(

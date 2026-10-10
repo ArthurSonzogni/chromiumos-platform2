@@ -116,6 +116,7 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
 
   // Sets the ARCVM's serial number in KeyMint.
   keymaster_error_t SetSerialNumber(const std::string& serial_number);
+  void SetSystemVersionForTesting(uint32_t os_version, uint32_t os_patchlevel);
   void SetVendorPatchlevelForTesting(uint32_t vendor_patch_level);
   void SetBootPatchlevelForTesting(uint32_t boot_patch_level);
 
@@ -215,6 +216,7 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
   base::FilePath vbmeta_digest_file_dir_;
   std::optional<std::vector<uint8_t>> boot_key_;
   scoped_refptr<dbus::Bus> bus_;
+  bool system_version_set_ = false;
   std::optional<uint32_t> vendor_patchlevel_;
   std::optional<uint32_t> boot_patchlevel_;
   std::unique_ptr<ArcAttestationContext> arc_attestation_context_;
