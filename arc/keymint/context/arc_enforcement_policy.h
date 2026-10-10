@@ -23,6 +23,9 @@ class ArcEnforcementPolicy : public ::keymaster::SoftKeymasterEnforcement {
   ArcEnforcementPolicy(const ArcEnforcementPolicy&) = delete;
   ArcEnforcementPolicy& operator=(const ArcEnforcementPolicy&) = delete;
 
+  bool activation_date_valid(uint64_t activation_date) const override;
+  bool expiration_date_passed(uint64_t expiration_date) const override;
+
   ::keymaster::KmErrorOr<std::array<uint8_t, 32>> ComputeHmac(
       const std::vector<uint8_t>&) const override;
 

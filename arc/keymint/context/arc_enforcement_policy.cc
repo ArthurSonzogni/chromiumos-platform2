@@ -5,6 +5,8 @@
 #include "arc/keymint/context/arc_enforcement_policy.h"
 
 #include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
+#include <base/time/time.h>
 #include <brillo/secure_blob.h>
 #include <crypto/random.h>
 #include <keymaster/cppcose/cppcose.h>
@@ -14,6 +16,11 @@ namespace arc::keymint::context {
 namespace {
 
 constexpr size_t kSessionKeySize = 32;
+
+uint64_t GetWallClockTimeMs() {
+  return base::saturated_cast<uint64_t>(
+      base::Time::Now().InMillisecondsSinceUnixEpoch());
+}
 
 }  // namespace
 
@@ -29,6 +36,16 @@ ArcEnforcementPolicy::~ArcEnforcementPolicy() = default;
 void ArcEnforcementPolicy::set_session_key_for_tests(
     const std::vector<uint8_t>& session_key) {
   session_key_ = session_key;
+}
+
+bool ArcEnforcementPolicy::activation_date_valid(
+    uint64_t activation_date) const {
+  return activation_date <= GetWallClockTimeMs();
+}
+
+bool ArcEnforcementPolicy::expiration_date_passed(
+    uint64_t expiration_date) const {
+  return expiration_date < GetWallClockTimeMs();
 }
 
 ::keymaster::KmErrorOr<std::array<uint8_t, 32>>
