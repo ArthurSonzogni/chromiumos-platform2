@@ -27,14 +27,21 @@ class ArcEnforcementPolicy : public ::keymaster::SoftKeymasterEnforcement {
   bool expiration_date_passed(uint64_t expiration_date) const override;
   bool auth_token_timed_out(const hw_auth_token_t& token,
                             uint32_t timeout) const override;
+  bool ValidateTokenSignature(const hw_auth_token_t& token) const override;
 
   ::keymaster::KmErrorOr<std::array<uint8_t, 32>> ComputeHmac(
       const std::vector<uint8_t>&) const override;
 
+  keymaster_error_t ComputeSharedHmac(
+      const ::keymaster::HmacSharingParametersArray& params_array,
+      ::keymaster::KeymasterBlob* sharingCheck) override;
+
  private:
   void set_session_key_for_tests(const std::vector<uint8_t>& session_key);
+  void set_shared_hmac_key_for_tests(const std::vector<uint8_t>& key);
 
   std::vector<uint8_t> session_key_;
+  std::vector<uint8_t> shared_hmac_key_;
   friend class ArcEnforcementPolicyTestPeer;
 };
 }  // namespace arc::keymint::context
