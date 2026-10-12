@@ -43,12 +43,14 @@ class FileHandlerForTesting : public FileHandler {
   bool CreateRamoopsPath() const;
   // Creates /home/chronos.
   bool CreateChronosPath() const;
+  // Creates /var/lib/devicesettings.
+  bool CreateDeviceSettingsPath() const;
 
   // Checks if the flag that indicates oobe_config_save ran successfully exists.
   bool HasDataSavedFlag() const;
 
-  // Places the flag that indicates oobe is completed in oobe_config_save
-  // directory.
+  // Places the owner.key file in the devicesettings directory to indicate OOBE
+  // is completed.
   bool CreateOobeCompletedFlag() const;
 
   // Creates the file that indicates metrics reporting is enabled. Usually it

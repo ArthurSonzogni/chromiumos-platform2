@@ -32,7 +32,8 @@ FileHandlerForTesting::~FileHandlerForTesting() = default;
 
 bool FileHandlerForTesting::CreateDefaultExistingPaths() const {
   return CreateRamoopsPath() && CreateSavePath() && CreatePreservePath() &&
-         CreateRestorePath() && CreateChronosPath();
+         CreateRestorePath() && CreateChronosPath() &&
+         CreateDeviceSettingsPath();
 }
 
 bool FileHandlerForTesting::CreateRestorePath() const {
@@ -55,6 +56,10 @@ bool FileHandlerForTesting::CreateChronosPath() const {
   return base::CreateDirectory(GetFullPath(kChronosPath));
 }
 
+bool FileHandlerForTesting::CreateDeviceSettingsPath() const {
+  return base::CreateDirectory(GetFullPath(kDeviceSettingsPath));
+}
+
 bool FileHandlerForTesting::HasDataSavedFlag() const {
   return base::PathExists(
       GetFullPath(kDataSavePath).Append(kDataSavedFileName));
@@ -62,7 +67,7 @@ bool FileHandlerForTesting::HasDataSavedFlag() const {
 
 bool FileHandlerForTesting::CreateOobeCompletedFlag() const {
   return base::WriteFile(
-      GetFullPath(kChronosPath).Append(kOobeCompletedFileName), "");
+      GetFullPath(kDeviceSettingsPath).Append(kOwnerKeyFileName), "");
 }
 
 bool FileHandlerForTesting::CreateMetricsReportingEnabledFile() const {

@@ -134,7 +134,7 @@ bool FileHandler::CreateDataSavedFlag() const {
 
 bool FileHandler::HasOobeCompletedFlag() const {
   return base::PathExists(
-      GetFullPath(kChronosPath).Append(kOobeCompletedFileName));
+      GetFullPath(kDeviceSettingsPath).Append(kOwnerKeyFileName));
 }
 
 bool FileHandler::HasMetricsReportingEnabledFlag() const {

@@ -94,8 +94,8 @@ class FileHandler {
   // Places the flag that indicates oobe_config_save ran successfully.
   bool CreateDataSavedFlag() const;
 
-  // Checks if the flag that indicates oobe is completed exists in
-  // oobe_config_save directory.
+  // Checks if the device is owned (which indicates OOBE is completed) by
+  // checking if owner.key exists in the devicesettings directory.
   bool HasOobeCompletedFlag() const;
 
   // Checks if the flag that indicates metrics reporting is enabled exists in
@@ -176,6 +176,7 @@ class FileHandler {
   static constexpr char kDataRestorePath[] = "var/lib/oobe_config_restore";
   static constexpr char kDataSavePath[] = "var/lib/oobe_config_save";
   static constexpr char kChronosPath[] = "home/chronos";
+  static constexpr char kDeviceSettingsPath[] = "var/lib/devicesettings";
 
   static constexpr char kSaveRollbackDataFile[] =
       "mnt/stateful_partition/.save_rollback_data";
@@ -190,7 +191,7 @@ class FileHandler {
       "rollback_data_tpm";
   static constexpr char kDataSavedFileName[] = ".data_saved";
 
-  static constexpr char kOobeCompletedFileName[] = ".oobe_completed";
+  static constexpr char kOwnerKeyFileName[] = "owner.key";
   static constexpr char kMetricsReportingEnabledFileName[] =
       "Consent To Send Stats";
 

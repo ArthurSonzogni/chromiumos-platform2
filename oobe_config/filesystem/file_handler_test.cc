@@ -66,7 +66,7 @@ class FileHandlerTest : public ::testing::Test {
   static constexpr char kExpectedDataSavedFlag[] =
       "var/lib/oobe_config_save/.data_saved";
   static constexpr char kExpectedOobeCompletedFlag[] =
-      "home/chronos/.oobe_completed";
+      "var/lib/devicesettings/owner.key";
   static constexpr char kExpectedMetricsReportingEnabledFlag[] =
       "home/chronos/Consent To Send Stats";
   static constexpr char kExpectedPstoreData[] =
