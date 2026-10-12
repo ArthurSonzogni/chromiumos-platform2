@@ -5,6 +5,8 @@
 #ifndef OOBE_CONFIG_FILESYSTEM_FILE_HANDLER_H_
 #define OOBE_CONFIG_FILESYSTEM_FILE_HANDLER_H_
 
+#include <sys/types.h>
+
 #include <optional>
 #include <string>
 
@@ -214,10 +216,19 @@ class FileHandler {
       base::FILE_PERMISSION_READ_BY_USER | base::FILE_PERMISSION_WRITE_BY_USER |
       base::FILE_PERMISSION_READ_BY_GROUP;
 
+  // UID for the oobe_config_save user, defined in
+  // src/third_party/eclass-overlay/profiles/base/accounts/user/oobe_config_save.
+  static constexpr uid_t kOobeConfigSaveUid = 20122;
+
+  bool HasEncryptedRollbackData(const base::FilePath& path) const;
+  bool ReadEncryptedRollbackData(const base::FilePath& path,
+                                 std::string* encrypted_rollback_data) const;
+
   virtual base::FilePath GetFullPath(
       const std::string& path_without_root) const;
 
   base::FilePath root_;
+  std::optional<uid_t> expected_rollback_data_owner_uid_ = kOobeConfigSaveUid;
 };
 
 }  // namespace oobe_config

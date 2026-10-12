@@ -21,6 +21,7 @@ namespace oobe_config {
 FileHandlerForTesting::FileHandlerForTesting() {
   CHECK(fake_root_dir_.CreateUniqueTempDir());
   root_ = fake_root_dir_.GetPath();
+  expected_rollback_data_owner_uid_ = std::nullopt;
 }
 
 FileHandlerForTesting::FileHandlerForTesting(FileHandlerForTesting&&) noexcept =
@@ -196,6 +197,11 @@ base::FilePath FileHandlerForTesting::GetFullPath(
 bool FileHandlerForTesting::CreateDeviceMigrationSaveTriggerFlag() {
   return base::WriteFile(
       GetFullPath(kPreservePath).Append(kDeviceMigrationSaveDataFileName), "");
+}
+
+void FileHandlerForTesting::SetExpectedRollbackDataOwnerUid(
+    std::optional<uid_t> uid) {
+  expected_rollback_data_owner_uid_ = uid;
 }
 
 }  // namespace oobe_config

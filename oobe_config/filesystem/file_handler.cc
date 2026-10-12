@@ -4,9 +4,12 @@
 
 #include "oobe_config/filesystem/file_handler.h"
 
+#include <fcntl.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include <base/containers/span.h>
@@ -14,6 +17,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <brillo/files/file_util.h>
@@ -38,13 +42,13 @@ bool FileHandler::RemoveRestorePath() const {
 }
 
 bool FileHandler::HasOpensslEncryptedRollbackData() const {
-  return base::PathExists(
+  return HasEncryptedRollbackData(
       GetFullPath(kPreservePath).Append(kOpensslEncryptedRollbackDataFileName));
 }
 
 bool FileHandler::ReadOpensslEncryptedRollbackData(
     std::string* openssl_encrypted_rollback_data) const {
-  return base::ReadFileToString(
+  return ReadEncryptedRollbackData(
       GetFullPath(kPreservePath).Append(kOpensslEncryptedRollbackDataFileName),
       openssl_encrypted_rollback_data);
 }
@@ -62,13 +66,13 @@ bool FileHandler::RemoveOpensslEncryptedRollbackData() const {
 }
 
 bool FileHandler::HasTpmEncryptedRollbackData() const {
-  return base::PathExists(
+  return HasEncryptedRollbackData(
       GetFullPath(kPreservePath).Append(kTpmEncryptedRollbackDataFileName));
 }
 
 bool FileHandler::ReadTpmEncryptedRollbackData(
     std::string* tpm_encrypted_rollback_data) const {
-  return base::ReadFileToString(
+  return ReadEncryptedRollbackData(
       GetFullPath(kPreservePath).Append(kTpmEncryptedRollbackDataFileName),
       tpm_encrypted_rollback_data);
 }
@@ -302,6 +306,60 @@ bool FileHandler::ChangeEncryptedFlexOobeConfigPermissions() {
   return base::SetPosixFilePermissions(
       GetFullPath(kFlexOobeConfigEncryptedFilePath),
       kFlexOobeConfigEncryptedFilePermissions);
+}
+
+bool FileHandler::HasEncryptedRollbackData(const base::FilePath& path) const {
+  if (!expected_rollback_data_owner_uid_.has_value()) {
+    return base::PathExists(path);
+  }
+
+  base::ScopedFD fd(HANDLE_EINTR(openat(AT_FDCWD, path.value().c_str(),
+                                        O_RDONLY | O_CLOEXEC | O_NOFOLLOW)));
+  if (!fd.is_valid()) {
+    return false;
+  }
+
+  struct stat file_stat;
+  if (fstat(fd.get(), &file_stat) != 0 || !S_ISREG(file_stat.st_mode)) {
+    return false;
+  }
+  if (file_stat.st_uid != *expected_rollback_data_owner_uid_) {
+    LOG(ERROR) << "Unexpected owner UID " << file_stat.st_uid << " for "
+               << path.value();
+    return false;
+  }
+  return true;
+}
+
+bool FileHandler::ReadEncryptedRollbackData(
+    const base::FilePath& path, std::string* encrypted_rollback_data) const {
+  if (!expected_rollback_data_owner_uid_.has_value()) {
+    return base::ReadFileToString(path, encrypted_rollback_data);
+  }
+
+  base::ScopedFD fd(HANDLE_EINTR(openat(AT_FDCWD, path.value().c_str(),
+                                        O_RDONLY | O_CLOEXEC | O_NOFOLLOW)));
+  if (!fd.is_valid()) {
+    return false;
+  }
+
+  struct stat file_stat;
+  if (fstat(fd.get(), &file_stat) != 0 || !S_ISREG(file_stat.st_mode)) {
+    return false;
+  }
+  if (file_stat.st_uid != *expected_rollback_data_owner_uid_) {
+    LOG(ERROR) << "Unexpected owner UID " << file_stat.st_uid << " for "
+               << path.value();
+    return false;
+  }
+
+  base::File file(std::move(fd));
+  std::optional<std::string> data = GetOpenedFileData(file);
+  if (!data.has_value()) {
+    return false;
+  }
+  *encrypted_rollback_data = std::move(*data);
+  return true;
 }
 
 base::FilePath FileHandler::GetFullPath(

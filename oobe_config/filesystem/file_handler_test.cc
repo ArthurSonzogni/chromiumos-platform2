@@ -691,4 +691,40 @@ TEST_F(FileHandlerTest, ChangeEncryptedFlexOobeConfigPermissions) {
   EXPECT_EQ(mode, kExpectedEncryptedFlexOobeConfigFilePermissions);
 }
 
+TEST_F(FileHandlerTest, EncryptedRollbackDataOwnershipVerifiedWhenMatchingUid) {
+  ASSERT_TRUE(file_handler_.CreatePreservePath());
+  ASSERT_TRUE(file_handler_.WriteOpensslEncryptedRollbackData(kFileData));
+  ASSERT_TRUE(file_handler_.WriteTpmEncryptedRollbackData(kFileData));
+
+  file_handler_.SetExpectedRollbackDataOwnerUid(geteuid());
+
+  EXPECT_TRUE(file_handler_.HasOpensslEncryptedRollbackData());
+  std::string openssl_data;
+  EXPECT_TRUE(file_handler_.ReadOpensslEncryptedRollbackData(&openssl_data));
+  EXPECT_EQ(openssl_data, kFileData);
+
+  EXPECT_TRUE(file_handler_.HasTpmEncryptedRollbackData());
+  std::string tpm_data;
+  EXPECT_TRUE(file_handler_.ReadTpmEncryptedRollbackData(&tpm_data));
+  EXPECT_EQ(tpm_data, kFileData);
+}
+
+TEST_F(FileHandlerTest, EncryptedRollbackDataRejectedWhenMismatchedUid) {
+  ASSERT_TRUE(file_handler_.CreatePreservePath());
+  ASSERT_TRUE(file_handler_.WriteOpensslEncryptedRollbackData(kFileData));
+  ASSERT_TRUE(file_handler_.WriteTpmEncryptedRollbackData(kFileData));
+
+  file_handler_.SetExpectedRollbackDataOwnerUid(geteuid() + 1);
+
+  EXPECT_FALSE(file_handler_.HasOpensslEncryptedRollbackData());
+  std::string openssl_data;
+  EXPECT_FALSE(file_handler_.ReadOpensslEncryptedRollbackData(&openssl_data));
+  EXPECT_EQ(openssl_data, std::string());
+
+  EXPECT_FALSE(file_handler_.HasTpmEncryptedRollbackData());
+  std::string tpm_data;
+  EXPECT_FALSE(file_handler_.ReadTpmEncryptedRollbackData(&tpm_data));
+  EXPECT_EQ(tpm_data, std::string());
+}
+
 }  // namespace oobe_config

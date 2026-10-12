@@ -120,6 +120,10 @@ class FileHandlerForTesting : public FileHandler {
   // because of device migration.
   bool CreateDeviceMigrationSaveTriggerFlag();
 
+  // Sets the expected owner UID for encrypted rollback data files (or
+  // std::nullopt to disable UID verification in tests).
+  void SetExpectedRollbackDataOwnerUid(std::optional<uid_t> uid);
+
  private:
   static inline constexpr char kRamoops0FileName[] = "pmsg-ramoops-0";
 
