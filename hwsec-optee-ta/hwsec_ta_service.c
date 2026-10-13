@@ -6,9 +6,9 @@
 
 #include <stdint.h>
 #include <string.h>
-
 #include <tee_internal_api.h>
 #include <tee_internal_api_extensions.h>
+
 #include <tpm2/tpm_generated.h>
 
 #include "hwsec-optee-ta/hwsec_cmd.h"
@@ -60,7 +60,8 @@ TEE_Result HwsecReadCounter(TpmSession* session,
     return TEE_ERROR_SHORT_BUFFER;
   }
 
-  TPM2B_MAX_NV_BUFFER data;
+  // Keep this large buffer off the small TA stack (TA_STACK_SIZE).
+  static TPM2B_MAX_NV_BUFFER data;
   res = GetVerifiedCounterData(session, params[0].value.a, params[1].value.a,
                                &data);
   if (res != TEE_SUCCESS) {
