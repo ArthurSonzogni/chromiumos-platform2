@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 
 #include <memory>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -586,6 +587,83 @@ TEST_F(DNSClientTest, TimeoutWithDuration) {
               CallbackWithDuration(Ge(base::Seconds(1)),
                                    Result(base::unexpected(Error::kTimedOut))));
   task_env_.FastForwardBy(base::Seconds(2));
+}
+
+TEST_F(DNSClientTest, AresStatusToErrorMapping) {
+  const std::pair<int, Error> kTestCases[] = {
+      {ARES_ENODATA, Error::kNoData},
+      {ARES_EFORMERR, Error::kFormErr},
+      {ARES_ESERVFAIL, Error::kServerFail},
+      {ARES_ENOTFOUND, Error::kNotFound},
+      {ARES_ENOTIMP, Error::kNotImplemented},
+      {ARES_EREFUSED, Error::kRefused},
+      {ARES_EBADQUERY, Error::kBadQuery},
+      {ARES_EBADNAME, Error::kBadName},
+      {ARES_EBADFAMILY, Error::kBadFamily},
+      {ARES_EBADRESP, Error::kBadResp},
+      {ARES_ECONNREFUSED, Error::kConnRefused},
+      {ARES_ETIMEOUT, Error::kTimedOut},
+      {ARES_EOF, Error::kEndOfFile},
+      {ARES_EFILE, Error::kReadErr},
+      {ARES_ENOMEM, Error::kNoMemory},
+      {ARES_EDESTRUCTION, Error::kChannelDestroyed},
+      {ARES_EBADSTR, Error::kBadFormat},
+      {ARES_EBADFLAGS, Error::kBadFlags},
+      {ARES_ENONAME, Error::kBadHostname},
+      {ARES_EBADHINTS, Error::kBadHints},
+      {ARES_ENOTINITIALIZED, Error::kNotInit},
+      {ARES_ELOADIPHLPAPI, Error::kLoadErr},
+      {ARES_EADDRGETNETWORKPARAMS, Error::kGetNetworkParamsNotFound},
+      {ARES_ECANCELLED, Error::kCancelled},
+      {-999, Error::kInternal},
+  };
+
+  for (const auto& [ares_status, expected_error] : kTestCases) {
+    FakeAres fake_ares;
+    auto client =
+        DNSClientFactory().Resolve(IPFamily::kIPv4, "test-url", GetCallback(),
+                                   /*options=*/{}, &fake_ares);
+    EXPECT_CALL(*this, Callback(Result(base::unexpected(expected_error))));
+    fake_ares.TriggerReadReady();
+    fake_ares.InvokeCallbackOnNextProcessFD(ares_status, {});
+    task_env_.RunUntilIdle();
+    testing::Mock::VerifyAndClearExpectations(this);
+  }
+}
+
+TEST_F(DNSClientTest, ErrorNameAndStreamOperator) {
+  EXPECT_EQ(DNSClient::ErrorName(Error::kInternal), "InternalError");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kNoData), "NoData");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kFormErr), "FormError");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kServerFail), "ServerFailure");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kNotFound), "NotFound");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kNotImplemented), "NotImplemented");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kRefused), "Refused");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kBadQuery), "BadQuery");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kBadName), "BadName");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kBadFamily), "BadFamily");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kBadResp), "BadResp");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kConnRefused), "ConnectionRefused");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kTimedOut), "TimedOut");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kEndOfFile), "EndOfFile");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kReadErr), "FileReadError");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kNoMemory), "OutOfMemory");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kChannelDestroyed),
+            "ChannelIsBeingDestroyed");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kBadFormat), "MisformattedInput");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kBadFlags), "IllegalFlagsSpecified");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kBadHostname), "HostnameWasNotNumeric");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kBadHints),
+            "IllegalHintFlagsSpecified");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kNotInit), "LibraryNotInitialized");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kLoadErr), "LoadError");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kGetNetworkParamsNotFound),
+            "GetNetworkParamsFunctionNotFound");
+  EXPECT_EQ(DNSClient::ErrorName(Error::kCancelled), "QueryCancelled");
+
+  std::ostringstream oss;
+  oss << Error::kCancelled;
+  EXPECT_EQ(oss.str(), "QueryCancelled");
 }
 
 }  // namespace

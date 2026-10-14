@@ -84,6 +84,30 @@ constexpr DNSClient::Error AresStatusToError(int status) {
       return Error::kConnRefused;
     case ARES_ETIMEOUT:
       return Error::kTimedOut;
+    case ARES_EOF:
+      return Error::kEndOfFile;
+    case ARES_EFILE:
+      return Error::kReadErr;
+    case ARES_ENOMEM:
+      return Error::kNoMemory;
+    case ARES_EDESTRUCTION:
+      return Error::kChannelDestroyed;
+    case ARES_EBADSTR:
+      return Error::kBadFormat;
+    case ARES_EBADFLAGS:
+      return Error::kBadFlags;
+    case ARES_ENONAME:
+      return Error::kBadHostname;
+    case ARES_EBADHINTS:
+      return Error::kBadHints;
+    case ARES_ENOTINITIALIZED:
+      return Error::kNotInit;
+    case ARES_ELOADIPHLPAPI:
+      return Error::kLoadErr;
+    case ARES_EADDRGETNETWORKPARAMS:
+      return Error::kGetNetworkParamsNotFound;
+    case ARES_ECANCELLED:
+      return Error::kCancelled;
     default:
       LOG(ERROR) << "Unexpected ares status " << status;
       return Error::kInternal;
