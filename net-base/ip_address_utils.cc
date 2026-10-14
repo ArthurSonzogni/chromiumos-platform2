@@ -6,6 +6,7 @@
 
 #include <arpa/inet.h>
 
+#include <algorithm>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -13,14 +14,20 @@
 
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 
 namespace net_base {
 
 std::optional<std::pair<std::string_view, int>> SplitCIDRString(
     std::string_view address_string) {
   const auto address_parts = base::SplitStringPiece(
-      address_string, "/", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+      address_string, "/", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   if (address_parts.size() != 2) {
+    return std::nullopt;
+  }
+
+  if (!std::all_of(address_parts[1].begin(), address_parts[1].end(),
+                   [](char c) { return base::IsAsciiDigit(c); })) {
     return std::nullopt;
   }
 

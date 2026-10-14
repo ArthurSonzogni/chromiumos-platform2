@@ -20,7 +20,9 @@
 namespace net_base {
 
 // Splits the CIDR-notation string into the pair of the address and the prefix
-// length. Returns std::nullopt if the format is invalid.
+// length. No whitespace is trimmed anywhere, and the prefix length must be a
+// non-empty string of ASCII digits (no sign). Returns std::nullopt if the
+// format is invalid.
 BRILLO_EXPORT std::optional<std::pair<std::string_view, int>> SplitCIDRString(
     std::string_view address_string);
 
@@ -39,7 +41,20 @@ std::optional<Address> CreateAddressFromBytes(base::span<const uint8_t> bytes) {
   return Address(data);
 }
 
-// Represents the CIDR, that contains a IP address and a prefix length.
+// Represents a CIDR pairing an `Address` (`IPv4Address` or `IPv6Address`) with
+// a `prefix_length` in `[0, kMaxPrefixLength]`.
+// - Default constructor yields `0.0.0.0/0` or `::/0` (`IsDefault() == true`).
+//   `IsDefault()` is provided instead of `IsZero()` to avoid ambiguity over
+//   whether only `address().IsZero()` or both address and prefix length are 0.
+// - `CreateFromCIDRString` accepts `"<ip>/<prefix>"` or bare `"<ip>"`
+//   (defaulting to `kMaxPrefixLength`, only when no `/` is present). No
+//   whitespace is trimmed; callers parsing user/config input (e.g. WireGuard
+//   `AllowedIPs`) must trim whitespace first.
+// - `GetPrefixCIDR().address()` returns the network-part address (with host
+//   bits masked to zero). `ToNetmask()` is infallible because `prefix_length_`
+//   is guaranteed valid on a constructed `CIDR` (`0.0.0.0` is a valid `/0`
+//   netmask), whereas `GetPrefixLength(netmask)` returns `std::nullopt` for
+//   non-contiguous netmasks.
 template <typename Address>
 class BRILLO_EXPORT CIDR {
  public:
@@ -102,8 +117,11 @@ class BRILLO_EXPORT CIDR {
   // Returns std::nullopt if the string format is invalid.
   static std::optional<CIDR> CreateFromCIDRString(
       std::string_view cidr_string) {
-    const auto cidr_pair = SplitCIDRString(cidr_string);
-    if (cidr_pair) {
+    if (cidr_string.find('/') != std::string_view::npos) {
+      const auto cidr_pair = SplitCIDRString(cidr_string);
+      if (!cidr_pair) {
+        return std::nullopt;
+      }
       return CreateFromStringAndPrefix(cidr_pair->first, cidr_pair->second);
     }
 

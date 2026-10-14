@@ -4,8 +4,12 @@
 
 #include "net-base/ip_address.h"
 
+#include <utility>
+
 #include <base/logging.h>
 #include <gtest/gtest.h>
+
+#include "net-base/ip_address_utils.h"
 
 namespace net_base {
 namespace {
@@ -220,8 +224,19 @@ TEST(IPCIDRTest, CreateFromCIDRString_Fail) {
   EXPECT_FALSE(IPCIDR::CreateFromCIDRString("192.168.10.1/-1"));
   EXPECT_FALSE(IPCIDR::CreateFromCIDRString("192.168.10.1/33"));
   EXPECT_FALSE(IPCIDR::CreateFromCIDRString("192.168.10/24"));
+  EXPECT_FALSE(IPCIDR::CreateFromCIDRString("192.168.10.1/+24"));
+  EXPECT_FALSE(IPCIDR::CreateFromCIDRString(" 192.168.10.1/24"));
+  EXPECT_FALSE(IPCIDR::CreateFromCIDRString("192.168.10.1 /24"));
+  EXPECT_FALSE(IPCIDR::CreateFromCIDRString("192.168.10.1/ 24"));
+  EXPECT_FALSE(IPCIDR::CreateFromCIDRString("192.168.10.1/24 "));
+  EXPECT_FALSE(IPCIDR::CreateFromCIDRString(" 192.168.10.1 / 24 "));
+  EXPECT_FALSE(IPCIDR::CreateFromCIDRString("192.168.10.1/24/8"));
+  EXPECT_FALSE(IPCIDR::CreateFromCIDRString("192.168.10.1/"));
+  EXPECT_FALSE(IPCIDR::CreateFromCIDRString("/24"));
+  EXPECT_FALSE(IPCIDR::CreateFromCIDRString("192.168.10.1/abc"));
   EXPECT_FALSE(IPCIDR::CreateFromCIDRString("2401:fa00:480:c6::30/-1"));
   EXPECT_FALSE(IPCIDR::CreateFromCIDRString("2401:fa00:480:c6::30/130"));
+  EXPECT_FALSE(IPCIDR::CreateFromCIDRString("2401:fa00:480:c6::30/+64"));
 }
 
 TEST(IPCIDRTest, CreateFromCIDRStringWithFamily) {
@@ -440,6 +455,48 @@ TEST(IPCIDRTest, IsDefault) {
 
   const auto cidr6 = *IPCIDR::CreateFromCIDRString("::/128");
   EXPECT_FALSE(cidr6.IsDefault());
+}
+
+TEST(IPAddressUtilsTest, SplitCIDRString) {
+  // Valid cases.
+  EXPECT_EQ(SplitCIDRString("192.168.1.1/24"),
+            (std::make_optional<std::pair<std::string_view, int>>("192.168.1.1",
+                                                                  24)));
+  EXPECT_EQ(SplitCIDRString("2401:fa00::1/64"),
+            (std::make_optional<std::pair<std::string_view, int>>(
+                "2401:fa00::1", 64)));
+  EXPECT_EQ(
+      SplitCIDRString("0.0.0.0/0"),
+      (std::make_optional<std::pair<std::string_view, int>>("0.0.0.0", 0)));
+  EXPECT_EQ(SplitCIDRString("192.168.1.1/024"),
+            (std::make_optional<std::pair<std::string_view, int>>("192.168.1.1",
+                                                                  24)));
+  // Whitespace in address part is kept as-is (not trimmed).
+  EXPECT_EQ(SplitCIDRString(" 192.168.1.1/24"),
+            (std::make_optional<std::pair<std::string_view, int>>(
+                " 192.168.1.1", 24)));
+  EXPECT_EQ(SplitCIDRString("192.168.1.1 /24"),
+            (std::make_optional<std::pair<std::string_view, int>>(
+                "192.168.1.1 ", 24)));
+
+  // Invalid cases: no slash, empty, multiple slashes.
+  EXPECT_EQ(SplitCIDRString(""), std::nullopt);
+  EXPECT_EQ(SplitCIDRString("192.168.1.1"), std::nullopt);
+  EXPECT_EQ(SplitCIDRString("192.168.1.1/24/8"), std::nullopt);
+  EXPECT_EQ(SplitCIDRString("/"), std::nullopt);
+  EXPECT_EQ(SplitCIDRString("192.168.1.1/"), std::nullopt);
+  EXPECT_EQ(SplitCIDRString("/24"),
+            (std::make_optional<std::pair<std::string_view, int>>("", 24)));
+
+  // Invalid prefix: signs, non-digits.
+  EXPECT_EQ(SplitCIDRString("192.168.1.1/+24"), std::nullopt);
+  EXPECT_EQ(SplitCIDRString("192.168.1.1/-24"), std::nullopt);
+  EXPECT_EQ(SplitCIDRString("192.168.1.1/abc"), std::nullopt);
+
+  // Invalid prefix whitespace (not trimmed, rejected by IsAsciiDigit check).
+  EXPECT_EQ(SplitCIDRString("192.168.1.1/ 24"), std::nullopt);
+  EXPECT_EQ(SplitCIDRString("192.168.1.1/24 "), std::nullopt);
+  EXPECT_EQ(SplitCIDRString(" 192.168.1.1 / 24 "), std::nullopt);
 }
 
 }  // namespace
