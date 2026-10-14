@@ -16,6 +16,11 @@ namespace net_base {
 // tests. See the document of c-ares for each function. BRILLO_EXPORT is
 // necessary since the unit test binary also load libnet-base as a shared
 // library.
+//
+// Note: `AresInterface` wraps `ares_getaddrinfo` / `ares_freeaddrinfo` (rather
+// than the deprecated `ares_gethostbyname`). The `ares_addrinfo_callback`
+// passed to `getaddrinfo()` takes ownership of `struct ares_addrinfo* result`
+// and must free it via `freeaddrinfo()`.
 class BRILLO_EXPORT AresInterface {
  public:
   static AresInterface* GetInstance();

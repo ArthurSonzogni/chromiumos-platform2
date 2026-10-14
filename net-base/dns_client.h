@@ -23,13 +23,21 @@ namespace net_base {
 
 class AresInterface;
 
-// An async DNS resolver. The object can be destroyed at anytime to cancel the
-// ongoing query.
+// An async DNS resolver backed by `c-ares`.
+//
+// `DNSClient` has no public methods besides its virtual destructor; it is
+// created exclusively via `DNSClientFactory::Resolve()` and acts as a pure
+// RAII handle for an in-flight resolution. Destroying the `DNSClient` instance
+// at any time cancels the ongoing query and guarantees that the completion
+// callback will not be invoked.
 class BRILLO_EXPORT DNSClient {
  public:
   // The values should be matched with the constants defined in ares.h, except
   // for kInternal, where 0 is ARES_SUCCESS, but we don't need that status in
   // Error.
+  // When adding or modifying an `Error` enumerator, keep `AresStatusToError()`
+  // and `DNSClient::ErrorName()` in `dns_client.cc` and `dns_client_test.cc` in
+  // sync.
   enum class Error {
     kInternal = 0,
     // ARES_ENODATA
@@ -42,7 +50,8 @@ class BRILLO_EXPORT DNSClient {
     kNotFound = 4,
     // ARES_ENOTIMP
     kNotImplemented = 5,
-    // ARES_ERFUSED
+    // ARES_EREFUSED: DNS server returned RCODE 5 (Refused) at the DNS protocol
+    // level. Contrast with `kConnRefused` (`ARES_ECONNREFUSED`) below.
     kRefused = 6,
     // ARES_EBADQUERY
     kBadQuery = 7,
@@ -52,7 +61,8 @@ class BRILLO_EXPORT DNSClient {
     kBadFamily = 9,
     // ARES_EBADRESP
     kBadResp = 10,
-    // ARES_ECONNREFUSED
+    // ARES_ECONNREFUSED: Transport-level `ECONNREFUSED` (e.g. ICMP port
+    // unreachable or TCP RST when connecting to the DNS server socket).
     kConnRefused = 11,
     // ARES_ETIMEOUT
     kTimedOut = 12,
@@ -91,6 +101,9 @@ class BRILLO_EXPORT DNSClient {
       base::OnceCallback<void(base::TimeDelta duration, const Result& result)>;
 
   // Optional configurations for Resolve().
+  // All fields have default member initializers so callers can construct
+  // `Options` with C++20 designated initializers (e.g.
+  // `{.timeout = base::Seconds(5), .interface = "wlan0"}`).
   struct Options {
     // The maximum timeout for a single Resolve() call. Note that this is
     // independent from the timeout for a single DNS query, and the maximum
@@ -102,10 +115,11 @@ class BRILLO_EXPORT DNSClient {
     // resolv.conf will be used if not set.
     std::optional<int> number_of_tries = std::nullopt;
 
-    // The timeout value for the first try to each name server. The value set in
-    // resolv.conf will be used if not set. The timeout for the following tries
-    // will be controlled by the c-ares library. For more details, see comments
-    // for ARES_OPT_TIMEOUTMS in https://c-ares.org/ares_init_options.html .
+    // The timeout value for the first try to each name server (clamped to at
+    // most 1 minute internally). The value set in resolv.conf will be used if
+    // not set. The timeout for the following tries will be controlled by the
+    // c-ares library. For more details, see comments for ARES_OPT_TIMEOUTMS in
+    // https://c-ares.org/ares_init_options.html .
     std::optional<base::TimeDelta> per_query_initial_timeout = std::nullopt;
 
     // If not empty, the query will be bound to this interface. Note that the
@@ -113,9 +127,11 @@ class BRILLO_EXPORT DNSClient {
     std::string interface = "";
 
     // The name server used for the query. The name servers in resolv.conf will
-    // be used if this option in empty. Only support one name server here by
-    // intention. The caller should create one DNSClient for each name server to
-    // query multiple server.
+    // be used if this option is not set. Only a single `IPAddress` is supported
+    // here by design: passing multiple servers to a single `c-ares` channel
+    // causes `N_servers * M_tries` sequential retries with hard-to-predict
+    // timeout interactions. Callers that want to probe multiple name servers
+    // should create one `DNSClient` per server in parallel.
     std::optional<IPAddress> name_server = std::nullopt;
   };
 
@@ -124,7 +140,7 @@ class BRILLO_EXPORT DNSClient {
   // Pure virtual just to make this class abstract.
   virtual ~DNSClient() = 0;
 
-  // DNSClientFactory is neither copyable nor movable.
+  // DNSClient is neither copyable nor movable.
   DNSClient(const DNSClient&) = delete;
   DNSClient& operator=(const DNSClient&) = delete;
 };

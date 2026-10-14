@@ -693,5 +693,72 @@ TEST_F(DNSClientTest, TimeoutStopsWatchingSocketsImmediately) {
   EXPECT_EQ(fake_ares.process_fd_call_count(), 1);
 }
 
+TEST_F(DNSClientTest, InitOptionsFailure) {
+  StrictMock<MockAres> mock_ares;
+  EXPECT_CALL(mock_ares, init_options).WillOnce(::testing::Return(ARES_ENOMEM));
+  EXPECT_CALL(*this, Callback(Result(base::unexpected(Error::kNoMemory))));
+
+  auto client = DNSClientFactory().Resolve(
+      IPFamily::kIPv4, "test-url", GetCallback(), /*options=*/{}, &mock_ares);
+
+  task_env_.RunUntilIdle();
+}
+
+TEST_F(DNSClientTest, SetServersCsvFailure) {
+  StrictMock<MockAres> mock_ares;
+  DNSClient::Options test_opts = {
+      .name_server = IPAddress::CreateFromString("1.2.3.4").value(),
+  };
+
+  EXPECT_CALL(mock_ares, init_options);
+  EXPECT_CALL(mock_ares, set_servers_csv(_, StrEq("1.2.3.4")))
+      .WillOnce(::testing::Return(ARES_EBADSTR));
+  EXPECT_CALL(*this, Callback(Result(base::unexpected(Error::kBadFormat))));
+
+  auto client = DNSClientFactory().Resolve(
+      IPFamily::kIPv4, "test-url", GetCallback(), test_opts, &mock_ares);
+
+  task_env_.RunUntilIdle();
+}
+
+TEST_F(DNSClientTest, PerQueryInitialTimeoutClamped) {
+  const struct {
+    base::TimeDelta input_timeout;
+    int expected_timeout_ms;
+  } kTestCases[] = {
+      {base::Seconds(5), 5000},
+      {base::Seconds(60), 60000},
+      {base::Seconds(60) + base::Milliseconds(1), 60000},
+      {base::Seconds(120), 60000},
+  };
+
+  for (const auto& [input_timeout, expected_timeout_ms] : kTestCases) {
+    StrictMock<MockAres> mock_ares;
+    DNSClient::Options test_opts = {
+        .per_query_initial_timeout = input_timeout,
+    };
+
+    EXPECT_CALL(mock_ares, init_options(_,
+                                        Pointee(Field(&ares_options::timeout,
+                                                      expected_timeout_ms)),
+                                        ARES_OPT_TIMEOUTMS));
+
+    auto client = DNSClientFactory().Resolve(
+        IPFamily::kIPv4, "test-url", GetCallback(), test_opts, &mock_ares);
+  }
+}
+
+TEST_F(DNSClientTest, SuccessStatusWithEmptyAddressListReturnsInternalError) {
+  FakeAres fake_ares;
+  auto client =
+      DNSClientFactory().Resolve(IPFamily::kIPv4, "test-url", GetCallback(),
+                                 /*options=*/{}, &fake_ares);
+
+  EXPECT_CALL(*this, Callback(Result(base::unexpected(Error::kInternal))));
+  fake_ares.TriggerReadReady();
+  fake_ares.InvokeCallbackOnNextProcessFD(ARES_SUCCESS, {});
+  task_env_.RunUntilIdle();
+}
+
 }  // namespace
 }  // namespace net_base
