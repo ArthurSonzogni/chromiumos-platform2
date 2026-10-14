@@ -12,8 +12,11 @@ import collections
 import contextlib
 import io
 import os
+import shutil
 import sys
+import tempfile
 import unittest
+from unittest import mock
 
 # pylint: disable=import-error
 from libcros_config_host import CrosConfig
@@ -1007,6 +1010,35 @@ class CrosConfigHostTest(unittest.TestCase):
 
         result = CrosConfig(self.filepath).GetDeviceSignerInfo()
         self.assertEqual(result, expected)
+
+    def testDefaultSysrootConfigPath(self):
+        """Test default config lookup prefers build/share over usr/share."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            usr_yaml = os.path.join(
+                temp_dir, "usr/share/chromeos-config/yaml/config.yaml"
+            )
+            os.makedirs(os.path.dirname(usr_yaml))
+            shutil.copy(self.filepath, usr_yaml)
+
+            with mock.patch.dict(os.environ, {"SYSROOT": temp_dir}):
+                config = CrosConfig()
+                self.assertEqual(
+                    config.GetConfig("another").GetProperty("/", "wallpaper"),
+                    "default",
+                )
+
+                build_yaml = os.path.join(
+                    temp_dir, "build/share/chromeos-config/yaml/config.yaml"
+                )
+                os.makedirs(os.path.dirname(build_yaml))
+                shutil.copy(self.filepath, build_yaml)
+                # Remove usr_yaml to verify build_yaml is used when present.
+                os.remove(usr_yaml)
+                config = CrosConfig()
+                self.assertEqual(
+                    config.GetConfig("another").GetProperty("/", "wallpaper"),
+                    "default",
+                )
 
 
 if __name__ == "__main__":
