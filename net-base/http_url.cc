@@ -4,6 +4,7 @@
 
 #include "net-base/http_url.h"
 
+#include <algorithm>
 #include <compare>
 #include <optional>
 #include <string>
@@ -18,10 +19,12 @@ namespace net_base {
 
 namespace {
 
-constexpr char kDelimiters[] = " /#?";
+constexpr char kDelimiters[] = "/#?";
 constexpr char kPortSeparator = ':';
 constexpr char kPrefixHttp[] = "http://";
 constexpr char kPrefixHttps[] = "https://";
+constexpr int kMinPort = 1;
+constexpr int kMaxPort = 65535;
 
 }  //  namespace
 
@@ -42,7 +45,12 @@ std::optional<HttpUrl> HttpUrl::CreateFromString(std::string_view url_string) {
 }
 
 bool HttpUrl::ParseFromString(std::string_view url_string) {
-  if (!base::IsStringUTF8(url_string)) {
+  // Reject non-UTF-8 strings upfront: `HttpUrl` values (such as
+  // `captive_portal_uri`) are serialized onto D-Bus, where invalid UTF-8
+  // causes `libdbus` to crash the process.
+  if (!base::IsStringUTF8(url_string) ||
+      std::any_of(url_string.begin(), url_string.end(),
+                  [](char c) { return base::IsAsciiWhitespace(c); })) {
     return false;
   }
   Protocol protocol = Protocol::kUnknown;
@@ -69,14 +77,18 @@ bool HttpUrl::ParseFromString(std::string_view url_string) {
   }
   const auto host_parts = base::SplitString(
       url_string.substr(host_start, host_end - host_start),
-      std::string{kPortSeparator}, base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+      std::string{kPortSeparator}, base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
   if (host_parts.empty() || host_parts[0].empty() || host_parts.size() > 2) {
     return false;
   }
 
   if (host_parts.size() == 2) {
-    if (!base::StringToInt(host_parts[1], &port)) {
+    if (host_parts[1].empty() ||
+        !std::all_of(host_parts[1].begin(), host_parts[1].end(),
+                     [](char c) { return base::IsAsciiDigit(c); }) ||
+        !base::StringToInt(host_parts[1], &port) || port < kMinPort ||
+        port > kMaxPort) {
       return false;
     }
   }
@@ -116,7 +128,7 @@ std::string HttpUrl::ToString() const {
     url_string += ":" + std::to_string(port);
   }
   if (path_ != "/") {
-    if (base::StartsWith(path_, "/?")) {
+    if (base::StartsWith(path_, "/?") || base::StartsWith(path_, "/#")) {
       url_string += path_.substr(1);
     } else {
       url_string += path_;

@@ -65,10 +65,19 @@ INSTANTIATE_TEST_SUITE_P(
         StringAndResult(""),                             // Empty string
         StringAndResult("xxx"),                          // No known prefix
         StringAndResult(" http://www.foo.com"),          // Leading garbage
+        StringAndResult("http://www.foo.com bar"),       // Space in URL
+        StringAndResult("http://www.foo.com: 80"),       // Whitespace in port
+        StringAndResult("http://www.foo.com:80 "),       // Whitespace in port
+        StringAndResult("http://foo.com/a b"),           // Whitespace in path
+        StringAndResult("http://foo.com/bar?q=a b"),     // Whitespace in query
         StringAndResult("http://"),                      // No hostname
         StringAndResult("http://:100"),                  // Port but no hostname
         StringAndResult("http://www.foo.com:"),          // Colon but no port
         StringAndResult("http://www.foo.com:x"),         // Non-numeric port
+        StringAndResult("http://www.foo.com:0"),         // Port 0 out of range
+        StringAndResult("http://www.foo.com:-80"),       // Negative port
+        StringAndResult("http://www.foo.com:+80"),       // Leading '+' on port
+        StringAndResult("http://www.foo.com:65536"),     // Port > 65535
         StringAndResult("http://foo.com:10:20"),         // Too many colons
         StringAndResult("http://foo.\xff\x67\xe0/baz"),  // Hostname is not UTF8
         StringAndResult(
@@ -102,6 +111,11 @@ INSTANTIATE_TEST_SUITE_P(
                                       "www.foo.com",
                                       HttpUrl::kDefaultHttpPort,
                                       "/?bar"),
+                      StringAndResult("http://www.foo.com#frag",
+                                      HttpUrl::Protocol::kHttp,
+                                      "www.foo.com",
+                                      HttpUrl::kDefaultHttpPort,
+                                      "/#frag"),
                       StringAndResult("http://www.foo.com:443/bar",
                                       HttpUrl::Protocol::kHttp,
                                       "www.foo.com",
