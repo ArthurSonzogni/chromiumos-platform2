@@ -23,7 +23,15 @@
 
 namespace net_base {
 
-// Represents an IPv6 address.
+// Represents an IPv6 address (`kAddressLength = 16`), stored in network byte
+// order (big-endian).
+// - Default-constructed instances are all-zero (`::`, `IsZero() == true`).
+// - The multi-argument constructor takes 16 `uint8_t` bytes rather than 8
+//   `uint16_t` hextets to avoid host/network endianness confusion.
+// - `IsLinkLocal()` checks specifically for the `fe80::/64` link-local prefix
+//   (first 64 bits equal `fe80:0:0:0::`, so `fe80:0:0:1::` returns false).
+// - Supports `std::hash<net_base::IPv6Address>` and
+// `std::hash<net_base::IPv6CIDR>`.
 class BRILLO_EXPORT IPv6Address {
  public:
   // The length in bytes of addresses.
