@@ -148,6 +148,11 @@ class FakeAres : public AresInterface {
   // parameters.
   void InvokeCallbackOnNextProcessFD(int status, std::vector<IPAddress> addrs);
 
+  int process_fd_call_count() const { return process_fd_call_count_; }
+  void SetTriggerReadReadyOnTimeout(bool val) {
+    trigger_read_ready_on_timeout_ = val;
+  }
+
  private:
   struct GetaddrinfoParams {
     std::optional<IPFamily> hint_family = std::nullopt;
@@ -185,6 +190,8 @@ class FakeAres : public AresInterface {
   base::ScopedFD write_fd_remote_;
 
   std::optional<CallbackResult> callback_result_;
+  int process_fd_call_count_ = 0;
+  bool trigger_read_ready_on_timeout_ = false;
 };
 
 FakeAres::~FakeAres() {
@@ -273,6 +280,7 @@ void FakeAres::process_fd(ares_channel channel,
                           ares_socket_t read_fd,
                           ares_socket_t write_fd) {
   CheckChannel(channel);
+  process_fd_call_count_++;
   if (read_fd != ARES_SOCKET_BAD) {
     CHECK_EQ(read_fd, read_fd_local_.get());
     VerifyReadFD(read_fd);
@@ -280,6 +288,10 @@ void FakeAres::process_fd(ares_channel channel,
   if (write_fd != ARES_SOCKET_BAD) {
     CHECK_EQ(write_fd, write_fd_local_.get());
     BlockWriteFD();
+  }
+  if (read_fd == ARES_SOCKET_BAD && write_fd == ARES_SOCKET_BAD &&
+      trigger_read_ready_on_timeout_) {
+    TriggerReadReady();
   }
   if (!callback_result_.has_value()) {
     return;
@@ -664,6 +676,21 @@ TEST_F(DNSClientTest, ErrorNameAndStreamOperator) {
   std::ostringstream oss;
   oss << Error::kCancelled;
   EXPECT_EQ(oss.str(), "QueryCancelled");
+}
+
+TEST_F(DNSClientTest, TimeoutStopsWatchingSocketsImmediately) {
+  FakeAres fake_ares;
+  fake_ares.SetTriggerReadReadyOnTimeout(true);
+
+  DNSClient::Options opts = {
+      .timeout = base::Seconds(1),
+  };
+  auto client = DNSClientFactory().Resolve(IPFamily::kIPv4, "test-url",
+                                           GetCallback(), opts, &fake_ares);
+
+  EXPECT_CALL(*this, Callback(Result(base::unexpected(Error::kTimedOut))));
+  task_env_.FastForwardBy(base::Seconds(1));
+  EXPECT_EQ(fake_ares.process_fd_call_count(), 1);
 }
 
 }  // namespace

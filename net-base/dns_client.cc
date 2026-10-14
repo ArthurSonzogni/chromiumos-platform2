@@ -322,6 +322,21 @@ void DNSClientImpl::ReportFailure(base::TimeTicks stop, Error err) {
 
 void DNSClientImpl::ScheduleStopAndInvokeCallback(base::TimeTicks stop,
                                                   Result result) {
+  // Two-phase asynchronous completion:
+  // 1. `ScheduleStopAndInvokeCallback` may be called either synchronously
+  //    during `DNSClientImpl` construction (e.g. `ares_init_options` failure)
+  //    or re-entrantly from inside `ares_process_fd()` via
+  //    `AresGetaddrinfoCallback()`. Calling `ares_destroy()` directly inside
+  //    `ares_process_fd()` is unsafe, and `DNSClientFactory::Resolve()`
+  //    guarantees that `callback` is never invoked before `Resolve()` returns.
+  // 2. We therefore move `callback_` into a posted `StopAndInvokeCallback`
+  //    task (which also transitions `IsRunning()` to `false`), and immediately
+  //    cancel the timeout and clear `read_handlers_`/`write_handlers_` so no
+  //    further FD or timer events can enter `ProcessFd()` before `CleanUp()`
+  //    runs on the task runner.
+  weak_factory_for_timeout_.InvalidateWeakPtrs();
+  read_handlers_.clear();
+  write_handlers_.clear();
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&DNSClientImpl::StopAndInvokeCallback,
