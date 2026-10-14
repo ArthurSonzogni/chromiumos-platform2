@@ -180,6 +180,11 @@ class MockResolver : public Resolver {
               SetDoHProviders,
               (const std::vector<std::string>&, bool),
               (override));
+  MOCK_METHOD(void,
+              SetDomainDoHConfigs,
+              (const std::vector<std::string>&,
+               const std::vector<std::string>&),
+              (override));
   MOCK_METHOD(void, SetInterface, (std::string_view), (override));
   MOCK_METHOD(void, ClearInterface, (), (override));
 };
@@ -528,8 +533,17 @@ TEST_P(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline) {
 
   auto dev = ShillDevice(shill::Client::Device::ConnectionState::kOnline);
   brillo::VariantDictionary props;
+  std::vector<std::string> excluded_domains = {"excluded.com"};
+  std::vector<std::string> included_domains = {"included.com"};
+  props[shill::kDOHExcludedDomainsProperty] = excluded_domains;
+  props[shill::kDOHIncludedDomainsProperty] = included_domains;
   EXPECT_CALL(mock_manager_, GetProperties(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<0>(props), Return(true)));
+      .Times(3)
+      .WillRepeatedly(DoAll(SetArgPointee<0>(props), Return(true)));
+  EXPECT_CALL(*new_resolver, SetDomainDoHConfigs(IsEmpty(), IsEmpty()));
+  EXPECT_CALL(*new_resolver, SetDomainDoHConfigs(IsEmpty(), excluded_domains));
+  EXPECT_CALL(*new_resolver,
+              SetDomainDoHConfigs(included_domains, excluded_domains));
   proxy_->OnDefaultDeviceChanged(dev.get());
   EXPECT_TRUE(proxy_->resolver_);
 }
@@ -1641,9 +1655,12 @@ TEST_P(ProxyTest, UpdateNameServers) {
 TEST_P(ProxyTest, DomainDoHConfigsUpdate) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault});
 
-  std::vector<std::string> props = {"domain1.com", "domain2.net"};
-  proxy_->OnDoHIncludedDomainsChanged(props);
-  proxy_->OnDoHExcludedDomainsChanged(props);
+  std::vector<std::string> included_props = {"domain1.com", "domain2.net"};
+  std::vector<std::string> excluded_props = {"domain3.org", "domain4.io"};
+  EXPECT_CALL(*resolver_, SetDomainDoHConfigs(included_props, IsEmpty()));
+  EXPECT_CALL(*resolver_, SetDomainDoHConfigs(included_props, excluded_props));
+  proxy_->OnDoHIncludedDomainsChanged(included_props);
+  proxy_->OnDoHExcludedDomainsChanged(excluded_props);
 }
 
 TEST_P(ProxyTest, DomainDoHConfigsUpdate_ProxyStopped) {

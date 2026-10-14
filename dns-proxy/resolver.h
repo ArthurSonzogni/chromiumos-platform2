@@ -183,7 +183,7 @@ class Resolver {
 
   // Set DNS-over-HTTPS included and excluded domains. This is used to
   // disable DoH (and falls back to plain-text DNS) for certain domains.
-  void SetDomainDoHConfigs(
+  virtual void SetDomainDoHConfigs(
       const std::vector<std::string>& doh_included_domains,
       const std::vector<std::string>& doh_excluded_domains);
 

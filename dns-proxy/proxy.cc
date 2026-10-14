@@ -757,6 +757,26 @@ void Proxy::MaybeCreateResolver() {
     LOG(ERROR) << *this << " failed to obtain DoH configuration from shill: "
                << error->GetMessage();
   }
+
+  error.reset();
+  std::vector<std::string> doh_excluded_domains;
+  if (shill_props()->Get(shill::kDOHExcludedDomainsProperty,
+                         &doh_excluded_domains, &error)) {
+    OnDoHExcludedDomainsChanged(brillo::Any(doh_excluded_domains));
+  } else {
+    LOG(ERROR) << *this << " failed to obtain DoH excluded domains from shill: "
+               << error->GetMessage();
+  }
+
+  error.reset();
+  std::vector<std::string> doh_included_domains;
+  if (shill_props()->Get(shill::kDOHIncludedDomainsProperty,
+                         &doh_included_domains, &error)) {
+    OnDoHIncludedDomainsChanged(brillo::Any(doh_included_domains));
+  } else {
+    LOG(ERROR) << *this << " failed to obtain DoH included domains from shill: "
+               << error->GetMessage();
+  }
 }
 
 void Proxy::UpdateNameServers() {
