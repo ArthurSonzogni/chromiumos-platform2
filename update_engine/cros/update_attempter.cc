@@ -1142,6 +1142,10 @@ BootControlInterface::Slot UpdateAttempter::GetRollbackSlot() const {
 
 bool UpdateAttempter::CheckForUpdate(
     const update_engine::UpdateParams& update_params) {
+  if (IsMigration()) {
+    LOG(INFO) << "Refusing to do an update as a migration is pending reboot.";
+    return false;
+  }
   if (status_ != UpdateStatus::IDLE &&
       status_ != UpdateStatus::UPDATED_NEED_REBOOT) {
     LOG(INFO) << "Refusing to do an update as there is an "
@@ -1999,6 +2003,10 @@ bool UpdateAttempter::ResetUpdatePrefs() {
 }
 
 bool UpdateAttempter::InvalidateUpdate() {
+  if (IsMigration()) {
+    LOG(WARNING) << "Cannot invalidate a completed migration.";
+    return false;
+  }
   if (!GetBootTimeAtUpdate(nullptr)) {
     LOG(INFO) << "No previous update available to invalidate.";
     return true;
@@ -2100,6 +2108,10 @@ bool UpdateAttempter::ResetStatus() {
       return true;
 
     case UpdateStatus::UPDATED_NEED_REBOOT: {
+      if (IsMigration()) {
+        LOG(ERROR) << "Cannot reset status when a migration is pending reboot.";
+        return false;
+      }
       bool ret_value = true;
       status_ = UpdateStatus::IDLE;
       // Send metrics before resetting.
@@ -2647,6 +2659,10 @@ bool UpdateAttempter::IsAnyUpdateSourceAllowed() const {
 }
 
 bool UpdateAttempter::IsRepeatedUpdatesEnabled() {
+  if (IsMigration()) {
+    LOG(WARNING) << "Not allowing repeated updates after migration.";
+    return false;
+  }
   auto* prefs = SystemState::Get()->prefs();
 
   // Limit the number of repeated updates allowed as a safeguard on client.

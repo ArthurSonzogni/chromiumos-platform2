@@ -419,6 +419,7 @@ class UpdateAttempter : public ActionProcessorDelegate,
   FRIEND_TEST(UpdateAttempterTest, MigrateInstallFailsFastOnInvalidManifest);
   FRIEND_TEST(UpdateAttempterTest,
               OnUpdateScheduledMigrateEarlyAbortReschedules);
+  FRIEND_TEST(UpdateAttempterTest, MigrationPendingRebootBlocksUpdateAndReset);
   FRIEND_TEST(UpdateAttempterTest,
               CheckForInstallAllowsNormalAndMigrationInstalls);
   FRIEND_TEST(UpdateAttempterTest, GetPartitionNumberFromLayout);

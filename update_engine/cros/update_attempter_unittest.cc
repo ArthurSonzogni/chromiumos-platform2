@@ -3612,4 +3612,19 @@ TEST_F(UpdateAttempterTest, ProcessingDoneMigrateFailureResetsStatus) {
   EXPECT_FALSE(prefs_->Exists(kPrefsUpdateCompletedIsMigration));
 }
 
+TEST_F(UpdateAttempterTest, MigrationPendingRebootBlocksUpdateAndReset) {
+  FakeSystemState::Get()->fake_clock()->SetBootTime(Time::FromTimeT(42));
+  attempter_.WriteUpdateCompletedMarker();
+  prefs_->SetString(kPrefsUpdateCompletedIsMigration, "");
+  attempter_.status_ = UpdateStatus::UPDATED_NEED_REBOOT;
+  ASSERT_TRUE(attempter_.IsMigration());
+
+  EXPECT_FALSE(attempter_.IsRepeatedUpdatesEnabled());
+  EXPECT_FALSE(attempter_.CheckForUpdate({}));
+  EXPECT_FALSE(attempter_.InvalidateUpdate());
+  EXPECT_FALSE(attempter_.ResetStatus());
+  EXPECT_EQ(UpdateStatus::UPDATED_NEED_REBOOT, attempter_.status_);
+  EXPECT_TRUE(prefs_->Exists(kPrefsUpdateCompletedIsMigration));
+}
+
 }  // namespace chromeos_update_engine
