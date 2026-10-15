@@ -218,6 +218,20 @@ class UpdateAttempterUnderTest : public UpdateAttempter {
     waiting_for_scheduled_check_ = waiting;
   }
 
+  bool IsEligibleForMigration(bool* out_is_eligible) override {
+    if (is_eligible_for_migration_.has_value()) {
+      if (out_is_eligible) {
+        *out_is_eligible = *is_eligible_for_migration_;
+      }
+      return true;
+    }
+    return UpdateAttempter::IsEligibleForMigration(out_is_eligible);
+  }
+
+  void SetIsEligibleForMigration(std::optional<bool> is_eligible) {
+    is_eligible_for_migration_ = is_eligible;
+  }
+
  private:
   // Used for overrides of |Update()|.
   bool update_called_ = false;
@@ -226,6 +240,8 @@ class UpdateAttempterUnderTest : public UpdateAttempter {
   // Used for overrides of |ScheduleUpdates()|.
   bool schedule_updates_called_ = false;
   bool do_schedule_updates_ = true;
+
+  std::optional<bool> is_eligible_for_migration_;
 };
 
 class UpdateAttempterTest : public ::testing::Test {
@@ -3520,6 +3536,10 @@ TEST_F(UpdateAttempterTest, OnUpdateScheduledMigrateEarlyAbortReschedules) {
 }
 
 TEST_F(UpdateAttempterTest, CheckForInstallAllowsNormalAndMigrationInstalls) {
+  bool is_eligible = false;
+  EXPECT_TRUE(attempter_.IsEligibleForMigration(&is_eligible));
+  EXPECT_TRUE(is_eligible);
+
   FakeSystemState::Get()->fake_hardware()->SetIsOfficialBuild(false);
 
   EXPECT_TRUE(attempter_.CheckForInstall({"sample-dlc"}, "", /*scaled=*/true,
@@ -3534,7 +3554,7 @@ TEST_F(UpdateAttempterTest, CheckForInstallAllowsNormalAndMigrationInstalls) {
   EXPECT_EQ(attempter_.forced_omaha_url_, "http://127.0.0.1:8000");
 
   // Official builds with dev features disabled must ignore custom migration
-  // URLs.
+  // URLs, including "autest" and "autest-scheduled".
   FakeSystemState::Get()->fake_hardware()->SetIsOfficialBuild(true);
   FakeSystemState::Get()->fake_hardware()->SetAreDevFeaturesEnabled(false);
   EXPECT_TRUE(attempter_.CheckForInstall({}, "http://127.0.0.1:8000",
@@ -3542,6 +3562,26 @@ TEST_F(UpdateAttempterTest, CheckForInstallAllowsNormalAndMigrationInstalls) {
                                          /*migration=*/true));
   EXPECT_EQ(attempter_.pm_, ProcessMode::MIGRATE);
   EXPECT_TRUE(attempter_.forced_omaha_url_.empty());
+
+  EXPECT_TRUE(attempter_.CheckForInstall({}, "autest",
+                                         /*scaled=*/true, /*force_ota=*/false,
+                                         /*migration=*/true));
+  EXPECT_EQ(attempter_.pm_, ProcessMode::MIGRATE);
+  EXPECT_TRUE(attempter_.forced_omaha_url_.empty());
+
+  EXPECT_TRUE(attempter_.CheckForInstall({}, "autest-scheduled",
+                                         /*scaled=*/true, /*force_ota=*/false,
+                                         /*migration=*/true));
+  EXPECT_EQ(attempter_.pm_, ProcessMode::MIGRATE);
+  EXPECT_TRUE(attempter_.forced_omaha_url_.empty());
+
+  // Ineligible devices must be rejected before scheduling migration.
+  attempter_.pm_ = ProcessMode::UPDATE;
+  attempter_.SetIsEligibleForMigration(false);
+  EXPECT_FALSE(attempter_.CheckForInstall({}, "",
+                                          /*scaled=*/true, /*force_ota=*/false,
+                                          /*migration=*/true));
+  EXPECT_EQ(attempter_.pm_, ProcessMode::UPDATE);
 }
 
 TEST_F(UpdateAttempterTest, GetPartitionNumberFromLayout) {

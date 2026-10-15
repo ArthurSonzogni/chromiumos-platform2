@@ -1270,6 +1270,9 @@ bool UpdateAttempter::ApplyDeferredUpdate(bool shutdown) {
 bool UpdateAttempter::IsEligibleForMigration(bool* out_is_eligible) {
   // TODO(b/435189119): Get this information - board, model, build number
   // Check with Omaha if the board is eligible for migration install.
+  if (out_is_eligible) {
+    *out_is_eligible = true;
+  }
   return true;
 }
 
@@ -1282,6 +1285,14 @@ bool UpdateAttempter::CheckForInstall(const vector<string>& dlc_ids,
     LOG(INFO) << "Refusing to do an install as there is an "
               << ConvertToString(pm_) << " already in progress.";
     return false;
+  }
+
+  if (migration) {
+    bool is_eligible = false;
+    if (!IsEligibleForMigration(&is_eligible) || !is_eligible) {
+      LOG(ERROR) << "Device is not eligible for migration.";
+      return false;
+    }
   }
 
   dlc_ids_ = dlc_ids;
@@ -1305,13 +1316,13 @@ bool UpdateAttempter::CheckForInstall(const vector<string>& dlc_ids,
 
   // Certain conditions must be met to allow setting custom version and update
   // server URLs. However, kScheduledAUTestURLRequest and kAUTestURLRequest are
-  // always allowed regardless of device state.
+  // always allowed regardless of device state for Omaha-based installs.
   if (IsAnyUpdateSourceAllowed()) {
     forced_omaha_url_ = omaha_url;
   }
 
-  if (omaha_url == kScheduledAUTestURLRequest ||
-      omaha_url == kAUTestURLRequest) {
+  if (!migration && (omaha_url == kScheduledAUTestURLRequest ||
+                     omaha_url == kAUTestURLRequest)) {
     forced_omaha_url_ = constants::kOmahaDefaultAUTestURL;
   }
 

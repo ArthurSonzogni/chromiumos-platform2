@@ -253,6 +253,10 @@ void LibcurlHttpFetcher::ResumeTransfer(const string& url) {
     } else if (base::StartsWith(url_, "https://",
                                 base::CompareCase::INSENSITIVE_ASCII)) {
       SetCurlOptionsForHttps();
+    } else if (hardware_->AreDevFeaturesEnabled() &&
+               base::StartsWith(url_, "file://",
+                                base::CompareCase::INSENSITIVE_ASCII)) {
+      SetCurlOptionsForFile();
     } else {
       LOG(ERROR) << "Received invalid URI: " << url_;
       // Lock down to no protocol supported for the transfer.

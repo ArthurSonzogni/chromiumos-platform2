@@ -7,6 +7,7 @@
 #include <inttypes.h>
 
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/containers/span.h>
@@ -15,6 +16,7 @@
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <chromeos/constants/imageloader.h>
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
@@ -146,7 +148,15 @@ void InstallAction::PerformAction() {
   std::string url_to_fetch;
   std::string sanitized_url;
   auto SetCustomUrl = [&](const auto& url_to_fetch_fn) {
-    url_to_fetch = url_to_fetch_fn(custom_url_);
+    constexpr std::string_view kFileUrlPrefix = "file://";
+    bool is_local_file = false;
+    if (base::StartsWith(custom_url_, "file:///",
+                         base::CompareCase::INSENSITIVE_ASCII)) {
+      base::FilePath local_path(custom_url_.substr(kFileUrlPrefix.size()));
+      is_local_file =
+          base::PathExists(local_path) && !base::DirectoryExists(local_path);
+    }
+    url_to_fetch = is_local_file ? custom_url_ : url_to_fetch_fn(custom_url_);
     sanitized_url = user_tied ? custom_url_ : url_to_fetch;
     backup_urls_ = {};
     backup_urls_sanitized_ = {};

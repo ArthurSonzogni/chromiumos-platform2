@@ -105,6 +105,8 @@ class MockHttpFetcher : public HttpFetcher {
 
   const brillo::Blob& post_data() const { return post_data_; }
 
+  const std::string& last_url() const { return last_url_; }
+
   void set_delay(bool delay) { delay_ = delay; }
 
  private:
@@ -131,6 +133,9 @@ class MockHttpFetcher : public HttpFetcher {
 
   // The extra headers set.
   std::map<std::string, std::string> extra_headers_;
+
+  // The last URL passed to BeginTransfer.
+  std::string last_url_;
 
   // The TaskId of the timeout callback. After each chunk of data sent, we
   // time out for 0s just to make sure that run loop services other clients.

@@ -27,6 +27,7 @@ MockHttpFetcher::~MockHttpFetcher() {
 
 void MockHttpFetcher::BeginTransfer(const std::string& url) {
   EXPECT_FALSE(never_use_);
+  last_url_ = url;
   if (fail_transfer_ || data_.empty()) {
     // No data to send, just notify of completion..
     SignalTransferComplete();

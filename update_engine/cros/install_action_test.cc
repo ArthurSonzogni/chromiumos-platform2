@@ -382,4 +382,46 @@ TEST_P(InstallActionTestSuite, CustomUrlDoesNotUseBackup) {
   EXPECT_FALSE(loop_.PendingTasks());
 }
 
+TEST_P(InstallActionTestSuite, CustomFileUrlFetchesDirectly) {
+  const auto local_dlc_path = tempdir_.GetPath().Append("local_dlc.img");
+  ASSERT_TRUE(test_utils::WriteFileString(local_dlc_path.value(), ""));
+  const std::string custom_file_url = "file://" + local_dlc_path.value();
+  install_action_->set_custom_url(custom_file_url);
+
+  processor_.set_delegate(&delegate_);
+  processor_.EnqueueAction(std::move(install_action_));
+
+  auto manifest = GetParam();
+  auto manifest_ptr = std::make_shared<imageloader::Manifest>();
+  manifest_ptr->ParseManifest(manifest);
+  ASSERT_TRUE(test_utils::WriteFileString(
+      tempdir_.GetPath().Append("etc/lsb-release").value(), kProperties));
+  delegate_.expected_code_ = ErrorCode::kSuccess;
+  delegate_.AddActionChecker(base::BindOnce(
+      [](MockHttpFetcher* fetcher, const std::string& expected_url,
+         AbstractAction* a) { EXPECT_EQ(fetcher->last_url(), expected_url); },
+      base::Unretained(mock_http_fetcher_), custom_file_url));
+
+  constexpr auto kPartName = "dlc/foobar-dlc/package";
+  const auto fdd0 = tempdir_.GetPath().Append("foobar-dlc-device-0");
+  const auto fdd1 = tempdir_.GetPath().Append("foobar-dlc-device-1");
+  ASSERT_TRUE(test_utils::WriteFileString(fdd0.value(), ""));
+  FakeSystemState::Get()->fake_boot_control()->SetCurrentSlot(0);
+  FakeSystemState::Get()->fake_boot_control()->SetFirstInactiveSlot(1);
+  FakeSystemState::Get()->fake_boot_control()->SetPartitionDevice(kPartName, 0,
+                                                                  fdd0.value());
+  FakeSystemState::Get()->fake_boot_control()->SetPartitionDevice(kPartName, 1,
+                                                                  fdd1.value());
+  EXPECT_CALL(mock_dlc_utils_, GetDlcManifest(testing::_, testing::_))
+      .WillOnce(testing::Return(manifest_ptr));
+
+  loop_.PostTask(FROM_HERE, base::BindOnce(
+                                [](ActionProcessor* processor) {
+                                  processor->StartProcessing();
+                                },
+                                base::Unretained(&processor_)));
+  loop_.Run();
+  EXPECT_FALSE(loop_.PendingTasks());
+}
+
 }  // namespace chromeos_update_engine
