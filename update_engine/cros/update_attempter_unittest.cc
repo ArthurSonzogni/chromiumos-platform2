@@ -14,10 +14,12 @@
 #include <string>
 #include <unordered_set>
 
+#include <base/base64.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/version.h>
 #include <brillo/message_loops/fake_message_loop.h>
@@ -2919,8 +2921,10 @@ TEST_F(UpdateAttempterTest, ResetUpdatePrefs) {
 }
 
 TEST_F(UpdateAttempterTest, InstallZeroDlcTest) {
+  attempter_.DisableScheduleUpdates();
   attempter_.Install();
   EXPECT_EQ(UpdateStatus::IDLE, attempter_.status_);
+  EXPECT_TRUE(attempter_.WasScheduleUpdatesCalled());
 }
 
 TEST_F(UpdateAttempterTest, InstallSingleDlcTest) {
@@ -2931,9 +2935,11 @@ TEST_F(UpdateAttempterTest, InstallSingleDlcTest) {
 }
 
 TEST_F(UpdateAttempterTest, InstallMultiDlcTest) {
+  attempter_.DisableScheduleUpdates();
   attempter_.dlc_ids_ = {"dlc_a", "dlc_b"};
   attempter_.Install();
   EXPECT_EQ(UpdateStatus::IDLE, attempter_.status_);
+  EXPECT_TRUE(attempter_.WasScheduleUpdatesCalled());
 }
 
 TEST_F(UpdateAttempterTest,
@@ -3363,9 +3369,30 @@ TEST_F(UpdateAttempterTest, AfterRepeatedInvalidatesUpdateOnError) {
 
 TEST_F(UpdateAttempterTest,
        MigrateInstallAllowsInactiveSlotWhenNotHighestOffset) {
+  attempter_.DisableScheduleUpdates();
   auto* fake_boot_control = FakeSystemState::Get()->fake_boot_control();
   attempter_.pm_ = ProcessMode::MIGRATE;
   attempter_.dlc_ids_ = {"migration-dlc"};
+
+  auto manifest_ptr = std::make_shared<imageloader::Manifest>();
+  const std::string encoded_layout =
+      base::Base64Encode(R"([{"num": 15, "label": "vbmeta_a"}])");
+  ASSERT_TRUE(manifest_ptr->ParseManifest(base::StringPrintf(
+      R"({
+        "manifest-version": 1,
+        "image-sha256-hash": "%s",
+        "table-sha256-hash": "%s",
+        "version": "1.0.0",
+        "fs-type": "blob",
+        "attributes": {
+          "_PARTITIONS_%s": ""
+        }
+      })",
+      "0EC77647B018967B6E56575535A78E12C48D35D27550A8A89E1D39A7BEA89788",
+      "44a4e688209bda4e06fd41aadc85a51de7d74a641275cb63b7caead96a9b03b7",
+      encoded_layout.c_str())));
+  EXPECT_CALL(mock_dlc_utils_, GetDlcManifest("migration-dlc", _))
+      .WillRepeatedly(Return(manifest_ptr));
 
   // Reject migration when the inactive slot is invalid or lacks a valid root
   // partition number.
@@ -3374,14 +3401,19 @@ TEST_F(UpdateAttempterTest,
   EXPECT_CALL(*processor_, EnqueueAction(_)).Times(0);
   attempter_.Install();
   EXPECT_EQ(UpdateStatus::IDLE, attempter_.status_);
+  EXPECT_EQ(ProcessMode::UPDATE, attempter_.pm_);
+  EXPECT_TRUE(attempter_.WasScheduleUpdatesCalled());
 
+  attempter_.pm_ = ProcessMode::MIGRATE;
   fake_boot_control->SetFirstInactiveSlot(0);
   fake_boot_control->SetCurrentPartition(-1);
   EXPECT_CALL(*processor_, EnqueueAction(_)).Times(0);
   attempter_.Install();
   EXPECT_EQ(UpdateStatus::IDLE, attempter_.status_);
+  EXPECT_EQ(ProcessMode::UPDATE, attempter_.pm_);
 
   // Simulate booting from Slot B (1), so the inactive slot is Slot A (0).
+  attempter_.pm_ = ProcessMode::MIGRATE;
   fake_boot_control->SetCurrentSlot(1);
   fake_boot_control->SetFirstInactiveSlot(0);
   fake_boot_control->SetCurrentPartition(3);
@@ -3396,6 +3428,95 @@ TEST_F(UpdateAttempterTest,
   loop_.RunOnce(false);
   EXPECT_EQ(UpdateStatus::CHECKING_FOR_UPDATE, attempter_.status_);
   loop_.BreakLoop();
+}
+
+TEST_F(UpdateAttempterTest, MigrateInstallFailsFastOnInvalidManifest) {
+  attempter_.DisableScheduleUpdates();
+  auto* fake_boot_control = FakeSystemState::Get()->fake_boot_control();
+  fake_boot_control->SetCurrentSlot(0);
+  fake_boot_control->SetFirstInactiveSlot(1);
+  fake_boot_control->SetCurrentPartition(5);
+
+  // Missing manifest.
+  attempter_.pm_ = ProcessMode::MIGRATE;
+  attempter_.dlc_ids_ = {"migration-dlc"};
+  EXPECT_CALL(mock_dlc_utils_, GetDlcManifest("migration-dlc", _))
+      .WillOnce(Return(nullptr));
+  EXPECT_CALL(*processor_, EnqueueAction(_)).Times(0);
+  attempter_.Install();
+  EXPECT_EQ(UpdateStatus::IDLE, attempter_.status_);
+  EXPECT_EQ(ProcessMode::UPDATE, attempter_.pm_);
+
+  // Non-blob fs-type (squashfs).
+  auto squashfs_manifest = std::make_shared<imageloader::Manifest>();
+  const std::string encoded_layout =
+      base::Base64Encode(R"([{"num": 15, "label": "vbmeta_a"}])");
+  ASSERT_TRUE(squashfs_manifest->ParseManifest(base::StringPrintf(
+      R"({
+        "manifest-version": 1,
+        "image-sha256-hash": "%s",
+        "table-sha256-hash": "%s",
+        "version": "1.0.0",
+        "fs-type": "squashfs",
+        "attributes": {
+          "_PARTITIONS_%s": ""
+        }
+      })",
+      "0EC77647B018967B6E56575535A78E12C48D35D27550A8A89E1D39A7BEA89788",
+      "44a4e688209bda4e06fd41aadc85a51de7d74a641275cb63b7caead96a9b03b7",
+      encoded_layout.c_str())));
+  attempter_.pm_ = ProcessMode::MIGRATE;
+  EXPECT_CALL(mock_dlc_utils_, GetDlcManifest("migration-dlc", _))
+      .WillOnce(Return(squashfs_manifest));
+  EXPECT_CALL(*processor_, EnqueueAction(_)).Times(0);
+  attempter_.Install();
+  EXPECT_EQ(UpdateStatus::IDLE, attempter_.status_);
+  EXPECT_EQ(ProcessMode::UPDATE, attempter_.pm_);
+
+  // Missing vbmeta_a in partition layout.
+  auto missing_vbmeta_manifest = std::make_shared<imageloader::Manifest>();
+  const std::string encoded_missing_vbmeta =
+      base::Base64Encode(R"([{"num": 3, "label": "super"}])");
+  ASSERT_TRUE(missing_vbmeta_manifest->ParseManifest(base::StringPrintf(
+      R"({
+        "manifest-version": 1,
+        "image-sha256-hash": "%s",
+        "table-sha256-hash": "%s",
+        "version": "1.0.0",
+        "fs-type": "blob",
+        "attributes": {
+          "_PARTITIONS_%s": ""
+        }
+      })",
+      "0EC77647B018967B6E56575535A78E12C48D35D27550A8A89E1D39A7BEA89788",
+      "44a4e688209bda4e06fd41aadc85a51de7d74a641275cb63b7caead96a9b03b7",
+      encoded_missing_vbmeta.c_str())));
+  attempter_.pm_ = ProcessMode::MIGRATE;
+  EXPECT_CALL(mock_dlc_utils_, GetDlcManifest("migration-dlc", _))
+      .WillOnce(Return(missing_vbmeta_manifest));
+  EXPECT_CALL(*processor_, EnqueueAction(_)).Times(0);
+  attempter_.Install();
+  EXPECT_EQ(UpdateStatus::IDLE, attempter_.status_);
+  EXPECT_EQ(ProcessMode::UPDATE, attempter_.pm_);
+}
+
+TEST_F(UpdateAttempterTest, OnUpdateScheduledMigrateEarlyAbortReschedules) {
+  attempter_.DisableScheduleUpdates();
+  auto* fake_boot_control = FakeSystemState::Get()->fake_boot_control();
+  fake_boot_control->SetFirstInactiveSlot(BootControlInterface::kInvalidSlot);
+
+  attempter_.pm_ = ProcessMode::MIGRATE;
+  attempter_.dlc_ids_ = {"migration-dlc"};
+  attempter_.policy_data_.reset(
+      new UpdateCheckAllowedPolicyData({.updates_enabled = true}));
+
+  // Should not crash in CHECK(IsBusyOrUpdateScheduled()) when Install()
+  // aborts early.
+  attempter_.OnUpdateScheduled(EvalStatus::kSucceeded);
+  EXPECT_EQ(UpdateStatus::IDLE, attempter_.status_);
+  EXPECT_EQ(ProcessMode::UPDATE, attempter_.pm_);
+  EXPECT_TRUE(attempter_.WasScheduleUpdatesCalled());
+  EXPECT_TRUE(attempter_.IsBusyOrUpdateScheduled());
 }
 
 TEST_F(UpdateAttempterTest, CheckForInstallAllowsNormalAndMigrationInstalls) {

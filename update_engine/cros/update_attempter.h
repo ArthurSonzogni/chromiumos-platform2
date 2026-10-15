@@ -416,9 +416,17 @@ class UpdateAttempter : public ActionProcessorDelegate,
               DetermineExtendedUpdateValuePolicyAllowedTest);
   FRIEND_TEST(UpdateAttempterTest,
               MigrateInstallAllowsInactiveSlotWhenNotHighestOffset);
+  FRIEND_TEST(UpdateAttempterTest, MigrateInstallFailsFastOnInvalidManifest);
+  FRIEND_TEST(UpdateAttempterTest,
+              OnUpdateScheduledMigrateEarlyAbortReschedules);
   FRIEND_TEST(UpdateAttempterTest,
               CheckForInstallAllowsNormalAndMigrationInstalls);
   FRIEND_TEST(UpdateAttempterTest, GetPartitionNumberFromLayout);
+
+  struct MigrationPartitionsLayout {
+    std::string partitions_json;
+    int vbmeta_a_partition = -1;
+  };
 
   // Extracts the 1-based GPT partition number ("num") for |partition_label|
   // from the decoded _PARTITIONS_ JSON layout array in a migration DLC
@@ -426,6 +434,10 @@ class UpdateAttempter : public ActionProcessorDelegate,
   // not found.
   static std::optional<int> GetPartitionNumberFromLayout(
       std::string_view partitions_json, std::string_view partition_label);
+
+  // Validates the migration DLC manifest and extracts the decoded _PARTITIONS_
+  // JSON layout and target vbmeta_a partition number.
+  std::optional<MigrationPartitionsLayout> GetMigrationPartitionsLayout() const;
 
   // Returns the special flags to be added to ErrorCode values based on the
   // parameters used in the current update attempt.

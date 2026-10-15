@@ -460,6 +460,14 @@ void UpdateAttempter::Install() {
   CHECK(!processor_->IsRunning());
   processor_->set_delegate(this);
 
+  base::ScopedClosureRunner schedule_updates_on_error(base::BindOnce(
+      [](UpdateAttempter* attempter) {
+        attempter->pm_ = ProcessMode::UPDATE;
+        attempter->ResetUpdateStatus();
+        attempter->ScheduleUpdates();
+      },
+      base::Unretained(this)));
+
   if (dlc_ids_.size() != 1) {
     LOG(ERROR) << "Could not kick off installation.";
     return;
@@ -478,6 +486,10 @@ void UpdateAttempter::Install() {
       LOG(ERROR) << "Unable to determine installation slot for the migration.";
       return;
     }
+    if (!GetMigrationPartitionsLayout().has_value()) {
+      LOG(ERROR) << "Invalid migration DLC manifest or partition layout.";
+      return;
+    }
   }
 
   auto http_fetcher = std::make_unique<LibcurlHttpFetcher>(
@@ -494,6 +506,8 @@ void UpdateAttempter::Install() {
   install_action->set_delegate(this);
   SetOutPipe(install_action.get());
   processor_->EnqueueAction(std::move(install_action));
+
+  std::ignore = schedule_updates_on_error.Release();
 
   // Simply go into CHECKING status.
   SetStatusAndNotify(UpdateStatus::CHECKING_FOR_UPDATE);
@@ -1528,6 +1542,45 @@ std::optional<int> UpdateAttempter::GetPartitionNumberFromLayout(
   return std::nullopt;
 }
 
+std::optional<UpdateAttempter::MigrationPartitionsLayout>
+UpdateAttempter::GetMigrationPartitionsLayout() const {
+  const auto& manifest = SystemState::Get()->dlc_utils()->GetDlcManifest(
+      kMigrationDlcId, base::FilePath(imageloader::kDlcManifestRootpath));
+  if (!manifest) {
+    LOG(ERROR) << "Unable to load the manifest for migration DLC.";
+    return std::nullopt;
+  }
+  if (manifest->fs_type() != imageloader::FileSystem::kBlob) {
+    LOG(ERROR) << "Unexpected filesystem type for migration DLC.";
+    return std::nullopt;
+  }
+  std::string partitions_json;
+  for (std::string_view attr : manifest->attributes()) {
+    if (attr.starts_with(kPartitionsAttributePrefix) &&
+        base::Base64Decode(attr.substr(kPartitionsAttributePrefix.size()),
+                           &partitions_json)) {
+      break;
+    }
+  }
+  if (partitions_json.empty()) {
+    LOG(ERROR) << "Failed to get partitions layout.";
+    return std::nullopt;
+  }
+
+  std::optional<int> vbmeta_a_partition =
+      GetPartitionNumberFromLayout(partitions_json, kPartitionNameVbmetaA);
+  if (!vbmeta_a_partition.has_value()) {
+    LOG(ERROR) << "Failed to get partition number for " << kPartitionNameVbmetaA
+               << " from partitions layout.";
+    return std::nullopt;
+  }
+
+  return MigrationPartitionsLayout{
+      .partitions_json = std::move(partitions_json),
+      .vbmeta_a_partition = *vbmeta_a_partition,
+  };
+}
+
 void UpdateAttempter::ProcessingDoneMigrate(const ActionProcessor* processor,
                                             ErrorCode code) {
   DCHECK_EQ(code, ErrorCode::kSuccess);
@@ -1562,45 +1615,26 @@ void UpdateAttempter::ProcessingDoneMigrate(const ActionProcessor* processor,
   }
 
   // Get partition layout.
-  const auto& manifest = SystemState::Get()->dlc_utils()->GetDlcManifest(
-      kMigrationDlcId, base::FilePath(imageloader::kDlcManifestRootpath));
-  if (!manifest) {
-    LOG(ERROR) << "Unable to load the manifest for migration DLC.";
-    return;
-  }
-  std::string partitions_json;
-  for (std::string_view attr : manifest->attributes()) {
-    if (attr.starts_with(kPartitionsAttributePrefix) &&
-        base::Base64Decode(attr.substr(kPartitionsAttributePrefix.size()),
-                           &partitions_json)) {
-      break;
-    }
-  }
-  if (partitions_json.empty()) {
-    LOG(ERROR) << "Failed to get partitions layout.";
+  std::optional<MigrationPartitionsLayout> layout =
+      GetMigrationPartitionsLayout();
+  if (!layout.has_value()) {
     return;
   }
 
-  std::optional<int> vbmeta_a_partition =
-      GetPartitionNumberFromLayout(partitions_json, kPartitionNameVbmetaA);
-  if (!vbmeta_a_partition.has_value()) {
-    LOG(ERROR) << "Failed to get partition number for " << kPartitionNameVbmetaA
-               << " from partitions layout.";
-    return;
-  }
-
-  if (!installer::MigratePartition(boot_device, inactive_root, partitions_json,
+  if (!installer::MigratePartition(boot_device, inactive_root,
+                                   layout->partitions_json,
                                    /*revert=*/false)) {
     LOG(ERROR) << "Failed to update partitions.";
     return;
   }
 
   // Set boot priority on vbmeta_a so vboot recognizes the migrated boot slot.
-  if (!boot_control->SetActiveBootPartition(*vbmeta_a_partition,
+  if (!boot_control->SetActiveBootPartition(layout->vbmeta_a_partition,
                                             kPartitionNameVbmetaA)) {
     LOG(ERROR) << "Failed to set the boot priority on " << kPartitionNameVbmetaA
                << ", restoring partitions.";
-    installer::MigratePartition(boot_device, inactive_root, partitions_json,
+    installer::MigratePartition(boot_device, inactive_root,
+                                layout->partitions_json,
                                 /*revert=*/true);
     return;
   }
