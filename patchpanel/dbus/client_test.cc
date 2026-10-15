@@ -300,8 +300,14 @@ TEST_F(ClientTest, TrafficSourceName) {
   EXPECT_EQ("CHROME",
             Client::TrafficSourceName(Client::TrafficSource::kChrome));
   EXPECT_EQ("USER", Client::TrafficSourceName(Client::TrafficSource::kUser));
+  EXPECT_EQ("BOREALIS_VM",
+            Client::TrafficSourceName(Client::TrafficSource::kBorealisVM));
+  EXPECT_EQ("BRUSCHETTA_VM",
+            Client::TrafficSourceName(Client::TrafficSource::kBruschettaVM));
   EXPECT_EQ("CROSTINI_VM",
             Client::TrafficSourceName(Client::TrafficSource::kCrostiniVM));
+  EXPECT_EQ("PARALLELS_VM",
+            Client::TrafficSourceName(Client::TrafficSource::kParallelsVM));
   EXPECT_EQ("UPDATE_ENGINE",
             Client::TrafficSourceName(Client::TrafficSource::kUpdateEngine));
   EXPECT_EQ("VPN", Client::TrafficSourceName(Client::TrafficSource::kVpn));

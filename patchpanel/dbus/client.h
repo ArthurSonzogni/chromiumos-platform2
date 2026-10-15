@@ -55,6 +55,11 @@ class BRILLO_EXPORT Client {
   };
 
   // See TrafficCounter.Source in patchpanel_service.proto.
+  // Deprecated traffic sources for removed VM types (e.g., kBorealisVM,
+  // kParallelsVM) are kept in this enum and in kAllTrafficSources so that
+  // clients such as shill can continue reading and reporting historical traffic
+  // counters persisted on devices for those sources until storage migration
+  // cleans them up.
   enum class TrafficSource {
     kUnknown,
     kChrome,
@@ -63,20 +68,27 @@ class BRILLO_EXPORT Client {
     kSystem,
     kVpn,
     kArc,
+    // Deprecated: Borealis VM support has been removed, kept for reading
+    // persisted traffic counters.
+    kBorealisVM,
     kBruschettaVM,
     kCrostiniVM,
+    // Deprecated: Parallels VM support has been removed, kept for reading
+    // persisted traffic counters.
+    kParallelsVM,
     kTethering,
     kWiFiDirect,
     kWiFiLOHS,
   };
 
   static constexpr std::initializer_list<TrafficSource> kAllTrafficSources = {
-      TrafficSource::kUnknown,    TrafficSource::kChrome,
-      TrafficSource::kUser,       TrafficSource::kUpdateEngine,
-      TrafficSource::kSystem,     TrafficSource::kVpn,
-      TrafficSource::kArc,        TrafficSource::kBruschettaVM,
-      TrafficSource::kCrostiniVM, TrafficSource::kTethering,
-      TrafficSource::kWiFiDirect, TrafficSource::kWiFiLOHS};
+      TrafficSource::kUnknown,      TrafficSource::kChrome,
+      TrafficSource::kUser,         TrafficSource::kUpdateEngine,
+      TrafficSource::kSystem,       TrafficSource::kVpn,
+      TrafficSource::kArc,          TrafficSource::kBorealisVM,
+      TrafficSource::kBruschettaVM, TrafficSource::kCrostiniVM,
+      TrafficSource::kParallelsVM,  TrafficSource::kTethering,
+      TrafficSource::kWiFiDirect,   TrafficSource::kWiFiLOHS};
 
   struct TrafficVector {
     uint64_t rx_bytes = 0;

@@ -43,6 +43,8 @@ patchpanel::TrafficCounter::Source ConvertTrafficSource(
     Client::TrafficSource source) {
   switch (source) {
     case Client::TrafficSource::kUnknown:
+    case Client::TrafficSource::kBorealisVM:
+    case Client::TrafficSource::kParallelsVM:
       return patchpanel::TrafficCounter::UNKNOWN;
     case Client::TrafficSource::kChrome:
       return patchpanel::TrafficCounter::CHROME;
@@ -94,8 +96,6 @@ Client::TrafficSource ConvertTrafficSource(
       return Client::TrafficSource::kWiFiDirect;
     case patchpanel::TrafficCounter::WIFI_LOHS:
       return Client::TrafficSource::kWiFiLOHS;
-    case patchpanel::TrafficCounter::BOREALIS_VM:
-    case patchpanel::TrafficCounter::PARALLELS_VM:
     default:
       return Client::TrafficSource::kUnknown;
   }
@@ -1731,7 +1731,15 @@ bool Client::IsArcGuest(Client::GuestType guest_type) {
 // static
 std::string Client::TrafficSourceName(
     patchpanel::Client::TrafficSource source) {
-  return patchpanel::TrafficCounter::Source_Name(ConvertTrafficSource(source));
+  switch (source) {
+    case Client::TrafficSource::kBorealisVM:
+      return "BOREALIS_VM";
+    case Client::TrafficSource::kParallelsVM:
+      return "PARALLELS_VM";
+    default:
+      return patchpanel::TrafficCounter::Source_Name(
+          ConvertTrafficSource(source));
+  }
 }
 
 // static
@@ -1840,10 +1848,14 @@ BRILLO_EXPORT std::ostream& operator<<(
       return stream << "VPN";
     case patchpanel::Client::TrafficSource::kArc:
       return stream << "ARC";
+    case patchpanel::Client::TrafficSource::kBorealisVM:
+      return stream << "Borealis";
     case patchpanel::Client::TrafficSource::kBruschettaVM:
       return stream << "Bruschetta";
     case patchpanel::Client::TrafficSource::kCrostiniVM:
       return stream << "Crostini";
+    case patchpanel::Client::TrafficSource::kParallelsVM:
+      return stream << "Parallels";
     case patchpanel::Client::TrafficSource::kTethering:
       return stream << "Tethering";
     case patchpanel::Client::TrafficSource::kWiFiDirect:

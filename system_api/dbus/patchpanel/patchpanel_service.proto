@@ -305,6 +305,8 @@ message TrafficCounter {
   // name of an existing entry or removing an entry should be accompanied with
   // the appropriate data migration or cleanup code in shill::Service::Save().
   enum Source {
+    reserved 7, 10;
+
     UNKNOWN = 0;
     // Traffic associated with user chronos.
     CHROME = 1;
@@ -318,16 +320,12 @@ message TrafficCounter {
     // to the underlying physical network (or from physical network to the VPN
     // app/program).
     VPN = 5;
-    // Traffic from ARC container or ARCVM.
+    // Traffic from ARCVM.
     ARC = 6;
-    // Traffic from a Borealis VM.
-    BOREALIS_VM = 7;
     // Traffic from a Bruschetta VM.
     BRUSCHETTA_VM = 8;
     // Traffic from a Crostini VM.
     CROSTINI_VM = 9;
-    // Traffic from a Parallels VM.
-    PARALLELS_VM = 10;
     // Traffic from a tethered client.
     TETHERING = 11;
     // Traffic from a WiFi Direct client. This entry is defined for consistency

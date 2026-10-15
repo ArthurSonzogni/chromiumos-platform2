@@ -363,8 +363,6 @@ TrafficSource ProtoToTrafficSource(TrafficCounter::Source source) {
     case TrafficCounter::WIFI_LOHS:
       return TrafficSource::kWiFiLOHS;
     default:
-    case TrafficCounter::BOREALIS_VM:
-    case TrafficCounter::PARALLELS_VM:
     case TrafficCounter::UNKNOWN:
       return TrafficSource::kUnknown;
   }
