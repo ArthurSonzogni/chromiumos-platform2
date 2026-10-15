@@ -8,7 +8,9 @@
 # This script checks whether if the root device needs to be upgraded.
 #
 
+# shellcheck source=../../../scripts/lib/shflags/shflags
 . /usr/share/misc/shflags
+# shellcheck source=../../chromeos-common-script/share/chromeos-common.sh
 . /usr/share/misc/chromeos-common.sh
 
 # Temporary directory to put device information
@@ -22,7 +24,7 @@ DEFINE_string 'pwr_suspend' 'powerd_dbus_suspend' "To power cycle SSD"
 DEFINE_string 'mmc' 'mmc' "mmc binary to use."
 DEFINE_string 'nvme' 'nvme' "nvme binary to use."
 DEFINE_string 'status' '' "Status file to write to."
-DEFINE_boolean 'test' ${FLAGS_FALSE} "For unit testing."
+DEFINE_boolean 'test' "${FLAGS_FALSE}" "For unit testing."
 
 # list global variables
 #   disk_model
@@ -69,11 +71,8 @@ program_installed() {
 #
 disk_fw_select() {
   local disk_rules="$1"
-  local rule_model
-  local rule_fw_rev
-  local rule_exp_fw_rev
-  local rule_fw_opt
-  local rule_fw_file
+  local rule_model rule_fw_rev rule_exp_fw_rev rule_fw_opt rule_fw_file
+
   disk_fw_file=""
   disk_exp_fw_rev=""
   disk_fw_opt=""
@@ -167,7 +166,7 @@ disk_nvme_id_info() {
 #
 disk_mmc_info() {
   # Some vendor use hexa decimal character for indentification.
-  disk_model="$(cat "/sys/block/$1/device/cid" | cut -c 7-18)"
+  disk_model="$(cut -c 7-18 "/sys/block/$1/device/cid")"
   disk_fw_rev="$(cat "/sys/block/$1/device/fwrev")"
 
   # Test if we have the tool needed for an upgrade.
@@ -279,6 +278,7 @@ disk_nvme_info() {
 disk_info() {
   local device="$1"
   local device_type
+
   device_type="$(get_device_type "/dev/${device}")"
   case ${device_type} in
     "ATA")
@@ -316,6 +316,7 @@ disk_ata_power_cnt() {
 # When reformatting the samus uSSD, we can not use powerd.
 # Toggle manually GPIOs.
 samus_ata1_power_cycle() {
+  local device="$1"
   # SSD_RESET_L : 47 => 256 - 94 + 47 = 209
   # PP3300_SSD_EN : 21 => 256 - 94 + 21 = 183
   local SSD_RESET_L_ID=209
@@ -327,11 +328,9 @@ samus_ata1_power_cycle() {
 
   local EXPORT_PATH="${GPIO_PATH}/export"
 
-  local device="$1"
-
   if [ ! -d "${SSD_RESET_L_ID_PATH}" ]; then
     for i in ${SSD_RESET_L_ID} ${PP3300_SSD_EN}; do
-      echo $i > "${EXPORT_PATH}"
+      echo "${i}" > "${EXPORT_PATH}"
     done
     echo out > "${SSD_RESET_L_ID_PATH}/direction"
     echo 1 > "${SSD_RESET_L_ID_PATH}/active_low"
@@ -368,8 +367,7 @@ samus_ata1_power_cycle() {
 disk_ata_power_cycle() {
   local device="$1"
   local tries=4
-  local old_pwr_cycle_count
-  local new_pwr_cycle_count
+  local old_pwr_cycle_count new_pwr_cycle_count
 
   old_pwr_cycle_count="$(disk_ata_power_cnt "${device}")"
   new_pwr_cycle_count="${old_pwr_cycle_count}"
@@ -404,13 +402,15 @@ disk_hdparm_upgrade() {
   local device="$1"
   local fw_file="$2"
   local fw_options="$3"
-  local hdparm_opt="--fwdownload-mode7"
   local power_cyle="true"
   local use_regular_hdparm="true"
 
+  # Use positional parameters so multiple hdparm download options can be passed
+  # as discrete command-line arguments.
+  set -- --fwdownload-mode7
   if [ "${fw_options}" != "-" ]; then
     if echo "${fw_options}" | grep -q "mode3_max"; then
-      hdparm_opt="--fwdownload-mode3-max"
+      set -- --fwdownload-mode3-max
     fi
     if echo "${fw_options}" | grep -q "power_cycle"; then
       power_cyle="disk_ata_power_cycle"
@@ -418,28 +418,23 @@ disk_hdparm_upgrade() {
     if echo "${fw_options}" | grep -q "kingston_erase"; then
       use_regular_hdparm=false
       power_cyle="samus_ata1_power_cycle"
-      "${FLAGS_hdparm_kingston}" --eraseall "/dev/${device}"
+      "${FLAGS_hdparm_kingston}" --eraseall "/dev/${device}" || return $?
     fi
     if echo "${fw_options}" | grep -q "kingston_reformat"; then
       use_regular_hdparm=false
       power_cyle="samus_ata1_power_cycle"
       "${FLAGS_hdparm_kingston}" --mp_f1 "${fw_file}" \
-        "KINGSTON_RBU_SUS151S3rr" "/dev/${device}"
+        "KINGSTON_RBU_SUS151S3rr" "/dev/${device}" || return $?
     fi
   fi
 
   if "${use_regular_hdparm}"; then
-    # hdparm_opt could be several options, shell must see separator.
-    "${FLAGS_hdparm}" ${hdparm_opt} "${fw_file}" \
+    "${FLAGS_hdparm}" "$@" "${fw_file}" \
       --yes-i-know-what-i-am-doing --please-destroy-my-drive \
-      "/dev/${device}"
+      "/dev/${device}" || return $?
   fi
 
-  if [ $? -ne 0 ]; then
-    return $?
-  fi
-
-  ${power_cyle} "${device}"
+  "${power_cyle}" "${device}"
 }
 
 # disk_mmc_upgrade - Upgrade the firmware on the eMMC storage
@@ -457,21 +452,26 @@ disk_mmc_upgrade() {
   local device="$1"
   local fw_file="$2"
   local fw_options="$3"
-  local options=""
+  local opt old_ifs
 
   if [ "${fw_options}" = "new" ]; then
-     "${FLAGS_mmc}" ffu "${fw_file}" "/dev/${device}"
-     return $?
+    "${FLAGS_mmc}" ffu "${fw_file}" "/dev/${device}"
+    return $?
   fi
 
+  set --
   if [ "${fw_options}" != "-" ]; then
-     # Options for mmc in the config files are separated with commas.
-     # Translate the option for the command line.
-     options="$(echo "${fw_options}" | sed 's/,/ -k /g')"
-     options="-k ${options}"
+    # Options for mmc in the config files are separated with commas.
+    # Translate each option into a -k command-line argument.
+    old_ifs="${IFS}"
+    IFS=','
+    for opt in ${fw_options}; do
+      set -- "$@" "-k" "${opt}"
+    done
+    IFS="${old_ifs}"
   fi
 
-  "${FLAGS_mmc}" old_ffu ${options} "${fw_file##*/}" "/dev/${device}"
+  "${FLAGS_mmc}" old_ffu "$@" "${fw_file##*/}" "/dev/${device}"
 }
 
 # disk_nmve_reset - Reset  NMVE SSD PCIe device.
@@ -498,8 +498,9 @@ disk_nmve_reset() {
 # Return the slot number, assume nvme device is up.
 disk_nvme_current_slot() {
   local device="$1"
+  local byte0
 
-  local byte0="$("${FLAGS_nvme}" get-log "/dev/${device}" \
+  byte0="$("${FLAGS_nvme}" get-log "/dev/${device}" \
       --raw-binary --log-id 3 --log-len 512 | \
       od -An -t u1 -N 1)"
   echo $((byte0 & 0x3))
@@ -564,12 +565,13 @@ disk_nvme_upgrade() {
   local device="$1"
   local fw_file="$2"
   local fw_options="$3"
-  local frmw="$(disk_nvme_get_frmw "${device}")"
-  local action="$(disk_nvme_action_supported "${frmw}")"
-  local curr_slot="$(disk_nvme_current_slot "${device}")"
-  local min_slot="$(disk_nvme_get_min_writable_slot "${frmw}")"
-  local max_slot="$(disk_nvme_get_max_writable_slot "${frmw}")"
-  local new_slot rc
+  local frmw action curr_slot min_slot max_slot new_slot rc
+
+  frmw="$(disk_nvme_get_frmw "${device}")"
+  action="$(disk_nvme_action_supported "${frmw}")"
+  curr_slot="$(disk_nvme_current_slot "${device}")"
+  min_slot="$(disk_nvme_get_min_writable_slot "${frmw}")"
+  max_slot="$(disk_nvme_get_max_writable_slot "${frmw}")"
 
   if echo "${fw_options}" | grep -q "bh799"; then
     # BH799 requires to use the current slot (3). Other slots are used for eMMC
@@ -635,6 +637,7 @@ disk_nvme_upgrade() {
 disk_upgrade() {
   local device="$1"
   local device_type
+
   device_type="$(get_device_type "/dev/${device}")"
   case ${device_type} in
     "ATA")
@@ -660,23 +663,21 @@ disk_upgrade() {
 #
 # input:
 #    list of devices to upgrade.
-# retuns 0 on sucess
+# returns 0 on success
 #    The error code of hdparm or other functions that fails
 #    120 if no rules is provided
 #    121 when the disk works but the firmware was not applied.
 #
 disk_upgrade_devices() {
   local disk_rules="$1"
-  local device
-  local fw_file
-  local success
+  local device fw_file success
   local disk_old_fw_rev=""
   local rc=0
   local tries=0
 
   shift # skip disk rules parameters.
   for device in "$@"; do
-    sucess=""
+    success=""
     while true; do
       disk_info "${device}"  # sets disk_model, disk_fw_rev
       rc=$?
@@ -758,11 +759,11 @@ disk_upgrade_devices() {
 
 main() {
   local disk_rules_raw="${FLAGS_fw_package_dir}"/rules
-  local rc=0
-  local erase_tmp_dir=${FLAGS_FALSE}
+  local d rc=0
+  local erase_tmp_dir="${FLAGS_FALSE}"
 
   if [ ! -d "${FLAGS_tmp_dir}" ]; then
-    erase_tmp_dir=${FLAGS_TRUE}
+    erase_tmp_dir="${FLAGS_TRUE}"
     FLAGS_tmp_dir="$(mktemp -d)"
   fi
   if [ ! -f "${disk_rules_raw}" ]; then
@@ -774,7 +775,9 @@ main() {
   # remove unnecessary lines
   sed '/^#/d;/^[[:space:]]*$/d' "${disk_rules_raw}" > "${disk_rules}"
 
-  # Unquote call to list_fixed_* as they can return several device each.
+  # Unquote calls to list_fixed_* as each function returns space-separated device names;
+  # word-splitting is intentional here in POSIX sh where arrays are unavailable.
+  # shellcheck disable=SC2046
   disk_upgrade_devices "${disk_rules}" \
     $(list_fixed_ata_disks) $(list_fixed_mmc_disks) $(list_fixed_nvme_disks)
   rc=$?
