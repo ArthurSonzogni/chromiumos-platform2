@@ -1,5 +1,9 @@
+# Copyright 2026 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 # "reset_needed" for testing only, this SSD does not need it.
 INTEL_SSDPEKKW256G7 PSF100C PSF109C - fw.bin
 INTEL_SSDPEKKW256G7 PSF101C PSF109C - fw.bin
 SAMSUNG_KUS040205M_B001 DXC81G1E DXC81G1T pm971a fw.bin
-BAYHUB_HynixhC8aP>303064GB_Disk 10100050 10100065 bh799 fw.bin
+BAYHUB_* 10100050 10100065 bh799 fw.bin

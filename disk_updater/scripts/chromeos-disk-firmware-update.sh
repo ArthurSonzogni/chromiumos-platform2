@@ -94,8 +94,16 @@ disk_fw_select() {
       continue
     fi
 
-    # Check for match:
-    if [ "${disk_model}" != "${rule_model}" ]; then
+    # Check for match (rule_model may end with * as a prefix glob pattern):
+    if [ "${rule_model}" != "${rule_model%\*}" ]; then
+      case "${disk_model}" in
+        "${rule_model%\*}"*)
+          ;;
+        *)
+          continue
+          ;;
+      esac
+    elif [ "${disk_model}" != "${rule_model}" ]; then
       continue
     fi
     if [ "${disk_fw_rev}" != "${rule_fw_rev}" ]; then
