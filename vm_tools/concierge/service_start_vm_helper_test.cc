@@ -130,7 +130,7 @@ TEST(StartVMHelperTest, TestAugmentImageSpec) {
   int bios_raw_fd = bios_fd.get();
   int pflash_raw_fd = pflash_fd.get();
 
-  EXPECT_NE(fcntl(kernel_raw_fd, F_GETFD) & FD_CLOEXEC, 0);
+  EXPECT_EQ(fcntl(kernel_raw_fd, F_GETFD) & FD_CLOEXEC, FD_CLOEXEC);
 
   VMImageSpec image_spec{
       .kernel = std::move(kernel_fd),
@@ -147,23 +147,28 @@ TEST(StartVMHelperTest, TestAugmentImageSpec) {
   ASSERT_TRUE(augmented_spec.has_value());
   EXPECT_TRUE(augmented_spec->kernel.is_valid());
   EXPECT_EQ(augmented_spec->kernel.get(), kernel_raw_fd);
-  EXPECT_EQ(fcntl(augmented_spec->kernel.get(), F_GETFD) & FD_CLOEXEC, 0);
+  EXPECT_EQ(fcntl(augmented_spec->kernel.get(), F_GETFD) & FD_CLOEXEC,
+            FD_CLOEXEC);
 
   EXPECT_TRUE(augmented_spec->rootfs.is_valid());
   EXPECT_EQ(augmented_spec->rootfs.get(), rootfs_raw_fd);
-  EXPECT_EQ(fcntl(augmented_spec->rootfs.get(), F_GETFD) & FD_CLOEXEC, 0);
+  EXPECT_EQ(fcntl(augmented_spec->rootfs.get(), F_GETFD) & FD_CLOEXEC,
+            FD_CLOEXEC);
 
   EXPECT_TRUE(augmented_spec->initrd.is_valid());
   EXPECT_EQ(augmented_spec->initrd.get(), initrd_raw_fd);
-  EXPECT_EQ(fcntl(augmented_spec->initrd.get(), F_GETFD) & FD_CLOEXEC, 0);
+  EXPECT_EQ(fcntl(augmented_spec->initrd.get(), F_GETFD) & FD_CLOEXEC,
+            FD_CLOEXEC);
 
   EXPECT_TRUE(augmented_spec->bios.is_valid());
   EXPECT_EQ(augmented_spec->bios.get(), bios_raw_fd);
-  EXPECT_EQ(fcntl(augmented_spec->bios.get(), F_GETFD) & FD_CLOEXEC, 0);
+  EXPECT_EQ(fcntl(augmented_spec->bios.get(), F_GETFD) & FD_CLOEXEC,
+            FD_CLOEXEC);
 
   EXPECT_TRUE(augmented_spec->pflash.is_valid());
   EXPECT_EQ(augmented_spec->pflash.get(), pflash_raw_fd);
-  EXPECT_EQ(fcntl(augmented_spec->pflash.get(), F_GETFD) & FD_CLOEXEC, 0);
+  EXPECT_EQ(fcntl(augmented_spec->pflash.get(), F_GETFD) & FD_CLOEXEC,
+            FD_CLOEXEC);
 
   // Test failure when neither kernel nor bios is provided
   VMImageSpec empty_spec;
@@ -214,7 +219,9 @@ TEST(StartVMHelperTest, TestAugmentImageSpec) {
     EXPECT_FALSE(res->rootfs.is_valid());
     EXPECT_FALSE(res->initrd.is_valid());
     EXPECT_TRUE(res->bios.is_valid());
+    EXPECT_EQ(fcntl(res->bios.get(), F_GETFD) & FD_CLOEXEC, FD_CLOEXEC);
     EXPECT_TRUE(res->tools_disk.is_valid());
+    EXPECT_EQ(fcntl(res->tools_disk.get(), F_GETFD) & FD_CLOEXEC, FD_CLOEXEC);
   }
 
   // 2. User bios FD + tools_dlc_path
@@ -222,6 +229,7 @@ TEST(StartVMHelperTest, TestAugmentImageSpec) {
     base::ScopedFD user_bios_fd(open("/dev/null", O_RDWR | O_CLOEXEC));
     ASSERT_TRUE(user_bios_fd.is_valid());
     int user_bios_raw = user_bios_fd.get();
+    EXPECT_EQ(fcntl(user_bios_raw, F_GETFD) & FD_CLOEXEC, FD_CLOEXEC);
     VMImageSpec user_spec{.bios = std::move(user_bios_fd)};
 
     auto res = internal::AugmentImageSpec(
@@ -234,7 +242,9 @@ TEST(StartVMHelperTest, TestAugmentImageSpec) {
     EXPECT_FALSE(res->initrd.is_valid());
     EXPECT_TRUE(res->bios.is_valid());
     EXPECT_EQ(res->bios.get(), user_bios_raw);
+    EXPECT_EQ(fcntl(res->bios.get(), F_GETFD) & FD_CLOEXEC, FD_CLOEXEC);
     EXPECT_TRUE(res->tools_disk.is_valid());
+    EXPECT_EQ(fcntl(res->tools_disk.get(), F_GETFD) & FD_CLOEXEC, FD_CLOEXEC);
   }
 
   // 3. tools_dlc_path alone without BIOS (fallback kernel)
@@ -245,10 +255,12 @@ TEST(StartVMHelperTest, TestAugmentImageSpec) {
         tools_dlc_path, VMImageSpec{});
     ASSERT_TRUE(res.has_value());
     EXPECT_TRUE(res->kernel.is_valid());
+    EXPECT_EQ(fcntl(res->kernel.get(), F_GETFD) & FD_CLOEXEC, FD_CLOEXEC);
     EXPECT_FALSE(res->rootfs.is_valid());
     EXPECT_FALSE(res->initrd.is_valid());
     EXPECT_FALSE(res->bios.is_valid());
     EXPECT_TRUE(res->tools_disk.is_valid());
+    EXPECT_EQ(fcntl(res->tools_disk.get(), F_GETFD) & FD_CLOEXEC, FD_CLOEXEC);
   }
 
   // 4. bios_dlc_path + vm_dlc_path
@@ -258,10 +270,14 @@ TEST(StartVMHelperTest, TestAugmentImageSpec) {
         vm_dlc_path, /*tools_dlc_path=*/std::nullopt, VMImageSpec{});
     ASSERT_TRUE(res.has_value());
     EXPECT_TRUE(res->kernel.is_valid());
+    EXPECT_EQ(fcntl(res->kernel.get(), F_GETFD) & FD_CLOEXEC, FD_CLOEXEC);
     EXPECT_TRUE(res->rootfs.is_valid());
+    EXPECT_EQ(fcntl(res->rootfs.get(), F_GETFD) & FD_CLOEXEC, FD_CLOEXEC);
     EXPECT_FALSE(res->initrd.is_valid());
     EXPECT_TRUE(res->bios.is_valid());
+    EXPECT_EQ(fcntl(res->bios.get(), F_GETFD) & FD_CLOEXEC, FD_CLOEXEC);
     EXPECT_TRUE(res->tools_disk.is_valid());
+    EXPECT_EQ(fcntl(res->tools_disk.get(), F_GETFD) & FD_CLOEXEC, FD_CLOEXEC);
   }
 }
 

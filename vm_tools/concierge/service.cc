@@ -1605,13 +1605,6 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
   // Check if an opened storage image was passed over D-BUS.
   if (has_storage_disk) {
     base::ScopedFD fd = std::move(image_spec.storage);
-    if (!base::RemoveCloseOnExec(fd.get())) {
-      LOG(ERROR) << "failed to remove close-on-exec flag";
-      response.set_failure_reason(
-          "failed to clear close-on-exec for extra storage disk");
-      return response;
-    }
-
     int mode = fcntl(fd.get(), F_GETFL);
     bool writable =
         ((mode & O_ACCMODE) == O_RDWR || (mode & O_ACCMODE) == O_WRONLY);
@@ -4957,13 +4950,6 @@ std::optional<VhostUserFrontParam> Service::InvokeVhostUserFsBackend(
       internal::SetupVhostUserSocketPair();
   if (!stub_device_socket_fds.has_value()) {
     LOG(ERROR) << "Fail to create stub device vhost user socket pair.";
-    return std::nullopt;
-  }
-
-  // Remove the CLOEXEC flag from the vhost-user frontend socket fd. This is
-  // important to allow the fd to be inherited by the crosvm process.
-  if (!base::RemoveCloseOnExec(stub_device_socket_fds->front_end_fd.get())) {
-    LOG(ERROR) << "Could not clear CLOEXEC for vhost_user fs frontend fd";
     return std::nullopt;
   }
 

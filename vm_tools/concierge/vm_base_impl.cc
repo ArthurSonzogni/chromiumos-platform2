@@ -119,10 +119,10 @@ bool VmBaseImpl::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
   return UpdateCpuShares(base::FilePath(cpu_cgroup), cpu_shares);
 }
 
-bool VmBaseImpl::StartProcess(base::StringPairs args) {
+bool VmBaseImpl::StartProcess(VmLaunchSpec spec) {
   std::string command_line_for_log{};
 
-  for (std::pair<std::string, std::string>& arg : args) {
+  for (std::pair<std::string, std::string>& arg : spec.args) {
     command_line_for_log += arg.first;
     command_line_for_log += " ";
 

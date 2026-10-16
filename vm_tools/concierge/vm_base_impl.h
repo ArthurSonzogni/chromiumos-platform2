@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_split.h>
 #include <base/time/time.h>
@@ -26,6 +27,14 @@
 namespace vm_tools::concierge {
 
 class ScopedNetwork;
+
+// Encapsulates the command line arguments and file descriptors required to
+// launch a VM process, ensuring file descriptors remain open until after
+// process fork/exec.
+struct VmLaunchSpec {
+  base::StringPairs args;
+  std::vector<base::ScopedFD> fds;
+};
 
 // A base class implementing common features that are shared with ArcVm,
 // PluginVm and TerminaVm
@@ -240,8 +249,11 @@ class VmBaseImpl {
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
                                   const char* cpu_cgroup);
 
-  // Starts |process_| with |args|. Returns true iff started successfully.
-  bool StartProcess(base::StringPairs args);
+  // Starts |process_| with |spec|. |spec| is consumed by value so argument
+  // strings can be moved into |process_| and parent file descriptors in
+  // |spec.fds| are closed as soon as process startup finishes.
+  // Returns true iff started successfully.
+  bool StartProcess(VmLaunchSpec spec);
 
   // Stops this VM
   // Returns true on success, false otherwise

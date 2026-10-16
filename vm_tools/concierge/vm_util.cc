@@ -607,15 +607,14 @@ bool UpdateCpuUclampMin(const base::FilePath& cpu_cgroup, double percent) {
 
 base::expected<base::ScopedFD, std::string> OpenPathSafely(
     brillo::SafeFD& root_fd, const base::FilePath& path, int flags) {
-  brillo::SafeFD::SafeFDResult result = root_fd.OpenExistingFile(path, flags);
+  brillo::SafeFD::SafeFDResult result =
+      root_fd.OpenExistingFile(path, flags | O_CLOEXEC);
   if (brillo::SafeFD::IsError(result.second)) {
     LOG(ERROR) << "Could not open file: " << static_cast<int>(result.second);
     return base::unexpected("Could not open file");
   }
 
-  // dup() transfers ownership from SafeFD and guarantees FD_CLOEXEC is
-  // cleared for child process inheritance.
-  base::ScopedFD fd(dup(result.first.get()));
+  base::ScopedFD fd(fcntl(result.first.get(), F_DUPFD_CLOEXEC, 0));
   if (!fd.is_valid()) {
     LOG(ERROR) << "Could not duplicate file descriptor";
     return base::unexpected("Could not duplicate file descriptor");

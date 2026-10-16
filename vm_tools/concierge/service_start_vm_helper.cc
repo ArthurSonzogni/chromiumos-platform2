@@ -15,7 +15,6 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/strings/stringprintf.h>
@@ -150,11 +149,7 @@ base::expected<VMImageSpec, std::string> AugmentImageSpec(
     VMImageSpec spec) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(base::SequenceChecker);
 
-  if (spec.bios.is_valid()) {
-    if (!base::RemoveCloseOnExec(spec.bios.get())) {
-      return base::unexpected("Failed to clear close-on-exec for bios");
-    }
-  } else {
+  if (!spec.bios.is_valid()) {
     base::expected<base::ScopedFD, std::string> bios = ResolveDlcImage(
         root_fd, bios_dlc_path, kBruschettaBiosDlcPath, O_RDONLY);
     if (!bios.has_value()) {
@@ -163,11 +158,7 @@ base::expected<VMImageSpec, std::string> AugmentImageSpec(
     spec.bios = std::move(bios.value());
   }
 
-  if (spec.kernel.is_valid()) {
-    if (!base::RemoveCloseOnExec(spec.kernel.get())) {
-      return base::unexpected("Failed to clear close-on-exec for kernel");
-    }
-  } else {
+  if (!spec.kernel.is_valid()) {
     std::optional<base::FilePath> kernel_dlc = vm_dlc_path;
     if (!kernel_dlc && !spec.bios.is_valid()) {
       kernel_dlc = tools_dlc_path;
@@ -184,11 +175,7 @@ base::expected<VMImageSpec, std::string> AugmentImageSpec(
     return base::unexpected("neither a kernel nor a BIOS were provided");
   }
 
-  if (spec.rootfs.is_valid()) {
-    if (!base::RemoveCloseOnExec(spec.rootfs.get())) {
-      return base::unexpected("Failed to clear close-on-exec for rootfs");
-    }
-  } else {
+  if (!spec.rootfs.is_valid()) {
     int rootfs_flags = is_rootfs_writable ? O_RDWR : O_RDONLY;
     base::expected<base::ScopedFD, std::string> rootfs =
         ResolveDlcImage(root_fd, vm_dlc_path, kVmRootfsName, rootfs_flags);
@@ -198,23 +185,7 @@ base::expected<VMImageSpec, std::string> AugmentImageSpec(
     spec.rootfs = std::move(rootfs.value());
   }
 
-  if (spec.initrd.is_valid()) {
-    if (!base::RemoveCloseOnExec(spec.initrd.get())) {
-      return base::unexpected("Failed to clear close-on-exec for initrd");
-    }
-  }
-
-  if (spec.pflash.is_valid()) {
-    if (!base::RemoveCloseOnExec(spec.pflash.get())) {
-      return base::unexpected("Failed to clear close-on-exec for pflash");
-    }
-  }
-
-  if (spec.tools_disk.is_valid()) {
-    if (!base::RemoveCloseOnExec(spec.tools_disk.get())) {
-      return base::unexpected("Failed to clear close-on-exec for tools disk");
-    }
-  } else {
+  if (!spec.tools_disk.is_valid()) {
     std::optional<base::FilePath> tools_dlc =
         tools_dlc_path ? tools_dlc_path : vm_dlc_path;
     base::expected<base::ScopedFD, std::string> tools =

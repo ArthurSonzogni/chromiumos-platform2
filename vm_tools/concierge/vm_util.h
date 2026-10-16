@@ -175,9 +175,8 @@ bool UpdateCpuUclampMin(const base::FilePath& cpu_cgroup, double percent);
 // Returns the new vCPU count to use in a Borealis VM
 uint32_t GetBorealisCpuCountOverride(uint32_t num_cpus);
 
-// Opens a file using SafeFD and duplicates the file descriptor (which clears
-// FD_CLOEXEC so child processes can inherit it). Returns an error string on
-// failure.
+// Opens a file using SafeFD and duplicates the file descriptor, ensuring
+// FD_CLOEXEC remains set. Returns an error string on failure.
 base::expected<base::ScopedFD, std::string> OpenPathSafely(
     brillo::SafeFD& root_fd, const base::FilePath& path, int flags);
 

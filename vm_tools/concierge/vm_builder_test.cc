@@ -235,6 +235,20 @@ TEST(VmBuilderTest, MultipleTapNetParams) {
           .Times(1));
 }
 
+TEST(VmBuilderTest, LaunchSpecWithTapFds) {
+  base::ScopedFD fake_fd(open("/dev/zero", O_RDONLY | O_CLOEXEC));
+  int raw_fd = fake_fd.get();
+
+  VmBuilder builder;
+  builder.AppendTapFd(std::move(fake_fd));
+  auto spec = std::move(builder).BuildVmLaunchSpec(nullptr);
+  ASSERT_TRUE(spec.has_value());
+
+  EXPECT_EQ(spec->fds.size(), 1);
+  EXPECT_EQ(spec->fds[0].get(), raw_fd);
+  EXPECT_EQ(fcntl(raw_fd, F_GETFD) & FD_CLOEXEC, 0);
+}
+
 TEST(VmBuilderTest, PmemDevice) {
   VmBuilder builder;
   builder.AppendPmemDevice(VmBuilder::PmemDevice{
@@ -481,27 +495,27 @@ TEST(VmBuilderTest, PmemRootfsWritable) {
 }
 
 TEST(VmBuilderTest, ScopedFdImagesAndDisks) {
-  base::ScopedFD kernel_fd(open("/dev/null", O_RDONLY));
+  base::ScopedFD kernel_fd(open("/dev/null", O_RDONLY | O_CLOEXEC));
   ASSERT_TRUE(kernel_fd.is_valid());
   int kernel_raw_fd = kernel_fd.get();
 
-  base::ScopedFD initrd_fd(open("/dev/null", O_RDONLY));
+  base::ScopedFD initrd_fd(open("/dev/null", O_RDONLY | O_CLOEXEC));
   ASSERT_TRUE(initrd_fd.is_valid());
   int initrd_raw_fd = initrd_fd.get();
 
-  base::ScopedFD bios_fd(open("/dev/null", O_RDONLY));
+  base::ScopedFD bios_fd(open("/dev/null", O_RDONLY | O_CLOEXEC));
   ASSERT_TRUE(bios_fd.is_valid());
   int bios_raw_fd = bios_fd.get();
 
-  base::ScopedFD pflash_fd(open("/dev/null", O_RDONLY));
+  base::ScopedFD pflash_fd(open("/dev/null", O_RDONLY | O_CLOEXEC));
   ASSERT_TRUE(pflash_fd.is_valid());
   int pflash_raw_fd = pflash_fd.get();
 
-  base::ScopedFD rootfs_fd(open("/dev/null", O_RDONLY));
+  base::ScopedFD rootfs_fd(open("/dev/null", O_RDONLY | O_CLOEXEC));
   ASSERT_TRUE(rootfs_fd.is_valid());
   int rootfs_raw_fd = rootfs_fd.get();
 
-  base::ScopedFD disk_fd(open("/dev/null", O_RDONLY));
+  base::ScopedFD disk_fd(open("/dev/null", O_RDONLY | O_CLOEXEC));
   ASSERT_TRUE(disk_fd.is_valid());
   int disk_raw_fd = disk_fd.get();
 
@@ -520,7 +534,15 @@ TEST(VmBuilderTest, ScopedFdImagesAndDisks) {
           .writable = true,
       });
 
-  base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
+  auto spec = std::move(builder).BuildVmLaunchSpec(nullptr);
+  ASSERT_TRUE(spec.has_value());
+  const base::StringPairs& result = spec->args;
+
+  EXPECT_EQ(spec->fds.size(), 6);
+  for (const auto& fd : spec->fds) {
+    EXPECT_TRUE(fd.is_valid());
+    EXPECT_EQ(fcntl(fd.get(), F_GETFD) & FD_CLOEXEC, 0);
+  }
 
   std::string kernel_expected =
       "/proc/self/fd/" + std::to_string(kernel_raw_fd);

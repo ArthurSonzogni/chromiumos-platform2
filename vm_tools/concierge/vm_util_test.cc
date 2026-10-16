@@ -907,7 +907,7 @@ TEST(VMUtilTest, OpenPathSafely) {
       OpenPathSafely(root_fd.first, base::FilePath("test_disk.img"), O_RDONLY);
   ASSERT_TRUE(result.has_value());
   EXPECT_TRUE(result->is_valid());
-  EXPECT_EQ(fcntl(result->get(), F_GETFD) & FD_CLOEXEC, 0);
+  EXPECT_NE(fcntl(result->get(), F_GETFD) & FD_CLOEXEC, 0);
 
   base::expected<base::ScopedFD, std::string> non_existent = OpenPathSafely(
       root_fd.first, base::FilePath("non_existent.img"), O_RDONLY);

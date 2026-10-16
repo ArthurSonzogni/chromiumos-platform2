@@ -342,14 +342,14 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   std::unique_ptr<CustomParametersForDev> custom_parameters =
       MaybeLoadCustomParametersForDev(classification_);
 
-  std::optional<base::StringPairs> args =
-      std::move(vm_builder).BuildVmArgs(custom_parameters.get());
-  if (!args) {
-    LOG(ERROR) << "Failed to build VM arguments";
+  std::optional<VmLaunchSpec> spec =
+      std::move(vm_builder).BuildVmLaunchSpec(custom_parameters.get());
+  if (!spec) {
+    LOG(ERROR) << "Failed to build VM launch spec";
     return false;
   }
 
-  if (!StartProcess(std::move(args).value())) {
+  if (!StartProcess(std::move(*spec))) {
     LOG(ERROR) << "Failed to start VM process";
     return false;
   }

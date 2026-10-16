@@ -453,8 +453,8 @@ bool VmBuilder::ProcessCustomParameters(
   return true;
 }
 
-std::optional<base::StringPairs> VmBuilder::BuildVmArgs(
-    CustomParametersForDev* devparams) && {
+std::optional<base::StringPairs> VmBuilder::BuildVmArgsInternal(
+    CustomParametersForDev* devparams) {
   if (devparams) {
     if (!ProcessCustomParameters(*devparams)) {
       return std::nullopt;
@@ -493,6 +493,81 @@ std::optional<base::StringPairs> VmBuilder::BuildVmArgs(
   }
 
   return args;
+}
+
+std::optional<base::StringPairs> VmBuilder::BuildVmArgs(
+    CustomParametersForDev* devparams) && {
+  return BuildVmArgsInternal(devparams);
+}
+
+std::optional<VmLaunchSpec> VmBuilder::BuildVmLaunchSpec(
+    CustomParametersForDev* devparams) && {
+  std::optional<base::StringPairs> args = BuildVmArgsInternal(devparams);
+  if (!args.has_value()) {
+    return std::nullopt;
+  }
+
+  VmLaunchSpec spec;
+  spec.args = std::move(*args);
+
+  auto add_optional_fd = [&spec](base::ScopedFD fd) -> bool {
+    if (!fd.is_valid()) {
+      return true;
+    }
+    if (!base::RemoveCloseOnExec(fd.get())) {
+      PLOG(ERROR) << "Failed to remove close-on-exec for FD " << fd.get();
+      return false;
+    }
+    spec.fds.push_back(std::move(fd));
+    return true;
+  };
+
+  auto add_required_fd = [&spec](base::ScopedFD fd, const char* name) -> bool {
+    if (!fd.is_valid()) {
+      LOG(ERROR) << "Invalid descriptor for " << name;
+      return false;
+    }
+    if (!base::RemoveCloseOnExec(fd.get())) {
+      PLOG(ERROR) << "Failed to remove close-on-exec for " << name << " FD "
+                  << fd.get();
+      return false;
+    }
+    spec.fds.push_back(std::move(fd));
+    return true;
+  };
+
+  if (!add_optional_fd(std::move(kernel_)) ||
+      !add_optional_fd(std::move(initrd_)) ||
+      !add_optional_fd(std::move(bios_)) ||
+      !add_optional_fd(std::move(pflash_))) {
+    return std::nullopt;
+  }
+
+  if (rootfs_.has_value()) {
+    if (!add_required_fd(std::move(rootfs_->fd), "rootfs")) {
+      return std::nullopt;
+    }
+  }
+
+  for (auto& disk : disks_) {
+    if (!add_required_fd(std::move(disk.fd), "disk")) {
+      return std::nullopt;
+    }
+  }
+
+  for (auto& tap_fd : tap_fds_) {
+    if (!add_required_fd(std::move(tap_fd), "tap")) {
+      return std::nullopt;
+    }
+  }
+
+  for (auto& front : vhost_user_fronts_) {
+    if (!add_required_fd(std::move(front.socket_fd), "vhost-user frontend")) {
+      return std::nullopt;
+    }
+  }
+
+  return spec;
 }
 
 base::StringPairs VmBuilder::BuildPreRunParams() const {

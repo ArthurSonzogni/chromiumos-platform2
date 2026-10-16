@@ -180,11 +180,19 @@ class VmBuilder {
 
   VmBuilder& SetVmmSwapDir(base::FilePath vmm_swap_dir);
 
-  // Builds the command line required to start a VM. Optionally Applies
-  // dev_params to modify the configuration. Consumes this (the builder).
+  // Builds the launch specification (arguments and open descriptors) required
+  // to start a VM. Optionally applies dev_params to modify the configuration.
+  // Consumes this (the builder).
+  // Returns std::nullopt on failure.
+  std::optional<VmLaunchSpec> BuildVmLaunchSpec(
+      CustomParametersForDev* dev_params = nullptr) &&;
+
+  // Builds only the command line arguments for the VM (primarily for testing).
+  // Does not drain descriptors from VmBuilder, so descriptors remain open for
+  // the lifetime of the VmBuilder instance.
   // Returns std::nullopt on failure.
   std::optional<base::StringPairs> BuildVmArgs(
-      CustomParametersForDev* dev_params) &&;
+      CustomParametersForDev* dev_params = nullptr) &&;
 
   static void SetValidWaylandRegexForTesting(char* regex);
 
@@ -208,6 +216,8 @@ class VmBuilder {
   // Builds the parameters between `crosvm` and `run`.
   base::StringPairs BuildPreRunParams() const;
   bool ProcessCustomParameters(const CustomParametersForDev& devparams);
+  std::optional<base::StringPairs> BuildVmArgsInternal(
+      CustomParametersForDev* dev_params);
 
   base::ScopedFD kernel_;
   base::ScopedFD initrd_;
