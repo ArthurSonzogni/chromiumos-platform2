@@ -630,6 +630,25 @@ std::string ConvertToFdBasedPath(brillo::SafeFD& parent_fd,
   return "";
 }
 
+base::expected<base::ScopedFD, std::string> OpenPathSafely(
+    brillo::SafeFD& root_fd, const base::FilePath& path, int flags) {
+  brillo::SafeFD::SafeFDResult result = root_fd.OpenExistingFile(path, flags);
+  if (brillo::SafeFD::IsError(result.second)) {
+    LOG(ERROR) << "Could not open file: " << static_cast<int>(result.second);
+    return base::unexpected("Could not open file");
+  }
+
+  // dup() transfers ownership from SafeFD and guarantees FD_CLOEXEC is
+  // cleared for child process inheritance.
+  base::ScopedFD fd(dup(result.first.get()));
+  if (!fd.is_valid()) {
+    LOG(ERROR) << "Could not duplicate file descriptor";
+    return base::unexpected("Could not duplicate file descriptor");
+  }
+
+  return fd;
+}
+
 CustomParametersForDev::CustomParametersForDev(const std::string& data) {
   std::vector<std::string_view> lines = base::SplitStringPiece(
       data, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);

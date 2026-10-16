@@ -4,6 +4,8 @@
 
 #include "vm_tools/concierge/vm_util.h"
 
+#include <fcntl.h>
+
 #include <cstdint>
 #include <cstring>
 #include <optional>
@@ -12,6 +14,8 @@
 #include <base/byte_size.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -883,6 +887,31 @@ TEST(VMUtilTest, IdMapStringToIdMapItem) {
   std::string invalid_mock_uid_map = "0 0 1,100 300";
   id_map_items = internal::IdMapStringToIdMapItem(invalid_mock_uid_map);
   EXPECT_TRUE(id_map_items.empty());
+}
+
+TEST(VMUtilTest, OpenPathSafely) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  base::FilePath file_path = temp_dir.GetPath().Append("test_disk.img");
+  ASSERT_TRUE(base::WriteFile(file_path, "test data"));
+
+  brillo::SafeFD::SetRootPathForTesting(temp_dir.GetPath().value().c_str());
+  base::ScopedClosureRunner reset_root(
+      base::BindOnce(&brillo::SafeFD::SetRootPathForTesting, "/"));
+
+  auto root_fd = brillo::SafeFD::Root();
+  ASSERT_FALSE(brillo::SafeFD::IsError(root_fd.second));
+
+  base::expected<base::ScopedFD, std::string> result =
+      OpenPathSafely(root_fd.first, base::FilePath("test_disk.img"), O_RDONLY);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_TRUE(result->is_valid());
+  EXPECT_EQ(fcntl(result->get(), F_GETFD) & FD_CLOEXEC, 0);
+
+  base::expected<base::ScopedFD, std::string> non_existent = OpenPathSafely(
+      root_fd.first, base::FilePath("non_existent.img"), O_RDONLY);
+  EXPECT_FALSE(non_existent.has_value());
 }
 
 }  // namespace concierge

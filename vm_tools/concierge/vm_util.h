@@ -22,6 +22,7 @@
 #include <base/files/scoped_file.h>
 #include <base/strings/string_split.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <base/values.h>
 #include <brillo/files/safe_fd.h>
 #include <brillo/process/process.h>
@@ -179,6 +180,12 @@ std::string ConvertToFdBasedPath(brillo::SafeFD& parent_fd,
                                  base::FilePath* in_out_path,
                                  int flags,
                                  std::vector<brillo::SafeFD>& fd_storage);
+
+// Opens a file using SafeFD and duplicates the file descriptor (which clears
+// FD_CLOEXEC so child processes can inherit it). Returns an error string on
+// failure.
+base::expected<base::ScopedFD, std::string> OpenPathSafely(
+    brillo::SafeFD& root_fd, const base::FilePath& path, int flags);
 
 // Convert the given |type| to VM types defined in
 // system_api vm_concierge/concierge_service.pb

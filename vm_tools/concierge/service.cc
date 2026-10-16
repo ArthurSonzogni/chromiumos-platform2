@@ -588,6 +588,11 @@ bool IsDiskPreallocatedWithUserChosenSize(const std::string& disk_path) {
                   0) >= 0;
 }
 
+bool IsDiskPreallocatedWithUserChosenSize(const base::ScopedFD& fd) {
+  return fgetxattr(fd.get(), kDiskImagePreallocatedWithUserChosenSizeXattr,
+                   nullptr, 0) >= 0;
+}
+
 // Mark a non-sparse disk with an xattr indicating its size has been chosen by
 // the user.
 bool SetPreallocatedWithUserChosenSizeAttr(const base::ScopedFD& fd) {
@@ -1611,16 +1616,43 @@ StartVmResponse Service::StartVmInternal(
     return response;
   }
 
+  std::vector<base::ScopedFD> owned_disk_fds;
+
   // Assume the stateful device is the first disk in the request.
   std::string stateful_device = base::StringPrintf("/dev/vd%c", disk_letter);
 
   auto stateful_path = base::FilePath(request.disks()[0].path());
-  std::optional<int64_t> stateful_size = base::GetFileSize(stateful_path);
-  if (!stateful_size.has_value()) {
-    LOG(ERROR) << "Could not determine stateful disk size";
-    response.set_failure_reason(
-        "Internal error: unable to determine stateful disk size");
-    return response;
+  uint64_t stateful_size = 0;
+  bool is_first_disk = true;
+
+  for (const auto& d : request.disks()) {
+    base::expected<base::ScopedFD, std::string> disk_fd = OpenPathSafely(
+        root_fd, base::FilePath(d.path()), d.writable() ? O_RDWR : O_RDONLY);
+    if (!disk_fd.has_value()) {
+      LOG(ERROR) << "Could not open disk file";
+      response.set_failure_reason(disk_fd.error());
+      return response;
+    }
+
+    if (is_first_disk) {
+      is_first_disk = false;
+      struct stat st;
+      if (fstat(disk_fd->get(), &st) != 0) {
+        LOG(ERROR) << "Could not determine stateful disk size";
+        response.set_failure_reason(
+            "Internal error: unable to determine stateful disk size");
+        return response;
+      }
+      stateful_size = st.st_size;
+    }
+
+    VmBuilder::Disk disk{
+        .path = base::FilePath(kProcFileDescriptorsPath)
+                    .Append(base::NumberToString(disk_fd->get())),
+        .writable = d.writable(),
+        .sparse = !IsDiskPreallocatedWithUserChosenSize(*disk_fd)};
+    vm_builder.AppendDisk(std::move(disk));
+    owned_disk_fds.push_back(std::move(*disk_fd));
   }
 
   bool storage_ballooning = false;
@@ -1638,24 +1670,6 @@ StartVmResponse Service::StartVmInternal(
   // not lost.
   if (storage_ballooning) {
     TrimUserFilesystem();
-  }
-
-  for (const auto& d : request.disks()) {
-    VmBuilder::Disk disk{
-        .path = base::FilePath(d.path()),
-        .writable = d.writable(),
-        .sparse = !IsDiskPreallocatedWithUserChosenSize(d.path())};
-
-    failure_reason = ConvertToFdBasedPath(
-        root_fd, &disk.path, disk.writable ? O_RDWR : O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Could not open disk file";
-      response.set_failure_reason(failure_reason);
-      return response;
-    }
-
-    vm_builder.AppendDisk(disk);
   }
 
   // Check if an opened storage image was passed over D-BUS.
@@ -1883,7 +1897,7 @@ StartVmResponse Service::StartVmInternal(
       .runtime_dir = std::move(runtime_dir),
       .log_path = std::move(log_path),
       .stateful_device = std::move(stateful_device),
-      .stateful_size = static_cast<uint64_t>(std::move(stateful_size.value())),
+      .stateful_size = stateful_size,
       .features = features,
       .vm_permission_service_proxy = vm_permission_service_proxy_,
       .bus = bus_,

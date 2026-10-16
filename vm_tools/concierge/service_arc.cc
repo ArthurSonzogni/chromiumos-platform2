@@ -16,6 +16,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <chromeos/constants/vm_tools.h>
 #include <dbus/vm_concierge/dbus-constants.h>
@@ -368,7 +369,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
 
   VmBuilder vm_builder;
   // Exists just to keep FDs around for crosvm to inherit
-  std::vector<brillo::SafeFD> owned_fds;
+  std::vector<base::ScopedFD> owned_fds;
   auto root_fd = brillo::SafeFD::Root();
 
   if (brillo::SafeFD::IsError(root_fd.second)) {
@@ -390,16 +391,17 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   }
   const bool is_dev_mode = (VbGetSystemPropertyInt("cros_debug") == 1);
   auto rootfsPath = GetImagePath(base::FilePath(kRootfsPath), is_dev_mode);
-  auto failure_reason =
-      ConvertToFdBasedPath(root_fd.first, &rootfsPath,
-                           rootdisk.writable ? O_RDWR : O_RDONLY, owned_fds);
-  if (!failure_reason.empty()) {
+  base::expected<base::ScopedFD, std::string> rootfs_fd = OpenPathSafely(
+      root_fd.first, rootfsPath, rootdisk.writable ? O_RDWR : O_RDONLY);
+  if (!rootfs_fd.has_value()) {
     LOG(ERROR) << "Could not open rootfs image" << rootfsPath;
     response.set_failure_reason("Rootfs path does not exist");
     return response;
   }
-  rootdisk.path = rootfsPath;
+  rootdisk.path = base::FilePath(kProcFileDescriptorsPath)
+                      .Append(base::NumberToString(rootfs_fd->get()));
   vm_builder.AppendDisk(rootdisk);
+  owned_fds.push_back(std::move(*rootfs_fd));
 
   for (const auto& d : request.disks()) {
     VmBuilder::Disk disk{
@@ -416,17 +418,18 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     if (block_size) {
       disk.block_size = block_size;
     }
-    failure_reason =
-        ConvertToFdBasedPath(root_fd.first, &disk.path,
-                             disk.writable ? O_RDWR : O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
+    base::expected<base::ScopedFD, std::string> disk_fd = OpenPathSafely(
+        root_fd.first, disk.path, disk.writable ? O_RDWR : O_RDONLY);
+    if (!disk_fd.has_value()) {
       LOG(ERROR) << "Could not open disk file";
-      response.set_failure_reason(failure_reason);
+      response.set_failure_reason(disk_fd.error());
       return response;
     }
 
+    disk.path = base::FilePath(kProcFileDescriptorsPath)
+                    .Append(base::NumberToString(disk_fd->get()));
     vm_builder.AppendDisk(disk);
+    owned_fds.push_back(std::move(*disk_fd));
   }
 
   base::FilePath data_disk_path;
