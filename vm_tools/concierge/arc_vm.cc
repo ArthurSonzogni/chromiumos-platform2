@@ -284,19 +284,18 @@ ArcVm::~ArcVm() {
 }
 
 std::unique_ptr<ArcVm> ArcVm::Create(Config config) {
-  auto kernel = std::move(config.kernel);
   auto vm_builder = std::move(config.vm_builder);
 
   auto vm = base::WrapUnique(new ArcVm(std::move(config)));
 
-  if (!vm->Start(std::move(kernel), std::move(vm_builder))) {
+  if (!vm->Start(std::move(vm_builder))) {
     return {};
   }
 
   return vm;
 }
 
-bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
+bool ArcVm::Start(VmBuilder vm_builder) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   // Open the tap device(s).
@@ -406,9 +405,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
               .value_or("false") == "true") {
     skip_swap_policy_ = true;
   }
-
-  // Finally set the path to the kernel.
-  vm_builder.SetKernel(std::move(kernel));
 
   std::optional<base::StringPairs> args =
       std::move(vm_builder).BuildVmArgs(custom_parameters.get());

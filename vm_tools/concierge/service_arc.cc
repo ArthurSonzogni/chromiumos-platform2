@@ -16,7 +16,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <chromeos/constants/vm_tools.h>
 #include <dbus/vm_concierge/dbus-constants.h>
@@ -368,8 +367,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   }
 
   VmBuilder vm_builder;
-  // Exists just to keep FDs around for crosvm to inherit
-  std::vector<base::ScopedFD> owned_fds;
   auto root_fd = brillo::SafeFD::Root();
 
   if (brillo::SafeFD::IsError(root_fd.second)) {
@@ -381,55 +378,51 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
 
   // The rootfs can be treated as a disk as well and needs to be added before
   // other disks.
-  VmBuilder::Disk rootdisk{
-      .writable = request.rootfs_writable(),
-      .o_direct = request.rootfs_o_direct(),
-      .multiple_workers = request.rootfs_multiple_workers()};
-  const size_t rootfs_block_size = request.rootfs_block_size();
-  if (rootfs_block_size) {
-    rootdisk.block_size = rootfs_block_size;
-  }
   const bool is_dev_mode = (VbGetSystemPropertyInt("cros_debug") == 1);
-  auto rootfsPath = GetImagePath(base::FilePath(kRootfsPath), is_dev_mode);
-  base::expected<base::ScopedFD, std::string> rootfs_fd = OpenPathSafely(
-      root_fd.first, rootfsPath, rootdisk.writable ? O_RDWR : O_RDONLY);
+  base::FilePath rootfs_path =
+      GetImagePath(base::FilePath(kRootfsPath), is_dev_mode);
+  base::expected<base::ScopedFD, std::string> rootfs_fd =
+      OpenPathSafely(root_fd.first, rootfs_path,
+                     request.rootfs_writable() ? O_RDWR : O_RDONLY);
   if (!rootfs_fd.has_value()) {
-    LOG(ERROR) << "Could not open rootfs image" << rootfsPath;
+    LOG(ERROR) << "Could not open rootfs image: " << rootfs_path;
     response.set_failure_reason("Rootfs path does not exist");
     return response;
   }
-  rootdisk.path = base::FilePath(kProcFileDescriptorsPath)
-                      .Append(base::NumberToString(rootfs_fd->get()));
-  vm_builder.AppendDisk(rootdisk);
-  owned_fds.push_back(std::move(*rootfs_fd));
+  vm_builder.AppendDisk(VmBuilder::Disk{
+      .fd = std::move(*rootfs_fd),
+      .writable = request.rootfs_writable(),
+      .o_direct = request.rootfs_o_direct(),
+      .multiple_workers = request.rootfs_multiple_workers(),
+      .block_size = request.rootfs_block_size() != 0
+                        ? std::make_optional(request.rootfs_block_size())
+                        : std::nullopt,
+  });
 
   for (const auto& d : request.disks()) {
-    VmBuilder::Disk disk{
-        .path = GetImagePath(base::FilePath(d.path()), is_dev_mode),
-        .writable = d.writable(),
-        .o_direct = d.o_direct(),
-        .multiple_workers = d.multiple_workers()};
-    if (!base::PathExists(disk.path)) {
-      LOG(ERROR) << "Missing disk path: " << disk.path;
+    base::FilePath disk_path =
+        GetImagePath(base::FilePath(d.path()), is_dev_mode);
+    if (!base::PathExists(disk_path)) {
+      LOG(ERROR) << "Missing disk path: " << disk_path;
       response.set_failure_reason("One or more disk paths do not exist");
       return response;
     }
-    const size_t block_size = d.block_size();
-    if (block_size) {
-      disk.block_size = block_size;
-    }
     base::expected<base::ScopedFD, std::string> disk_fd = OpenPathSafely(
-        root_fd.first, disk.path, disk.writable ? O_RDWR : O_RDONLY);
+        root_fd.first, disk_path, d.writable() ? O_RDWR : O_RDONLY);
     if (!disk_fd.has_value()) {
       LOG(ERROR) << "Could not open disk file";
       response.set_failure_reason(disk_fd.error());
       return response;
     }
 
-    disk.path = base::FilePath(kProcFileDescriptorsPath)
-                    .Append(base::NumberToString(disk_fd->get()));
-    vm_builder.AppendDisk(disk);
-    owned_fds.push_back(std::move(*disk_fd));
+    vm_builder.AppendDisk(VmBuilder::Disk{
+        .fd = std::move(*disk_fd),
+        .writable = d.writable(),
+        .o_direct = d.o_direct(),
+        .multiple_workers = d.multiple_workers(),
+        .block_size = d.block_size() != 0 ? std::make_optional(d.block_size())
+                                          : std::nullopt,
+    });
   }
 
   base::FilePath data_disk_path;
@@ -596,7 +589,16 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   base::FilePath kernel_path;
   if (request.use_gki()) {
     kernel_path = base::FilePath(kGkiPath);
-    vm_builder.AppendCustomParam("--initrd", kRamdiskPath);
+    base::FilePath ramdisk_path =
+        GetImagePath(base::FilePath(kRamdiskPath), is_dev_mode);
+    base::expected<base::ScopedFD, std::string> ramdisk_fd =
+        OpenPathSafely(root_fd.first, ramdisk_path, O_RDONLY);
+    if (!ramdisk_fd.has_value()) {
+      LOG(ERROR) << "Could not open ramdisk: " << ramdisk_path;
+      response.set_failure_reason("Ramdisk path does not exist");
+      return response;
+    }
+    vm_builder.SetInitrd(std::move(*ramdisk_fd));
     // This is set to 0 by the GKI kernel so we set back to the default.
     params.emplace_back("8250.nr_uarts=4");
     // TODO(b/331748554): The GKI doesn't have the pvclock driver.
@@ -608,6 +610,16 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       vm_builder.EnablePvClock(request.enable_pvclock() /* enable */);
     }
   }
+
+  kernel_path = GetImagePath(kernel_path, is_dev_mode);
+  base::expected<base::ScopedFD, std::string> kernel_fd =
+      OpenPathSafely(root_fd.first, kernel_path, O_RDONLY);
+  if (!kernel_fd.has_value()) {
+    LOG(ERROR) << "Could not open kernel: " << kernel_path;
+    response.set_failure_reason("Kernel path does not exist");
+    return response;
+  }
+  vm_builder.SetKernel(std::move(*kernel_fd));
 
   if (!topology.IsSymmetricCPU() && !topology.AffinityMask().empty()) {
     vm_builder.AppendCustomParam("--cpu-affinity", topology.AffinityMask());
@@ -699,7 +711,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
                           weak_ptr_factory_.GetWeakPtr(), vm_id);
 
   auto vm = ArcVm::Create(ArcVm::Config{
-      .kernel = kernel_path,
       .vsock_cid = vsock_cid,
       .network = std::move(network),
       .seneschal_server_proxy = std::move(server_proxy),

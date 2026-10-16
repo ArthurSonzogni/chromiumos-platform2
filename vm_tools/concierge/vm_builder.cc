@@ -4,6 +4,8 @@
 
 #include "vm_tools/concierge/vm_builder.h"
 
+#include <fcntl.h>
+
 #include <optional>
 #include <string>
 #include <utility>
@@ -72,6 +74,12 @@ std::string AsyncExecutorToString(VmBuilder::AsyncExecutor async_executor) {
   }
 }
 
+base::FilePath ToProcPath(const base::ScopedFD& fd) {
+  return fd.is_valid() ? base::FilePath(kProcFileDescriptorsPath)
+                             .Append(base::NumberToString(fd.get()))
+                       : base::FilePath();
+}
+
 }  // namespace
 
 // Convert a string to the corresponding AsyncExecutor. This returns nullopt if
@@ -97,28 +105,28 @@ VmBuilder& VmBuilder::operator=(VmBuilder&& other) = default;
 
 VmBuilder::~VmBuilder() = default;
 
-VmBuilder& VmBuilder::SetKernel(base::FilePath kernel) {
+VmBuilder& VmBuilder::SetKernel(base::ScopedFD kernel) {
   kernel_ = std::move(kernel);
   return *this;
 }
 
-VmBuilder& VmBuilder::SetInitrd(base::FilePath initrd) {
+VmBuilder& VmBuilder::SetInitrd(base::ScopedFD initrd) {
   initrd_ = std::move(initrd);
   return *this;
 }
 
-VmBuilder& VmBuilder::SetBios(base::FilePath bios) {
+VmBuilder& VmBuilder::SetBios(base::ScopedFD bios) {
   bios_ = std::move(bios);
   return *this;
 }
 
-VmBuilder& VmBuilder::SetPflash(base::FilePath pflash) {
+VmBuilder& VmBuilder::SetPflash(base::ScopedFD pflash) {
   pflash_ = std::move(pflash);
   return *this;
 }
 
-VmBuilder& VmBuilder::SetRootfs(const struct Rootfs& rootfs) {
-  rootfs_ = rootfs;
+VmBuilder& VmBuilder::SetRootfs(Rootfs rootfs) {
+  rootfs_ = std::move(rootfs);
   return *this;
 }
 
@@ -433,7 +441,14 @@ bool VmBuilder::ProcessCustomParameters(
   if (auto kernel_override =
           devparams.ObtainSpecialParameter(kKeyToOverrideKernelPath);
       kernel_override) {
-    kernel_ = base::FilePath(kernel_override.value());
+    base::ScopedFD fd(
+        open(kernel_override.value().c_str(), O_RDONLY | O_CLOEXEC));
+    if (!fd.is_valid()) {
+      LOG(ERROR) << "Failed to open kernel override: "
+                 << kernel_override.value();
+      return false;
+    }
+    kernel_ = std::move(fd);
   }
   return true;
 }
@@ -473,8 +488,8 @@ std::optional<base::StringPairs> VmBuilder::BuildVmArgs(
   args.insert(args.end(), post_run_args.begin(), post_run_args.end());
 
   // Kernel should be at the end.
-  if (!kernel_.empty()) {
-    args.emplace_back(kernel_.value(), "");
+  if (kernel_.is_valid()) {
+    args.emplace_back(ToProcPath(kernel_).value(), "");
   }
 
   return args;
@@ -548,7 +563,7 @@ base::StringPairs VmBuilder::BuildRunParams() const {
 
   if (rootfs_.has_value()) {
     const auto& rootfs = rootfs_.value();
-    std::string rootfs_arg = rootfs.path.value();
+    std::string rootfs_arg = ToProcPath(rootfs.fd).value();
     rootfs_arg += BooleanParameter(",ro=", !rootfs.writable);
     rootfs_arg += BooleanParameter(",root=", true);
 
@@ -690,16 +705,16 @@ base::StringPairs VmBuilder::BuildRunParams() const {
     args.emplace_back(custom_param.first, custom_param.second);
   }
 
-  if (!initrd_.empty()) {
-    args.emplace_back("-i", initrd_.value());
+  if (initrd_.is_valid()) {
+    args.emplace_back("-i", ToProcPath(initrd_).value());
   }
 
-  if (!bios_.empty()) {
-    args.emplace_back("--bios", bios_.value());
+  if (bios_.is_valid()) {
+    args.emplace_back("--bios", ToProcPath(bios_).value());
   }
 
-  if (!pflash_.empty()) {
-    args.emplace_back("--pflash", "path=" + pflash_.value());
+  if (pflash_.is_valid()) {
+    args.emplace_back("--pflash", "path=" + ToProcPath(pflash_).value());
   }
 
   if (!vmm_swap_dir_.empty()) {
@@ -762,8 +777,10 @@ base::StringPairs VmBuilder::Disk::GetCrosvmArgs() const {
     block_id_arg = base::StrCat({",id=", block_id.value()});
   }
 
+  std::string disk_path_str = ToProcPath(fd).value();
+
   std::string second = base::StrCat(
-      {path.value(), readonly_arg, sparse_arg, o_direct_arg,
+      {disk_path_str, readonly_arg, sparse_arg, o_direct_arg,
        multiple_workers_arg, block_size_arg, async_executor_arg, block_id_arg});
   base::StringPairs result = {{std::move(first), std::move(second)}};
   return result;

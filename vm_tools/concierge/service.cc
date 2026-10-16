@@ -1475,8 +1475,6 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
     return response;
   }
 
-  // Exists just to keep FDs around for crosvm to inherit
-  std::vector<base::ScopedFD> owned_fds;
   auto root_fd_result = brillo::SafeFD::Root();
 
   if (brillo::SafeFD::IsError(root_fd_result.second)) {
@@ -1533,21 +1531,14 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
   bool use_pmem = USE_BOREALIS_HOST && classification == apps::VmType::BOREALIS;
   unsigned char disk_letter = use_pmem ? 'a' : 'b';
 
-  auto to_proc_path = [](const base::ScopedFD& fd) -> base::FilePath {
-    return fd.is_valid() ? base::FilePath(kProcFileDescriptorsPath)
-                               .Append(base::NumberToString(fd.get()))
-                         : base::FilePath();
-  };
-
   // In newer components, the /opt/google/cros-containers directory
   // is split into its own disk image(vm_tools.img).  Detect whether it exists
   // to keep compatibility with older components with only vm_rootfs.img.
   std::string tools_device;
   if (image_spec.tools_disk.is_valid()) {
     vm_builder.AppendDisk(VmBuilder::Disk{
-        .path = to_proc_path(image_spec.tools_disk), .writable = false});
+        .fd = std::move(image_spec.tools_disk), .writable = false});
     tools_device = base::StringPrintf("/dev/vd%c", disk_letter++);
-    owned_fds.push_back(std::move(image_spec.tools_disk));
   }
 
   if (request.disks().size() == 0) {
@@ -1584,13 +1575,13 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
       stateful_size = st.st_size;
     }
 
+    const bool sparse = !IsDiskPreallocatedWithUserChosenSize(*disk_fd);
     VmBuilder::Disk disk{
-        .path = base::FilePath(kProcFileDescriptorsPath)
-                    .Append(base::NumberToString(disk_fd->get())),
+        .fd = std::move(*disk_fd),
         .writable = d.writable(),
-        .sparse = !IsDiskPreallocatedWithUserChosenSize(*disk_fd)};
+        .sparse = sparse,
+    };
     vm_builder.AppendDisk(std::move(disk));
-    owned_fds.push_back(std::move(*disk_fd));
   }
 
   bool storage_ballooning = false;
@@ -1613,7 +1604,7 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
   bool has_storage_disk = image_spec.storage.is_valid();
   // Check if an opened storage image was passed over D-BUS.
   if (has_storage_disk) {
-    const base::ScopedFD& fd = image_spec.storage;
+    base::ScopedFD fd = std::move(image_spec.storage);
     if (!base::RemoveCloseOnExec(fd.get())) {
       LOG(ERROR) << "failed to remove close-on-exec flag";
       response.set_failure_reason(
@@ -1621,17 +1612,15 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
       return response;
     }
 
-    bool writable = false;
     int mode = fcntl(fd.get(), F_GETFL);
-    if ((mode & O_ACCMODE) == O_RDWR || (mode & O_ACCMODE) == O_WRONLY) {
-      writable = true;
-    }
+    bool writable =
+        ((mode & O_ACCMODE) == O_RDWR || (mode & O_ACCMODE) == O_WRONLY);
 
-    vm_builder.AppendDisk(
-        VmBuilder::Disk{.path = to_proc_path(image_spec.storage),
-                        .writable = writable,
-                        .block_id = "cr-extra-disk"});
-    owned_fds.push_back(std::move(image_spec.storage));
+    vm_builder.AppendDisk(VmBuilder::Disk{
+        .fd = std::move(fd),
+        .writable = writable,
+        .block_id = "cr-extra-disk",
+    });
   }
 
   // Create the runtime directory.
@@ -1764,11 +1753,19 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
   // Notify VmLogForwarder that a vm is starting up.
   SendVmStartingUpSignal(vm_id, classification, vsock_cid);
 
-  vm_builder.SetKernel(to_proc_path(image_spec.kernel))
-      .SetBios(to_proc_path(image_spec.bios))
-      .SetPflash(to_proc_path(image_spec.pflash))
-      .SetInitrd(to_proc_path(image_spec.initrd))
-      .SetCpus(cpus)
+  if (image_spec.kernel.is_valid()) {
+    vm_builder.SetKernel(std::move(image_spec.kernel));
+  }
+  if (image_spec.bios.is_valid()) {
+    vm_builder.SetBios(std::move(image_spec.bios));
+  }
+  if (image_spec.pflash.is_valid()) {
+    vm_builder.SetPflash(std::move(image_spec.pflash));
+  }
+  if (image_spec.initrd.is_valid()) {
+    vm_builder.SetInitrd(std::move(image_spec.initrd));
+  }
+  vm_builder.SetCpus(cpus)
       .AppendSharedDir(CreateFontsSharedDirParam())
       .EnableSmt(false /* enable */)
       .SetGpuCachePath(std::move(gpu_cache_spec.device))
@@ -1776,22 +1773,10 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
                          base::FilePath(kTerminaVcpuCpuCgroup).value())
       .SetRenderServerCachePath(std::move(gpu_cache_spec.render_server));
   if (image_spec.rootfs.is_valid()) {
-    vm_builder.SetRootfs({.path = to_proc_path(image_spec.rootfs),
+    vm_builder.SetRootfs(
+        VmBuilder::Rootfs{.fd = std::move(image_spec.rootfs),
                           .is_pmem = use_pmem,
                           .writable = request.writable_rootfs()});
-    owned_fds.push_back(std::move(image_spec.rootfs));
-  }
-  if (image_spec.kernel.is_valid()) {
-    owned_fds.push_back(std::move(image_spec.kernel));
-  }
-  if (image_spec.bios.is_valid()) {
-    owned_fds.push_back(std::move(image_spec.bios));
-  }
-  if (image_spec.initrd.is_valid()) {
-    owned_fds.push_back(std::move(image_spec.initrd));
-  }
-  if (image_spec.pflash.is_valid()) {
-    owned_fds.push_back(std::move(image_spec.pflash));
   }
 
   // Spoof baguette vm as termina to wayland server

@@ -11,6 +11,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_split.h>
 #include <dbus/object_proxy.h>
@@ -34,11 +35,11 @@ class VmBuilder {
     // corresponding to this disk.
     base::StringPairs GetCrosvmArgs() const;
 
-    // Path to the disk image on the host.
-    base::FilePath path;
+    // File descriptor of the disk image on the host.
+    base::ScopedFD fd;
 
     // Whether the disk should be writable by the VM.
-    bool writable;
+    bool writable = false;
 
     // Whether the disk should allow sparse file operations (discard) by the VM.
     std::optional<bool> sparse;
@@ -59,9 +60,9 @@ class VmBuilder {
     std::optional<std::string> block_id;
   };
 
-  // Contains the rootfs path and configuration.
+  // Contains the rootfs fd and configuration.
   struct Rootfs {
-    base::FilePath path;
+    base::ScopedFD fd;
     bool is_pmem = false;
     bool writable = false;
   };
@@ -101,11 +102,11 @@ class VmBuilder {
   VmBuilder& operator=(const VmBuilder&) = delete;
   ~VmBuilder();
 
-  VmBuilder& SetKernel(base::FilePath kernel);
-  VmBuilder& SetInitrd(base::FilePath initrd);
-  VmBuilder& SetBios(base::FilePath bios);
-  VmBuilder& SetPflash(base::FilePath pflash);
-  VmBuilder& SetRootfs(const struct Rootfs& rootfs);
+  VmBuilder& SetKernel(base::ScopedFD kernel);
+  VmBuilder& SetInitrd(base::ScopedFD initrd);
+  VmBuilder& SetBios(base::ScopedFD bios);
+  VmBuilder& SetPflash(base::ScopedFD pflash);
+  VmBuilder& SetRootfs(Rootfs rootfs);
   VmBuilder& SetCpus(int32_t cpus);
   VmBuilder& SetVmCpuArgs(const struct VmCpuArgs& vm_cpu_args);
   VmBuilder& SetVsockCid(uint32_t vsock_cid);
@@ -208,10 +209,10 @@ class VmBuilder {
   base::StringPairs BuildPreRunParams() const;
   bool ProcessCustomParameters(const CustomParametersForDev& devparams);
 
-  base::FilePath kernel_;
-  base::FilePath initrd_;
-  base::FilePath bios_;
-  base::FilePath pflash_;
+  base::ScopedFD kernel_;
+  base::ScopedFD initrd_;
+  base::ScopedFD bios_;
+  base::ScopedFD pflash_;
   std::optional<Rootfs> rootfs_;
   int32_t cpus_ = 0;
   std::optional<VmCpuArgs> vm_cpu_args_;

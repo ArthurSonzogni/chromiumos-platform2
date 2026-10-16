@@ -73,7 +73,6 @@ SharedDirParam GetOemEtcSharedDirParam(uid_t euid, gid_t egid);
 class ArcVm final : public VmBaseImpl {
  public:
   struct Config {
-    base::FilePath kernel;
     uint32_t vsock_cid;
     std::unique_ptr<ArcNetwork> network;
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy;
@@ -184,8 +183,8 @@ class ArcVm final : public VmBaseImpl {
   void HandleSuspendImminent() override;
   void HandleSuspendDone() override;
 
-  // Starts the VM with the given kernel and root file system.
-  bool Start(base::FilePath kernel, VmBuilder vm_builder);
+  // Starts the VM with the given VM builder.
+  bool Start(VmBuilder vm_builder);
 
   base::TimeDelta CalculateVmmSwapDurationTarget() const;
   void HandleSwapVmEnableRequest(SwapVmCallback callback);

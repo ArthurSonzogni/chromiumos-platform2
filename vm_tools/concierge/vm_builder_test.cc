@@ -79,15 +79,22 @@ precrosvm:-o=/run/vm/crosvm_strace)"};
 TEST(VmBuilderTest, ODirectN) {
   CustomParametersForDev dev{R"(O_DIRECT_N=2)"};
 
+  base::ScopedFD fd0(open("/dev/null", O_RDONLY));
+  base::ScopedFD fd1(open("/dev/null", O_RDONLY));
+  base::ScopedFD fd2(open("/dev/null", O_RDONLY));
+  int raw_fd0 = fd0.get();
+  int raw_fd1 = fd1.get();
+  int raw_fd2 = fd2.get();
+
   VmBuilder builder;
   builder.AppendDisk(VmBuilder::Disk{
-      .path = base::FilePath("/dev/0"),
+      .fd = std::move(fd0),
   });
   builder.AppendDisk(VmBuilder::Disk{
-      .path = base::FilePath("/dev/1"),
+      .fd = std::move(fd1),
   });
   builder.AppendDisk(VmBuilder::Disk{
-      .path = base::FilePath("/dev/2"),
+      .fd = std::move(fd2),
   });
   base::StringPairs result = std::move(builder).BuildVmArgs(&dev).value();
 
@@ -98,24 +105,36 @@ TEST(VmBuilderTest, ODirectN) {
     }
   }
 
-  EXPECT_EQ(disk_params[0], "/dev/0,ro=true");
-  EXPECT_EQ(disk_params[1], "/dev/1,ro=true");
-  EXPECT_EQ(disk_params[2], "/dev/2,ro=true,o_direct=true,block_size=4096");
+  EXPECT_EQ(disk_params[0],
+            base::StringPrintf("/proc/self/fd/%d,ro=true", raw_fd0));
+  EXPECT_EQ(disk_params[1],
+            base::StringPrintf("/proc/self/fd/%d,ro=true", raw_fd1));
+  EXPECT_EQ(
+      disk_params[2],
+      base::StringPrintf(
+          "/proc/self/fd/%d,ro=true,o_direct=true,block_size=4096", raw_fd2));
 }
 
 TEST(VmBuilderTest, ODirectNs) {
   CustomParametersForDev dev{R"(O_DIRECT_N=1
 O_DIRECT_N=2)"};
 
+  base::ScopedFD fd0(open("/dev/null", O_RDONLY));
+  base::ScopedFD fd1(open("/dev/null", O_RDONLY));
+  base::ScopedFD fd2(open("/dev/null", O_RDONLY));
+  int raw_fd0 = fd0.get();
+  int raw_fd1 = fd1.get();
+  int raw_fd2 = fd2.get();
+
   VmBuilder builder;
   builder.AppendDisk(VmBuilder::Disk{
-      .path = base::FilePath("/dev/0"),
+      .fd = std::move(fd0),
   });
   builder.AppendDisk(VmBuilder::Disk{
-      .path = base::FilePath("/dev/1"),
+      .fd = std::move(fd1),
   });
   builder.AppendDisk(VmBuilder::Disk{
-      .path = base::FilePath("/dev/2"),
+      .fd = std::move(fd2),
   });
   base::StringPairs result = std::move(builder).BuildVmArgs(&dev).value();
 
@@ -126,9 +145,16 @@ O_DIRECT_N=2)"};
     }
   }
 
-  EXPECT_EQ(disk_params[0], "/dev/0,ro=true");
-  EXPECT_EQ(disk_params[1], "/dev/1,ro=true,o_direct=true,block_size=4096");
-  EXPECT_EQ(disk_params[2], "/dev/2,ro=true,o_direct=true,block_size=4096");
+  EXPECT_EQ(disk_params[0],
+            base::StringPrintf("/proc/self/fd/%d,ro=true", raw_fd0));
+  EXPECT_EQ(
+      disk_params[1],
+      base::StringPrintf(
+          "/proc/self/fd/%d,ro=true,o_direct=true,block_size=4096", raw_fd1));
+  EXPECT_EQ(
+      disk_params[2],
+      base::StringPrintf(
+          "/proc/self/fd/%d,ro=true,o_direct=true,block_size=4096", raw_fd2));
 }
 
 TEST(VmBuilderTest, ODirectTooLargeNDeath) {
@@ -142,21 +168,30 @@ TEST(VmBuilderTest, ODirectTooLargeNDeath) {
 }
 
 TEST(VmBuilderTest, DefaultKernel) {
+  base::ScopedFD kernel_fd(open("/dev/null", O_RDONLY));
+  int raw_fd = kernel_fd.get();
+
   VmBuilder builder;
-  builder.SetKernel(base::FilePath("/dev/null"));
+  builder.SetKernel(std::move(kernel_fd));
   base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
 
-  EXPECT_EQ(result[result.size() - 1].first, "/dev/null");
+  EXPECT_EQ(result[result.size() - 1].first,
+            base::StringPrintf("/proc/self/fd/%d", raw_fd));
 }
 
 TEST(VmBuilderTest, CustomKernel) {
   CustomParametersForDev dev{R"(KERNEL_PATH=/dev/zero)"};
 
+  base::ScopedFD kernel_fd(open("/dev/null", O_RDONLY));
+  int orig_fd = kernel_fd.get();
   VmBuilder builder;
-  builder.SetKernel(base::FilePath("/dev/null"));
+  builder.SetKernel(std::move(kernel_fd));
   base::StringPairs result = std::move(builder).BuildVmArgs(&dev).value();
 
-  EXPECT_EQ(result[result.size() - 1].first, "/dev/zero");
+  EXPECT_THAT(result[result.size() - 1].first,
+              testing::MatchesRegex("/proc/self/fd/[0-9]+"));
+  EXPECT_NE(result[result.size() - 1].first,
+            base::StringPrintf("/proc/self/fd/%d", orig_fd));
 }
 
 TEST(VmBuilderTest, SingleTapNetParams) {
@@ -232,14 +267,19 @@ TEST(VmBuilderTest, PmemDevice) {
 }
 
 TEST(VmBuilderTest, CrostiniDisks) {
+  base::ScopedFD fd0(open("/dev/null", O_RDONLY));
+  base::ScopedFD fd1(open("/dev/null", O_RDONLY));
+  int raw_fd0 = fd0.get();
+  int raw_fd1 = fd1.get();
+
   VmBuilder builder;
   // For rootfs.
   builder.AppendDisk(VmBuilder::Disk{
-      .path = base::FilePath("/dev/0"),
+      .fd = std::move(fd0),
   });
   // For user data.
   builder.AppendDisk(VmBuilder::Disk{
-      .path = base::FilePath("/dev/1"),
+      .fd = std::move(fd1),
       .writable = true,
       .sparse = false,
   });
@@ -253,26 +293,34 @@ TEST(VmBuilderTest, CrostiniDisks) {
   }
 
   EXPECT_EQ(blocks.size(), 2);
-  EXPECT_EQ(blocks[0], "/dev/0,ro=true");
-  EXPECT_EQ(blocks[1], "/dev/1,ro=false,sparse=false");
+  EXPECT_EQ(blocks[0], base::StringPrintf("/proc/self/fd/%d,ro=true", raw_fd0));
+  EXPECT_EQ(blocks[1], base::StringPrintf(
+                           "/proc/self/fd/%d,ro=false,sparse=false", raw_fd1));
 }
 
 TEST(VmBuilderTest, ARCVMDisks) {
+  base::ScopedFD fd0(open("/dev/null", O_RDONLY));
+  base::ScopedFD fd1(open("/dev/null", O_RDONLY));
+  base::ScopedFD fd2(open("/dev/null", O_RDONLY));
+  int raw_fd0 = fd0.get();
+  int raw_fd1 = fd1.get();
+  int raw_fd2 = fd2.get();
+
   VmBuilder builder;
   // For system.img and vendor.img.
   builder.AppendDisk(VmBuilder::Disk{
-      .path = base::FilePath("/dev/0"),
+      .fd = std::move(fd0),
       .o_direct = true,
       .block_size = 4096,
   });
   // For dummy fds.
   builder.AppendDisk(VmBuilder::Disk{
-      .path = base::FilePath("/dev/1"),
+      .fd = std::move(fd1),
       .o_direct = false,
   });
   // For user data image.
   builder.AppendDisk(VmBuilder::Disk{
-      .path = base::FilePath("/dev/2"),
+      .fd = std::move(fd2),
       .writable = true,
       .o_direct = true,
       .block_size = 4096,
@@ -287,9 +335,16 @@ TEST(VmBuilderTest, ARCVMDisks) {
   }
 
   EXPECT_EQ(blocks.size(), 3);
-  EXPECT_EQ(blocks[0], "/dev/0,ro=true,o_direct=true,block_size=4096");
-  EXPECT_EQ(blocks[1], "/dev/1,ro=true,o_direct=false");
-  EXPECT_EQ(blocks[2], "/dev/2,ro=false,o_direct=true,block_size=4096");
+  EXPECT_EQ(
+      blocks[0],
+      base::StringPrintf(
+          "/proc/self/fd/%d,ro=true,o_direct=true,block_size=4096", raw_fd0));
+  EXPECT_EQ(blocks[1], base::StringPrintf(
+                           "/proc/self/fd/%d,ro=true,o_direct=false", raw_fd1));
+  EXPECT_EQ(
+      blocks[2],
+      base::StringPrintf(
+          "/proc/self/fd/%d,ro=false,o_direct=true,block_size=4096", raw_fd2));
 }
 
 TEST(VmBuilderTest, VmCpuArgs) {
@@ -328,23 +383,24 @@ TEST(VmBuilderTest, VmCpuArgs) {
 
 TEST(VmBuilderTest, BlockMultipleWorkers) {
   // multiple_workers option is not enabled by default
-  VmBuilder::Disk disk{.path = base::FilePath("/path/to/image.img")};
+  VmBuilder::Disk disk{.fd = base::ScopedFD(open("/dev/null", O_RDONLY))};
   EXPECT_FALSE(
       JoinStringPairs(disk.GetCrosvmArgs()).contains("multiple-workers=true"));
 
   // Test that a disk config with multiple workers builds the correct arguments.
   VmBuilder::Disk disk_multiple_workers{
-      .path = base::FilePath("/path/to/image.img"), .multiple_workers = true};
+      .fd = base::ScopedFD(open("/dev/null", O_RDONLY)),
+      .multiple_workers = true};
   EXPECT_TRUE(JoinStringPairs(disk_multiple_workers.GetCrosvmArgs())
                   .contains("multiple-workers=true"));
 }
 
 TEST(VmBuilderTest, BlockSize) {
-  VmBuilder::Disk disk{.path = base::FilePath("/path/to/image.img")};
+  VmBuilder::Disk disk{.fd = base::ScopedFD(open("/dev/null", O_RDONLY))};
   EXPECT_FALSE(JoinStringPairs(disk.GetCrosvmArgs()).contains("block_size"));
 
   VmBuilder::Disk disk_with_block_size{
-      .path = base::FilePath("/path/to/image.img"), .block_size = 4096};
+      .fd = base::ScopedFD(open("/dev/null", O_RDONLY)), .block_size = 4096};
   EXPECT_TRUE(JoinStringPairs(disk_with_block_size.GetCrosvmArgs())
                   .contains("block_size=4096"));
 }
@@ -352,14 +408,14 @@ TEST(VmBuilderTest, BlockSize) {
 TEST(VmBuilderTest, BlockAsyncExecutor) {
   // Test that a disk config with uring executor builds the correct arguments.
   VmBuilder::Disk disk_uring{
-      .path = base::FilePath("/path/to/image.img"),
+      .fd = base::ScopedFD(open("/dev/null", O_RDONLY)),
       .async_executor = VmBuilder::AsyncExecutor::kUring};
   EXPECT_TRUE(JoinStringPairs(disk_uring.GetCrosvmArgs())
                   .contains("async_executor=uring"));
 
   // Test that a disk config with epoll executor builds the correct arguments.
   VmBuilder::Disk disk_epoll{
-      .path = base::FilePath("/path/to/image.img"),
+      .fd = base::ScopedFD(open("/dev/null", O_RDONLY)),
       .async_executor = VmBuilder::AsyncExecutor::kEpoll};
   EXPECT_TRUE(JoinStringPairs(disk_epoll.GetCrosvmArgs())
                   .contains("async_executor=epoll"));
@@ -375,10 +431,12 @@ TEST(VmBuilderTest, StringToAsyncExecutor) {
 }
 
 TEST(VmBuilderTest, PmemRootfsReadonly) {
-  VmBuilder builder;
+  base::ScopedFD rootfs_fd(open("/dev/null", O_RDONLY));
+  int raw_fd = rootfs_fd.get();
 
+  VmBuilder builder;
   builder.SetRootfs(VmBuilder::Rootfs{
-      .path = base::FilePath("dummy"),
+      .fd = std::move(rootfs_fd),
       .is_pmem = true,
       .writable = false,
   });
@@ -393,14 +451,17 @@ TEST(VmBuilderTest, PmemRootfsReadonly) {
   }
 
   EXPECT_EQ(pmems.size(), 1);
-  EXPECT_EQ(pmems[0], "dummy,ro=true,root=true");
+  EXPECT_EQ(pmems[0],
+            base::StringPrintf("/proc/self/fd/%d,ro=true,root=true", raw_fd));
 }
 
 TEST(VmBuilderTest, PmemRootfsWritable) {
-  VmBuilder builder;
+  base::ScopedFD rootfs_fd(open("/dev/null", O_RDONLY));
+  int raw_fd = rootfs_fd.get();
 
+  VmBuilder builder;
   builder.SetRootfs(VmBuilder::Rootfs{
-      .path = base::FilePath("dummy"),
+      .fd = std::move(rootfs_fd),
       .is_pmem = true,
       .writable = true,
   });
@@ -415,6 +476,88 @@ TEST(VmBuilderTest, PmemRootfsWritable) {
   }
 
   EXPECT_EQ(pmems.size(), 1);
-  EXPECT_EQ(pmems[0], "dummy,ro=false,root=true");
+  EXPECT_EQ(pmems[0],
+            base::StringPrintf("/proc/self/fd/%d,ro=false,root=true", raw_fd));
+}
+
+TEST(VmBuilderTest, ScopedFdImagesAndDisks) {
+  base::ScopedFD kernel_fd(open("/dev/null", O_RDONLY));
+  ASSERT_TRUE(kernel_fd.is_valid());
+  int kernel_raw_fd = kernel_fd.get();
+
+  base::ScopedFD initrd_fd(open("/dev/null", O_RDONLY));
+  ASSERT_TRUE(initrd_fd.is_valid());
+  int initrd_raw_fd = initrd_fd.get();
+
+  base::ScopedFD bios_fd(open("/dev/null", O_RDONLY));
+  ASSERT_TRUE(bios_fd.is_valid());
+  int bios_raw_fd = bios_fd.get();
+
+  base::ScopedFD pflash_fd(open("/dev/null", O_RDONLY));
+  ASSERT_TRUE(pflash_fd.is_valid());
+  int pflash_raw_fd = pflash_fd.get();
+
+  base::ScopedFD rootfs_fd(open("/dev/null", O_RDONLY));
+  ASSERT_TRUE(rootfs_fd.is_valid());
+  int rootfs_raw_fd = rootfs_fd.get();
+
+  base::ScopedFD disk_fd(open("/dev/null", O_RDONLY));
+  ASSERT_TRUE(disk_fd.is_valid());
+  int disk_raw_fd = disk_fd.get();
+
+  VmBuilder builder;
+  builder.SetKernel(std::move(kernel_fd))
+      .SetInitrd(std::move(initrd_fd))
+      .SetBios(std::move(bios_fd))
+      .SetPflash(std::move(pflash_fd))
+      .SetRootfs(VmBuilder::Rootfs{
+          .fd = std::move(rootfs_fd),
+          .is_pmem = false,
+          .writable = false,
+      })
+      .AppendDisk(VmBuilder::Disk{
+          .fd = std::move(disk_fd),
+          .writable = true,
+      });
+
+  base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
+
+  std::string kernel_expected =
+      "/proc/self/fd/" + std::to_string(kernel_raw_fd);
+  std::string initrd_expected =
+      "/proc/self/fd/" + std::to_string(initrd_raw_fd);
+  std::string bios_expected = "/proc/self/fd/" + std::to_string(bios_raw_fd);
+  std::string pflash_expected =
+      "path=/proc/self/fd/" + std::to_string(pflash_raw_fd);
+  std::string rootfs_expected =
+      "/proc/self/fd/" + std::to_string(rootfs_raw_fd) + ",ro=true,root=true";
+  std::string disk_expected =
+      "/proc/self/fd/" + std::to_string(disk_raw_fd) + ",ro=false";
+
+  EXPECT_EQ(result.back().first, kernel_expected);
+
+  std::string initrd_arg;
+  std::string bios_arg;
+  std::string pflash_arg;
+  std::vector<std::string> blocks;
+
+  for (const auto& p : result) {
+    if (p.first == "-i") {
+      initrd_arg = p.second;
+    } else if (p.first == "--bios") {
+      bios_arg = p.second;
+    } else if (p.first == "--pflash") {
+      pflash_arg = p.second;
+    } else if (p.first == "--block") {
+      blocks.push_back(p.second);
+    }
+  }
+
+  EXPECT_EQ(initrd_arg, initrd_expected);
+  EXPECT_EQ(bios_arg, bios_expected);
+  EXPECT_EQ(pflash_arg, pflash_expected);
+  ASSERT_EQ(blocks.size(), 2);
+  EXPECT_EQ(blocks[0], rootfs_expected);
+  EXPECT_EQ(blocks[1], disk_expected);
 }
 }  // namespace vm_tools::concierge
