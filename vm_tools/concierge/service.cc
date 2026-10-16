@@ -1531,7 +1531,6 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
   // Borealis has some hard-coded assumptions and expects /dev/pmem0.
   // Other guest types can handle booting from virtio-blk.
   bool use_pmem = USE_BOREALIS_HOST && classification == apps::VmType::BOREALIS;
-  std::string rootfs_device = use_pmem ? "/dev/pmem0" : "/dev/vda";
   unsigned char disk_letter = use_pmem ? 'a' : 'b';
 
   auto to_proc_path = [](const base::ScopedFD& fd) -> base::FilePath {
@@ -1777,8 +1776,8 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
                          base::FilePath(kTerminaVcpuCpuCgroup).value())
       .SetRenderServerCachePath(std::move(gpu_cache_spec.render_server));
   if (image_spec.rootfs.is_valid()) {
-    vm_builder.SetRootfs({.device = std::move(rootfs_device),
-                          .path = to_proc_path(image_spec.rootfs),
+    vm_builder.SetRootfs({.path = to_proc_path(image_spec.rootfs),
+                          .is_pmem = use_pmem,
                           .writable = request.writable_rootfs()});
     owned_fds.push_back(std::move(image_spec.rootfs));
   }

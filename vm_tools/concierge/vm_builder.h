@@ -59,11 +59,11 @@ class VmBuilder {
     std::optional<std::string> block_id;
   };
 
-  // Contains the rootfs device and path.
+  // Contains the rootfs path and configuration.
   struct Rootfs {
-    std::string device;
     base::FilePath path;
-    bool writable;
+    bool is_pmem = false;
+    bool writable = false;
   };
 
   // Args related to CPU configuration for a VM.

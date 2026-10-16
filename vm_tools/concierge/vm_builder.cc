@@ -552,7 +552,7 @@ base::StringPairs VmBuilder::BuildRunParams() const {
     rootfs_arg += BooleanParameter(",ro=", !rootfs.writable);
     rootfs_arg += BooleanParameter(",root=", true);
 
-    if (rootfs.device.find("pmem") != std::string::npos) {
+    if (rootfs.is_pmem) {
       // TODO(davidriley): Re-add rootflags=dax once guest kernel has fix for
       // b/169339326.
       args.emplace_back("--pmem", rootfs_arg);

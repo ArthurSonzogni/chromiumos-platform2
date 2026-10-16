@@ -378,8 +378,8 @@ TEST(VmBuilderTest, PmemRootfsReadonly) {
   VmBuilder builder;
 
   builder.SetRootfs(VmBuilder::Rootfs{
-      .device = "/dev/pmem0",
       .path = base::FilePath("dummy"),
+      .is_pmem = true,
       .writable = false,
   });
 
@@ -400,8 +400,8 @@ TEST(VmBuilderTest, PmemRootfsWritable) {
   VmBuilder builder;
 
   builder.SetRootfs(VmBuilder::Rootfs{
-      .device = "/dev/pmem0",
       .path = base::FilePath("dummy"),
+      .is_pmem = true,
       .writable = true,
   });
 
