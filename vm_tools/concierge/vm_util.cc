@@ -488,7 +488,7 @@ bool AttachUsbDevice(const std::string& socket_path,
                      apps::VmType vm_type) {
   std::string device_path = "/proc/self/fd/" + std::to_string(fd);
 
-  fcntl(fd, F_SETFD, 0);  // Remove the CLOEXEC
+  base::RemoveCloseOnExec(fd);
 
   bool attach_success = CrosvmControl::Get()->UsbAttach(
       socket_path, bus, addr, vid, pid, device_path, out_port);
@@ -504,7 +504,7 @@ bool AttachKey(const std::string& socket_path,
                apps::VmType vm_type) {
   std::string hidraw_path = "/proc/self/fd/" + std::to_string(hidraw_fd);
 
-  fcntl(hidraw_fd, F_SETFD, 0);  // Remove the CLOEXEC
+  base::RemoveCloseOnExec(hidraw_fd);
 
   return CrosvmControl::Get()->KeyAttach(socket_path, hidraw_path, out_port);
 }

@@ -1661,11 +1661,10 @@ StartVmResponse Service::StartVmInternal(
   // Check if an opened storage image was passed over D-BUS.
   if (vm_start_image_fds.storage_fd.has_value()) {
     const base::ScopedFD& fd = vm_start_image_fds.storage_fd.value();
-    std::string failure_reason = internal::RemoveCloseOnExec(fd);
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "failed to remove close-on-exec flag: " << failure_reason;
+    if (!base::RemoveCloseOnExec(fd.get())) {
+      LOG(ERROR) << "failed to remove close-on-exec flag";
       response.set_failure_reason(
-          "failed to get a path for extra storage disk: " + failure_reason);
+          "failed to clear close-on-exec for extra storage disk");
       return response;
     }
 
@@ -5012,11 +5011,8 @@ std::optional<VhostUserFrontParam> Service::InvokeVhostUserFsBackend(
 
   // Remove the CLOEXEC flag from the vhost-user frontend socket fd. This is
   // important to allow the fd to be inherited by the crosvm process.
-  if (std::string failure_reason =
-          internal::RemoveCloseOnExec(stub_device_socket_fds->front_end_fd);
-      !failure_reason.empty()) {
-    LOG(ERROR) << "Could not clear CLOEXEC for vhost_user fs frontend fd: "
-               << failure_reason;
+  if (!base::RemoveCloseOnExec(stub_device_socket_fds->front_end_fd.get())) {
+    LOG(ERROR) << "Could not clear CLOEXEC for vhost_user fs frontend fd";
     return std::nullopt;
   }
 

@@ -13,6 +13,7 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/version.h>
@@ -126,8 +127,8 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
   base::FilePath kernel, rootfs, initrd, bios, pflash;
   if (kernel_fd.has_value()) {
     const base::ScopedFD& fd = kernel_fd.value();
-    failure_reason = internal::RemoveCloseOnExec(fd);
-    if (!failure_reason.empty()) {
+    if (!base::RemoveCloseOnExec(fd.get())) {
+      failure_reason = "Failed to clear close-on-exec flag for fd";
       return {};
     }
     kernel = base::FilePath(kProcFileDescriptorsPath)
@@ -142,8 +143,8 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
 
   if (rootfs_fd.has_value()) {
     const base::ScopedFD& fd = rootfs_fd.value();
-    failure_reason = internal::RemoveCloseOnExec(fd);
-    if (!failure_reason.empty()) {
+    if (!base::RemoveCloseOnExec(fd.get())) {
+      failure_reason = "Failed to clear close-on-exec flag for fd";
       return {};
     }
     rootfs = base::FilePath(kProcFileDescriptorsPath)
@@ -154,8 +155,8 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
 
   if (initrd_fd.has_value()) {
     const base::ScopedFD& fd = initrd_fd.value();
-    failure_reason = internal::RemoveCloseOnExec(fd);
-    if (!failure_reason.empty()) {
+    if (!base::RemoveCloseOnExec(fd.get())) {
+      failure_reason = "Failed to clear close-on-exec flag for fd";
       return {};
     }
     initrd = base::FilePath(kProcFileDescriptorsPath)
@@ -164,8 +165,8 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
 
   if (bios_fd.has_value()) {
     const base::ScopedFD& fd = bios_fd.value();
-    failure_reason = internal::RemoveCloseOnExec(fd);
-    if (!failure_reason.empty()) {
+    if (!base::RemoveCloseOnExec(fd.get())) {
+      failure_reason = "Failed to clear close-on-exec flag for fd";
       return {};
     }
     bios = base::FilePath(kProcFileDescriptorsPath)
@@ -177,8 +178,8 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
 
   if (pflash_fd.has_value()) {
     const base::ScopedFD& fd = pflash_fd.value();
-    failure_reason = internal::RemoveCloseOnExec(fd);
-    if (!failure_reason.empty()) {
+    if (!base::RemoveCloseOnExec(fd.get())) {
+      failure_reason = "Failed to clear close-on-exec flag for fd";
       return {};
     }
     pflash = base::FilePath(kProcFileDescriptorsPath)
@@ -200,23 +201,6 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
       .pflash = std::move(pflash),
       .tools_disk = std::move(tools_disk),
   };
-}
-
-std::string RemoveCloseOnExec(const base::ScopedFD& fd) {
-  if (!fd.is_valid()) {
-    return "Invalid fd";
-  }
-  int raw_fd = fd.get();
-
-  int flags = fcntl(raw_fd, F_GETFD);
-  if (flags == -1) {
-    return "Failed to get flags for passed fd";
-  }
-  flags &= ~FD_CLOEXEC;
-  if (fcntl(raw_fd, F_SETFD, flags) == -1) {
-    return "Failed to clear close-on-exec flag for fd";
-  }
-  return "";
 }
 
 std::optional<VhostUserSocketPair> SetupVhostUserSocketPair() {

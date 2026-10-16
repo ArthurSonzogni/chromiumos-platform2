@@ -149,10 +149,6 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
                          const std::optional<base::FilePath>& toolsDlcPath,
                          std::string& failure_reason);
 
-// Clears close-on-exec flag for a file descriptor to pass it to a subprocess
-// such as crosvm. Returns a failure reason on failure.
-std::string RemoveCloseOnExec(const base::ScopedFD& fd);
-
 // Create a socket pair for connecting vhost_user frontend and backend.
 std::optional<VhostUserSocketPair> SetupVhostUserSocketPair();
 

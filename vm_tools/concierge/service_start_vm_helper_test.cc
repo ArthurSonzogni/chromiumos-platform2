@@ -177,20 +177,5 @@ TEST(StartVMHelperTest, TestGetImageSpec) {
   EXPECT_EQ(image_spec.tools_disk, base::FilePath("vm/vm_tools.img"));
 }
 
-TEST(StartVMHelperTest, TestRemoveCloseOnExec) {
-  base::FilePath path;
-  int fds[2];
-  ASSERT_NE(pipe2(fds, O_CLOEXEC), -1);
-  base::ScopedFD fd(fds[0]);
-  close(fds[1]);
-  // Has CLOEXEC flag
-  EXPECT_NE(fcntl(fd.get(), F_GETFD) & FD_CLOEXEC, 0);
-
-  // Test remove CLOEXEC flag
-  internal::RemoveCloseOnExec(fd);
-
-  EXPECT_EQ(fcntl(fd.get(), F_GETFD) & FD_CLOEXEC, 0);
-}
-
 }  // namespace concierge
 }  // namespace vm_tools
