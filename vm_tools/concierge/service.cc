@@ -75,6 +75,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <base/uuid.h>
 #include <base/version.h>
 #include <blkid/blkid.h>
@@ -313,76 +314,6 @@ static constexpr auto state_to_signal_step =
          {VmInstallState_Step_unknown,
           vm_tools::concierge::VmInstallStateSignal_Step::
               VmInstallStateSignal_Step_unknown}});
-
-std::string ConvertToFdBasedPaths(brillo::SafeFD& root_fd,
-                                  bool is_rootfs_writable,
-                                  VMImageSpec& image_spec,
-                                  std::vector<brillo::SafeFD>& owned_fds) {
-  std::string failure_reason;
-  if (image_spec.kernel.empty() && image_spec.bios.empty()) {
-    LOG(ERROR) << "neither a kernel nor a BIOS were provided";
-    failure_reason = "neither a kernel nor a BIOS were provided";
-    return failure_reason;
-  }
-
-  if (!image_spec.kernel.empty()) {
-    failure_reason =
-        ConvertToFdBasedPath(root_fd, &image_spec.kernel, O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Missing VM kernel path: " << image_spec.kernel.value();
-      failure_reason = "Kernel path does not exist";
-      return failure_reason;
-    }
-  }
-
-  if (!image_spec.bios.empty()) {
-    failure_reason =
-        ConvertToFdBasedPath(root_fd, &image_spec.bios, O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Missing VM BIOS path: " << image_spec.bios.value();
-      failure_reason = "BIOS path does not exist";
-      return failure_reason;
-    }
-  }
-
-  if (!image_spec.pflash.empty()) {
-    failure_reason =
-        ConvertToFdBasedPath(root_fd, &image_spec.pflash, O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Missing VM pflash path: " << image_spec.pflash.value();
-      failure_reason = "pflash path does not exist";
-      return failure_reason;
-    }
-  }
-
-  if (!image_spec.initrd.empty()) {
-    failure_reason =
-        ConvertToFdBasedPath(root_fd, &image_spec.initrd, O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Missing VM initrd path: " << image_spec.initrd.value();
-      failure_reason = "Initrd path does not exist";
-      return failure_reason;
-    }
-  }
-
-  if (!image_spec.rootfs.empty()) {
-    failure_reason =
-        ConvertToFdBasedPath(root_fd, &image_spec.rootfs,
-                             is_rootfs_writable ? O_RDWR : O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Missing VM rootfs path: " << image_spec.rootfs.value();
-      failure_reason = "Rootfs path does not exist";
-      return failure_reason;
-    }
-  }
-
-  return failure_reason;
-}
 
 // Posted to a grpc thread to startup a listener service. Puts a copy of
 // the pointer to the grpc server in |server_copy| and then signals |event|.
@@ -752,38 +683,42 @@ typedef std::unique_ptr<ZSTD_DCtx, ZSTD_DCtxDeleter> ScopedZSTD_DCtxPtr;
 }  // namespace
 
 namespace internal {
-std::optional<internal::VmStartImageFds> GetVmStartImageFds(
-    const google::protobuf::RepeatedField<int>& fds,
+base::expected<VMImageSpec, std::string> CreateImageSpecFromFds(
+    const google::protobuf::RepeatedField<int>& fd_types,
     const std::vector<base::ScopedFD>& file_handles) {
-  if (file_handles.size() != fds.size()) {
-    return std::nullopt;
+  if (file_handles.size() != fd_types.size()) {
+    return base::unexpected(base::StringPrintf(
+        "Mismatch between passed file descriptors count and FD types: %zu vs "
+        "%d",
+        file_handles.size(), fd_types.size()));
   }
-  struct internal::VmStartImageFds result;
+  VMImageSpec result;
   size_t count = 0;
-  for (const auto& fdType : fds) {
+  for (const auto& fdType : fd_types) {
     base::ScopedFD fd(fcntl(file_handles[count++].get(), F_DUPFD_CLOEXEC, 0));
     if (!fd.is_valid()) {
       LOG(ERROR) << "Failed to get VM start image file descriptor";
-      return std::nullopt;
+      return base::unexpected(base::StringPrintf(
+          "Failed to duplicate file descriptor for FD type %d", fdType));
     }
     switch (fdType) {
       case StartVmRequest_FdType_KERNEL:
-        result.kernel_fd = std::move(fd);
+        result.kernel = std::move(fd);
         break;
       case StartVmRequest_FdType_ROOTFS:
-        result.rootfs_fd = std::move(fd);
+        result.rootfs = std::move(fd);
         break;
       case StartVmRequest_FdType_INITRD:
-        result.initrd_fd = std::move(fd);
+        result.initrd = std::move(fd);
         break;
       case StartVmRequest_FdType_STORAGE:
-        result.storage_fd = std::move(fd);
+        result.storage = std::move(fd);
         break;
       case StartVmRequest_FdType_BIOS:
-        result.bios_fd = std::move(fd);
+        result.bios = std::move(fd);
         break;
       case StartVmRequest_FdType_PFLASH:
-        result.pflash_fd = std::move(fd);
+        result.pflash = std::move(fd);
         break;
       default:
         LOG(WARNING) << "received request with unknown FD type " << fdType
@@ -1456,21 +1391,21 @@ void Service::StartVm(
     return;
   }
 
-  std::optional<internal::VmStartImageFds> vm_start_image_fds =
-      internal::GetVmStartImageFds(request.fds(), file_handles);
-  if (!vm_start_image_fds) {
-    response.set_failure_reason("failed to get a VmStartImage fd");
+  base::expected<VMImageSpec, std::string> image_spec =
+      internal::CreateImageSpecFromFds(request.fds(), file_handles);
+  if (!image_spec.has_value()) {
+    response.set_failure_reason(image_spec.error());
     response_cb->Return(response);
     return;
   }
 
-  response = StartVmInternal(request, std::move(*vm_start_image_fds));
+  response = StartVmInternal(request, std::move(image_spec.value()));
   response_cb->Return(response);
   return;
 }
 
-StartVmResponse Service::StartVmInternal(
-    StartVmRequest request, internal::VmStartImageFds vm_start_image_fds) {
+StartVmResponse Service::StartVmInternal(StartVmRequest request,
+                                         VMImageSpec image_spec) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   StartVmResponse response;
   response.set_status(VM_STATUS_FAILURE);
@@ -1500,8 +1435,7 @@ StartVmResponse Service::StartVmInternal(
     return response;
   }
 
-  if (!vm_start_image_fds.bios_fd.has_value() &&
-      !request.vm().bios_dlc_id().empty() &&
+  if (!image_spec.bios.is_valid() && !request.vm().bios_dlc_id().empty() &&
       request.vm().bios_dlc_id() == kBruschettaBiosDlcId) {
     biosDlcPath = GetVmImagePath(kBruschettaBiosDlcId, failure_reason);
     if (!failure_reason.empty() || !biosDlcPath.has_value()) {
@@ -1542,7 +1476,7 @@ StartVmResponse Service::StartVmInternal(
   }
 
   // Exists just to keep FDs around for crosvm to inherit
-  std::vector<brillo::SafeFD> owned_fds;
+  std::vector<base::ScopedFD> owned_fds;
   auto root_fd_result = brillo::SafeFD::Root();
 
   if (brillo::SafeFD::IsError(root_fd_result.second)) {
@@ -1553,34 +1487,41 @@ StartVmResponse Service::StartVmInternal(
   }
   auto root_fd = std::move(root_fd_result.first);
 
-  VMImageSpec image_spec = internal::GetImageSpec(
-      vm_start_image_fds.kernel_fd, vm_start_image_fds.rootfs_fd,
-      vm_start_image_fds.initrd_fd, vm_start_image_fds.bios_fd,
-      vm_start_image_fds.pflash_fd, biosDlcPath, vmDlcPath, toolsDlcPath,
-      failure_reason);
-  if (!failure_reason.empty()) {
-    LOG(ERROR) << "Failed to get image paths: " << failure_reason;
-    response.set_failure_reason("Failed to get image paths: " + failure_reason);
+  base::expected<VMImageSpec, std::string> image_spec_result =
+      internal::AugmentImageSpec(root_fd, request.writable_rootfs(),
+                                 biosDlcPath, vmDlcPath, toolsDlcPath,
+                                 std::move(image_spec));
+  if (!image_spec_result.has_value()) {
+    LOG(ERROR) << "Failed to get image paths: " << image_spec_result.error();
+    response.set_failure_reason("Failed to get image paths: " +
+                                image_spec_result.error());
     return response;
   }
+  image_spec = std::move(image_spec_result.value());
 
-  std::string convert_fd_based_path_result = ConvertToFdBasedPaths(
-      root_fd, request.writable_rootfs(), image_spec, owned_fds);
-  if (!convert_fd_based_path_result.empty()) {
-    response.set_failure_reason(convert_fd_based_path_result);
+  std::optional<PflashMetadata> pflash_metadata = GetPflashMetadata(vm_id);
+  if (!pflash_metadata) {
+    LOG(ERROR) << "Failed to get pflash metadata";
+    response.set_failure_reason("Failed to get pflash metadata");
     return response;
   }
-
-  std::optional<base::FilePath> pflash_result =
-      GetInstalledOrRequestPflashPath(vm_id, image_spec.pflash);
-  if (!pflash_result) {
-    LOG(ERROR) << "Failed to get pflash path";
-    response.set_failure_reason("Failed to get pflash path");
+  if (pflash_metadata->is_installed && image_spec.pflash.is_valid()) {
+    LOG(ERROR)
+        << "Pflash file is already installed, cannot accept one in request";
+    response.set_failure_reason("Pflash file is already installed");
     return response;
   }
-  // The path can be empty if no pflash file is installed or nothing sent by the
-  // user.
-  base::FilePath pflash = pflash_result.value();
+  if (pflash_metadata->is_installed) {
+    base::expected<base::ScopedFD, std::string> pflash =
+        OpenPathSafely(root_fd, pflash_metadata->path, O_RDWR);
+    if (!pflash.has_value()) {
+      LOG(ERROR) << "Failed to open installed pflash file: "
+                 << pflash_metadata->path;
+      response.set_failure_reason("Failed to open installed pflash file");
+      return response;
+    }
+    image_spec.pflash = std::move(pflash.value());
+  }
 
   // Track the next available virtio-blk device name.
   // Assume that the rootfs filesystem was assigned /dev/pmem0 if
@@ -1593,21 +1534,21 @@ StartVmResponse Service::StartVmInternal(
   std::string rootfs_device = use_pmem ? "/dev/pmem0" : "/dev/vda";
   unsigned char disk_letter = use_pmem ? 'a' : 'b';
 
+  auto to_proc_path = [](const base::ScopedFD& fd) -> base::FilePath {
+    return fd.is_valid() ? base::FilePath(kProcFileDescriptorsPath)
+                               .Append(base::NumberToString(fd.get()))
+                         : base::FilePath();
+  };
+
   // In newer components, the /opt/google/cros-containers directory
   // is split into its own disk image(vm_tools.img).  Detect whether it exists
   // to keep compatibility with older components with only vm_rootfs.img.
   std::string tools_device;
-  if (base::PathExists(image_spec.tools_disk)) {
-    failure_reason = ConvertToFdBasedPath(root_fd, &image_spec.tools_disk,
-                                          O_RDONLY, owned_fds);
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Could not open tools_disk file";
-      response.set_failure_reason(failure_reason);
-      return response;
-    }
+  if (image_spec.tools_disk.is_valid()) {
     vm_builder.AppendDisk(VmBuilder::Disk{
-        .path = std::move(image_spec.tools_disk), .writable = false});
+        .path = to_proc_path(image_spec.tools_disk), .writable = false});
     tools_device = base::StringPrintf("/dev/vd%c", disk_letter++);
+    owned_fds.push_back(std::move(image_spec.tools_disk));
   }
 
   if (request.disks().size() == 0) {
@@ -1615,8 +1556,6 @@ StartVmResponse Service::StartVmInternal(
     response.set_failure_reason("Missing required stateful disk");
     return response;
   }
-
-  std::vector<base::ScopedFD> owned_disk_fds;
 
   // Assume the stateful device is the first disk in the request.
   std::string stateful_device = base::StringPrintf("/dev/vd%c", disk_letter);
@@ -1652,7 +1591,7 @@ StartVmResponse Service::StartVmInternal(
         .writable = d.writable(),
         .sparse = !IsDiskPreallocatedWithUserChosenSize(*disk_fd)};
     vm_builder.AppendDisk(std::move(disk));
-    owned_disk_fds.push_back(std::move(*disk_fd));
+    owned_fds.push_back(std::move(*disk_fd));
   }
 
   bool storage_ballooning = false;
@@ -1672,9 +1611,10 @@ StartVmResponse Service::StartVmInternal(
     TrimUserFilesystem();
   }
 
+  bool has_storage_disk = image_spec.storage.is_valid();
   // Check if an opened storage image was passed over D-BUS.
-  if (vm_start_image_fds.storage_fd.has_value()) {
-    const base::ScopedFD& fd = vm_start_image_fds.storage_fd.value();
+  if (has_storage_disk) {
+    const base::ScopedFD& fd = image_spec.storage;
     if (!base::RemoveCloseOnExec(fd.get())) {
       LOG(ERROR) << "failed to remove close-on-exec flag";
       response.set_failure_reason(
@@ -1689,10 +1629,10 @@ StartVmResponse Service::StartVmInternal(
     }
 
     vm_builder.AppendDisk(
-        VmBuilder::Disk{.path = base::FilePath(kProcFileDescriptorsPath)
-                                    .Append(base::NumberToString(fd.get())),
+        VmBuilder::Disk{.path = to_proc_path(image_spec.storage),
                         .writable = writable,
                         .block_id = "cr-extra-disk"});
+    owned_fds.push_back(std::move(image_spec.storage));
   }
 
   // Create the runtime directory.
@@ -1825,10 +1765,10 @@ StartVmResponse Service::StartVmInternal(
   // Notify VmLogForwarder that a vm is starting up.
   SendVmStartingUpSignal(vm_id, classification, vsock_cid);
 
-  vm_builder.SetKernel(std::move(image_spec.kernel))
-      .SetBios(std::move(image_spec.bios))
-      .SetPflash(std::move(pflash))
-      .SetInitrd(std::move(image_spec.initrd))
+  vm_builder.SetKernel(to_proc_path(image_spec.kernel))
+      .SetBios(to_proc_path(image_spec.bios))
+      .SetPflash(to_proc_path(image_spec.pflash))
+      .SetInitrd(to_proc_path(image_spec.initrd))
       .SetCpus(cpus)
       .AppendSharedDir(CreateFontsSharedDirParam())
       .EnableSmt(false /* enable */)
@@ -1836,10 +1776,23 @@ StartVmResponse Service::StartVmInternal(
       .AppendCustomParam("--vcpu-cgroup-path",
                          base::FilePath(kTerminaVcpuCpuCgroup).value())
       .SetRenderServerCachePath(std::move(gpu_cache_spec.render_server));
-  if (!image_spec.rootfs.empty()) {
+  if (image_spec.rootfs.is_valid()) {
     vm_builder.SetRootfs({.device = std::move(rootfs_device),
-                          .path = std::move(image_spec.rootfs),
+                          .path = to_proc_path(image_spec.rootfs),
                           .writable = request.writable_rootfs()});
+    owned_fds.push_back(std::move(image_spec.rootfs));
+  }
+  if (image_spec.kernel.is_valid()) {
+    owned_fds.push_back(std::move(image_spec.kernel));
+  }
+  if (image_spec.bios.is_valid()) {
+    owned_fds.push_back(std::move(image_spec.bios));
+  }
+  if (image_spec.initrd.is_valid()) {
+    owned_fds.push_back(std::move(image_spec.initrd));
+  }
+  if (image_spec.pflash.is_valid()) {
+    owned_fds.push_back(std::move(image_spec.pflash));
   }
 
   // Spoof baguette vm as termina to wayland server
@@ -2032,7 +1985,7 @@ StartVmResponse Service::StartVmInternal(
 
   // Mount an extra disk in the VM. We mount them after calling StartTermina
   // because /mnt/external is set up there.
-  if (vm_start_image_fds.storage_fd.has_value()) {
+  if (has_storage_disk) {
     const std::string external_disk_path =
         base::StringPrintf("/dev/vd%c", disk_letter++);
 

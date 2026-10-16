@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 #include "vm_tools/concierge/service_start_vm_helper.h"
 
+#include <fcntl.h>
+
 #include <cstdint>
 #include <initializer_list>
 #include <map>
@@ -14,11 +16,12 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
-#include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
+#include <base/types/expected.h>
 #include <base/version.h>
 
-#include "base/files/scoped_file.h"
 #include "vm_tools/concierge/dlc_helper.h"
 #include "vm_tools/concierge/thread_utils.h"
 
@@ -112,95 +115,117 @@ VmBuilder::VmCpuArgs GetVmCpuArgs(int32_t cpus,
   return result;
 }
 
-VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
-                         const std::optional<base::ScopedFD>& rootfs_fd,
-                         const std::optional<base::ScopedFD>& initrd_fd,
-                         const std::optional<base::ScopedFD>& bios_fd,
-                         const std::optional<base::ScopedFD>& pflash_fd,
-                         const std::optional<base::FilePath>& biosDlcPath,
-                         const std::optional<base::FilePath>& vmDlcPath,
-                         const std::optional<base::FilePath>& toolsDlcPath,
-                         std::string& failure_reason) {
-  DCHECK(failure_reason.empty());
+namespace {
+
+// Opens a VM image component from a DLC directory using OpenPathSafely.
+// Returns an invalid ScopedFD if |dlc_dir| is not provided.
+// Returns an error string on failure.
+base::expected<base::ScopedFD, std::string> ResolveDlcImage(
+    brillo::SafeFD& root_fd,
+    const std::optional<base::FilePath>& dlc_dir,
+    const char* image_name,
+    int flags) {
+  if (!dlc_dir || dlc_dir->empty()) {
+    return base::ScopedFD();
+  }
+
+  base::FilePath image_path = dlc_dir->Append(image_name);
+  base::expected<base::ScopedFD, std::string> fd =
+      OpenPathSafely(root_fd, image_path, flags);
+  if (!fd.has_value()) {
+    return base::unexpected(base::StringPrintf(
+        "Could not open %s from %s", image_name, dlc_dir->value().c_str()));
+  }
+  return std::move(fd.value());
+}
+
+}  // namespace
+
+base::expected<VMImageSpec, std::string> AugmentImageSpec(
+    brillo::SafeFD& root_fd,
+    bool is_rootfs_writable,
+    const std::optional<base::FilePath>& bios_dlc_path,
+    const std::optional<base::FilePath>& vm_dlc_path,
+    const std::optional<base::FilePath>& tools_dlc_path,
+    VMImageSpec spec) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(base::SequenceChecker);
 
-  base::FilePath kernel, rootfs, initrd, bios, pflash;
-  if (kernel_fd.has_value()) {
-    const base::ScopedFD& fd = kernel_fd.value();
-    if (!base::RemoveCloseOnExec(fd.get())) {
-      failure_reason = "Failed to clear close-on-exec flag for fd";
-      return {};
+  if (spec.bios.is_valid()) {
+    if (!base::RemoveCloseOnExec(spec.bios.get())) {
+      return base::unexpected("Failed to clear close-on-exec for bios");
     }
-    kernel = base::FilePath(kProcFileDescriptorsPath)
-                 .Append(base::NumberToString(fd.get()));
-  } else if (vmDlcPath.has_value()) {
-    kernel = vmDlcPath.value().Append(kVmKernelName);
-  } else if (toolsDlcPath.has_value() && !bios_fd.has_value() &&
-             !(biosDlcPath.has_value() && !biosDlcPath->empty())) {
-    // If no bios is given, try to grab kernel from tools DLC.
-    kernel = toolsDlcPath.value().Append(kVmKernelName);
-  }
-
-  if (rootfs_fd.has_value()) {
-    const base::ScopedFD& fd = rootfs_fd.value();
-    if (!base::RemoveCloseOnExec(fd.get())) {
-      failure_reason = "Failed to clear close-on-exec flag for fd";
-      return {};
+  } else {
+    base::expected<base::ScopedFD, std::string> bios = ResolveDlcImage(
+        root_fd, bios_dlc_path, kBruschettaBiosDlcPath, O_RDONLY);
+    if (!bios.has_value()) {
+      return base::unexpected(bios.error());
     }
-    rootfs = base::FilePath(kProcFileDescriptorsPath)
-                 .Append(base::NumberToString(fd.get()));
-  } else if (vmDlcPath.has_value()) {
-    rootfs = vmDlcPath.value().Append(kVmRootfsName);
+    spec.bios = std::move(bios.value());
   }
 
-  if (initrd_fd.has_value()) {
-    const base::ScopedFD& fd = initrd_fd.value();
-    if (!base::RemoveCloseOnExec(fd.get())) {
-      failure_reason = "Failed to clear close-on-exec flag for fd";
-      return {};
+  if (spec.kernel.is_valid()) {
+    if (!base::RemoveCloseOnExec(spec.kernel.get())) {
+      return base::unexpected("Failed to clear close-on-exec for kernel");
     }
-    initrd = base::FilePath(kProcFileDescriptorsPath)
-                 .Append(base::NumberToString(fd.get()));
-  }
-
-  if (bios_fd.has_value()) {
-    const base::ScopedFD& fd = bios_fd.value();
-    if (!base::RemoveCloseOnExec(fd.get())) {
-      failure_reason = "Failed to clear close-on-exec flag for fd";
-      return {};
+  } else {
+    std::optional<base::FilePath> kernel_dlc = vm_dlc_path;
+    if (!kernel_dlc && !spec.bios.is_valid()) {
+      kernel_dlc = tools_dlc_path;
     }
-    bios = base::FilePath(kProcFileDescriptorsPath)
-               .Append(base::NumberToString(fd.get()));
-  } else if (biosDlcPath.has_value() && !biosDlcPath->empty()) {
-    bios = biosDlcPath.value();
-    bios = bios.Append(kBruschettaBiosDlcPath);
-  }
-
-  if (pflash_fd.has_value()) {
-    const base::ScopedFD& fd = pflash_fd.value();
-    if (!base::RemoveCloseOnExec(fd.get())) {
-      failure_reason = "Failed to clear close-on-exec flag for fd";
-      return {};
+    base::expected<base::ScopedFD, std::string> kernel =
+        ResolveDlcImage(root_fd, kernel_dlc, kVmKernelName, O_RDONLY);
+    if (!kernel.has_value()) {
+      return base::unexpected(kernel.error());
     }
-    pflash = base::FilePath(kProcFileDescriptorsPath)
-                 .Append(base::NumberToString(fd.get()));
+    spec.kernel = std::move(kernel.value());
   }
 
-  base::FilePath tools_disk;
-  if (toolsDlcPath.has_value()) {
-    tools_disk = toolsDlcPath.value().Append(kVmToolsDiskName);
-  } else if (vmDlcPath.has_value()) {
-    tools_disk = vmDlcPath.value().Append(kVmToolsDiskName);
+  if (!spec.kernel.is_valid() && !spec.bios.is_valid()) {
+    return base::unexpected("neither a kernel nor a BIOS were provided");
   }
 
-  return VMImageSpec{
-      .kernel = std::move(kernel),
-      .initrd = std::move(initrd),
-      .rootfs = std::move(rootfs),
-      .bios = std::move(bios),
-      .pflash = std::move(pflash),
-      .tools_disk = std::move(tools_disk),
-  };
+  if (spec.rootfs.is_valid()) {
+    if (!base::RemoveCloseOnExec(spec.rootfs.get())) {
+      return base::unexpected("Failed to clear close-on-exec for rootfs");
+    }
+  } else {
+    int rootfs_flags = is_rootfs_writable ? O_RDWR : O_RDONLY;
+    base::expected<base::ScopedFD, std::string> rootfs =
+        ResolveDlcImage(root_fd, vm_dlc_path, kVmRootfsName, rootfs_flags);
+    if (!rootfs.has_value()) {
+      return base::unexpected(rootfs.error());
+    }
+    spec.rootfs = std::move(rootfs.value());
+  }
+
+  if (spec.initrd.is_valid()) {
+    if (!base::RemoveCloseOnExec(spec.initrd.get())) {
+      return base::unexpected("Failed to clear close-on-exec for initrd");
+    }
+  }
+
+  if (spec.pflash.is_valid()) {
+    if (!base::RemoveCloseOnExec(spec.pflash.get())) {
+      return base::unexpected("Failed to clear close-on-exec for pflash");
+    }
+  }
+
+  if (spec.tools_disk.is_valid()) {
+    if (!base::RemoveCloseOnExec(spec.tools_disk.get())) {
+      return base::unexpected("Failed to clear close-on-exec for tools disk");
+    }
+  } else {
+    std::optional<base::FilePath> tools_dlc =
+        tools_dlc_path ? tools_dlc_path : vm_dlc_path;
+    base::expected<base::ScopedFD, std::string> tools =
+        ResolveDlcImage(root_fd, tools_dlc, kVmToolsDiskName, O_RDONLY);
+    // tools_disk is optional, so ignore errors if opening fails.
+    if (tools.has_value()) {
+      spec.tools_disk = std::move(tools.value());
+    }
+  }
+
+  return spec;
 }
 
 std::optional<VhostUserSocketPair> SetupVhostUserSocketPair() {

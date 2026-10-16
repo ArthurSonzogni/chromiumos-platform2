@@ -30,6 +30,7 @@
 #include <base/thread_annotations.h>
 #include <base/threading/thread.h>
 #include <base/timer/timer.h>
+#include <base/types/expected.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/dbus_object.h>
 #include <chromeos/dbus/resource_manager/dbus-constants.h>
@@ -68,18 +69,8 @@ class DbusAdaptor;
 class DlcHelper;
 
 namespace internal {
-// Fds to all the images required while starting a VM.
-struct VmStartImageFds {
-  std::optional<base::ScopedFD> kernel_fd;
-  std::optional<base::ScopedFD> rootfs_fd;
-  std::optional<base::ScopedFD> initrd_fd;
-  std::optional<base::ScopedFD> storage_fd;
-  std::optional<base::ScopedFD> bios_fd;
-  std::optional<base::ScopedFD> pflash_fd;
-};
-
-std::optional<internal::VmStartImageFds> GetVmStartImageFds(
-    const google::protobuf::RepeatedField<int>& fds,
+base::expected<VMImageSpec, std::string> CreateImageSpecFromFds(
+    const google::protobuf::RepeatedField<int>& fd_types,
     const std::vector<base::ScopedFD>& file_handles);
 }  // namespace internal
 
@@ -159,7 +150,7 @@ class Service final : public org::chromium::VmConciergeInterface,
   // Handles a request to start a VM. ARCVM and PITA has separate methods, this
   // handles crostini, bruschetta and borealis.
   StartVmResponse StartVmInternal(StartVmRequest request,
-                                  internal::VmStartImageFds vm_start_image_fds);
+                                  VMImageSpec image_spec);
   void StartVm(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StartVmResponse>>
           response_cb,

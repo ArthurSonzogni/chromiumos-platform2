@@ -61,12 +61,13 @@ constexpr base::ByteSize kHostReservedNum = base::GiB(1);
 
 // Describes key components of a VM.
 struct VMImageSpec {
-  base::FilePath kernel;
-  base::FilePath initrd;
-  base::FilePath rootfs;
-  base::FilePath bios;
-  base::FilePath pflash;
-  base::FilePath tools_disk;
+  base::ScopedFD kernel;
+  base::ScopedFD initrd;
+  base::ScopedFD rootfs;
+  base::ScopedFD bios;
+  base::ScopedFD pflash;
+  base::ScopedFD tools_disk;
+  base::ScopedFD storage;
 };
 
 // Path to the crosvm binary.
@@ -173,13 +174,6 @@ bool UpdateCpuUclampMin(const base::FilePath& cpu_cgroup, double percent);
 
 // Returns the new vCPU count to use in a Borealis VM
 uint32_t GetBorealisCpuCountOverride(uint32_t num_cpus);
-
-// Convert file path into fd path
-// This will open the file and append SafeFD into provided container
-std::string ConvertToFdBasedPath(brillo::SafeFD& parent_fd,
-                                 base::FilePath* in_out_path,
-                                 int flags,
-                                 std::vector<brillo::SafeFD>& fd_storage);
 
 // Opens a file using SafeFD and duplicates the file descriptor (which clears
 // FD_CLOEXEC so child processes can inherit it). Returns an error string on

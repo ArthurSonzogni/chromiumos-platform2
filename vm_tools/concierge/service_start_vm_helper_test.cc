@@ -4,12 +4,19 @@
 
 #include "vm_tools/concierge/service_start_vm_helper.h"
 
+#include <fcntl.h>
+
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/files/scoped_temp_dir.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
+#include <brillo/files/safe_fd.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <vm_concierge/concierge_service.pb.h>
@@ -107,74 +114,155 @@ TEST(StartVMHelperTest, TestGetVmCpuArgs) {
   EXPECT_EQ(vm_cpu_args.cpu_clusters, cpu_cluster_vec);
 }
 
-TEST(StartVMHelperTest, TestGetImageSpec) {
-  std::optional<base::ScopedFD> kernel_fd, rootfs_fd, initrd_fd, bios_fd,
-      pflash_fd;
-  std::string failure_reason;
-  kernel_fd = base::ScopedFD(open("/dev/null", O_RDWR));
-  rootfs_fd = base::ScopedFD(open("/dev/null", O_RDWR));
-  initrd_fd = base::ScopedFD(open("/dev/null", O_RDWR));
-  bios_fd = base::ScopedFD(open("/dev/null", O_RDWR));
-  pflash_fd = base::ScopedFD(open("/dev/null", O_RDWR));
+TEST(StartVMHelperTest, TestAugmentImageSpec) {
+  auto root_fd = brillo::SafeFD::Root();
+  ASSERT_FALSE(brillo::SafeFD::IsError(root_fd.second));
 
-  // Create a VM image spec with user defined kernel, rootfs, and initrd.
-  VMImageSpec image_spec =
-      internal::GetImageSpec(kernel_fd, rootfs_fd, initrd_fd, bios_fd,
-                             pflash_fd, {}, {}, {}, failure_reason);
-  EXPECT_EQ(image_spec.kernel, base::FilePath(base::StringPrintf(
-                                   "/proc/self/fd/%d", kernel_fd->get())));
-  EXPECT_EQ(image_spec.rootfs, base::FilePath(base::StringPrintf(
-                                   "/proc/self/fd/%d", rootfs_fd->get())));
-  EXPECT_EQ(image_spec.initrd, base::FilePath(base::StringPrintf(
-                                   "/proc/self/fd/%d", initrd_fd->get())));
-  EXPECT_EQ(image_spec.bios, base::FilePath(base::StringPrintf(
-                                 "/proc/self/fd/%d", bios_fd->get())));
-  EXPECT_EQ(image_spec.pflash, base::FilePath(base::StringPrintf(
-                                   "/proc/self/fd/%d", pflash_fd->get())));
+  base::ScopedFD kernel_fd(open("/dev/null", O_RDWR | O_CLOEXEC));
+  base::ScopedFD rootfs_fd(open("/dev/null", O_RDWR | O_CLOEXEC));
+  base::ScopedFD initrd_fd(open("/dev/null", O_RDWR | O_CLOEXEC));
+  base::ScopedFD bios_fd(open("/dev/null", O_RDWR | O_CLOEXEC));
+  base::ScopedFD pflash_fd(open("/dev/null", O_RDWR | O_CLOEXEC));
 
-  std::optional<base::FilePath> biosDlcPath = base::FilePath("bios/");
-  std::optional<base::FilePath> vmDlcPath = base::FilePath("vm/");
-  std::optional<base::FilePath> toolsDlcPath = base::FilePath("tools/");
+  int kernel_raw_fd = kernel_fd.get();
+  int rootfs_raw_fd = rootfs_fd.get();
+  int initrd_raw_fd = initrd_fd.get();
+  int bios_raw_fd = bios_fd.get();
+  int pflash_raw_fd = pflash_fd.get();
 
-  // Create a fake pre-defined vm spec
-  image_spec = internal::GetImageSpec({}, {}, {}, {}, {}, biosDlcPath, {},
-                                      toolsDlcPath, failure_reason);
+  EXPECT_NE(fcntl(kernel_raw_fd, F_GETFD) & FD_CLOEXEC, 0);
 
-  EXPECT_EQ(image_spec.kernel, base::FilePath());
-  EXPECT_EQ(image_spec.rootfs, base::FilePath());
-  EXPECT_EQ(image_spec.initrd, base::FilePath());
-  EXPECT_EQ(image_spec.bios, base::FilePath("bios/opt/CROSVM_CODE.fd"));
-  EXPECT_EQ(image_spec.tools_disk, base::FilePath("tools/vm_tools.img"));
+  VMImageSpec image_spec{
+      .kernel = std::move(kernel_fd),
+      .initrd = std::move(initrd_fd),
+      .rootfs = std::move(rootfs_fd),
+      .bios = std::move(bios_fd),
+      .pflash = std::move(pflash_fd),
+  };
 
-  // Create a fake pre-defined vm spec with bios fd
-  image_spec = internal::GetImageSpec({}, {}, {}, bios_fd, {}, {}, {},
-                                      toolsDlcPath, failure_reason);
+  // Augment a VM image spec with user defined kernel, rootfs, and initrd.
+  auto augmented_spec =
+      internal::AugmentImageSpec(root_fd.first, false /* is_rootfs_writable */,
+                                 {}, {}, {}, std::move(image_spec));
+  ASSERT_TRUE(augmented_spec.has_value());
+  EXPECT_TRUE(augmented_spec->kernel.is_valid());
+  EXPECT_EQ(augmented_spec->kernel.get(), kernel_raw_fd);
+  EXPECT_EQ(fcntl(augmented_spec->kernel.get(), F_GETFD) & FD_CLOEXEC, 0);
 
-  EXPECT_EQ(image_spec.kernel, base::FilePath());
-  EXPECT_EQ(image_spec.rootfs, base::FilePath());
-  EXPECT_EQ(image_spec.initrd, base::FilePath());
-  EXPECT_EQ(image_spec.bios, base::FilePath(base::StringPrintf(
-                                 "/proc/self/fd/%d", bios_fd->get())));
-  EXPECT_EQ(image_spec.tools_disk, base::FilePath("tools/vm_tools.img"));
+  EXPECT_TRUE(augmented_spec->rootfs.is_valid());
+  EXPECT_EQ(augmented_spec->rootfs.get(), rootfs_raw_fd);
+  EXPECT_EQ(fcntl(augmented_spec->rootfs.get(), F_GETFD) & FD_CLOEXEC, 0);
 
-  // Create a fake pre-defined vm spec without bios
-  image_spec = internal::GetImageSpec({}, {}, {}, {}, {}, {}, {}, toolsDlcPath,
-                                      failure_reason);
+  EXPECT_TRUE(augmented_spec->initrd.is_valid());
+  EXPECT_EQ(augmented_spec->initrd.get(), initrd_raw_fd);
+  EXPECT_EQ(fcntl(augmented_spec->initrd.get(), F_GETFD) & FD_CLOEXEC, 0);
 
-  EXPECT_EQ(image_spec.kernel, base::FilePath("tools/vm_kernel"));
-  EXPECT_EQ(image_spec.rootfs, base::FilePath());
-  EXPECT_EQ(image_spec.initrd, base::FilePath());
-  EXPECT_EQ(image_spec.bios, base::FilePath(""));
-  EXPECT_EQ(image_spec.tools_disk, base::FilePath("tools/vm_tools.img"));
+  EXPECT_TRUE(augmented_spec->bios.is_valid());
+  EXPECT_EQ(augmented_spec->bios.get(), bios_raw_fd);
+  EXPECT_EQ(fcntl(augmented_spec->bios.get(), F_GETFD) & FD_CLOEXEC, 0);
 
-  // Create a fake pre-defined vm spec but using container
-  image_spec = internal::GetImageSpec({}, {}, {}, {}, {}, biosDlcPath,
-                                      vmDlcPath, {}, failure_reason);
-  EXPECT_EQ(image_spec.kernel, base::FilePath("vm/vm_kernel"));
-  EXPECT_EQ(image_spec.rootfs, base::FilePath("vm/vm_rootfs.img"));
-  EXPECT_EQ(image_spec.initrd, base::FilePath());
-  EXPECT_EQ(image_spec.bios, base::FilePath("bios/opt/CROSVM_CODE.fd"));
-  EXPECT_EQ(image_spec.tools_disk, base::FilePath("vm/vm_tools.img"));
+  EXPECT_TRUE(augmented_spec->pflash.is_valid());
+  EXPECT_EQ(augmented_spec->pflash.get(), pflash_raw_fd);
+  EXPECT_EQ(fcntl(augmented_spec->pflash.get(), F_GETFD) & FD_CLOEXEC, 0);
+
+  // Test failure when neither kernel nor bios is provided
+  VMImageSpec empty_spec;
+  auto fail_res = internal::AugmentImageSpec(root_fd.first, false, {}, {}, {},
+                                             std::move(empty_spec));
+  EXPECT_FALSE(fail_res.has_value());
+  EXPECT_FALSE(fail_res.error().empty());
+
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  ASSERT_TRUE(
+      base::CreateDirectory(temp_dir.GetPath().Append("bios").Append("opt")));
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("vm")));
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("tools")));
+
+  ASSERT_TRUE(base::WriteFile(
+      temp_dir.GetPath().Append("bios").Append(kBruschettaBiosDlcPath), ""));
+  ASSERT_TRUE(base::WriteFile(
+      temp_dir.GetPath().Append("vm").Append(kVmKernelName), ""));
+  ASSERT_TRUE(base::WriteFile(
+      temp_dir.GetPath().Append("vm").Append(kVmRootfsName), ""));
+  ASSERT_TRUE(base::WriteFile(
+      temp_dir.GetPath().Append("vm").Append(kVmToolsDiskName), ""));
+  ASSERT_TRUE(base::WriteFile(
+      temp_dir.GetPath().Append("tools").Append(kVmKernelName), ""));
+  ASSERT_TRUE(base::WriteFile(
+      temp_dir.GetPath().Append("tools").Append(kVmToolsDiskName), ""));
+
+  brillo::SafeFD::SetRootPathForTesting(temp_dir.GetPath().value().c_str());
+  base::ScopedClosureRunner reset_root(
+      base::BindOnce(&brillo::SafeFD::SetRootPathForTesting, "/"));
+
+  auto test_root_fd = brillo::SafeFD::Root();
+  ASSERT_FALSE(brillo::SafeFD::IsError(test_root_fd.second));
+
+  base::FilePath bios_dlc_path("bios");
+  base::FilePath vm_dlc_path("vm");
+  base::FilePath tools_dlc_path("tools");
+
+  // 1. bios_dlc_path + tools_dlc_path
+  {
+    auto res = internal::AugmentImageSpec(
+        test_root_fd.first, /*is_rootfs_writable=*/false, bios_dlc_path,
+        /*vm_dlc_path=*/std::nullopt, tools_dlc_path, VMImageSpec{});
+    ASSERT_TRUE(res.has_value());
+    EXPECT_FALSE(res->kernel.is_valid());
+    EXPECT_FALSE(res->rootfs.is_valid());
+    EXPECT_FALSE(res->initrd.is_valid());
+    EXPECT_TRUE(res->bios.is_valid());
+    EXPECT_TRUE(res->tools_disk.is_valid());
+  }
+
+  // 2. User bios FD + tools_dlc_path
+  {
+    base::ScopedFD user_bios_fd(open("/dev/null", O_RDWR | O_CLOEXEC));
+    ASSERT_TRUE(user_bios_fd.is_valid());
+    int user_bios_raw = user_bios_fd.get();
+    VMImageSpec user_spec{.bios = std::move(user_bios_fd)};
+
+    auto res = internal::AugmentImageSpec(
+        test_root_fd.first, /*is_rootfs_writable=*/false,
+        /*bios_dlc_path=*/std::nullopt, /*vm_dlc_path=*/std::nullopt,
+        tools_dlc_path, std::move(user_spec));
+    ASSERT_TRUE(res.has_value());
+    EXPECT_FALSE(res->kernel.is_valid());
+    EXPECT_FALSE(res->rootfs.is_valid());
+    EXPECT_FALSE(res->initrd.is_valid());
+    EXPECT_TRUE(res->bios.is_valid());
+    EXPECT_EQ(res->bios.get(), user_bios_raw);
+    EXPECT_TRUE(res->tools_disk.is_valid());
+  }
+
+  // 3. tools_dlc_path alone without BIOS (fallback kernel)
+  {
+    auto res = internal::AugmentImageSpec(
+        test_root_fd.first, /*is_rootfs_writable=*/false,
+        /*bios_dlc_path=*/std::nullopt, /*vm_dlc_path=*/std::nullopt,
+        tools_dlc_path, VMImageSpec{});
+    ASSERT_TRUE(res.has_value());
+    EXPECT_TRUE(res->kernel.is_valid());
+    EXPECT_FALSE(res->rootfs.is_valid());
+    EXPECT_FALSE(res->initrd.is_valid());
+    EXPECT_FALSE(res->bios.is_valid());
+    EXPECT_TRUE(res->tools_disk.is_valid());
+  }
+
+  // 4. bios_dlc_path + vm_dlc_path
+  {
+    auto res = internal::AugmentImageSpec(
+        test_root_fd.first, /*is_rootfs_writable=*/false, bios_dlc_path,
+        vm_dlc_path, /*tools_dlc_path=*/std::nullopt, VMImageSpec{});
+    ASSERT_TRUE(res.has_value());
+    EXPECT_TRUE(res->kernel.is_valid());
+    EXPECT_TRUE(res->rootfs.is_valid());
+    EXPECT_FALSE(res->initrd.is_valid());
+    EXPECT_TRUE(res->bios.is_valid());
+    EXPECT_TRUE(res->tools_disk.is_valid());
+  }
 }
 
 }  // namespace concierge

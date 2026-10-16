@@ -15,6 +15,7 @@
 #include <base/task/thread_pool.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <base/types/expected.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/mock_object_proxy.h>
@@ -215,7 +216,7 @@ TEST_F(ServiceTest, CreateDiskImageRejectsCustomTune2fsOpts) {
   loop.Run();
 }
 
-TEST(ServiceInternalTest, TestGetVmStartImageFds) {
+TEST(ServiceInternalTest, TestCreateImageSpecFromFds) {
   google::protobuf::RepeatedField<int> fds;
   fds.Add(StartVmRequest_FdType_KERNEL);
   fds.Add(StartVmRequest_FdType_ROOTFS);
@@ -228,33 +229,43 @@ TEST(ServiceInternalTest, TestGetVmStartImageFds) {
   base::ScopedFD deleter1(kernel_pipe[1]);
   base::ScopedFD deleter2(rootfs_pipe[1]);
 
-  std::optional<internal::VmStartImageFds> vm_start_image_fds =
-      internal::GetVmStartImageFds(fds, file_handles);
+  base::expected<VMImageSpec, std::string> image_spec =
+      internal::CreateImageSpecFromFds(fds, file_handles);
   ASSERT_EQ(7, write(kernel_pipe[1], "kernel", 7));
   ASSERT_EQ(7, write(rootfs_pipe[1], "rootfs", 7));
   char buf[7];
-  ASSERT_TRUE(vm_start_image_fds.has_value());
-  ASSERT_TRUE(vm_start_image_fds->kernel_fd.has_value());
-  ASSERT_TRUE(vm_start_image_fds->rootfs_fd.has_value());
-  EXPECT_NE(fcntl(vm_start_image_fds->kernel_fd->get(), F_GETFD) & FD_CLOEXEC,
-            0);
-  EXPECT_NE(fcntl(vm_start_image_fds->rootfs_fd->get(), F_GETFD) & FD_CLOEXEC,
-            0);
-  ASSERT_EQ(7, read(vm_start_image_fds->kernel_fd->get(), buf, 7));
+  ASSERT_TRUE(image_spec.has_value());
+  ASSERT_TRUE(image_spec->kernel.is_valid());
+  ASSERT_TRUE(image_spec->rootfs.is_valid());
+  EXPECT_NE(fcntl(image_spec->kernel.get(), F_GETFD) & FD_CLOEXEC, 0);
+  EXPECT_NE(fcntl(image_spec->rootfs.get(), F_GETFD) & FD_CLOEXEC, 0);
+  ASSERT_EQ(7, read(image_spec->kernel.get(), buf, 7));
   EXPECT_STREQ(buf, "kernel");
-  ASSERT_EQ(7, read(vm_start_image_fds->rootfs_fd->get(), buf, 7));
+  ASSERT_EQ(7, read(image_spec->rootfs.get(), buf, 7));
   EXPECT_STREQ(buf, "rootfs");
 }
 
-TEST(ServiceInternalTest, TestGetVmStartImageFds_InvalidFd) {
+TEST(ServiceInternalTest, TestCreateImageSpecFromFds_InvalidFd) {
   google::protobuf::RepeatedField<int> fds;
   fds.Add(StartVmRequest_FdType_KERNEL);
   std::vector<base::ScopedFD> file_handles;
   file_handles.push_back(base::ScopedFD(-1));
 
-  std::optional<internal::VmStartImageFds> vm_start_image_fds =
-      internal::GetVmStartImageFds(fds, file_handles);
-  EXPECT_FALSE(vm_start_image_fds.has_value());
+  base::expected<VMImageSpec, std::string> image_spec =
+      internal::CreateImageSpecFromFds(fds, file_handles);
+  EXPECT_FALSE(image_spec.has_value());
+  EXPECT_FALSE(image_spec.error().empty());
+}
+
+TEST(ServiceInternalTest, TestCreateImageSpecFromFds_SizeMismatch) {
+  google::protobuf::RepeatedField<int> fds;
+  fds.Add(StartVmRequest_FdType_KERNEL);
+  std::vector<base::ScopedFD> file_handles;
+
+  base::expected<VMImageSpec, std::string> image_spec =
+      internal::CreateImageSpecFromFds(fds, file_handles);
+  EXPECT_FALSE(image_spec.has_value());
+  EXPECT_FALSE(image_spec.error().empty());
 }
 
 }  // namespace vm_tools::concierge

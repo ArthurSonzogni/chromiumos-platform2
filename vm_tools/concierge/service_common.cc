@@ -131,32 +131,4 @@ std::optional<PflashMetadata> GetPflashMetadata(const VmId& vm_id,
                         .is_installed = is_installed};
 }
 
-std::optional<base::FilePath> GetInstalledOrRequestPflashPath(
-    const VmId& vm_id, const base::FilePath& start_vm_request_pflash_path) {
-  bool is_pflash_sent_in_request =
-      base::PathExists(start_vm_request_pflash_path);
-
-  std::optional<PflashMetadata> pflash_metadata = GetPflashMetadata(vm_id);
-  if (!pflash_metadata) {
-    return std::nullopt;
-  }
-
-  // If a pflash file is installed then don't accept one sent in a start
-  // request.
-  if (pflash_metadata->is_installed && is_pflash_sent_in_request) {
-    return std::nullopt;
-  }
-
-  if (pflash_metadata->is_installed) {
-    return pflash_metadata->path;
-  }
-
-  // At this point we don't have an installed pflash file, if no pflash file is
-  // sent in the request then return an empty pflash location.
-  if (!is_pflash_sent_in_request) {
-    return base::FilePath();
-  }
-  return start_vm_request_pflash_path;
-}
-
 }  // namespace vm_tools::concierge

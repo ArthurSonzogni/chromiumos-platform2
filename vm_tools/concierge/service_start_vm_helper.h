@@ -17,6 +17,8 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/system/sys_info.h>
+#include <base/types/expected.h>
+#include <brillo/files/safe_fd.h>
 
 #include "vm_tools/concierge/service.h"
 #include "vm_tools/concierge/vm_base_impl.h"
@@ -136,18 +138,15 @@ apps::VmType ClassifyVm(const StartVmRequest& request);
 // Get capacity & cluster & affinity information for cpu0~cpu${cpus}
 VmBuilder::VmCpuArgs GetVmCpuArgs(int32_t cpus,
                                   const base::FilePath& cpu_info_path);
-// Determines key components of a VM image. Also, decides if it's a trusted
-// VM. Returns the empty struct and sets |failure_reason| in the event of a
-// failure.
-VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
-                         const std::optional<base::ScopedFD>& rootfs_fd,
-                         const std::optional<base::ScopedFD>& initrd_fd,
-                         const std::optional<base::ScopedFD>& bios_fd,
-                         const std::optional<base::ScopedFD>& pflash_fd,
-                         const std::optional<base::FilePath>& biosDlcPath,
-                         const std::optional<base::FilePath>& vmDlcPath,
-                         const std::optional<base::FilePath>& toolsDlcPath,
-                         std::string& failure_reason);
+// Augments |spec| with descriptors for VM image components resolved from DLCs.
+// Returns an error string on failure.
+base::expected<VMImageSpec, std::string> AugmentImageSpec(
+    brillo::SafeFD& root_fd,
+    bool is_rootfs_writable,
+    const std::optional<base::FilePath>& bios_dlc_path,
+    const std::optional<base::FilePath>& vm_dlc_path,
+    const std::optional<base::FilePath>& tools_dlc_path,
+    VMImageSpec spec);
 
 // Create a socket pair for connecting vhost_user frontend and backend.
 std::optional<VhostUserSocketPair> SetupVhostUserSocketPair();

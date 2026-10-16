@@ -97,18 +97,6 @@ std::optional<PflashMetadata> GetPflashMetadata(
     const VmId& vm_id,
     base::FilePath storage_dir = base::FilePath(kCryptohomeRoot));
 
-// Returns in order -
-// 1. An installed pflash file for the VM.
-// 2. A valid |start_vm_request_pflash_path|
-// 3. An empty file path.
-//
-// Returns an error -
-// 1. If a pflash file is installed and |start_vm_request_pflash_path| is valid.
-// 2. If there is an error in querying information about any installed pflash
-// file.
-std::optional<base::FilePath> GetInstalledOrRequestPflashPath(
-    const VmId& vm_id, const base::FilePath& start_vm_request_pflash_path);
-
 // Typical check based on the name of protocol buffer fields. Our business logic
 // usually means that VM name is stored in field called name and owner_id stored
 // in owner_id.
