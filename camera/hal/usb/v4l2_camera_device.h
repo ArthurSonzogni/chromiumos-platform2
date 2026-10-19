@@ -301,6 +301,9 @@ class V4L2CameraDevice {
   // Call the VIDIOC_STREAMOFF ioctl.
   int StopStreaming();
 
+  // Release allocated V4L2 buffers via VIDIOC_REQBUFS with count = 0.
+  int ReleaseBuffers();
+
   // Get coordination transform from active array coordinate to ROI coordinate
   void TransformFromActiveArrayToROICoordinate(const Size& active_array_size,
                                                Rect<int>& roi);

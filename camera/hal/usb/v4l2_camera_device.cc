@@ -18,12 +18,15 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <tuple>
 
 #include <base/check.h>
 #include <base/containers/flat_set.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/notreached.h>
 #include <base/posix/safe_strerror.h>
 #include <base/strings/pattern.h>
@@ -576,7 +579,11 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   VLOGF(1) << "Requested buffer number: " << req_buffers.count;
 
   buffers_at_client_.resize(req_buffers.count);
+  base::ScopedClosureRunner release_buffers(
+      base::BindOnce(base::IgnoreResult(&V4L2CameraDevice::ReleaseBuffers),
+                     base::Unretained(this)));
   std::vector<base::ScopedFD> temp_fds;
+  std::vector<uint32_t> temp_buffer_sizes;
   for (uint32_t i = 0; i < req_buffers.count; i++) {
     v4l2_exportbuffer expbuf;
     memset(&expbuf, 0, sizeof(expbuf));
@@ -599,7 +606,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
       return ret;
     }
 
-    buffer_sizes->push_back(buffer.length);
+    temp_buffer_sizes.push_back(buffer.length);
   }
 
   if (!sw_privacy_switch_on_) {
@@ -608,9 +615,11 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
       return ret;
     }
   }
+  std::ignore = release_buffers.Release();
 
   for (size_t i = 0; i < temp_fds.size(); i++) {
     fds->push_back(std::move(temp_fds[i]));
+    buffer_sizes->push_back(temp_buffer_sizes[i]);
   }
 
   v4l2_event_monitor_->TrySubscribe(device_info_.camera_id,
@@ -642,19 +651,10 @@ int V4L2CameraDevice::StreamOff() {
   if (ret < 0) {
     return ret;
   }
-  v4l2_requestbuffers req_buffers;
-  memset(&req_buffers, 0, sizeof(req_buffers));
-  req_buffers.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  req_buffers.memory = V4L2_MEMORY_MMAP;
-  req_buffers.count = 0;
-  ret =
-      TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_REQBUFS, &req_buffers));
+  ret = ReleaseBuffers();
   if (ret < 0) {
-    ret = ERRNO_OR_RET(ret);
-    PLOGF(ERROR) << "REQBUFS fails";
     return ret;
   }
-  buffers_at_client_.clear();
   stream_on_ = false;
 
   v4l2_event_monitor_->UnsubscribeFrameSyncEvent(device_info_.camera_id);
@@ -1874,6 +1874,22 @@ int V4L2CameraDevice::StopStreaming() {
     PLOGF(ERROR) << "STREAMOFF fails";
   }
   return ret;
+}
+
+int V4L2CameraDevice::ReleaseBuffers() {
+  v4l2_requestbuffers req_buffers = {};
+  req_buffers.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  req_buffers.memory = V4L2_MEMORY_MMAP;
+  req_buffers.count = 0;
+  int ret =
+      TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_REQBUFS, &req_buffers));
+  if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
+    PLOGF(ERROR) << "REQBUFS fails";
+    return ret;
+  }
+  buffers_at_client_.clear();
+  return 0;
 }
 
 // Get coordination transform from active array coordinate to stream
