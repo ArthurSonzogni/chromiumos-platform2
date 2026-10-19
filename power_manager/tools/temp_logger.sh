@@ -26,7 +26,7 @@ get_fans_speed() {
 
   while read -r entry; do
     local entry_stripped
-    entry_stripped=$(echo "${entry}" | tr --delete " ")
+    entry_stripped="${entry// /}"
     logstr="${logstr} ${entry_stripped}"
   done <<< "${fanspeed}"
 
@@ -36,19 +36,19 @@ get_fans_speed() {
 # Output xx:yyC where xx is temp sensor id and yy is the actual temperature.
 get_sensor_temp() {
   local zone="$1"
-  local namepath=""
   local name=""
-  local tempc=0
-  local tempstr=""
+  local temp=""
 
   if [ ! -r "${zone}" ]; then
     return
   fi
-  namepath="$(dirname "${zone}")/type"
-  name="$(tr ' ' '_' < "${namepath}")"
-  tempc=$(($(cat "${zone}") / 1000))
-  tempstr=$(printf "%s:%dC" "${name}" "${tempc}")
-  echo "${tempstr}"
+  read -r temp < "${zone}"
+  # Log nothing for a zone whose temp can't be read.
+  if [ -z "${temp}" ]; then
+    return
+  fi
+  IFS= read -r name < "${zone%/*}/type"
+  printf "%s:%dC\n" "${name// /_}" "$((temp / 1000))"
 }
 
 # Glob all temp sensors sysfs and output temperatures with get_sensor_temp().
@@ -68,14 +68,12 @@ get_all_sensor_temps() {
 get_pl1() {
   local pl1="/sys/class/powercap/intel-rapl:0/constraint_0_power_limit_uw"
   local pl1uw=0
-  local pl1str=""
 
   if [ ! -r "${pl1}" ]; then
     return
   fi
-  pl1uw=$(cat "${pl1}")
-  pl1str=$(printf "PL1:%.3fW" "$((pl1uw))e-6")
-  echo "${pl1str}"
+  read -r pl1uw < "${pl1}"
+  printf "PL1:%.3fW\n" "$((pl1uw))e-6"
 }
 
 main() {
