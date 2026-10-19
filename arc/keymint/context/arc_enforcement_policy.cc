@@ -17,6 +17,11 @@ namespace {
 
 constexpr size_t kSessionKeySize = 32;
 
+// Maximum allowable clock skew for auth tokens with timestamps in the future.
+// In VM and multi-core environments, clock readings between the authenticator
+// and KeyMint can drift slightly.
+constexpr uint64_t kMaxClockSkewMs = 2000;
+
 uint64_t GetWallClockTimeMs() {
   return base::saturated_cast<uint64_t>(
       base::Time::Now().InMillisecondsSinceUnixEpoch());
@@ -46,6 +51,25 @@ bool ArcEnforcementPolicy::activation_date_valid(
 bool ArcEnforcementPolicy::expiration_date_passed(
     uint64_t expiration_date) const {
   return expiration_date < GetWallClockTimeMs();
+}
+
+bool ArcEnforcementPolicy::auth_token_timed_out(const hw_auth_token_t& token,
+                                                uint32_t timeout) const {
+  if (timeout == 0) {
+    // Per-operation auth token, not time-based.
+    return false;
+  }
+
+  uint64_t now_ms = get_current_time_ms();
+  uint64_t token_time = ::keymaster::ntoh(token.timestamp);
+
+  if (token_time > now_ms) {
+    // Tolerate minor clock drift where token timestamp is slightly ahead.
+    return (token_time - now_ms) > kMaxClockSkewMs;
+  }
+
+  uint64_t timeout_ms = static_cast<uint64_t>(timeout) * 1000;
+  return (now_ms - token_time) > timeout_ms;
 }
 
 ::keymaster::KmErrorOr<std::array<uint8_t, 32>>

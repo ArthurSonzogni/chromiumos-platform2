@@ -25,6 +25,8 @@ class ArcEnforcementPolicy : public ::keymaster::SoftKeymasterEnforcement {
 
   bool activation_date_valid(uint64_t activation_date) const override;
   bool expiration_date_passed(uint64_t expiration_date) const override;
+  bool auth_token_timed_out(const hw_auth_token_t& token,
+                            uint32_t timeout) const override;
 
   ::keymaster::KmErrorOr<std::array<uint8_t, 32>> ComputeHmac(
       const std::vector<uint8_t>&) const override;

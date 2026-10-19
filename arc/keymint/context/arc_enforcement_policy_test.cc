@@ -32,15 +32,26 @@ constexpr char kExpectedHmacSha256Hex[] =
     "465b0bcb59d8da7b7f9ce006ad21f094e531c06b0a3eb2314715fcda2970c8ed";
 }  // namespace
 
+class TestArcEnforcementPolicy : public ArcEnforcementPolicy {
+ public:
+  using ArcEnforcementPolicy::ArcEnforcementPolicy;
+
+  uint64_t get_current_time_ms() const override { return current_time_ms_; }
+  void set_current_time_ms(uint64_t time_ms) { current_time_ms_ = time_ms; }
+
+ private:
+  uint64_t current_time_ms_ = 100000;
+};
+
 class ArcEnforcementPolicyTest : public ::testing::Test {
  protected:
   ArcEnforcementPolicyTest() {}
 
   void SetUp() override {
-    arc_enforcement_policy_ = new ArcEnforcementPolicy(64, 64);
+    arc_enforcement_policy_ = new TestArcEnforcementPolicy(64, 64);
   }
 
-  ArcEnforcementPolicy* arc_enforcement_policy_;
+  TestArcEnforcementPolicy* arc_enforcement_policy_;
 };
 
 class ArcEnforcementPolicyTestPeer {
@@ -177,6 +188,51 @@ TEST_F(ArcEnforcementPolicyTest, AuthorizeOperationRejectsExpiredKey) {
       /*op_handle=*/0, /*is_begin_operation=*/true);
 
   EXPECT_EQ(result, KM_ERROR_KEY_EXPIRED);
+}
+
+TEST_F(ArcEnforcementPolicyTest, AuthTokenTimedOut_FreshToken) {
+  uint64_t now_ms = arc_enforcement_policy_->get_current_time_ms();
+  hw_auth_token_t token{};
+  token.timestamp = ::keymaster::hton(now_ms);
+
+  EXPECT_FALSE(arc_enforcement_policy_->auth_token_timed_out(token, 30));
+}
+
+TEST_F(ArcEnforcementPolicyTest, AuthTokenTimedOut_ExpiredToken) {
+  uint64_t now_ms = arc_enforcement_policy_->get_current_time_ms();
+  // 31 seconds ago (timeout is 30 seconds)
+  uint64_t past_ms = now_ms - 31000;
+  hw_auth_token_t token{};
+  token.timestamp = ::keymaster::hton(past_ms);
+
+  EXPECT_TRUE(arc_enforcement_policy_->auth_token_timed_out(token, 30));
+}
+
+TEST_F(ArcEnforcementPolicyTest, AuthTokenTimedOut_FutureTokenWithinTolerance) {
+  uint64_t now_ms = arc_enforcement_policy_->get_current_time_ms();
+  // 1 second ahead in the future (within 2-second tolerance window)
+  uint64_t future_ms = now_ms + 1000;
+  hw_auth_token_t token{};
+  token.timestamp = ::keymaster::hton(future_ms);
+
+  EXPECT_FALSE(arc_enforcement_policy_->auth_token_timed_out(token, 30));
+}
+
+TEST_F(ArcEnforcementPolicyTest, AuthTokenTimedOut_FutureTokenBeyondTolerance) {
+  uint64_t now_ms = arc_enforcement_policy_->get_current_time_ms();
+  // 10 seconds ahead in the future (exceeds 2-second tolerance window)
+  uint64_t future_ms = now_ms + 10000;
+  hw_auth_token_t token{};
+  token.timestamp = ::keymaster::hton(future_ms);
+
+  EXPECT_TRUE(arc_enforcement_policy_->auth_token_timed_out(token, 30));
+}
+
+TEST_F(ArcEnforcementPolicyTest, AuthTokenTimedOut_PerOperationZeroTimeout) {
+  hw_auth_token_t token{};
+  token.timestamp = ::keymaster::hton(0ULL);
+
+  EXPECT_FALSE(arc_enforcement_policy_->auth_token_timed_out(token, 0));
 }
 
 }  // namespace arc::keymint::context
