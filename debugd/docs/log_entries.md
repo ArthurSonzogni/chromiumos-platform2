@@ -241,12 +241,6 @@ capabilities and the SOP/SOP' identity/mode responses if available.
 
 ## cros_scp.previous
 
-## cros_tp console
-
-## cros_tp frame
-
-## cros_tp version
-
 ## crosid
 
 The output of `crosid -v`, which can be used to understand/debug why a

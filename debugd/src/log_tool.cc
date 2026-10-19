@@ -247,11 +247,6 @@ const std::array kCommandLogs {
     "done", kRoot, kRoot},
   Log{kCommand, "cros_fp_panicinfo", "ectool --name=cros_fp panicinfo",
     kRoot, kRoot},
-  Log{kCommand, "cros_tp console", "/usr/sbin/ectool --name=cros_tp console",
-    kRoot, kRoot},
-  Log{kCommand, "cros_tp frame", "/usr/sbin/ectool --name=cros_tp tpframeget",
-    kRoot, kRoot},
-  Log{kFile, "cros_tp version", "/sys/class/chromeos/cros_tp/version"},
   Log{kCommand, "crosid", "/usr/bin/crosid -v"},
   Log{kCommand, "crostini", "/usr/bin/cicerone_client --get_info"},
   // dGVybWluYQ== == "termina", the default Crostini VM name. There may be other
