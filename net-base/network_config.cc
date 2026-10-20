@@ -29,6 +29,9 @@ NetworkConfig NetworkConfig::Merge(const NetworkConfig* ipv4_config,
                                    const NetworkConfig* ipv6_config) {
   NetworkConfig ret;
 
+  // Assign family-specific fields one-by-one rather than copy-initializing
+  // `ret` from `*ipv4_config` so that ill-formed cross-family fields (e.g.
+  // `ipv6_addresses` accidentally set on `ipv4_config`) cannot leak into `ret`.
   // IPv4 address/gateway configurations from |ipv4_config|.
   if (ipv4_config) {
     ret.ipv4_address = ipv4_config->ipv4_address;
@@ -47,6 +50,7 @@ NetworkConfig NetworkConfig::Merge(const NetworkConfig* ipv4_config,
                               ipv6_config->ipv6_addresses.end());
     ret.ipv6_gateway = ipv6_config->ipv6_gateway;
     ret.ipv6_delegated_prefixes = ipv6_config->ipv6_delegated_prefixes;
+    ret.pref64 = ipv6_config->pref64;
   }
 
   // Merge included routes and excluded routes from |ipv4_config| and

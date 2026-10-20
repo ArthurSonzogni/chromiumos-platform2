@@ -4,6 +4,7 @@
 
 #include "net-base/network_config.h"
 
+#include <optional>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -21,6 +22,24 @@ using testing::Test;
 
 namespace net_base {
 
+TEST(NetworkConfigTest, IsEmpty) {
+  NetworkConfig config;
+  EXPECT_TRUE(config.IsEmpty());
+
+  NetworkConfig mtu_config;
+  mtu_config.mtu = 1500;
+  EXPECT_FALSE(mtu_config.IsEmpty());
+
+  NetworkConfig pref64_config;
+  pref64_config.pref64 = IPv6CIDR::CreateFromCIDRString("64:ff9b::/96");
+  EXPECT_FALSE(pref64_config.IsEmpty());
+
+  NetworkConfig routes_config;
+  routes_config.included_route_prefixes = {
+      *IPCIDR::CreateFromCIDRString("192.168.1.0/24")};
+  EXPECT_FALSE(routes_config.IsEmpty());
+}
+
 TEST(NetworkConfigTest, MergeAddress) {
   NetworkConfig ipv4_config;
   ipv4_config.ipv4_address = IPv4CIDR::CreateFromCIDRString("192.168.1.0/24");
@@ -30,11 +49,13 @@ TEST(NetworkConfigTest, MergeAddress) {
       std::vector<std::pair<net_base::IPv4CIDR, net_base::IPv4Address>>{
           {*net_base::IPv4CIDR::CreateFromCIDRString("10.1.0.0/16"),
            *net_base::IPv4Address::CreateFromString("192.168.1.2")}};
+  ipv4_config.pref64 = IPv6CIDR::CreateFromCIDRString("64:ff9b:1::/96");
   NetworkConfig ipv6_config;
   ipv6_config.ipv6_addresses = {*IPv6CIDR::CreateFromCIDRString("fd00::/64")};
   ipv6_config.ipv6_gateway = IPv6Address::CreateFromString("fd00::1");
   ipv6_config.ipv6_delegated_prefixes = {
       *IPv6CIDR::CreateFromCIDRString("fd00:1::/96")};
+  ipv6_config.pref64 = IPv6CIDR::CreateFromCIDRString("64:ff9b::/96");
 
   NetworkConfig merged_config =
       NetworkConfig::Merge(&ipv4_config, &ipv6_config);
@@ -48,6 +69,15 @@ TEST(NetworkConfigTest, MergeAddress) {
   EXPECT_EQ(merged_config.ipv6_gateway, ipv6_config.ipv6_gateway);
   EXPECT_EQ(merged_config.ipv6_delegated_prefixes,
             ipv6_config.ipv6_delegated_prefixes);
+  EXPECT_EQ(merged_config.pref64, ipv6_config.pref64);
+
+  const NetworkConfig ipv4_only_merged =
+      NetworkConfig::Merge(&ipv4_config, nullptr);
+  EXPECT_EQ(ipv4_only_merged.pref64, std::nullopt);
+
+  const NetworkConfig ipv6_only_merged =
+      NetworkConfig::Merge(nullptr, &ipv6_config);
+  EXPECT_EQ(ipv6_only_merged.pref64, ipv6_config.pref64);
 }
 
 TEST(NetworkConfigTest, MergeIncludedExcludedRoutes) {
