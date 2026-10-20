@@ -42,6 +42,8 @@ TEST(IPv4AddressTest, CreateFromString_Success) {
   const auto address = IPv4Address::CreateFromString("192.168.10.1");
   ASSERT_TRUE(address);
   EXPECT_EQ(*address, IPv4Address(192, 168, 10, 1));
+  EXPECT_EQ(*IPv4Address::CreateFromString(std::string_view("1.1.1.1\0", 8)),
+            IPv4Address(1, 1, 1, 1));
 }
 
 TEST(IPv4AddressTest, ToString) {
@@ -55,6 +57,10 @@ TEST(IPv4AddressTest, CreateFromString_Fail) {
   EXPECT_FALSE(IPv4Address::CreateFromString(""));
   EXPECT_FALSE(IPv4Address::CreateFromString("192.168.10.1/24"));
   EXPECT_FALSE(IPv4Address::CreateFromString("fe80::1aa9:5ff:7ebf:14c5"));
+  EXPECT_FALSE(IPv4Address::CreateFromString(
+      std::string_view("192.168.10.1\0garbage", 20)));
+  EXPECT_FALSE(
+      IPv4Address::CreateFromString(std::string_view("1.1.1.1\0\0", 9)));
 }
 
 TEST(IPv4AddressTest, ToByteString) {

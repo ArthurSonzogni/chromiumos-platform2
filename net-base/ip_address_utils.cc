@@ -41,11 +41,15 @@ std::optional<std::pair<std::string_view, int>> SplitCIDRString(
 int inet_pton_string_view(int af, std::string_view src, void* dst) {
   constexpr static size_t kMaxAddrLength = INET6_ADDRSTRLEN;
 
-  if (src.length() >= kMaxAddrLength) {
+  if (src.empty() || src.length() > kMaxAddrLength) {
+    return 0;
+  }
+  const size_t null_pos = src.find('\0');
+  if (null_pos != std::string_view::npos && null_pos < src.length() - 1) {
     return 0;
   }
 
-  char src_buf[kMaxAddrLength];
+  char src_buf[kMaxAddrLength + 1];
   memcpy(src_buf, src.data(), src.length());
   src_buf[src.length()] = '\0';
   return inet_pton(af, src_buf, dst);

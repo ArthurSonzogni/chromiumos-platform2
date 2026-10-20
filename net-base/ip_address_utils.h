@@ -27,7 +27,8 @@ BRILLO_EXPORT std::optional<std::pair<std::string_view, int>> SplitCIDRString(
     std::string_view address_string);
 
 // Same as `inet_pton()` from the standard C library, but takes a `string_view`
-// instead for the input.
+// instead for the input. Rejects empty inputs, inputs > INET6_ADDRSTRLEN, or
+// inputs containing a non-trailing null character ('\0').
 int inet_pton_string_view(int af, std::string_view src, void* dst);
 
 template <typename Address>

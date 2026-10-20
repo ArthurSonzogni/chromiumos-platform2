@@ -49,6 +49,9 @@ TEST(IPv6AddressTest, CreateFromString_Success) {
   const auto address = IPv6Address::CreateFromString(kGoodString);
   ASSERT_TRUE(address);
   EXPECT_EQ(address->data(), kGoodData);
+  EXPECT_TRUE(IPv6Address::CreateFromString(std::string_view("fe80::1\0", 8)));
+  EXPECT_TRUE(IPv6Address::CreateFromString(
+      std::string_view("ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255\0", 46)));
 }
 
 TEST(IPv6AddressTest, ToString) {
@@ -63,6 +66,10 @@ TEST(IPv6AddressTest, CreateFromString_Fail) {
   EXPECT_FALSE(IPv6Address::CreateFromString("192.168.10.1"));
   EXPECT_FALSE(IPv6Address::CreateFromString(
       "0000:1111:2222:3333:4444:5555:6666:7777:8888:9999:AAAA:BBBB"));
+  EXPECT_FALSE(
+      IPv6Address::CreateFromString(std::string_view("fe80::1\0garbage", 15)));
+  EXPECT_FALSE(
+      IPv6Address::CreateFromString(std::string_view("fe80::1\0\0", 9)));
 }
 
 TEST(IPv6AddressTest, ToBytes) {

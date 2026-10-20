@@ -23,7 +23,13 @@
 
 namespace net_base {
 
-// Represents an IPv4 address.
+// Represents an IPv4 address (`kAddressLength = 4`), stored in network byte
+// order (big-endian).
+// - Default-constructed instances are all-zero (`0.0.0.0`, `IsZero() == true`).
+// - `IPv4Address(uint32_t)` accepts a 32-bit integer in network byte order
+//   (used for legacy protobufs storing IPv4 addresses as `uint32_t`).
+// - Supports `std::hash<net_base::IPv4Address>` and
+// `std::hash<net_base::IPv4CIDR>`.
 class BRILLO_EXPORT IPv4Address {
  public:
   // The length in bytes of addresses.
