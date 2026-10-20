@@ -38,6 +38,8 @@ const char* kBadSerials[] = {
     "91.WTx00.xPxx",    // This is a device model number.
     "123490EN400015",   // Common serial used by Samsung Kiosk KM24a devices.
     "Type1-123456789",  // Common serial used by Uniguest Reserva Edge devices.
+    "142EL102",         // Common serial used by ELSKY QM9000 devices.
+    "Q94H2S17",         // Common serial used by ELSKY QM9000 devices.
     "to be filled by o.e.m.",
     "to be filled by o.e.m",
     "123456789",
