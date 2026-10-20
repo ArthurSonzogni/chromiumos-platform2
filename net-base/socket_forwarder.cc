@@ -32,8 +32,10 @@ constexpr int kMaxEvents = 4;
 
 std::ostream& operator<<(std::ostream& stream,
                          const struct epoll_event& event) {
+  std::ios_base::fmtflags flags(stream.flags());
   stream << "{ fd: " << event.data.fd << ", events: 0x" << std::hex
          << event.events << "}";
+  stream.flags(flags);
   return stream;
 }
 
@@ -170,7 +172,7 @@ bool SocketForwarder::ProcessEvents(uint32_t events, int efd, int cfd) {
 
     const std::optional<size_t> send_bytes = dst->Send({buf, *len});
     if (!send_bytes.has_value()) {
-      PLOG(ERROR) << "Failed to send data to " << dst;
+      PLOG(ERROR) << "Failed to send data to " << *dst;
       return false;
     }
 
@@ -216,7 +218,7 @@ bool SocketForwarder::ProcessEvents(uint32_t events, int efd, int cfd) {
   if (events & EPOLLIN) {
     const std::optional<size_t> recv_bytes = src->RecvFrom({buf, kBufSize});
     if (!recv_bytes.has_value()) {
-      PLOG(ERROR) << "Failed to receive data from " << src;
+      PLOG(ERROR) << "Failed to receive data from " << *src;
       return false;
     }
     *len = *recv_bytes;
@@ -227,7 +229,7 @@ bool SocketForwarder::ProcessEvents(uint32_t events, int efd, int cfd) {
 
     const std::optional<size_t> send_bytes = dst->Send({buf, *len});
     if (!send_bytes) {
-      PLOG(ERROR) << "Failed to send data to " << dst;
+      PLOG(ERROR) << "Failed to send data to " << *dst;
       return false;
     }
 
@@ -271,7 +273,7 @@ bool SocketForwarder::HandleConnectionClosed(const net_base::Socket& src,
   // associated with the |src| socket if empty, so there's no outstanding
   // data to be written to |dst|.
   if (shutdown(dst.Get(), SHUT_WR) == -1) {
-    PLOG(ERROR) << "Shutting down " << *socket << " for writing failed";
+    PLOG(ERROR) << "Shutting down " << dst << " for writing failed";
     return false;
   }
 
