@@ -48,7 +48,16 @@ TEST(MacAddress, CreateFromString) {
   EXPECT_EQ(MacAddress::CreateFromString("AA:BB:CC:DD:EE:FF"),
             MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff));
 
+  EXPECT_FALSE(MacAddress::CreateFromString("").has_value());
   EXPECT_FALSE(MacAddress::CreateFromString("123456789abc").has_value());
+  EXPECT_FALSE(MacAddress::CreateFromString("12:34:56:78:9a").has_value());
+  EXPECT_FALSE(
+      MacAddress::CreateFromString("12:34:56:78:9a:bc:de").has_value());
+  EXPECT_FALSE(MacAddress::CreateFromString("12-34-56-78-9a-bc").has_value());
+  EXPECT_FALSE(MacAddress::CreateFromString("12:34:56:78:9a:gg").has_value());
+  EXPECT_FALSE(MacAddress::CreateFromString("+1:+2:+3:+4:+5:+6").has_value());
+  EXPECT_FALSE(MacAddress::CreateFromString("0x:00:00:00:00:00").has_value());
+  EXPECT_FALSE(MacAddress::CreateFromString(" 1: 2: 3: 4: 5: 6").has_value());
 }
 
 TEST(MacAddress, CreateFromHexString) {
@@ -72,6 +81,14 @@ TEST(MacAddress, CreateFromBytes) {
   const char char_bytes[] = {0x12, 0x23, 0x34, 0x45, 0x56, 0x67};
   const auto addr2 = *MacAddress::CreateFromBytes(char_bytes);
   EXPECT_EQ(addr2, MacAddress(0x12, 0x23, 0x34, 0x45, 0x56, 0x67));
+
+  EXPECT_FALSE(
+      MacAddress::CreateFromBytes(base::span<const uint8_t>{}).has_value());
+  EXPECT_FALSE(MacAddress::CreateFromBytes(std::vector<uint8_t>{1, 2, 3, 4, 5})
+                   .has_value());
+  EXPECT_FALSE(
+      MacAddress::CreateFromBytes(std::vector<uint8_t>{1, 2, 3, 4, 5, 6, 7})
+          .has_value());
 }
 
 TEST(MacAddress, CmpOps) {

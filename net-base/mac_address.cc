@@ -6,6 +6,7 @@
 
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
 namespace net_base {
@@ -38,9 +39,14 @@ std::optional<MacAddress> MacAddress::CreateFromString(
 
   DataType data;
   for (size_t i = 0; i < kAddressLength; ++i) {
+    const std::string_view hex_pair = address_string.substr(i * 3, 2);
+    // base::HexStringToUInt accepts a '+' sign and a '0x' prefix; check each
+    // character with base::IsHexDigit to ensure exactly two hex digits.
+    if (!base::IsHexDigit(hex_pair[0]) || !base::IsHexDigit(hex_pair[1])) {
+      return std::nullopt;
+    }
     uint32_t byte;
-    if (!base::HexStringToUInt(
-            std::string_view(address_string).substr(i * 3, 2), &byte)) {
+    if (!base::HexStringToUInt(hex_pair, &byte)) {
       return std::nullopt;
     }
     data[i] = static_cast<uint8_t>(byte);
