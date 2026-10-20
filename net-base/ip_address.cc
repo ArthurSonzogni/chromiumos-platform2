@@ -289,6 +289,9 @@ bool IPCIDR::operator==(const IPCIDR& rhs) const {
 bool IPCIDR::operator!=(const IPCIDR& rhs) const {
   return !(*this == rhs);
 }
+bool IPCIDR::operator<(const IPCIDR& rhs) const {
+  return cidr_ < rhs.cidr_;
+}
 
 IPFamily IPCIDR::GetFamily() const {
   if (std::get_if<IPv4CIDR>(&cidr_)) {

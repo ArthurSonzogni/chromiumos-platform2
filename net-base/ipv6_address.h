@@ -128,8 +128,7 @@ struct hash<net_base::IPv6Address> {
 template <>
 struct hash<net_base::IPv6CIDR> {
   size_t operator()(const net_base::IPv6CIDR& cidr) const {
-    return base::FastHash(cidr.address().data()) ^
-           std::hash<int>()(cidr.prefix_length());
+    return base::HashCombine(0u, cidr.address(), cidr.prefix_length());
   }
 };
 

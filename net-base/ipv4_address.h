@@ -104,8 +104,7 @@ struct hash<net_base::IPv4Address> {
 template <>
 struct hash<net_base::IPv4CIDR> {
   size_t operator()(const net_base::IPv4CIDR& cidr) const {
-    return base::FastHash(cidr.address().data()) ^
-           std::hash<int>()(cidr.prefix_length());
+    return base::HashCombine(0u, cidr.address(), cidr.prefix_length());
   }
 };
 

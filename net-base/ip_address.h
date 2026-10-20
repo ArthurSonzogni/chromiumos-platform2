@@ -7,6 +7,7 @@
 
 #include <sys/socket.h>
 
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -41,7 +42,13 @@ BRILLO_EXPORT std::optional<IPFamily> FromSAFamily(sa_family_t family);
 // Converts from IPFamily enum to std::String.
 BRILLO_EXPORT std::string ToString(IPFamily family);
 
-// Represents an family-agnostic IP address, either a IPv4 or a IPv6 address.
+// Represents a family-agnostic IP address (`std::variant<IPv4Address,
+// IPv6Address>`).
+// - `IPAddress(IPFamily)` constructs the all-zero address (`0.0.0.0` or `::`)
+//   for that family.
+// - `operator<` orders by family first (`kIPv4 < kIPv6`), then by per-family
+//   byte order.
+// - Pass `std::optional<IPFamily>` by value (not `const&`) as it is small.
 class BRILLO_EXPORT IPAddress {
  public:
   // Creates the IPAddress from IPv4 dotted-decimal notation or IPv6 network
@@ -113,10 +120,16 @@ class BRILLO_EXPORT IPAddress {
   std::string ToString() const;
 
  private:
+  friend struct std::hash<net_base::IPAddress>;
+
   std::variant<IPv4Address, IPv6Address> address_;
 };
 
-// Represents an family-agnostic IP CIDR, either a IPv4 or a IPv6 CIDR.
+// Represents a family-agnostic IP CIDR (`std::variant<IPv4CIDR, IPv6CIDR>`).
+// - `IPCIDR(IPFamily)` constructs the default route CIDR (`0.0.0.0/0` or
+//   `::/0`, `IsDefault() == true`) for that family.
+// - `CreateFromAddressAndPrefix` returns `std::nullopt` if the prefix length
+//   exceeds the maximum for `address.GetFamily()`.
 class BRILLO_EXPORT IPCIDR {
  public:
   // Returns the maximum prefix length for address family |family|, i.e.,
@@ -176,6 +189,9 @@ class BRILLO_EXPORT IPCIDR {
 
   bool operator==(const IPCIDR& rhs) const;
   bool operator!=(const IPCIDR& rhs) const;
+  // Compares with |rhs|. IPv4 CIDRs sort before IPv6; within a family, compare
+  // by address, then by prefix length.
+  bool operator<(const IPCIDR& rhs) const;
 
   // Returns the family of the CIDR.
   IPFamily GetFamily() const;
@@ -208,6 +224,8 @@ class BRILLO_EXPORT IPCIDR {
   std::string ToString() const;
 
  private:
+  friend struct std::hash<net_base::IPCIDR>;
+
   std::variant<IPv4CIDR, IPv6CIDR> cidr_;
 };
 
@@ -219,4 +237,23 @@ BRILLO_EXPORT std::ostream& operator<<(std::ostream& os,
 BRILLO_EXPORT std::ostream& operator<<(std::ostream& os, const IPCIDR& cidr);
 
 }  // namespace net_base
+
+namespace std {
+
+template <>
+struct hash<net_base::IPAddress> {
+  size_t operator()(const net_base::IPAddress& addr) const {
+    return std::hash<decltype(addr.address_)>()(addr.address_);
+  }
+};
+
+template <>
+struct hash<net_base::IPCIDR> {
+  size_t operator()(const net_base::IPCIDR& cidr) const {
+    return std::hash<decltype(cidr.cidr_)>()(cidr.cidr_);
+  }
+};
+
+}  // namespace std
+
 #endif  // NET_BASE_IP_ADDRESS_H_

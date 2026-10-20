@@ -4,6 +4,9 @@
 
 #include "net-base/ip_address.h"
 
+#include <iterator>
+#include <set>
+#include <unordered_set>
 #include <utility>
 
 #include <base/logging.h>
@@ -497,6 +500,95 @@ TEST(IPAddressUtilsTest, SplitCIDRString) {
   EXPECT_EQ(SplitCIDRString("192.168.1.1/ 24"), std::nullopt);
   EXPECT_EQ(SplitCIDRString("192.168.1.1/24 "), std::nullopt);
   EXPECT_EQ(SplitCIDRString(" 192.168.1.1 / 24 "), std::nullopt);
+}
+
+TEST(IPCIDRTest, OperatorCmp) {
+  const IPCIDR kOrderedCIDRs[] = {
+      *IPCIDR::CreateFromCIDRString("192.168.1.1/24"),
+      *IPCIDR::CreateFromCIDRString("192.168.1.1/32"),
+      *IPCIDR::CreateFromCIDRString("192.168.2.1/24"),
+      *IPCIDR::CreateFromCIDRString("::1/64"),
+      *IPCIDR::CreateFromCIDRString("::1/128"),
+      *IPCIDR::CreateFromCIDRString("2401:fa00::1/64")};
+
+  for (size_t i = 0; i < std::size(kOrderedCIDRs); ++i) {
+    for (size_t j = 0; j < std::size(kOrderedCIDRs); ++j) {
+      if (i < j) {
+        EXPECT_TRUE(kOrderedCIDRs[i] < kOrderedCIDRs[j]);
+        EXPECT_TRUE(kOrderedCIDRs[i] != kOrderedCIDRs[j]);
+      } else {
+        EXPECT_FALSE(kOrderedCIDRs[i] < kOrderedCIDRs[j]);
+      }
+    }
+  }
+}
+
+TEST(IPAddressTest, StdContainers) {
+  const auto ipv4_zero = IPAddress(IPFamily::kIPv4);
+  const auto ipv6_zero = IPAddress(IPFamily::kIPv6);
+  const auto ipv4_addr = *IPAddress::CreateFromString("10.0.0.1");
+
+  std::set<IPAddress> addr_set;
+  addr_set.insert(ipv4_zero);
+  addr_set.insert(ipv6_zero);
+  EXPECT_EQ(addr_set.size(), 2);
+  addr_set.insert(ipv4_zero);
+  EXPECT_EQ(addr_set.size(), 2);
+  addr_set.insert(ipv4_addr);
+  EXPECT_EQ(addr_set.size(), 3);
+  addr_set.insert(*IPAddress::CreateFromString("10.0.0.1"));
+  EXPECT_EQ(addr_set.size(), 3);
+  EXPECT_NE(addr_set.find(ipv4_zero), addr_set.end());
+  EXPECT_NE(addr_set.find(ipv6_zero), addr_set.end());
+  EXPECT_NE(addr_set.find(ipv4_addr), addr_set.end());
+
+  std::unordered_set<IPAddress> addr_unordered_set;
+  addr_unordered_set.insert(ipv4_zero);
+  addr_unordered_set.insert(ipv6_zero);
+  EXPECT_EQ(addr_unordered_set.size(), 2);
+  addr_unordered_set.insert(ipv4_zero);
+  EXPECT_EQ(addr_unordered_set.size(), 2);
+  addr_unordered_set.insert(ipv4_addr);
+  EXPECT_EQ(addr_unordered_set.size(), 3);
+  addr_unordered_set.insert(*IPAddress::CreateFromString("10.0.0.1"));
+  EXPECT_EQ(addr_unordered_set.size(), 3);
+  EXPECT_NE(addr_unordered_set.find(ipv4_zero), addr_unordered_set.end());
+  EXPECT_NE(addr_unordered_set.find(ipv6_zero), addr_unordered_set.end());
+  EXPECT_NE(addr_unordered_set.find(ipv4_addr), addr_unordered_set.end());
+}
+
+TEST(IPCIDRTest, StdContainers) {
+  const auto ipv4_zero = IPCIDR(IPFamily::kIPv4);
+  const auto ipv6_zero = IPCIDR(IPFamily::kIPv6);
+  const auto cidr = *IPCIDR::CreateFromCIDRString("10.0.0.1/24");
+
+  std::set<IPCIDR> cidr_set;
+  cidr_set.insert(ipv4_zero);
+  cidr_set.insert(ipv6_zero);
+  EXPECT_EQ(cidr_set.size(), 2);
+  cidr_set.insert(ipv4_zero);
+  EXPECT_EQ(cidr_set.size(), 2);
+  cidr_set.insert(cidr);
+  EXPECT_EQ(cidr_set.size(), 3);
+  cidr_set.insert(*IPCIDR::CreateFromCIDRString("10.0.0.1/24"));
+  EXPECT_EQ(cidr_set.size(), 3);
+  EXPECT_NE(cidr_set.find(ipv4_zero), cidr_set.end());
+  EXPECT_NE(cidr_set.find(ipv6_zero), cidr_set.end());
+  EXPECT_NE(cidr_set.find(cidr), cidr_set.end());
+
+  std::unordered_set<IPCIDR> cidr_unordered_set;
+  cidr_unordered_set.insert(ipv4_zero);
+  cidr_unordered_set.insert(ipv6_zero);
+  EXPECT_EQ(cidr_unordered_set.size(), 2);
+  cidr_unordered_set.insert(ipv4_zero);
+  EXPECT_EQ(cidr_unordered_set.size(), 2);
+  cidr_unordered_set.insert(cidr);
+  EXPECT_EQ(cidr_unordered_set.size(), 3);
+  cidr_unordered_set.insert(*IPCIDR::CreateFromCIDRString("10.0.0.1/24"));
+  EXPECT_EQ(cidr_unordered_set.size(), 3);
+  EXPECT_NE(cidr_unordered_set.find(ipv4_zero), cidr_unordered_set.end());
+  EXPECT_NE(cidr_unordered_set.find(ipv6_zero), cidr_unordered_set.end());
+  EXPECT_NE(cidr_unordered_set.find(cidr), cidr_unordered_set.end());
 }
 
 }  // namespace
