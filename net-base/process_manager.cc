@@ -170,12 +170,23 @@ pid_t ProcessManager::StartProcessInMinijailWithStdout(
   if (pid == kInvalidPID) {
     return pid;
   }
+  base::ScopedFD scoped_stdout_fd(stdout_fd);
   auto& watched_process = watched_processes_[pid];
   watched_process.exit_with_stdout_callback = std::move(exit_callback);
-  watched_process.stdout_fd.reset(stdout_fd);
+  // minijail returns a blocking pipe for stdout, but OnProcessStdoutReadable()
+  // reads in a loop until EAGAIN. Set stdout_fd to non-blocking to prevent
+  // blocking the main thread. If setting non-blocking fails, close stdout_fd
+  // and skip watching to avoid registering a watcher on a blocking fd.
+  if (!base::SetNonBlocking(scoped_stdout_fd.get())) {
+    PLOG(ERROR) << "Failed to set stdout fd to non-blocking for process "
+                << pid;
+    return pid;
+  }
+  watched_process.stdout_fd = std::move(scoped_stdout_fd);
   watched_process.stdout_watcher = base::FileDescriptorWatcher::WatchReadable(
-      stdout_fd, base::BindRepeating(&ProcessManager::OnProcessStdoutReadable,
-                                     weak_factory_.GetWeakPtr(), pid));
+      watched_process.stdout_fd.get(),
+      base::BindRepeating(&ProcessManager::OnProcessStdoutReadable,
+                          weak_factory_.GetWeakPtr(), pid));
   return pid;
 }
 

@@ -4,6 +4,8 @@
 
 #include "net-base/process_manager.h"
 
+#include <fcntl.h>
+
 #include <map>
 #include <memory>
 #include <optional>
@@ -316,14 +318,16 @@ TEST_F(ProcessManagerTest, StartProcessWithMinijailWithStdout) {
   EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup)))
       .WillOnce(Return(true));
   EXPECT_CALL(minijail_, UseCapabilities(_, kCapMask)).Times(1);
+  int read_fd = -1;
   EXPECT_CALL(minijail_,
               RunEnvPipesAndDestroy(_, IsProcessArgs(kProgram, kArgs),
                                     IsProcessEnv(kEnv), _, _, _, _))
-      .WillOnce(
-          WithArgs<3, 5>([&process_side_stdout_fd](pid_t* pid, int* stdout_fd) {
+      .WillOnce(WithArgs<3, 5>(
+          [&process_side_stdout_fd, &read_fd](pid_t* pid, int* stdout_fd) {
             int fds[2];
-            CHECK(base::CreateLocalNonBlockingPipe(fds));
+            CHECK_EQ(pipe(fds), 0);
             *stdout_fd = fds[0];
+            read_fd = fds[0];
             process_side_stdout_fd.reset(fds[1]);
             *pid = kPid;
             return true;
@@ -335,6 +339,9 @@ TEST_F(ProcessManagerTest, StartProcessWithMinijailWithStdout) {
       FROM_HERE, base::FilePath(kProgram), kArgs, kEnv, minijail_options,
       base::BindLambdaForTesting(callback));
   ASSERT_NE(actual_pid, ProcessManager::kInvalidPID);
+  const int flags = fcntl(read_fd, F_GETFL);
+  ASSERT_NE(flags, -1);
+  EXPECT_TRUE(flags & O_NONBLOCK);
 
   constexpr int kExpectedExitStatus = 123;
   std::string expected_stdout;
@@ -366,6 +373,68 @@ TEST_F(ProcessManagerTest, StartProcessWithMinijailWithStdout) {
   EXPECT_TRUE(actual_exit_status.has_value());
   EXPECT_EQ(actual_exit_status.value(), kExpectedExitStatus);
   EXPECT_EQ(actual_stdout_str, expected_stdout);
+
+  AssertEmptyWatchedProcesses();
+}
+
+TEST_F(ProcessManagerTest,
+       StartProcessWithMinijailWithStdoutSetNonBlockingFailure) {
+  const std::string kProgram = "/usr/bin/cat";
+  const std::vector<std::string> kArgs = {"-n"};
+  const std::map<std::string, std::string> kEnv = {
+      {"one", "1"},
+      {"two", "2"},
+  };
+  const std::string kUser = "user";
+  const std::string kGroup = "group";
+  const uint64_t kCapMask = 1;
+  const pid_t kPid = 457;
+
+  ProcessManager::MinijailOptions minijail_options;
+  minijail_options.user = kUser;
+  minijail_options.group = kGroup;
+  minijail_options.capmask = kCapMask;
+
+  std::optional<int> actual_exit_status;
+  std::string actual_stdout_str = "initial";
+  auto callback = [&actual_exit_status, &actual_stdout_str](
+                      int exit_status, const std::string& stdout_str) {
+    actual_exit_status = exit_status;
+    actual_stdout_str = stdout_str;
+  };
+
+  EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(minijail_, UseCapabilities(_, kCapMask)).Times(1);
+  EXPECT_CALL(minijail_,
+              RunEnvPipesAndDestroy(_, IsProcessArgs(kProgram, kArgs),
+                                    IsProcessEnv(kEnv), _, _, _, _))
+      .WillOnce(WithArgs<3, 5>([](pid_t* pid, int* stdout_fd) {
+        // An O_PATH fd cannot be set to non-blocking because fcntl(F_SETFL)
+        // returns EBADF for O_PATH file descriptors.
+        int path_fd = open("/dev/null", O_PATH | O_CLOEXEC);
+        CHECK_GE(path_fd, 0);
+        *stdout_fd = path_fd;
+        *pid = kPid;
+        return true;
+      }));
+  EXPECT_CALL(minijail_, CloseOpenFds(_)).Times(1);
+  EXPECT_CALL(minijail_, PreserveFd(_, _, _)).Times(3);
+
+  pid_t actual_pid = process_manager_->StartProcessInMinijailWithStdout(
+      FROM_HERE, base::FilePath(kProgram), kArgs, kEnv, minijail_options,
+      base::BindLambdaForTesting(callback));
+  ASSERT_EQ(actual_pid, kPid);
+
+  // When SetNonBlocking fails, stdout watching is skipped and stdout_fd is
+  // closed. The process continues running, and exit callback is invoked upon
+  // process exit with empty stdout.
+  constexpr int kExpectedExitStatus = 123;
+  OnProcessExited(actual_pid, kExpectedExitStatus);
+
+  EXPECT_TRUE(actual_exit_status.has_value());
+  EXPECT_EQ(actual_exit_status.value(), kExpectedExitStatus);
+  EXPECT_TRUE(actual_stdout_str.empty());
 
   AssertEmptyWatchedProcesses();
 }
