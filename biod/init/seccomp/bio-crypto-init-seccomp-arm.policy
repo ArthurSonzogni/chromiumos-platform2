@@ -70,3 +70,6 @@ clock_gettime64: 1
 fstatfs64: 1
 fstatfs: 1
 statfs64: 1
+pidfd_open: 1
+ppoll: 1
+ppoll_time64: 1

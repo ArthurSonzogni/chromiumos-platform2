@@ -55,8 +55,10 @@ nanosleep: 1
 newfstatat: 1
 open: 1
 openat: 1
+pidfd_open: 1
 pipe: 1
 poll: 1
+ppoll: 1
 pread64: 1
 prctl: 1
 process_vm_readv: 1

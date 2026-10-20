@@ -57,3 +57,5 @@ clock_gettime: 1
 futex: 1
 fstatfs: 1
 statfs: 1
+pidfd_open: 1
+ppoll: 1
