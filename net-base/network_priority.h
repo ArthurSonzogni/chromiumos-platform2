@@ -34,7 +34,10 @@ struct BRILLO_EXPORT NetworkPriority {
   bool operator==(const NetworkPriority& rhs) const = default;
 
   // Compares two priority objects in terms of routing (excluding
-  // `is_primary_for_dns`).
+  // `is_primary_for_dns`). This allows callers such as `shill`'s
+  // `Network::SetPriority` to skip re-applying routing rules
+  // (`ApplyNetworkConfig()`) when only `is_primary_for_dns` changes, avoiding
+  // transient routing blackholes during route updates.
   static bool HaveSameRoutingPriority(NetworkPriority a, NetworkPriority b) {
     return a.is_primary_logical == b.is_primary_logical &&
            a.is_primary_physical == b.is_primary_physical &&
@@ -42,6 +45,9 @@ struct BRILLO_EXPORT NetworkPriority {
   }
 };
 
+// Outputs `<priority>` in `{<ranking_order>[, primary_logical][,
+// primary_physical][, primary_for_dns]}` format (e.g. `{31}` or
+// `{0, primary_logical, primary_physical}`).
 BRILLO_EXPORT std::ostream& operator<<(std::ostream& stream,
                                        const NetworkPriority& priority);
 

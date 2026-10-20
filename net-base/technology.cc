@@ -34,6 +34,7 @@ std::string_view ToString(Technology technology) {
 }
 
 std::optional<Technology> FromString(std::string_view str) {
+  // Use `base::MakeFixedFlatMap` for compile-time string-to-enum lookup tables.
   static constexpr auto kStringToTechnology =
       base::MakeFixedFlatMap<std::string_view, Technology>({
           {kCellularString, Technology::kCellular},

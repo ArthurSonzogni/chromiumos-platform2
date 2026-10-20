@@ -13,6 +13,8 @@
 namespace net_base {
 
 // The enum representing a link transport technology type.
+// Note that `kWiFiDirect` (`"wifi_direct"`) is distinct from `kWiFi`
+// (`"wifi"`).
 enum class BRILLO_EXPORT Technology {
   kCellular,
   kEthernet,
@@ -21,7 +23,10 @@ enum class BRILLO_EXPORT Technology {
   kWiFiDirect,
 };
 
-// Converts between the technology and the string.
+// Converts between the technology and its lowercase string representation
+// (`"cellular"`, `"ethernet"`, `"vpn"`, `"wifi"`, `"wifi_direct"`).
+// `FromString` is case-sensitive and returns `std::nullopt` for unknown
+// strings.
 BRILLO_EXPORT std::string_view ToString(Technology);
 BRILLO_EXPORT std::optional<Technology> FromString(std::string_view str);
 
