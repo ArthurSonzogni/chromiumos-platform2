@@ -21,7 +21,17 @@
 
 namespace net_base {
 
-// Represents an EUI-48 address.
+// Represents a 6-byte IEEE 802 EUI-48 hardware MAC address
+// (`kAddressLength = ETHER_ADDR_LEN = 6`), distinct from 8-byte EUI-64
+// addresses.
+// - Default-constructed instances are all-zero (`00:00:00:00:00:00`), which is
+//   considered unset (`IsZero() == true`).
+// - `CreateFromString` strictly requires `"aa:bb:cc:dd:ee:ff"` (17 chars, `:`
+//   separators, and two ASCII hex digits per octet); `CreateFromHexString`
+//   parses the 12-hex-digit form without separators.
+// - Hashing is provided via the nested `MacAddress::Hash` functor
+//   (`MacAddress::UnorderedSet`) rather than specializing
+//   `std::hash<MacAddress>` (per go/totw/218#template-specializations).
 class BRILLO_EXPORT MacAddress {
  public:
   struct Hash {
@@ -37,9 +47,9 @@ class BRILLO_EXPORT MacAddress {
   using DataType = std::array<uint8_t, kAddressLength>;
 
   // Multicast address bit.
-  static constexpr uint8_t kMulicastMacBit = 0x01;
+  static constexpr uint8_t kMulticastMacBit = 0x01;
   // Locally administered bit.
-  static constexpr uint8_t kLocallyAdministratedMacBit = 0x02;
+  static constexpr uint8_t kLocallyAdministeredMacBit = 0x02;
 
   // Create a random unicast locally administered MAC address.
   static MacAddress CreateRandom();

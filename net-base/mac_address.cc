@@ -14,8 +14,8 @@ namespace net_base {
 MacAddress MacAddress::CreateRandom() {
   net_base::MacAddress::DataType data;
   base::RandBytes(data);
-  data[0] &= ~kMulicastMacBit;
-  data[0] |= kLocallyAdministratedMacBit;
+  data[0] &= ~kMulticastMacBit;
+  data[0] |= kLocallyAdministeredMacBit;
 
   return MacAddress(data);
 }
@@ -23,7 +23,7 @@ MacAddress MacAddress::CreateRandom() {
 // static
 std::optional<MacAddress> MacAddress::CreateFromString(
     std::string_view address_string) {
-  // The length of the string should be 6 bytes * 2 digit + 5 semicolon = 17.
+  // The length of the string should be 6 bytes * 2 digits + 5 colons = 17.
   constexpr size_t kStringLength = 17;
 
   if (address_string.size() != kStringLength) {
@@ -88,7 +88,7 @@ bool MacAddress::IsZero() const {
 }
 
 bool MacAddress::IsLocallyAdministered() const {
-  return (data_[0] & kLocallyAdministratedMacBit) != 0;
+  return (data_[0] & kLocallyAdministeredMacBit) != 0;
 }
 
 bool MacAddress::operator==(const MacAddress& rhs) const {

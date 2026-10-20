@@ -30,8 +30,8 @@ TEST(MacAddress, constructor) {
 
 TEST(MacAddress, CreateRandom) {
   const std::vector<uint8_t> addr = MacAddress::CreateRandom().ToBytes();
-  EXPECT_TRUE(addr[0] & MacAddress::kLocallyAdministratedMacBit);
-  EXPECT_FALSE(addr[0] & MacAddress::kMulicastMacBit);
+  EXPECT_TRUE(addr[0] & MacAddress::kLocallyAdministeredMacBit);
+  EXPECT_FALSE(addr[0] & MacAddress::kMulticastMacBit);
 }
 
 TEST(MacAddress, IsLocallyAdministered) {
