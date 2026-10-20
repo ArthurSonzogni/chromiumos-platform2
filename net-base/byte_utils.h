@@ -5,6 +5,8 @@
 #ifndef NET_BASE_BYTE_UTILS_H_
 #define NET_BASE_BYTE_UTILS_H_
 
+#include <cstdint>
+#include <cstring>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -15,6 +17,22 @@
 #include <brillo/brillo_export.h>
 
 namespace net_base::byte_utils {
+
+// Low-level conversion helpers between trivially copyable types, std::string,
+// and byte spans (`base::span<const uint8_t>` / `std::vector<uint8_t>`).
+//
+// Design and strictness notes:
+// - No byte-order conversion is performed; all multi-byte values are read and
+//   written in host byte order. Callers must convert endianness explicitly.
+// - `FromBytes<T>` requires an exact size match (`bytes.size() == sizeof(T)`)
+//   and never truncates or zero-pads. Callers holding larger buffers with
+//   trailing padding must slice the span explicitly (`bytes.first(sizeof(T))`).
+// - `ByteString*` and `String*CStringBytes` are separate APIs rather than a
+//   boolean flag because callers have distinct semantic intent: use
+//   `ByteString*` for binary buffers stored in `std::string` (such as C++
+//   protobuf `bytes` fields or opaque binary netlink attributes) where embedded
+//   null characters ('\0') must be preserved, and `*CStringBytes` for
+//   null-terminated C strings (such as `IFLA_IFNAME`).
 
 // Converts a plain old data (e.g. uint32_t, struct) to a byte buffer stored
 // in host order.
@@ -37,7 +55,7 @@ std::optional<T> FromBytes(base::span<const uint8_t> bytes) {
   }
 
   T val;
-  memcpy(&val, bytes.data(), sizeof(T));
+  std::memcpy(&val, bytes.data(), sizeof(T));
   return val;
 }
 
@@ -87,7 +105,7 @@ BRILLO_EXPORT std::vector<uint8_t> ByteStringToBytes(std::string_view bytes);
 BRILLO_EXPORT base::span<const uint8_t> ByteStringAsBytes(
     std::string_view bytes);
 
-// Converts a byte buffer to a std:string. The size of the returned string is
+// Converts a byte buffer to a std::string. The size of the returned string is
 // the same as the input byte buffer, even if the buffer contains null
 // character. e.g.
 // {'a', 'b', 'c'}            => std::string("abc", 3)

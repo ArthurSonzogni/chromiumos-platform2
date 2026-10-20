@@ -4,6 +4,11 @@
 
 #include "net-base/byte_utils.h"
 
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <vector>
+
 #include <base/logging.h>
 #include <gtest/gtest.h>
 
@@ -16,6 +21,9 @@ TEST(Bytes, ConvertBetweenUInt32) {
 
   EXPECT_EQ(bytes.size(), sizeof(uint32_t));
   EXPECT_EQ(FromBytes<uint32_t>(bytes), val);
+  EXPECT_EQ(FromBytes<uint32_t>(std::vector<uint8_t>{1, 2, 3}), std::nullopt);
+  EXPECT_EQ(FromBytes<uint32_t>(std::vector<uint8_t>{1, 2, 3, 4, 5}),
+            std::nullopt);
 }
 
 TEST(Bytes, ConvertBetweenStruct) {
@@ -72,6 +80,8 @@ TEST(Bytes, StringToCStringBytes) {
             (std::vector<uint8_t>{'a', 'b', 'c', '\0'}));
   EXPECT_EQ(StringToCStringBytes(std::string("abc\0", 4)),
             (std::vector<uint8_t>{'a', 'b', 'c', '\0'}));
+  EXPECT_EQ(StringToCStringBytes(std::string("ab\0c", 4)),
+            (std::vector<uint8_t>{'a', 'b', '\0'}));
 }
 
 TEST(Bytes, StringFromCStringBytes) {

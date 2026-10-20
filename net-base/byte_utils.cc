@@ -4,14 +4,12 @@
 
 #include "net-base/byte_utils.h"
 
-#include <string.h>
-
-#include <base/sys_byteorder.h>
+#include <algorithm>
 
 namespace net_base::byte_utils {
 
 std::vector<uint8_t> StringToCStringBytes(std::string_view str) {
-  const size_t len = strnlen(str.data(), str.size());
+  const size_t len = std::min(str.find('\0'), str.size());
   std::vector<uint8_t> bytes{
       reinterpret_cast<const uint8_t*>(str.data()),
       reinterpret_cast<const uint8_t*>(str.data()) + len};
@@ -20,9 +18,9 @@ std::vector<uint8_t> StringToCStringBytes(std::string_view str) {
 }
 
 std::string StringFromCStringBytes(base::span<const uint8_t> bytes) {
-  const size_t len =
-      strnlen(reinterpret_cast<const char*>(bytes.data()), bytes.size());
-  return {reinterpret_cast<const char*>(bytes.data()), len};
+  const auto end = std::find(bytes.begin(), bytes.end(), 0);
+  return {reinterpret_cast<const char*>(bytes.data()),
+          static_cast<size_t>(end - bytes.begin())};
 }
 
 std::vector<uint8_t> ByteStringToBytes(std::string_view bytes) {
