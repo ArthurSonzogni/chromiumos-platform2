@@ -47,6 +47,10 @@ class StylusGarageEventsImplTest : public testing::Test {
   EventObserverTestFuture& event_observer() { return event_observer_; }
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
+  void AddEventObserver(mojo::PendingRemote<mojom::EventObserver> observer) {
+    stylus_garage_events_impl_.AddObserver(std::move(observer));
+  }
+
   void EmitStylusGarageInsertEvent() { stylus_garage_observer_->OnInsert(); }
 
   void EmitStylusGarageRemoveEvent() { stylus_garage_observer_->OnRemove(); }
@@ -106,6 +110,40 @@ TEST_F(StylusGarageEventsImplTest, ProcessControlResetWhenNoEventObserver) {
 
   process_control_.receiver().FlushForTesting();
   EXPECT_FALSE(process_control_.IsConnected());
+}
+
+// Test that the monitor can be started again after the delegate observer
+// disconnects, e.g. when the delegate failed to find the evdev device.
+TEST_F(StylusGarageEventsImplTest,
+       RestartMonitorAfterDelegateObserverDisconnects) {
+  // Simulate the delegate failing to initialize, which resets its observer
+  // with a reason and drops all the event observers.
+  stylus_garage_observer_.FlushForTesting();
+  stylus_garage_observer_.ResetWithReason(/*custom_reason=*/0,
+                                          "EvdevMonitor can't find target.");
+
+  process_control_.receiver().FlushForTesting();
+  ASSERT_FALSE(process_control_.IsConnected());
+
+  // Adding an event observer again should start a new monitor.
+  mojo::Remote<mojom::StylusGarageObserver> new_stylus_garage_observer;
+  FakeProcessControl new_process_control;
+  EXPECT_CALL(*mock_executor(), MonitorStylusGarage(_, _))
+      .WillOnce([&](auto stylus_garage_observer, auto pending_process_control) {
+        new_stylus_garage_observer.Bind(std::move(stylus_garage_observer));
+        new_process_control.BindReceiver(std::move(pending_process_control));
+      });
+
+  EventObserverTestFuture new_event_observer;
+  AddEventObserver(new_event_observer.BindNewPendingRemote());
+
+  new_stylus_garage_observer->OnInsert();
+
+  auto info = new_event_observer.WaitForEvent();
+  ASSERT_TRUE(info->is_stylus_garage_event_info());
+  const auto& stylus_garage_event_info = info->get_stylus_garage_event_info();
+  EXPECT_EQ(stylus_garage_event_info->state,
+            mojom::StylusGarageEventInfo::State::kInserted);
 }
 
 }  // namespace

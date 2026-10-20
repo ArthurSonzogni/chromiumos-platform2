@@ -46,6 +46,8 @@ class TouchscreenEventsImplTest : public testing::Test {
     events_impl_.AddObserver(std::move(observer));
   }
 
+  MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
+
   void EmitTouchscreenConnectedEvent(
       const mojom::TouchscreenConnectedEventPtr& event) {
     touchscreen_observer_->OnConnected(event.Clone());
@@ -59,8 +61,6 @@ class TouchscreenEventsImplTest : public testing::Test {
   FakeProcessControl process_control_;
 
  private:
-  MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
-
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
   TouchscreenEventsImpl events_impl_{&mock_context_};
@@ -182,6 +182,45 @@ TEST_F(TouchscreenEventsImplTest, ProcessControlResetWhenNoEventObserver) {
 
   process_control_.receiver().FlushForTesting();
   EXPECT_FALSE(process_control_.IsConnected());
+}
+
+// Test that the monitor can be started again after the delegate observer
+// disconnects, e.g. when the delegate failed to find the evdev device.
+TEST_F(TouchscreenEventsImplTest,
+       RestartMonitorAfterDelegateObserverDisconnects) {
+  EventObserverTestFuture event_observer;
+  AddEventObserver(event_observer.BindNewPendingRemote());
+
+  // Simulate the delegate failing to initialize, which resets its observer
+  // with a reason and drops all the event observers.
+  touchscreen_observer_.FlushForTesting();
+  touchscreen_observer_.ResetWithReason(/*custom_reason=*/0,
+                                        "EvdevMonitor can't find target.");
+
+  process_control_.receiver().FlushForTesting();
+  ASSERT_FALSE(process_control_.IsConnected());
+
+  // Adding an event observer again should start a new monitor.
+  mojo::Remote<mojom::TouchscreenObserver> new_touchscreen_observer;
+  FakeProcessControl new_process_control;
+  EXPECT_CALL(*mock_executor(), MonitorTouchscreen(_, _))
+      .WillOnce([&](auto touchscreen_observer, auto pending_process_control) {
+        new_touchscreen_observer.Bind(std::move(touchscreen_observer));
+        new_process_control.BindReceiver(std::move(pending_process_control));
+      });
+
+  EventObserverTestFuture new_event_observer;
+  AddEventObserver(new_event_observer.BindNewPendingRemote());
+
+  mojom::TouchscreenTouchEvent fake_touch_event;
+  fake_touch_event.touch_points.push_back(mojom::TouchPointInfo::New());
+  new_touchscreen_observer->OnTouch(fake_touch_event.Clone());
+
+  auto event = new_event_observer.WaitForEvent();
+  ASSERT_TRUE(event->is_touchscreen_event_info());
+  const auto& touchscreen_event_info = event->get_touchscreen_event_info();
+  ASSERT_TRUE(touchscreen_event_info->is_touch_event());
+  EXPECT_EQ(fake_touch_event, *touchscreen_event_info->get_touch_event());
 }
 
 }  // namespace

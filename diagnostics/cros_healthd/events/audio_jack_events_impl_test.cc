@@ -40,6 +40,10 @@ class AudioJackEventsImplTest : public testing::Test {
   EventObserverTestFuture& event_observer() { return event_observer_; }
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
+  void AddEventObserver(mojo::PendingRemote<mojom::EventObserver> observer) {
+    audio_jack_events_impl_.AddObserver(std::move(observer));
+  }
+
   void SetExecutorMonitorAudioJack() {
     EXPECT_CALL(*mock_executor(), MonitorAudioJack(_, _))
         .WillOnce(
@@ -154,6 +158,43 @@ TEST_F(AudioJackEventsImplTest, ProcessControlResetWhenNoEventObserver) {
 
   process_control_.receiver().FlushForTesting();
   EXPECT_FALSE(process_control_.IsConnected());
+}
+
+// Test that the monitor can be started again after the delegate observer
+// disconnects, e.g. when the delegate failed to find the evdev device.
+TEST_F(AudioJackEventsImplTest,
+       RestartMonitorAfterDelegateObserverDisconnects) {
+  // Simulate the delegate failing to initialize, which resets its observer
+  // with a reason and drops all the event observers.
+  audio_jack_observer_.FlushForTesting();
+  audio_jack_observer_.ResetWithReason(/*custom_reason=*/0,
+                                       "EvdevMonitor can't find target.");
+
+  process_control_.receiver().FlushForTesting();
+  ASSERT_FALSE(process_control_.IsConnected());
+
+  // Adding an event observer again should start a new monitor.
+  mojo::Remote<mojom::AudioJackObserver> new_audio_jack_observer;
+  FakeProcessControl new_process_control;
+  EXPECT_CALL(*mock_executor(), MonitorAudioJack(_, _))
+      .WillOnce([&](auto audio_jack_observer, auto pending_process_control) {
+        new_audio_jack_observer.Bind(std::move(audio_jack_observer));
+        new_process_control.BindReceiver(std::move(pending_process_control));
+      });
+
+  EventObserverTestFuture new_event_observer;
+  AddEventObserver(new_event_observer.BindNewPendingRemote());
+
+  new_audio_jack_observer->OnAdd(
+      mojom::AudioJackEventInfo::DeviceType::kHeadphone);
+
+  auto info = new_event_observer.WaitForEvent();
+  ASSERT_TRUE(info->is_audio_jack_event_info());
+  const auto& audio_jack_event_info = info->get_audio_jack_event_info();
+  EXPECT_EQ(audio_jack_event_info->state,
+            mojom::AudioJackEventInfo::State::kAdd);
+  EXPECT_EQ(audio_jack_event_info->device_type,
+            mojom::AudioJackEventInfo::DeviceType::kHeadphone);
 }
 
 }  // namespace

@@ -203,5 +203,43 @@ TEST_F(TouchpadEventsImplTest, ProcessControlResetWhenNoEventObserver) {
   EXPECT_FALSE(process_control_.IsConnected());
 }
 
+// Test that the monitor can be started again after the delegate observer
+// disconnects, e.g. when the delegate failed to find the evdev device.
+TEST_F(TouchpadEventsImplTest, RestartMonitorAfterDelegateObserverDisconnects) {
+  EventObserverTestFuture event_observer;
+  AddEventObserver(event_observer.BindNewPendingRemote());
+
+  // Simulate the delegate failing to initialize, which resets its observer
+  // with a reason and drops all the event observers.
+  touchpad_observer_.FlushForTesting();
+  touchpad_observer_.ResetWithReason(/*custom_reason=*/0,
+                                     "EvdevMonitor can't find target.");
+
+  process_control_.receiver().FlushForTesting();
+  ASSERT_FALSE(process_control_.IsConnected());
+
+  // Adding an event observer again should start a new monitor.
+  mojo::Remote<mojom::TouchpadObserver> new_touchpad_observer;
+  FakeProcessControl new_process_control;
+  EXPECT_CALL(*mock_executor(), MonitorTouchpad(_, _))
+      .WillOnce([&](auto touchpad_observer, auto pending_process_control) {
+        new_touchpad_observer.Bind(std::move(touchpad_observer));
+        new_process_control.BindReceiver(std::move(pending_process_control));
+      });
+
+  EventObserverTestFuture new_event_observer;
+  AddEventObserver(new_event_observer.BindNewPendingRemote());
+
+  mojom::TouchpadTouchEvent fake_touch_event;
+  fake_touch_event.touch_points.push_back(mojom::TouchPointInfo::New());
+  new_touchpad_observer->OnTouch(fake_touch_event.Clone());
+
+  auto event = new_event_observer.WaitForEvent();
+  ASSERT_TRUE(event->is_touchpad_event_info());
+  const auto& touchpad_event_info = event->get_touchpad_event_info();
+  ASSERT_TRUE(touchpad_event_info->is_touch_event());
+  EXPECT_EQ(fake_touch_event, *touchpad_event_info->get_touch_event());
+}
+
 }  // namespace
 }  // namespace diagnostics

@@ -75,6 +75,9 @@ void AudioJackEventsImpl::StopMonitor(mojo::RemoteSetElementId id) {
 
 void AudioJackEventsImpl::CleanUp(uint32_t custom_reason,
                                   const std::string& description) {
+  // A disconnected receiver stays bound until it is reset explicitly. Reset it
+  // so that the next observer can start the monitor again.
+  receiver_.reset();
   process_control_.reset();
   observers_.ClearWithReason(custom_reason, description);
 }

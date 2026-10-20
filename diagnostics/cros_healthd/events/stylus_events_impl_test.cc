@@ -178,5 +178,43 @@ TEST_F(StylusEventsImplTest, ProcessControlResetWhenNoEventObserver) {
   EXPECT_FALSE(process_control_.IsConnected());
 }
 
+// Test that the monitor can be started again after the delegate observer
+// disconnects, e.g. when the delegate failed to find the evdev device.
+TEST_F(StylusEventsImplTest, RestartMonitorAfterDelegateObserverDisconnects) {
+  EventObserverTestFuture event_observer;
+  AddEventObserver(event_observer.BindNewPendingRemote());
+
+  // Simulate the delegate failing to initialize, which resets its observer
+  // with a reason and drops all the event observers.
+  stylus_observer_.FlushForTesting();
+  stylus_observer_.ResetWithReason(/*custom_reason=*/0,
+                                   "EvdevMonitor can't find target.");
+
+  process_control_.receiver().FlushForTesting();
+  ASSERT_FALSE(process_control_.IsConnected());
+
+  // Adding an event observer again should start a new monitor.
+  mojo::Remote<mojom::StylusObserver> new_stylus_observer;
+  FakeProcessControl new_process_control;
+  EXPECT_CALL(*mock_executor(), MonitorStylus(_, _))
+      .WillOnce([&](auto stylus_observer, auto pending_process_control) {
+        new_stylus_observer.Bind(std::move(stylus_observer));
+        new_process_control.BindReceiver(std::move(pending_process_control));
+      });
+
+  EventObserverTestFuture new_event_observer;
+  AddEventObserver(new_event_observer.BindNewPendingRemote());
+
+  mojom::StylusTouchEvent fake_touch_event;
+  fake_touch_event.touch_point = mojom::StylusTouchPointInfo::New();
+  new_stylus_observer->OnTouch(fake_touch_event.Clone());
+
+  auto info = new_event_observer.WaitForEvent();
+  ASSERT_TRUE(info->is_stylus_event_info());
+  const auto& stylus_event_info = info->get_stylus_event_info();
+  ASSERT_TRUE(stylus_event_info->is_touch_event());
+  EXPECT_EQ(fake_touch_event, *stylus_event_info->get_touch_event());
+}
+
 }  // namespace
 }  // namespace diagnostics
