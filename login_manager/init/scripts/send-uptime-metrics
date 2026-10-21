@@ -15,9 +15,10 @@ record_delta() {
   fi
 }
 
-# logout-started signal is written asynchronously after Chrome starts.
+# logout-started signal is written asynchronously after Chrome starts. Chrome
+# writes the flag file next to the bootstat files in /run/bootstat.
 # Wait for new signal to appear for 10 seconds.
-FLAG_FILE=/tmp/stats-logout-started.written
+FLAG_FILE=/run/bootstat/stats-logout-started.written
 for i in $(seq 10) ; do
   if mv -f "${FLAG_FILE}" "${FLAG_FILE}".done 2> /dev/null ; then
     FOUND=true
