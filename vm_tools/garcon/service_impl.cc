@@ -4,9 +4,10 @@
 
 #include "vm_tools/garcon/service_impl.h"
 
+// clang-format off
 #include <sys/socket.h>
-
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket
+// clang-format on
 
 #include <algorithm>
 #include <cstdlib>
@@ -161,9 +162,16 @@ grpc::Status ServiceImpl::LaunchApplication(
 
   if (request->display_scaling() ==
       vm_tools::container::LaunchApplicationRequest::SCALED) {
-    env[kXDisplayEnv] = std::getenv(kXLowDensityDisplayEnv);
-    env[kWaylandDisplayEnv] = std::getenv(kWaylandLowDensityDisplayEnv);
-    env[kXCursorSizeEnv] = std::getenv(kLowDensityXCursorSizeEnv);
+    if (const char* x_display = std::getenv(kXLowDensityDisplayEnv)) {
+      env[kXDisplayEnv] = x_display;
+    }
+    if (const char* wayland_display =
+            std::getenv(kWaylandLowDensityDisplayEnv)) {
+      env[kWaylandDisplayEnv] = wayland_display;
+    }
+    if (const char* xcursor_size = std::getenv(kLowDensityXCursorSizeEnv)) {
+      env[kXCursorSizeEnv] = xcursor_size;
+    }
   }
 
   SetEnvForContainerFeatures(env, request->container_features());
