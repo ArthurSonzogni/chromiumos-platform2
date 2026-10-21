@@ -134,6 +134,9 @@ bool LoadOobeConfigRollback::AssembleConfig(const RollbackData& rollback_data,
   dictionary.Set("skipHidScreen", true);
   // Tell Chrome to skip EU update opt out notice.
   dictionary.Set("skipUpdateOptOutScreen", true);
+  // Skip the enrollment completed confirmation screen so migration proceeds
+  // directly to the login screen without waiting for user action.
+  dictionary.Set("skipEnrollmentSuccessScreen", true);
   if (!rollback_data.is_device_migration()) {
     // Tell Chrome that it still has to create some robot accounts that were
     // destroyed during rollback.

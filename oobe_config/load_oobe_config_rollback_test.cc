@@ -118,6 +118,12 @@ TEST_F(LoadOobeConfigRollbackTest, DecryptAndParse) {
 
   std::string config;
   ASSERT_TRUE(load_config_->GetOobeConfigJson(&config));
+
+  std::optional<base::DictValue> value =
+      base::JSONReader::ReadDict(config, base::JSON_PARSE_RFC);
+  ASSERT_TRUE(value.has_value());
+  EXPECT_EQ(value->FindBool("enrollmentRestoreAfterRollback"), true);
+  EXPECT_EQ(value->FindBool("skipEnrollmentSuccessScreen"), true);
 }
 
 TEST_F(LoadOobeConfigRollbackTest, SecondRequestDoesNotNeedPstore) {
@@ -166,6 +172,7 @@ TEST_F(LoadOobeConfigRollbackTest,
 
   EXPECT_FALSE(value->FindBool("enrollmentRestoreAfterRollback").has_value());
   EXPECT_EQ(value->FindBool("welcomeNext"), true);
+  EXPECT_EQ(value->FindBool("skipEnrollmentSuccessScreen"), true);
 }
 
 }  // namespace oobe_config
