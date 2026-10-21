@@ -319,11 +319,6 @@ ErrorType AccountManager::SetConfig(const std::string& principal_name,
     return error;
   }
 
-  // Triggering the signal is only necessary if the credential cache exists.
-  if (base::PathExists(GetKrb5CCPath(principal_name))) {
-    TriggerKerberosFilesChanged(principal_name);
-  }
-
   // Validate configuration to make sure it doesn't contain invalid options.
   ConfigErrorInfo error_info;
   error = krb5_->ValidateConfig(krb5conf, &error_info);
@@ -336,6 +331,13 @@ ErrorType AccountManager::SetConfig(const std::string& principal_name,
     account->data.set_is_config_valid(true);
   }
   SaveAccounts();
+
+  // Triggering the signal is only necessary if the configuration is valid and
+  // the credential cache exists.
+  if (account->data.is_config_valid() &&
+      base::PathExists(GetKrb5CCPath(principal_name))) {
+    TriggerKerberosFilesChanged(principal_name);
+  }
 
   return ERROR_NONE;
 }
@@ -420,6 +422,9 @@ ErrorType AccountManager::GetKerberosFiles(const std::string& principal_name,
   const InternalAccount* account = GetAccount(principal_name);
   if (!account) {
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
+  }
+  if (!account->data.is_config_valid()) {
+    return ERROR_BAD_CONFIG;
   }
 
   // By convention, no credential cache means no error.

@@ -471,6 +471,18 @@ TEST_F(AccountManagerTest, SetConfigDoesNotTriggerKFCIfDoesNotCCExist) {
   EXPECT_EQ(0, kerberos_files_changed_count_[kUser]);
 }
 
+// SetConfig() does not trigger KerberosFilesChanged if the configuration is
+// invalid.
+TEST_F(AccountManagerTest, SetConfigDoesNotTriggerKFCIfConfigInvalid) {
+  EXPECT_EQ(ERROR_NONE, AddAccount());
+
+  EXPECT_EQ(ERROR_NONE, AcquireTgt());
+  EXPECT_EQ(1, kerberos_files_changed_count_[kUser]);
+  krb5_->set_validate_config_error(ERROR_BAD_CONFIG);
+  EXPECT_EQ(ERROR_NONE, SetConfig(kInvalidKrb5Conf));
+  EXPECT_EQ(1, kerberos_files_changed_count_[kUser]);
+}
+
 // RemoveAccount() removes the config file.
 TEST_F(AccountManagerTest, RemoveAccountRemovesConfig) {
   EXPECT_EQ(ERROR_NONE, AddAccount());
@@ -825,6 +837,21 @@ TEST_F(AccountManagerTest, GetKerberosFilesSucceedsWithCC) {
   EXPECT_EQ(ERROR_NONE, manager_->GetKerberosFiles(kUser, &files));
   EXPECT_FALSE(files.krb5cc().empty());
   EXPECT_EQ(kKrb5Conf, files.krb5conf());
+}
+
+// GetKerberosFiles returns ERROR_BAD_CONFIG if the configuration is invalid.
+TEST_F(AccountManagerTest, GetKerberosFilesInvalidConfig) {
+  EXPECT_EQ(ERROR_NONE, AddAccount());
+  EXPECT_EQ(ERROR_NONE, SetConfig());
+  EXPECT_EQ(ERROR_NONE, AcquireTgt());
+
+  krb5_->set_validate_config_error(ERROR_BAD_CONFIG);
+  EXPECT_EQ(ERROR_NONE, SetConfig(kInvalidKrb5Conf));
+
+  KerberosFiles files;
+  EXPECT_EQ(ERROR_BAD_CONFIG, manager_->GetKerberosFiles(kUser, &files));
+  EXPECT_FALSE(files.has_krb5cc());
+  EXPECT_FALSE(files.has_krb5conf());
 }
 
 // Most methods return ERROR_UNKNOWN_PRINCIPAL if called with such a principal.
