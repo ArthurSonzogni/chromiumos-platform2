@@ -43,7 +43,8 @@ bool Pkcs11CertStore::Delete(CK_SLOT_ID slot, std::string_view cka_id) {
                    << base::HexEncode(cka_id);
       continue;
     }
-    if (object_class != CKO_PRIVATE_KEY && object_class != CKO_CERTIFICATE) {
+    if (object_class != CKO_PRIVATE_KEY && object_class != CKO_PUBLIC_KEY &&
+        object_class != CKO_CERTIFICATE) {
       LOG(WARNING) << "Unexpected object class " << object_class
                    << " with ID: " << base::HexEncode(cka_id);
       continue;

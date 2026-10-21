@@ -5,10 +5,10 @@
 #ifndef SHILL_STORE_PKCS11_CERT_STORE_H_
 #define SHILL_STORE_PKCS11_CERT_STORE_H_
 
-#include <chaps/pkcs11/cryptoki.h>
-
 #include <string>
 #include <string_view>
+
+#include <chaps/pkcs11/cryptoki.h>
 
 namespace shill {
 
@@ -21,7 +21,7 @@ class Pkcs11CertStore {
 
   virtual ~Pkcs11CertStore() = default;
 
-  // Deletes all certificates and private keys with a CKA_ID attribute that
+  // Deletes all certificates and keys with a CKA_ID attribute that
   // matches the given |cka_id| from PKCS#11 token storage. Returns true if all
   // matching objects are deleted successfully or if nothing matches, false
   // upon failure.
