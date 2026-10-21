@@ -89,6 +89,8 @@ class BRILLO_EXPORT FileStream : public Stream {
   // |own_descriptor| indicates whether the stream must close the underlying
   // file descriptor when its CloseBlocking() method is called. This should be
   // set to false for file descriptors that shouldn't be closed (e.g. stdin).
+  // When |own_descriptor| is false, the descriptor's original O_NONBLOCK state
+  // will be restored when the stream is closed.
   static StreamPtr FromFileDescriptor(int file_descriptor,
                                       bool own_descriptor,
                                       ErrorPtr* error);

@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/check.h>
-#include <brillo/streams/file_stream.h>
-
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -12,12 +9,14 @@
 #include <algorithm>
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/posix/eintr_wrapper.h>
 #include <brillo/errors/error_codes.h>
 #include <brillo/message_loops/message_loop.h>
+#include <brillo/streams/file_stream.h>
 #include <brillo/streams/stream_errors.h>
 #include <brillo/streams/stream_utils.h>
 
@@ -32,7 +31,8 @@ namespace brillo {
 // contained file descriptor.
 class FileDescriptor : public FileStream::FileDescriptorInterface {
  public:
-  FileDescriptor(int fd, bool own) : fd_{fd}, own_{own} {}
+  FileDescriptor(int fd, bool own, bool restore_blocking = false)
+      : fd_{fd}, own_{own}, restore_blocking_{restore_blocking} {}
   FileDescriptor(const FileDescriptor&) = delete;
   FileDescriptor& operator=(const FileDescriptor&) = delete;
   ~FileDescriptor() override {
@@ -84,7 +84,17 @@ class FileDescriptor : public FileStream::FileDescriptorInterface {
     // it before exiting.
     std::swap(fd, fd_);
     CancelPendingAsyncOperations();
-    return own_ ? IGNORE_EINTR(close(fd)) : 0;
+    if (own_) {
+      return IGNORE_EINTR(close(fd));
+    }
+    if (restore_blocking_) {
+      int flags = HANDLE_EINTR(fcntl(fd, F_GETFL));
+      if (flags < 0) {
+        return -1;
+      }
+      return HANDLE_EINTR(fcntl(fd, F_SETFL, flags & ~O_NONBLOCK));
+    }
+    return 0;
   }
 
   bool WaitForDataRead(DataCallback data_callback, ErrorPtr* error) override {
@@ -184,6 +194,11 @@ class FileDescriptor : public FileStream::FileDescriptorInterface {
   // must close it when the stream is closed. This will be false for file
   // descriptors that shouldn't be closed (e.g. stdin, stdout, stderr).
   bool own_;
+
+  // |restore_blocking_| is set to true if |fd_| was not in non-blocking mode
+  // prior to opening the stream, so that O_NONBLOCK can be cleared when the
+  // stream is closed.
+  bool restore_blocking_;
 
   // Stream callbacks to be called when read and/or write operations can be
   // performed on the file descriptor without blocking.
@@ -301,16 +316,18 @@ StreamPtr FileStream::FromFileDescriptor(int file_descriptor,
 
   // Make sure the file descriptor is set to perform non-blocking operations
   // if not enabled already.
+  bool restore_blocking = false;
   if ((fd_flags & O_NONBLOCK) == 0) {
     fd_flags |= O_NONBLOCK;
     if (HANDLE_EINTR(fcntl(file_descriptor, F_SETFL, fd_flags)) < 0) {
       brillo::errors::system::AddSystemError(error, FROM_HERE, errno);
       return stream;
     }
+    restore_blocking = true;
   }
 
   std::unique_ptr<FileDescriptorInterface> fd_interface{
-      new FileDescriptor{file_descriptor, own_descriptor}};
+      new FileDescriptor{file_descriptor, own_descriptor, restore_blocking}};
 
   stream.reset(new FileStream{std::move(fd_interface), access_mode});
   return stream;

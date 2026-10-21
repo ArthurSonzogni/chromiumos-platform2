@@ -18,6 +18,7 @@
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/posix/unix_domain_socket.h>
 #include <base/rand_util.h>
 #include <base/run_loop.h>
@@ -918,6 +919,42 @@ TEST_F(FileStreamTest, FromFileDescriptor_SocketPair) {
   EXPECT_TRUE(stream->CloseBlocking(nullptr));
   // Verify that |fd0| remains open when |own_descriptor| is false.
   EXPECT_NE(-1, fcntl(fd0.get(), F_GETFD));
+}
+
+TEST_F(FileStreamTest, FromFileDescriptor_UnownedRestoresBlockingMode) {
+  int fds[2] = {-1, -1};
+  ASSERT_EQ(0, pipe(fds));
+  base::ScopedFD read_fd(fds[0]);
+  base::ScopedFD write_fd(fds[1]);
+
+  int orig_flags = HANDLE_EINTR(fcntl(read_fd.get(), F_GETFL));
+  ASSERT_GE(orig_flags, 0);
+  ASSERT_EQ(0, orig_flags & O_NONBLOCK);
+
+  // When originally blocking, O_NONBLOCK is set while the stream is open and
+  // cleared when the stream is closed.
+  StreamPtr stream =
+      FileStream::FromFileDescriptor(read_fd.get(), false, nullptr);
+  ASSERT_NE(nullptr, stream.get());
+  EXPECT_NE(0, HANDLE_EINTR(fcntl(read_fd.get(), F_GETFL)) & O_NONBLOCK);
+  EXPECT_TRUE(stream->CloseBlocking(nullptr));
+  EXPECT_EQ(0, HANDLE_EINTR(fcntl(read_fd.get(), F_GETFL)) & O_NONBLOCK);
+
+  // Destroying an already-closed stream does not clear O_NONBLOCK again.
+  ASSERT_EQ(
+      0, HANDLE_EINTR(fcntl(read_fd.get(), F_SETFL, orig_flags | O_NONBLOCK)));
+  stream.reset();
+  EXPECT_NE(0, HANDLE_EINTR(fcntl(read_fd.get(), F_GETFL)) & O_NONBLOCK);
+
+  // When originally non-blocking, O_NONBLOCK remains set after the stream is
+  // destroyed.
+  {
+    StreamPtr nonblock_stream =
+        FileStream::FromFileDescriptor(read_fd.get(), false, nullptr);
+    ASSERT_NE(nullptr, nonblock_stream.get());
+    EXPECT_NE(0, HANDLE_EINTR(fcntl(read_fd.get(), F_GETFL)) & O_NONBLOCK);
+  }
+  EXPECT_NE(0, HANDLE_EINTR(fcntl(read_fd.get(), F_GETFL)) & O_NONBLOCK);
 }
 
 TEST_F(FileStreamTest, FromFileDescriptor_ReadNonBlocking) {
