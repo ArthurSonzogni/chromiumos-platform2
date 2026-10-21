@@ -4,7 +4,9 @@
 
 #include "brillo/streams/file_stream.h"
 
+#include <fcntl.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include <limits>
 #include <numeric>
@@ -13,8 +15,10 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
+#include <base/posix/unix_domain_socket.h>
 #include <base/rand_util.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
@@ -900,34 +904,20 @@ TEST_F(FileStreamTest, Open_TruncateExisting_Existing) {
   EXPECT_TRUE(stream->CloseBlocking(nullptr));
 }
 
-TEST_F(FileStreamTest, FromFileDescriptor_StdIn) {
-  StreamPtr stream =
-      FileStream::FromFileDescriptor(STDIN_FILENO, false, nullptr);
+TEST_F(FileStreamTest, FromFileDescriptor_SocketPair) {
+  base::ScopedFD fd0, fd1;
+  ASSERT_TRUE(base::CreateSocketPair(&fd0, &fd1));
+
+  StreamPtr stream = FileStream::FromFileDescriptor(fd0.get(), false, nullptr);
   ASSERT_NE(nullptr, stream.get());
   EXPECT_TRUE(stream->IsOpen());
   EXPECT_TRUE(stream->CanRead());
-  EXPECT_FALSE(stream->CanSeek());
-  EXPECT_FALSE(stream->CanGetSize());
-}
-
-TEST_F(FileStreamTest, FromFileDescriptor_StdOut) {
-  StreamPtr stream =
-      FileStream::FromFileDescriptor(STDOUT_FILENO, false, nullptr);
-  ASSERT_NE(nullptr, stream.get());
-  EXPECT_TRUE(stream->IsOpen());
   EXPECT_TRUE(stream->CanWrite());
   EXPECT_FALSE(stream->CanSeek());
   EXPECT_FALSE(stream->CanGetSize());
-}
-
-TEST_F(FileStreamTest, FromFileDescriptor_StdErr) {
-  StreamPtr stream =
-      FileStream::FromFileDescriptor(STDERR_FILENO, false, nullptr);
-  ASSERT_NE(nullptr, stream.get());
-  EXPECT_TRUE(stream->IsOpen());
-  EXPECT_TRUE(stream->CanWrite());
-  EXPECT_FALSE(stream->CanSeek());
-  EXPECT_FALSE(stream->CanGetSize());
+  EXPECT_TRUE(stream->CloseBlocking(nullptr));
+  // Verify that |fd0| remains open when |own_descriptor| is false.
+  EXPECT_NE(-1, fcntl(fd0.get(), F_GETFD));
 }
 
 TEST_F(FileStreamTest, FromFileDescriptor_ReadNonBlocking) {

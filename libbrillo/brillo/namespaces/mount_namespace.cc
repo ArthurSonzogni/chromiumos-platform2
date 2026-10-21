@@ -14,6 +14,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/namespaces/platform.h>
@@ -35,14 +36,14 @@ bool MountNamespace::Create() {
                << " already exists.";
     return false;
   }
-  int fd_mounted[2];
-  int fd_unshared[2];
   char byte = '\0';
-  if (pipe(fd_mounted) != 0) {
+  base::ScopedFD fd_mounted_read, fd_mounted_write;
+  if (!base::CreatePipe(&fd_mounted_read, &fd_mounted_write)) {
     PLOG(ERROR) << "Cannot create mount signalling pipe";
     return false;
   }
-  if (pipe(fd_unshared) != 0) {
+  base::ScopedFD fd_unshared_read, fd_unshared_write;
+  if (!base::CreatePipe(&fd_unshared_read, &fd_unshared_write)) {
     PLOG(ERROR) << "Cannot create unshare signalling pipe";
     return false;
   }
@@ -51,22 +52,23 @@ bool MountNamespace::Create() {
     PLOG(ERROR) << "Fork failed";
   } else if (pid == 0) {
     // Child.
-    close(fd_mounted[1]);
-    close(fd_unshared[0]);
+    fd_mounted_write.reset();
+    fd_unshared_read.reset();
     if (unshare(CLONE_NEWNS) != 0) {
       PLOG(ERROR) << "unshare(CLONE_NEWNS) failed";
       exit(1);
     }
-    base::WriteFileDescriptor(fd_unshared[1], std::string_view(&byte, 1));
-    base::ReadFromFD(fd_mounted[0], base::span_from_ref(byte));
+    fd_unshared_write.reset();
+    base::ReadFromFD(fd_mounted_read.get(), base::span_from_ref(byte));
     exit(0);
   } else {
     // Parent.
-    close(fd_mounted[0]);
-    close(fd_unshared[1]);
+    fd_mounted_read.reset();
+    fd_unshared_write.reset();
     std::string proc_ns_path = base::StringPrintf("/proc/%d/ns/mnt", pid);
     bool mount_success = true;
-    base::ReadFromFD(fd_unshared[0], base::span_from_ref(byte));
+    base::ReadFromFD(fd_unshared_read.get(), base::span_from_ref(byte));
+    fd_unshared_read.reset();
     if (platform_->Mount(proc_ns_path, ns_path_.value(), "", MS_BIND) == 0) {
       // If the bind mount succeeds, attempt to remount it noexec.
       // TODO(betuls): Add MS_RDONLY option after the deprecation of kernel
@@ -85,7 +87,7 @@ bool MountNamespace::Create() {
                   << ", MS_BIND) failed";
       mount_success = false;
     }
-    base::WriteFileDescriptor(fd_mounted[1], std::string_view(&byte, 1));
+    fd_mounted_write.reset();
 
     int status;
     if (platform_->Waitpid(pid, &status) < 0) {
