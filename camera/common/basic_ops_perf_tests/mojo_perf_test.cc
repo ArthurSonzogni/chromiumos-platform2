@@ -15,6 +15,7 @@
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/threading/thread.h>
+#include <base/timer/timer.h>
 #include <benchmark/benchmark.h>
 #include <brillo/syslog_logging.h>
 #include <mojo/core/embedder/embedder.h>
