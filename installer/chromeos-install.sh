@@ -730,27 +730,33 @@ reload_partitions() {
   # device leading to EBUSY when we reread the partition table.  We
   # avoid the conflict by using `udevadm settle`, so that udev goes
   # first.  cf. crbug.com/343681.
-  local rc=0
 
-  # Sometimes `udevadm settle` can time out. Log the timeout
-  # but still continue.
-  # The default timeout is 120s, shorten it to 10s to prevent
-  # delaying installation unnecessarily. b/379085243
-  udevadm settle --timeout=10 || rc=$?
-  if [ "${rc}" -ne 0 ]; then
-    echo "udevadm settle timed out."
-  fi
+  # Our original intuition was that if it doesn't happen quickly, it wasn't ever
+  # going to work, but looking at timings from logs, it seems some devices
+  # are just really slow. Loop this whole thing many times, using udevadm settle
+  # as the "sleep", so if the queue empties before the 10s are up we'll try to
+  # reread immediately. b/562885947
+  # 15 tries -> about 150s, which sounds like a lot but matches what we see on
+  # some devices. Better to install than fail, if waiting a little longer would
+  # result in success.
+  local num_tries=15
+  for i in $(seq "${num_tries}"); do
+    if ! udevadm settle --timeout=10; then
+      echo "udevadm settle timed out."
+    fi
 
-  # Sometimes `blockdev --rereadpt` will fail with "ioctl error on
-  # BLKRRPART: Device or resource busy" right after `udevadm settle`
-  # completes. If the first attempt fails, sleep for a short time and
-  # then retry. b/410051948
-  rc=0
-  /sbin/blockdev --rereadpt "${DST}" || rc=$?
-  if [ "${rc}" -ne 0 ]; then
-      sleep 1s
-      /sbin/blockdev --rereadpt "${DST}"
-  fi
+    # Sometimes `blockdev --rereadpt` will fail with "ioctl error on
+    # BLKRRPART: Device or resource busy" right after `udevadm settle`
+    # completes. b/410051948
+    if /sbin/blockdev --rereadpt "${DST}"; then
+      return 0
+    fi
+
+    echo "Rereading partitions failed. Attempt ${i} of ${num_tries}."
+    sleep 1
+  done
+
+  return 1
 }
 
 # Post partition copying work and special casing
