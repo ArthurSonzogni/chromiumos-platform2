@@ -767,10 +767,19 @@ void KeyMintServer::GenerateCertificateRequest(
     arc::mojom::keymint::CertificateRequestPtr request,
     GenerateCertificateRequestCallback callback) {
   // Validate the request.
+  // The Mojo response callback must always be run before returning, otherwise
+  // destroying the callback drops the Mojo connection and triggers a fatal
+  // DCHECK(!connected) abort in arc-keymintd (e.g. when Android's background
+  // PeriodicProvisioner probes generateCertificateRequest with 0 keys).
   if (request.is_null() || request->keys_to_sign.empty() ||
       request->challenge.is_null() ||
-      request->encryption_cert_chain.is_null()) {
-    LOG(ERROR) << "KeyMint Error: Certificate Request or its fields are null";
+      request->encryption_cert_chain.is_null() ||
+      request->encryption_cert_chain->data.empty()) {
+    LOG(ERROR)
+        << "KeyMint Error: Certificate Request or its fields are null or empty";
+    std::move(callback).Run(
+        arc::mojom::keymint::GenerateCertificateRequestResultOrError::NewError(
+            KM_ERROR_INVALID_ARGUMENT));
     return;
   }
 
@@ -781,24 +790,14 @@ void KeyMintServer::GenerateCertificateRequest(
 
   // Validate the |km_request| before passing to Reference impl.
   if (!km_request) {
-    auto response =
+    std::move(callback).Run(
         arc::mojom::keymint::GenerateCertificateRequestResultOrError::NewError(
-            KM_ERROR_INVALID_ARGUMENT);
-    std::move(callback).Run(std::move(response));
+            KM_ERROR_INVALID_ARGUMENT));
     return;
   }
 
-  // Set Certificate challenge in Arc KeyMint Context. This will be used in
-  // getting ChromeOS blob from libarc-attestation.
   std::vector<uint8_t> cert_challenge = ConvertFromKeymasterMessage(
       request->challenge->data.data(), request->challenge->data.size());
-  auto error =
-      backend_.context()->SetChallengeForCertificateRequest(cert_challenge);
-  if (error != KM_ERROR_OK) {
-    LOG(ERROR) << "Failed to set certificate challenge in Generate Certificate "
-                  "Request";
-    return;
-  }
 
   auto task_lambda = base::BindOnce(
       [](GenerateCertificateRequestCallback callback,
@@ -812,9 +811,37 @@ void KeyMintServer::GenerateCertificateRequest(
       },
       std::move(callback));
 
-  // Call keymint.
-  RunKeyMintRequest(FROM_HERE, &::keymaster::AndroidKeymaster::GenerateCsr,
-                    std::move(km_request), std::move(task_lambda));
+  // Set the certificate challenge in ArcKeyMintContext and execute GenerateCsr
+  // sequentially on |backend_thread_| so |backend_| is not accessed from the
+  // Mojo thread and concurrent CSR requests cannot overwrite the challenge.
+  backend_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](scoped_refptr<base::TaskRunner> original_task_runner,
+             context::ArcKeyMintContext* context,
+             ::keymaster::AndroidKeymaster* keymaster,
+             std::vector<uint8_t> cert_challenge,
+             std::unique_ptr<::keymaster::GenerateCsrRequest> km_request,
+             base::OnceCallback<void(
+                 std::unique_ptr<::keymaster::GenerateCsrResponse>)> callback) {
+            auto response = std::make_unique<::keymaster::GenerateCsrResponse>(
+                keymaster->message_version());
+            auto error =
+                context->SetChallengeForCertificateRequest(cert_challenge);
+            if (error != KM_ERROR_OK) {
+              LOG(ERROR) << "Failed to set certificate challenge in Generate "
+                            "Certificate Request";
+              response->error = error;
+            } else {
+              keymaster->GenerateCsr(*km_request, response.get());
+            }
+            original_task_runner->PostTask(
+                FROM_HERE,
+                base::BindOnce(std::move(callback), std::move(response)));
+          },
+          base::SingleThreadTaskRunner::GetCurrentDefault(), backend_.context(),
+          backend_.keymint(), std::move(cert_challenge), std::move(km_request),
+          std::move(task_lambda)));
 }
 
 bool KeyMintServer::SetSerialNumber(const std::string& serial_number) {

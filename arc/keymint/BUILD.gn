@@ -391,6 +391,8 @@ if (use.test) {
       "context/openssl_utils_test.cc",
       "conversion.cc",
       "conversion_test.cc",
+      "keymint_server.cc",
+      "keymint_server_test.cc",
     ]
     configs += [
       "//common-mk:test",

@@ -772,9 +772,10 @@ std::unique_ptr<::keymaster::GenerateCsrRequest> MakeGenerateCsrRequest(
   }
   out->num_keys = request->keys_to_sign.size();
   for (size_t i = 0; i < request->keys_to_sign.size(); i++) {
-    if (request->keys_to_sign[i].is_null()) {
-      LOG(ERROR)
-          << "KeyMint Error: GenerateCsrRequest Key to be signed is null";
+    if (request->keys_to_sign[i].is_null() ||
+        request->keys_to_sign[i]->data.empty()) {
+      LOG(ERROR) << "KeyMint Error: GenerateCsrRequest Key to be signed is "
+                    "null or empty";
       return nullptr;
     }
     out->SetKeyToSign(i, request->keys_to_sign[i]->data.data(),
@@ -782,17 +783,19 @@ std::unique_ptr<::keymaster::GenerateCsrRequest> MakeGenerateCsrRequest(
   }
 
   // Set the Encryption Certificate Chain.
-  if (request->encryption_cert_chain.is_null()) {
-    LOG(ERROR)
-        << "KeyMint Error: GenerateCsrRequest Encryption Cert Chain is null";
+  if (request->encryption_cert_chain.is_null() ||
+      request->encryption_cert_chain->data.empty()) {
+    LOG(ERROR) << "KeyMint Error: GenerateCsrRequest Encryption Cert Chain is "
+                  "null or empty";
     return nullptr;
   }
   out->SetEndpointEncCertChain(request->encryption_cert_chain->data.data(),
                                request->encryption_cert_chain->data.size());
 
   // Set the Challenge.
-  if (request->challenge.is_null()) {
-    LOG(ERROR) << "KeyMint Error: GenerateCsrRequest Challenge is null";
+  if (request->challenge.is_null() || request->challenge->data.empty()) {
+    LOG(ERROR)
+        << "KeyMint Error: GenerateCsrRequest Challenge is null or empty";
     return nullptr;
   }
   out->SetChallenge(request->challenge->data.data(),
