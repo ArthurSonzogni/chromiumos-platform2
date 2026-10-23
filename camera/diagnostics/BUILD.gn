@@ -41,6 +41,7 @@ generate_pkg_config("camera_diagnostics_ipc") {
 
 executable("cros_camera_diagnostics_service") {
   sources = [
+    "//camera/common/future.cc",
     "camera_diagnostics_helpers.cc",
     "camera_diagnostics_main.cc",
     "camera_diagnostics_mojo_manager.cc",
@@ -55,13 +56,8 @@ executable("cros_camera_diagnostics_service") {
   ]
   pkg_deps = [
     "libbrillo",
-    "libcros_camera",
-    "libcros_camera_android_deps",
     "libmojo",
     "mojo_service_manager",
-
-    # For event tracing helpers.
-    "perfetto",
   ]
   libs = [
     "dl",
