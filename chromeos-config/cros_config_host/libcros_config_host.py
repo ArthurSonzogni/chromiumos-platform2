@@ -24,8 +24,7 @@ import libcros_config_host_json  # pylint: disable=import-error
 sys.path.pop(0)
 
 
-UNIBOARD_BUILD_CONFIG_INSTALL_DIR = "build/share/chromeos-config"
-UNIBOARD_CONFIG_INSTALL_DIR = "usr/share/chromeos-config"
+UNIBOARD_CONFIG_INSTALL_DIR = "build/share/chromeos-config"
 
 
 def CrosConfig(fname=None, model_filter_regex=None):
@@ -46,17 +45,10 @@ def CrosConfig(fname=None, model_filter_regex=None):
             )
         fname = os.path.join(
             os.environ["SYSROOT"],
-            UNIBOARD_BUILD_CONFIG_INSTALL_DIR,
+            UNIBOARD_CONFIG_INSTALL_DIR,
             "yaml",
             "config.yaml",
         )
-        if not os.path.exists(fname):
-            fname = os.path.join(
-                os.environ["SYSROOT"],
-                UNIBOARD_CONFIG_INSTALL_DIR,
-                "yaml",
-                "config.yaml",
-            )
     with sys.stdin if fname == "-" else open(fname, encoding="utf-8") as infile:
         return libcros_config_host_json.CrosConfigJson(
             infile, model_filter_regex=model_filter_regex

@@ -1012,28 +1012,15 @@ class CrosConfigHostTest(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def testDefaultSysrootConfigPath(self):
-        """Test default config lookup prefers build/share over usr/share."""
+        """Test default config lookup uses build/share under SYSROOT."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            usr_yaml = os.path.join(
-                temp_dir, "usr/share/chromeos-config/yaml/config.yaml"
+            build_yaml = os.path.join(
+                temp_dir, "build/share/chromeos-config/yaml/config.yaml"
             )
-            os.makedirs(os.path.dirname(usr_yaml))
-            shutil.copy(self.filepath, usr_yaml)
+            os.makedirs(os.path.dirname(build_yaml))
+            shutil.copy(self.filepath, build_yaml)
 
             with mock.patch.dict(os.environ, {"SYSROOT": temp_dir}):
-                config = CrosConfig()
-                self.assertEqual(
-                    config.GetConfig("another").GetProperty("/", "wallpaper"),
-                    "default",
-                )
-
-                build_yaml = os.path.join(
-                    temp_dir, "build/share/chromeos-config/yaml/config.yaml"
-                )
-                os.makedirs(os.path.dirname(build_yaml))
-                shutil.copy(self.filepath, build_yaml)
-                # Remove usr_yaml to verify build_yaml is used when present.
-                os.remove(usr_yaml)
                 config = CrosConfig()
                 self.assertEqual(
                     config.GetConfig("another").GetProperty("/", "wallpaper"),
