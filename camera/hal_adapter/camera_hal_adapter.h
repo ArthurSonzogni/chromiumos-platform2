@@ -324,6 +324,8 @@ class CameraHalAdapter {
   // Watch changes in |kSWPrivacySwitchOverrideFilePath|.
   ReloadableConfigFile sw_privacy_switch_override_watcher_;
 
+  // Shared GPU resources across camera device sessions. Lazily initialized,
+  // accessed, and destroyed on |camera_module_thread_|.
   std::unique_ptr<GpuResources> root_gpu_resources_;
 
   bool effects_enabled_ = false;

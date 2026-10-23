@@ -102,13 +102,16 @@ CameraHalAdapter::~CameraHalAdapter() {
       FROM_HERE,
       base::BindOnce(&CameraHalAdapter::ResetVendorTagOpsDelegateOnThread,
                      base::Unretained(this), kIdAll));
-  // We need to destroy the CameraDeviceAdapters on the same thread they were
-  // created on to avoid race condition.
+  // Destroy |device_adapters_| and |root_gpu_resources_| on the same thread
+  // they were created on to avoid race conditions, and ensure
+  // |device_adapters_| are destroyed before |root_gpu_resources_|.
   camera_module_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::BindOnce([](std::map<int32_t, std::unique_ptr<CameraDeviceAdapter>>
-                            device_adapters) {},
-                     std::move(device_adapters_)));
+      FROM_HERE, base::BindOnce(
+                     [](CameraHalAdapter* self) {
+                       self->device_adapters_.clear();
+                       self->root_gpu_resources_.reset();
+                     },
+                     base::Unretained(this)));
   camera_module_thread_.Stop();
   camera_module_callbacks_thread_.Stop();
   set_camera_metadata_vendor_ops(nullptr);
@@ -116,16 +119,6 @@ CameraHalAdapter::~CameraHalAdapter() {
 
 bool CameraHalAdapter::Start() {
   TRACE_HAL_ADAPTER();
-
-  if (GpuResources::IsSupported()) {
-    root_gpu_resources_ = std::make_unique<GpuResources>(
-        GpuResourcesOptions{.name = "RootGpuResources"});
-    if (!root_gpu_resources_->Initialize()) {
-      LOGF(ERROR) << "Failed to initialize root GPU resources";
-      root_gpu_resources_ = nullptr;
-    }
-    DCHECK(root_gpu_resources_);
-  }
 
   if (!camera_module_thread_.Start()) {
     LOGF(ERROR) << "Failed to start CameraModuleThread";
@@ -600,6 +593,19 @@ int32_t CameraHalAdapter::OpenDeviceImpl(
   do_notify_invalid_capture_request =
       camera_client_type == mojom::CameraClientType::ANDROID;
 #endif
+
+  // Lazily initialize |root_gpu_resources_| on first camera open rather than
+  // in Start() to avoid creating an EGL context and compiling shaders at boot
+  // when no camera is used.
+  if (!root_gpu_resources_ && GpuResources::IsSupported()) {
+    root_gpu_resources_ = std::make_unique<GpuResources>(
+        GpuResourcesOptions{.name = "RootGpuResources"});
+    if (!root_gpu_resources_->Initialize()) {
+      LOGF(ERROR) << "Failed to initialize root GPU resources";
+      root_gpu_resources_ = nullptr;
+    }
+    DCHECK(root_gpu_resources_);
+  }
 
   device_adapters_[camera_id] = std::make_unique<CameraDeviceAdapter>(
       camera_device, info.device_version, metadata,

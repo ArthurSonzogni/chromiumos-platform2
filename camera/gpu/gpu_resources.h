@@ -45,9 +45,9 @@ struct GpuResourcesOptions {
 
 // GpuResources holds the resources required to perform GPU operations. A
 // GpuResources instance manages a GPU thread and the context running on the
-// thread. There's only one GpuResources instance in the whole camera process.
-// It's guaranteed that the GpuResources is created before we load the camera
-// HAL adapter, and is destroyed only after the HAL adapter is destroyed.
+// thread. The root GpuResources is lazily created when a camera device is
+// first opened, and is destroyed after all camera device adapters are
+// destroyed.
 //
 // Processing blocks in the camera service can run GPU operations using the
 // PostGpuTask*() helpers. By sharing the GPU context and running on the same
