@@ -919,7 +919,7 @@ impl MemoryPressureLogger {
                 }
             };
             info!(
-                "New memory pressure signal to Chrome: {}, {} KB",
+                "New memory pressure signal to Chrome: {}, {} MB",
                 level_label,
                 target.unwrap_or(0) / 1024
             );
