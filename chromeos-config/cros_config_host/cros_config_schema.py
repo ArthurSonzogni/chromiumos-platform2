@@ -40,17 +40,22 @@ BRAND_ELEMENTS = [
 EXTERNAL_STYLUS = "external"
 TEMPLATE_PATTERN = re.compile("{{([^}]*)}}")
 ALLOWED_CUSTOM_LABEL_FEATURES = {"CloudGamingDevice"}
-# Top-level and nested keys needed by offline factory tools on target images.
-# Runtime daemons read from ConfigFS (/usr/share/chromeos-config/configfs.img),
-# whereas factory tools (finalize_bundle.py, gooftool, image_tool, hwid_utils)
-# inspect /usr/share/chromeos-config/yaml/config.yaml on ROOT-A.
+# Top-level and nested keys needed by offline factory and lab provisioning tools
+# on target images. Runtime daemons read from ConfigFS
+# (/usr/share/chromeos-config/configfs.img), whereas factory tools
+# (finalize_bundle.py, gooftool, image_tool, hwid_utils) and lab firmware
+# provisioning/test tools (cros-fw-provision, recovery, tast-tests) inspect
+# /usr/share/chromeos-config/yaml/config.yaml on the target image.
 FACTORY_TOP_KEYS = (
     "name",
     "brand-code",
     "identity",
 )
 FACTORY_NESTED_KEYS = {
-    "firmware": ("image-name",),
+    "firmware": (
+        "build-targets",
+        "image-name",
+    ),
     "firmware-signing": (
         "key-id",
         "signature-id",

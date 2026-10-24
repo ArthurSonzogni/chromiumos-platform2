@@ -1044,7 +1044,10 @@ class FilterFactoryConfigTests(unittest.TestCase):
                 "name": "basking",
                 "brand-code": "ZZCR",
                 "identity": {"sku-id": 0, "platform-name": "Reef"},
-                "firmware": {"image-name": "basking"},
+                "firmware": {
+                    "build-targets": {"coreboot": "reef"},
+                    "image-name": "basking",
+                },
                 "firmware-signing": {
                     "key-id": "OEM2",
                     "signature-id": "basking",
