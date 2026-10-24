@@ -105,9 +105,6 @@ const base::TimeDelta kEffectsRunningMarkerLifetime = base::Seconds(10);
 // TODO(b:242631540) Find permanent location for this file
 const base::FilePath kOverrideEffectsConfigFile(
     "/run/camera/effects/effects_config_override.json");
-const base::FilePath kEnableRetouchWithRelight(
-    "/run/camera/enable_retouch_with_relight");
-const base::FilePath kEnableOnlyRetouch("/run/camera/enable_only_retouch");
 constexpr char kMLCoreStableDelegateSettingsFile[] =
     "/etc/ml_core/stable_delegate_settings.json";
 
@@ -270,12 +267,6 @@ EffectsConfig ConvertMojoConfig(
   }
   if (effects_config->light_intensity) {
     config.light_intensity = *effects_config->light_intensity;
-  }
-  if (base::PathExists(kEnableOnlyRetouch)) {
-    config.face_retouch_enabled = config.relight_enabled;
-    config.relight_enabled = false;
-  } else if (base::PathExists(kEnableRetouchWithRelight)) {
-    config.face_retouch_enabled = config.relight_enabled;
   }
   if (!effects_config->studio_look_enabled) {
     config.face_retouch_enabled = false;
