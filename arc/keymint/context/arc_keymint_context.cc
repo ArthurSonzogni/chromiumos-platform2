@@ -17,6 +17,7 @@
 #include <base/base64.h>
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <crypto/sha2.h>
 #include <keymaster/android_keymaster_utils.h>
 #include <keymaster/attestation_context.h>
@@ -28,7 +29,6 @@
 #include <openssl/evp.h>
 #include <re2/re2.h>
 
-#include "absl/strings/escaping.h"
 #include "arc/keymint/context/chaps_client.h"
 #include "arc/keymint/context/openssl_utils.h"
 
@@ -871,9 +871,8 @@ std::optional<std::vector<uint8_t>> ArcKeyMintContext::GetVbMetaDigestFromFile()
     }
     return std::nullopt;
   }
-  std::string bytes_string = absl::HexStringToBytes(vbmeta_digest.c_str());
-  std::vector<uint8_t> vbmeta_digest_result =
-      brillo::BlobFromString(bytes_string);
+  std::vector<uint8_t> vbmeta_digest_result;
+  base::HexStringToBytes(vbmeta_digest, &vbmeta_digest_result);
   if (vbmeta_digest_result.size() != kExpectedVbMetaDigestSize) {
     LOG(ERROR) << "vbmeta digest is not a valid hash. "
                << "Expected size: " << kExpectedVbMetaDigestSize

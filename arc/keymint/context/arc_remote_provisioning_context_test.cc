@@ -10,11 +10,10 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libarc-attestation/lib/test_utils.h>
-
-#include "absl/strings/escaping.h"
 
 namespace arc::keymint::context {
 
@@ -182,8 +181,8 @@ TEST_F(ArcRemoteProvisioningContextTest,
 
   // Prepare.
   SetupManagerForTesting();
-  std::string bytes_string = absl::HexStringToBytes(kEcdsaDERSignatureHex);
-  std::vector<uint8_t> byte_signature = brillo::BlobFromString(bytes_string);
+  std::vector<uint8_t> byte_signature;
+  base::HexStringToBytes(kEcdsaDERSignatureHex, &byte_signature);
   ExpectSignSuccess(byte_signature);
 
   // Execute.
@@ -199,8 +198,8 @@ TEST_F(ArcRemoteProvisioningContextTest, GenerateBccProductionMode) {
   // Prepare.
   SetupManagerForTesting();
   ExpectProvisionSuccess();
-  std::string bytes_string = absl::HexStringToBytes(kEcdsaDERSignatureHex);
-  std::vector<uint8_t> byte_signature = brillo::BlobFromString(bytes_string);
+  std::vector<uint8_t> byte_signature;
+  base::HexStringToBytes(kEcdsaDERSignatureHex, &byte_signature);
   ExpectSignSuccess(byte_signature);
 
   // Execute.
@@ -240,8 +239,8 @@ TEST_F(ArcRemoteProvisioningContextTest,
   std::vector<uint8_t> mac_key;
   SetupManagerForTesting();
   ExpectProvisionSuccess();
-  std::string bytes_string = absl::HexStringToBytes(kEcdsaDERSignatureHex);
-  std::vector<uint8_t> byte_signature = brillo::BlobFromString(bytes_string);
+  std::vector<uint8_t> byte_signature;
+  base::HexStringToBytes(kEcdsaDERSignatureHex, &byte_signature);
   brillo::Blob challenge = brillo::BlobFromString("I am a fake challenge");
   brillo::Blob random_blob = brillo::BlobFromString("I am a random blob");
   EXPECT_CALL(*manager_, QuoteCrOSBlob(challenge, testing::_))

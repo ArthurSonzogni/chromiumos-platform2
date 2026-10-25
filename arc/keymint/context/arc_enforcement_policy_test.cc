@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <base/time/time_override.h>
 #include <brillo/secure_blob.h>
@@ -16,8 +17,6 @@
 #include <keymaster/android_keymaster_utils.h>
 #include <keymaster/authorization_set.h>
 #include <keymaster/cppcose/cppcose.h>
-
-#include "absl/strings/escaping.h"
 
 namespace arc::keymint::context {
 
@@ -121,7 +120,8 @@ TEST_F(ArcEnforcementPolicyTest, ComputeHmacSha256Success) {
   EXPECT_EQ(result.error(), KM_ERROR_OK);
   std::vector<uint8_t> result_vector(result.value().begin(),
                                      result.value().end());
-  std::string bytes_result = absl::HexStringToBytes(kExpectedHmacSha256Hex);
+  std::string bytes_result;
+  base::HexStringToString(kExpectedHmacSha256Hex, &bytes_result);
   std::vector<uint8_t> expected_vector = brillo::BlobFromString(bytes_result);
   EXPECT_EQ(result_vector, expected_vector);
 }
@@ -142,7 +142,8 @@ TEST_F(ArcEnforcementPolicyTest, ComputeHmacSha256FailureMismatch) {
   EXPECT_EQ(result.error(), KM_ERROR_OK);
   std::vector<uint8_t> result_vector(result.value().begin(),
                                      result.value().end());
-  std::string bytes_result = absl::HexStringToBytes(kExpectedHmacSha256Hex);
+  std::string bytes_result;
+  base::HexStringToString(kExpectedHmacSha256Hex, &bytes_result);
   std::vector<uint8_t> expected_vector = brillo::BlobFromString(bytes_result);
   EXPECT_NE(result_vector, expected_vector);
 }
