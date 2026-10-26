@@ -112,7 +112,6 @@ class VmBuilder {
   VmBuilder& AppendDisk(Disk disk);
   VmBuilder& SetMemory(std::string_view memory_in_mb);
   VmBuilder& SetBalloonBias(std::string_view balloon_bias_mib);
-  VmBuilder& EnableWorkingSetReporting(bool enable);
 
   VmBuilder& SetSyslogTag(std::string_view syslog_tag);
   VmBuilder& SetSocketPath(std::string_view socket_path);
@@ -133,7 +132,6 @@ class VmBuilder {
   VmBuilder& AddExtraWaylandSocket(std::string_view socket);
 
   VmBuilder& EnableGpu(bool enable);
-  VmBuilder& EnableDGpuPassthrough(bool enable);
   VmBuilder& EnableVulkan(bool enable);
   // Make virglrenderer use Big GL instead of the default GLES.
   VmBuilder& EnableBigGl(bool enable);
@@ -233,7 +231,6 @@ class VmBuilder {
   std::string vm_socket_path_;
 
   bool enable_gpu_ = false;
-  bool enable_dgpu_passthrough_ = false;
   bool enable_vulkan_ = false;
 
   bool enable_big_gl_ = false;
@@ -253,7 +250,6 @@ class VmBuilder {
   std::optional<bool> enable_smt_ = false;
   bool enable_delay_rt_ = false;
   bool enable_per_vm_core_scheduling_ = false;
-  bool enable_working_set_reporting_ = false;
 
   std::vector<Disk> disks_;
   std::vector<std::string> kernel_params_;

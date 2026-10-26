@@ -44,10 +44,6 @@ class ScopedWlSocket;
 // The CPU cgroup where all the Termina main crosvm process should belong to.
 constexpr char kTerminaVcpuCpuCgroup[] = "/sys/fs/cgroup/cpu/termina-vcpus";
 
-// The cpuset cgroup where the Borealis vGPU server threads are to go into.
-constexpr char kBorealisGpuServerCpusetCgroup[] =
-    "/sys/fs/cgroup/cpuset/borealis-vgpuserver";
-
 // The CPU cgroup where all the Termina crosvm processes other than main should
 // belong to.
 constexpr char kTerminaCpuCgroup[] = "/sys/fs/cgroup/cpu/termina";
@@ -58,8 +54,6 @@ constexpr char kTerminaCrosvmSocket[] = "crosvm.sock";
 struct VmFeatures {
   // Enable GPU in the started VM.
   bool gpu;
-  // Enable DGPU passthrough in the started VM.
-  bool dgpu_passthrough;
   bool big_gl;
   bool virtgpu_native_context;
   bool render_server;

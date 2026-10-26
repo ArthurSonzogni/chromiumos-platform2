@@ -1578,6 +1578,12 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
     return response;
   }
 
+  if (request.enable_dgpu_passthrough()) {
+    LOG(ERROR) << "dGPU passthrough is not supported";
+    response.set_failure_reason("dGPU passthrough is not supported");
+    return response;
+  }
+
   // Enable the render server for Vulkan.
   const bool enable_render_server = request.enable_gpu() && USE_CROSVM_VULKAN;
 
@@ -1630,7 +1636,6 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
   // Start the VM and build the response.
   VmFeatures features{
       .gpu = request.enable_gpu(),
-      .dgpu_passthrough = request.enable_dgpu_passthrough(),
       .big_gl = request.enable_big_gl(),
       .virtgpu_native_context = request.enable_virtgpu_native_context(),
       .render_server = enable_render_server,

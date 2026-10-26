@@ -46,7 +46,6 @@ static_library("libconcierge") {
     "network/guest_os_network.cc",
     "network/scoped_network.cc",
     "network/termina_network.cc",
-    "pci_utils.cc",
     "plugin_vm_helper.cc",
     "power_manager_client.cc",
     "seneschal_server_proxy.cc",

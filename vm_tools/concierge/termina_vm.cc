@@ -74,12 +74,6 @@ constexpr base::TimeDelta kChildExitTimeout = base::Seconds(10);
 constexpr char kGpuCacheSizeString[] = "50M";
 constexpr char kRenderServerCacheSizeString[] = "50M";
 
-// The maximum render server shader cache disk usage for borealis.
-// TODO(b/169802596): Set cache size in a smarter way.
-// See b/209849605#comment5 for borealis cache size reasoning.
-constexpr char kGpuCacheSizeStringBorealis[] = "1000M";
-constexpr char kRenderServerCacheSizeStringBorealis[] = "1000M";
-
 // Special value to represent an invalid disk index for `crosvm disk`
 // operations.
 constexpr int kInvalidDiskIndex = -1;
@@ -181,46 +175,14 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   // See b/229147702
   setenv("MINIGBM_DEBUG", "nocompression", 0);
 
-  // TODO(b/193370101) Remove borealis specific code once crostini uses
-  // permission service.
-  if ((USE_BOREALIS_HOST && classification_ == apps::VmType::BOREALIS) ||
-      classification_ == apps::VmType::BRUSCHETTA) {
-    // Register the VM with permission service and obtain permission
-    // token.
-    vm_permission::VmType type;
-    switch (classification_) {
-      case apps::VmType::BOREALIS:
-        type = vm_permission::VmType::BOREALIS;
-        break;
-      case apps::VmType::BRUSCHETTA:
-        type = vm_permission::VmType::BRUSCHETTA;
-        break;
-      default:
-        LOG(ERROR) << "Invalid classification: " << classification_;
-        return false;
-    }
+  if (classification_ == apps::VmType::BRUSCHETTA) {
+    // Register the VM with permission service and obtain permission token.
     if (!vm_permission::RegisterVm(bus_, vm_permission_service_proxy_, id_,
-                                   type, &permission_token_)) {
+                                   vm_permission::VmType::BRUSCHETTA,
+                                   &permission_token_)) {
       LOG(ERROR) << "Failed to register with permission service";
       // TODO(lqu): Add "return false;" after chrome uprevs.
     }
-  }
-
-  if (USE_BOREALIS_HOST && classification_ == apps::BOREALIS) {
-    vm_builder.EnableWorkingSetReporting(true);
-
-    // Disable split lock detection in the guest kernel.
-    //
-    // Split lock detection has the potential to negatively impact performance.
-    // Typically, this setting only makes sense on the host kernel.
-    // However, some x86 architectures have a way to send
-    // this notification to user space applications (vCPU's). To ensure we
-    // don't see any issues on these architectures, we disable split lock
-    // detection completely in Borealis.
-    //
-    // Other guests in the system may want to preserve this behavior as it
-    // can be useful for application development/debugging.
-    vm_builder.AppendKernelParam("split_lock_detect=off");
   }
 
   // Open the tap device.
@@ -255,39 +217,11 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
       vm_builder.EnableGpuContextTypeVirgl(true);
       vm_builder.EnableGpuContextTypeVenus(USE_CROSVM_VULKAN);
     }
-    if (USE_BOREALIS_HOST && USE_CROSVM_CROSS_DOMAIN_CONTEXT_BOREALIS &&
-        classification_ == apps::VmType::BOREALIS) {
-      vm_builder.EnableGpuContextTypeCrossDomain(true);
-    }
-
-    if (USE_BOREALIS_HOST && classification_ == apps::VmType::BOREALIS) {
-      vm_builder.SetGpuCacheSize(kGpuCacheSizeStringBorealis);
-      // For Borealis, place the render server process in
-      // the GPU server cpuset cgroup.
-      vm_builder.AppendCustomParam("--gpu-server-cgroup-path",
-                                   kBorealisGpuServerCpusetCgroup);
-    } else {
-      vm_builder.SetGpuCacheSize(kGpuCacheSizeString);
-    }
+    vm_builder.SetGpuCacheSize(kGpuCacheSizeString);
 
     if (features_.render_server) {
       vm_builder.EnableRenderServer(true);
-      if (USE_BOREALIS_HOST && classification_ == apps::VmType::BOREALIS) {
-        vm_builder.SetRenderServerCacheSize(
-            kRenderServerCacheSizeStringBorealis);
-      } else {
-        vm_builder.SetRenderServerCacheSize(kRenderServerCacheSizeString);
-      }
-    }
-  }
-
-  // Enable dGPU passthrough argument is only supported on Borealis VM.
-  if (features_.dgpu_passthrough) {
-    if (USE_BOREALIS_HOST && classification_ == apps::VmType::BOREALIS) {
-      vm_builder.EnableDGpuPassthrough(true);
-    } else {
-      LOG(ERROR) << "--enable-dgpu-passthrough is only supported on Borealis.";
-      return false;
+      vm_builder.SetRenderServerCacheSize(kRenderServerCacheSizeString);
     }
   }
 
@@ -295,31 +229,14 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     vm_builder.EnableVtpmProxy(true /* enable */);
   }
 
-  // TODO(b/193370101) Remove borealis specific code once crostini uses
-  // permission service.
-  if (USE_BOREALIS_HOST && classification_ == apps::VmType::BOREALIS) {
-    if (vm_permission::IsMicrophoneEnabled(bus_, vm_permission_service_proxy_,
-                                           permission_token_)) {
-      vm_builder.AppendAudioDevice(
-          "capture=true,backend=cras,client_type=borealis,"
-          "socket_type=unified,num_output_devices=3,num_input_devices=3,"
-          "num_output_streams=10,num_input_streams=5");
-    } else {
-      vm_builder.AppendAudioDevice(
-          "backend=cras,client_type=borealis,socket_type=unified,"
-          "num_output_devices=3,num_input_devices=3,"
-          "num_output_streams=10,num_input_streams=5");
-    }
+  if (features_.audio_capture ||
+      (classification_ == apps::VmType::BRUSCHETTA &&
+       vm_permission::IsMicrophoneEnabled(bus_, vm_permission_service_proxy_,
+                                          permission_token_))) {
+    vm_builder.AppendAudioDevice(
+        "capture=true,backend=cras,socket_type=unified");
   } else {
-    if (features_.audio_capture ||
-        (classification_ == apps::VmType::BRUSCHETTA &&
-         vm_permission::IsMicrophoneEnabled(bus_, vm_permission_service_proxy_,
-                                            permission_token_))) {
-      vm_builder.AppendAudioDevice(
-          "capture=true,backend=cras,socket_type=unified");
-    } else {
-      vm_builder.AppendAudioDevice("backend=cras,socket_type=unified");
-    }
+    vm_builder.AppendAudioDevice("backend=cras,socket_type=unified");
   }
 
   for (const std::string& p : features_.kernel_params) {
@@ -377,10 +294,7 @@ bool TerminaVm::SetTimezone(const std::string& timezone,
 
   ::vm_tools::SetTimezoneRequest request;
   request.set_timezone_name(timezone);
-  // Borealis needs timezone info to be bind-mounted due to Steam bug, see
-  // TODO(b/237960004): Clean up this exception once Steam bug is fixed.
-  request.set_use_bind_mount(USE_BOREALIS_HOST &&
-                             classification_ == apps::VmType::BOREALIS);
+  request.set_use_bind_mount(false);
   ::vm_tools::EmptyMessage response;
 
   auto result = stub_->SetTimezone(&ctx, request, &response);

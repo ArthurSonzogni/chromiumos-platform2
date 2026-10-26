@@ -19,7 +19,6 @@
 #include <base/values.h>
 #include <re2/re2.h>
 
-#include "vm_tools/concierge/pci_utils.h"
 #include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools::concierge {
@@ -165,11 +164,6 @@ VmBuilder& VmBuilder::SetBalloonBias(std::string_view balloon_bias_mib) {
   return *this;
 }
 
-VmBuilder& VmBuilder::EnableWorkingSetReporting(bool enable) {
-  enable_working_set_reporting_ = enable;
-  return *this;
-}
-
 VmBuilder& VmBuilder::SetSyslogTag(std::string_view syslog_tag) {
   syslog_tag_ = syslog_tag;
   return *this;
@@ -246,11 +240,6 @@ VmBuilder& VmBuilder::AppendCustomParam(std::string_view key,
 
 VmBuilder& VmBuilder::EnableGpu(bool enable) {
   enable_gpu_ = enable;
-  return *this;
-}
-
-VmBuilder& VmBuilder::EnableDGpuPassthrough(bool enable) {
-  enable_dgpu_passthrough_ = enable;
   return *this;
 }
 
@@ -589,10 +578,6 @@ base::StringPairs VmBuilder::BuildRunParams() const {
     args.emplace_back("--balloon-bias-mib", balloon_bias_mib_);
   }
 
-  if (enable_working_set_reporting_) {
-    args.emplace_back("--balloon-ws-reporting", "");
-  }
-
   for (const auto& tap_fd : tap_fds_) {
     args.emplace_back(
         "--net", "packed-queue=true,tap-fd=" + std::to_string(tap_fd.get()));
@@ -712,25 +697,6 @@ base::StringPairs VmBuilder::BuildRunParams() const {
         render_server_arg += ",ld-preload-path=" + std::string(kScudoPath);
       }
       args.emplace_back("--gpu-render-server", render_server_arg);
-    }
-  }
-
-  if (enable_dgpu_passthrough_) {
-    std::vector<base::FilePath> dgpu_devices = GetPciDevicesList(
-        pci_utils::PciDeviceType::PCI_DEVICE_TYPE_DGPU_PASSTHROUGH);
-
-    for (const auto& dgpu_device : dgpu_devices) {
-      std::string dgpu_pt_arg =
-          base::StringPrintf("%s,iommu=viommu", dgpu_device.value().c_str());
-      args.emplace_back("--vfio", std::move(dgpu_pt_arg));
-    }
-
-    // TODO(b/297293470): These options appear to break borealis'
-    // suspend+resume. The below disables them if there are no dgpu devices but
-    // they will probably still be broken with dgpu.
-    if (!dgpu_devices.empty()) {
-      args.emplace_back("--s2idle", "");
-      args.emplace_back("--ac-adapter", "");
     }
   }
 

@@ -18,7 +18,6 @@ dbus::ObjectProxy* GetServiceProxy(scoped_refptr<dbus::Bus> bus);
 enum class VmType {
   CROSTINI_VM = 0,
   PLUGIN_VM = 1,
-  BOREALIS = 2,
   BRUSCHETTA = 3,
 };
 

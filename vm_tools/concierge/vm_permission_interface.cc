@@ -109,9 +109,6 @@ bool RegisterVm(scoped_refptr<dbus::Bus> bus,
     case VmType::PLUGIN_VM:
       request.set_type(vm_permission_service::RegisterVmRequest::PLUGIN_VM);
       break;
-    case VmType::BOREALIS:
-      request.set_type(vm_permission_service::RegisterVmRequest::BOREALIS);
-      break;
     case VmType::BRUSCHETTA:
       request.set_type(vm_permission_service::RegisterVmRequest::BRUSCHETTA);
   }
