@@ -9,14 +9,13 @@
 #include <algorithm>
 #include <cstdarg>
 #include <ctime>
+#include <optional>
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/command_line.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -24,6 +23,7 @@
 #include <brillo/userdb_utils.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <cros_config/cros_config.h>
+#include <libcrossystem/crossystem.h>
 
 #include "login_manager/util.h"
 
@@ -149,16 +149,18 @@ bool ChromiumCommandBuilder::Init() {
     }
   }
 
-  base::CommandLine cl(base::FilePath("crossystem"));
-  cl.AppendArg("mainfw_type");
-  std::string output;
-  if (base::GetAppOutput(cl, &output)) {
-    base::TrimWhitespaceASCII(output, base::TRIM_TRAILING, &output);
-    is_chrome_os_hardware_ = (output != "nonchrome");
+  crossystem::Crossystem crossystem;
+  if (std::optional<std::string> mainfw_type =
+          crossystem.VbGetSystemPropertyString(
+              crossystem::Crossystem::kMainFirmwareType)) {
+    is_chrome_os_hardware_ =
+        (*mainfw_type != crossystem::Crossystem::kMainfwTypeNonchrome);
   }
 
-  is_developer_end_user_ = base::GetAppOutput(
-      base::CommandLine(base::FilePath("is_developer_end_user")), &output);
+  // `is_developer_end_user` is equivalent to `crossystem "cros_debug?1"`.
+  is_developer_end_user_ =
+      (crossystem.VbGetSystemPropertyInt(crossystem::Crossystem::kCrosDebug) ==
+       1);
 
   // Provide /etc/lsb-release contents and timestamp so that they are available
   // to Chrome immediately without requiring a blocking file read.
