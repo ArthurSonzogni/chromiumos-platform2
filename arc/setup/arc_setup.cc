@@ -53,7 +53,6 @@
 #include <brillo/files/safe_fd.h>
 #include <brillo/scoped_mount_namespace.h>
 #include <chromeos-config/libcros_config/cros_config.h>
-#include <chromeos/patchpanel/dbus/client.h>
 #include <crypto/random.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <metrics/bootstat.h>
@@ -2261,19 +2260,9 @@ void ArcSetup::SetUpTestharness(bool is_dev_mode) {
   }
 }
 
-void ArcSetup::StartNetworking() {
-  if (!patchpanel::Client::New()->NotifyArcStartup(
-          config_.GetIntOrDie("CONTAINER_PID"))) {
-    LOG(ERROR) << "Failed to notify network service";
-  }
-}
+void ArcSetup::StartNetworking() {}
 
-void ArcSetup::StopNetworking() {
-  // The container pid isn't available at this point.
-  if (!patchpanel::Client::New()->NotifyArcShutdown()) {
-    LOG(ERROR) << "Failed to notify network service";
-  }
-}
+void ArcSetup::StopNetworking() {}
 
 void ArcSetup::MountOnOnetimeSetup() {
   // Try to drop as many privileges as possible. If we end up starting ARC,
