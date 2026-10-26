@@ -1448,15 +1448,10 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
     image_spec.pflash = std::move(pflash.value());
   }
 
-  // Track the next available virtio-blk device name.
-  // Assume that the rootfs filesystem was assigned /dev/pmem0 if
-  // pmem is used, /dev/vda otherwise.
-  // Assume every subsequent image was assigned a letter in alphabetical order
-  // starting from 'b'.
-  // Borealis has some hard-coded assumptions and expects /dev/pmem0.
-  // Other guest types can handle booting from virtio-blk.
-  bool use_pmem = USE_BOREALIS_HOST && classification == apps::VmType::BOREALIS;
-  unsigned char disk_letter = use_pmem ? 'a' : 'b';
+  // Track the next available virtio-blk device name. Assume that the rootfs
+  // filesystem was assigned /dev/vda and every subsequent image was assigned
+  // a letter in alphabetical order starting from 'b'.
+  unsigned char disk_letter = 'b';
 
   // In newer components, the /opt/google/cros-containers directory
   // is split into its own disk image(vm_tools.img).  Detect whether it exists
@@ -1695,7 +1690,6 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
   if (image_spec.rootfs.is_valid()) {
     vm_builder.SetRootfs(
         VmBuilder::Rootfs{.fd = std::move(image_spec.rootfs),
-                          .is_pmem = use_pmem,
                           .writable = request.writable_rootfs()});
   }
 

@@ -397,8 +397,7 @@ void TerminaVmTest::SetUp() {
 
   // Create the TerminaVm.
   VmBuilder vm_builder;
-  vm_builder.SetRootfs(
-      {.fd = base::ScopedFD(open("/dev/null", O_RDONLY)), .is_pmem = false});
+  vm_builder.SetRootfs({.fd = base::ScopedFD(open("/dev/null", O_RDONLY))});
   vm_ = TerminaVm::CreateForTesting(
       std::move(network), vsock_cid, temp_dir_.GetPath(), base::FilePath(),
       std::move(stateful_device), stateful_size, kKernelVersion,

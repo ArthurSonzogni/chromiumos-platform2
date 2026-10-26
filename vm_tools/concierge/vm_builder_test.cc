@@ -444,56 +444,6 @@ TEST(VmBuilderTest, StringToAsyncExecutor) {
   EXPECT_EQ(StringToAsyncExecutor("unknown_value"), std::nullopt);
 }
 
-TEST(VmBuilderTest, PmemRootfsReadonly) {
-  base::ScopedFD rootfs_fd(open("/dev/null", O_RDONLY));
-  int raw_fd = rootfs_fd.get();
-
-  VmBuilder builder;
-  builder.SetRootfs(VmBuilder::Rootfs{
-      .fd = std::move(rootfs_fd),
-      .is_pmem = true,
-      .writable = false,
-  });
-
-  base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
-
-  std::vector<std::string> pmems;
-  for (auto& p : result) {
-    if (p.first == "--pmem") {
-      pmems.push_back(p.second);
-    }
-  }
-
-  EXPECT_EQ(pmems.size(), 1);
-  EXPECT_EQ(pmems[0],
-            base::StringPrintf("/proc/self/fd/%d,ro=true,root=true", raw_fd));
-}
-
-TEST(VmBuilderTest, PmemRootfsWritable) {
-  base::ScopedFD rootfs_fd(open("/dev/null", O_RDONLY));
-  int raw_fd = rootfs_fd.get();
-
-  VmBuilder builder;
-  builder.SetRootfs(VmBuilder::Rootfs{
-      .fd = std::move(rootfs_fd),
-      .is_pmem = true,
-      .writable = true,
-  });
-
-  base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
-
-  std::vector<std::string> pmems;
-  for (auto& p : result) {
-    if (p.first == "--pmem") {
-      pmems.push_back(p.second);
-    }
-  }
-
-  EXPECT_EQ(pmems.size(), 1);
-  EXPECT_EQ(pmems[0],
-            base::StringPrintf("/proc/self/fd/%d,ro=false,root=true", raw_fd));
-}
-
 TEST(VmBuilderTest, ScopedFdImagesAndDisks) {
   base::ScopedFD kernel_fd(open("/dev/null", O_RDONLY | O_CLOEXEC));
   ASSERT_TRUE(kernel_fd.is_valid());
@@ -526,7 +476,6 @@ TEST(VmBuilderTest, ScopedFdImagesAndDisks) {
       .SetPflash(std::move(pflash_fd))
       .SetRootfs(VmBuilder::Rootfs{
           .fd = std::move(rootfs_fd),
-          .is_pmem = false,
           .writable = false,
       })
       .AppendDisk(VmBuilder::Disk{

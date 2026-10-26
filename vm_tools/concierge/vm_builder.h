@@ -63,7 +63,6 @@ class VmBuilder {
   // Contains the rootfs fd and configuration.
   struct Rootfs {
     base::ScopedFD fd;
-    bool is_pmem = false;
     bool writable = false;
   };
 
