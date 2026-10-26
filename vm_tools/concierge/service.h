@@ -539,9 +539,7 @@ class Service final : public org::chromium::VmConciergeInterface,
   VmMap::iterator FindVm(const VmId& vm_id);
 
   std::optional<int64_t> GetAvailableMemory();
-  std::optional<int64_t> GetForegroundAvailableMemory();
   std::optional<uint64_t> GetCriticalMemoryMargin();
-  std::optional<resource_manager::GameMode> GetGameMode();
   void RunBalloonPolicy();
   void FinishBalloonPolicy(
       uint64_t critical_margin,

@@ -783,28 +783,6 @@ std::optional<int64_t> Service::GetAvailableMemory() {
   return KiB(available_kb);
 }
 
-std::optional<int64_t> Service::GetForegroundAvailableMemory() {
-  dbus::MethodCall method_call(
-      resource_manager::kResourceManagerInterface,
-      resource_manager::kGetForegroundAvailableMemoryKBMethod);
-  auto dbus_response =
-      CallDBusMethod(bus_, resource_manager_service_proxy_, &method_call,
-                     dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR)
-        << "Failed to get foreground available memory size from resourced";
-    return std::nullopt;
-  }
-  dbus::MessageReader reader(dbus_response.get());
-  uint64_t available_kb;
-  if (!reader.PopUint64(&available_kb)) {
-    LOG(ERROR) << "Failed to read foreground available memory size from the "
-                  "D-Bus response";
-    return std::nullopt;
-  }
-  return KiB(available_kb);
-}
-
 std::optional<uint64_t> Service::GetCriticalMemoryMargin() {
   dbus::MethodCall method_call(resource_manager::kResourceManagerInterface,
                                resource_manager::kGetMemoryMarginsKBMethod);
@@ -827,38 +805,6 @@ std::optional<uint64_t> Service::GetCriticalMemoryMargin() {
   return critical_margin;
 }
 
-std::optional<resource_manager::GameMode> Service::GetGameMode() {
-  dbus::MethodCall method_call(resource_manager::kResourceManagerInterface,
-                               resource_manager::kGetGameModeMethod);
-  auto dbus_response =
-      CallDBusMethod(bus_, resource_manager_service_proxy_, &method_call,
-                     dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failed to get geme mode from resourced";
-    return std::nullopt;
-  }
-  dbus::MessageReader reader(dbus_response.get());
-  uint8_t game_mode;
-  if (!reader.PopByte(&game_mode)) {
-    LOG(ERROR) << "Failed to read game mode from the D-Bus response";
-    return std::nullopt;
-  }
-  return static_cast<resource_manager::GameMode>(game_mode);
-}
-
-static std::optional<std::string> GameModeToForegroundVmName(
-    resource_manager::GameMode game_mode) {
-  using resource_manager::GameMode;
-  if (USE_BOREALIS_HOST && game_mode == GameMode::BOREALIS) {
-    return "borealis";
-  }
-  if (game_mode == GameMode::OFF) {
-    return std::nullopt;
-  }
-  LOG(ERROR) << "Unexpected game mode value " << static_cast<int>(game_mode);
-  return std::nullopt;
-}
-
 // Runs balloon policy against each VM to balance memory.
 // This will be called periodically by balloon_resizing_timer_.
 void Service::RunBalloonPolicy() {
@@ -878,20 +824,7 @@ void Service::RunBalloonPolicy() {
   if (!available_memory.has_value()) {
     return;
   }
-  const auto game_mode = GetGameMode();
-  if (!game_mode.has_value()) {
-    return;
-  }
-  std::optional<int64_t> foreground_available_memory;
-  if (*game_mode != resource_manager::GameMode::OFF) {
-    // foreground_available_memory is only used when the game mode is enabled.
-    foreground_available_memory = GetForegroundAvailableMemory();
-    if (!foreground_available_memory.has_value()) {
-      return;
-    }
-  }
 
-  const auto foreground_vm_name = GameModeToForegroundVmName(*game_mode);
   for (auto& vm_entry : vms_) {
     auto& vm = vm_entry.second;
     if (vm->IsSuspended()) {
@@ -914,13 +847,7 @@ void Service::RunBalloonPolicy() {
     }
     BalloonStats stats = *stats_opt;
 
-    // Switch available memory for this VM based on the current game mode.
-    bool is_in_game_mode = foreground_vm_name.has_value() &&
-                           vm_entry.first.name() == foreground_vm_name;
-    const int64_t available_memory_for_vm =
-        is_in_game_mode ? *foreground_available_memory : *available_memory;
-
-    int64_t delta = policy->ComputeBalloonDelta(stats, available_memory_for_vm,
+    int64_t delta = policy->ComputeBalloonDelta(stats, *available_memory,
                                                 vm_entry.first.name());
 
     uint64_t target =
