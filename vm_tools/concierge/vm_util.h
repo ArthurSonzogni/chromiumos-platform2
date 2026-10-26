@@ -172,9 +172,6 @@ bool UpdateCpuLatencySensitive(const base::FilePath& cpu_cgroup, bool enable);
 // Updates |cpu_cgroup|'s cpu.uclamp.min based on |percent|.
 bool UpdateCpuUclampMin(const base::FilePath& cpu_cgroup, double percent);
 
-// Returns the new vCPU count to use in a Borealis VM
-uint32_t GetBorealisCpuCountOverride(uint32_t num_cpus);
-
 // Opens a file using SafeFD and duplicates the file descriptor, ensuring
 // FD_CLOEXEC remains set. Returns an error string on failure.
 base::expected<base::ScopedFD, std::string> OpenPathSafely(

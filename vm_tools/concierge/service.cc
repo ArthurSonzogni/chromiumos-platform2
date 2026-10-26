@@ -142,9 +142,6 @@ namespace {
 // the lower bound of how long it takes.  On a loaded system (like extracting
 // large compressed files), it could take 10 seconds to boot.
 constexpr base::TimeDelta kVmStartupDefaultTimeout = base::Seconds(60);
-// Borealis has a longer default timeout, as it can take a long time to create
-// its swap file on eMMC devices.
-constexpr base::TimeDelta kBorealisVmStartupDefaultTimeout = base::Seconds(180);
 
 // crosvm log directory name.
 constexpr char kCrosvmLogDir[] = "log";
@@ -221,13 +218,6 @@ constexpr char kPerBootVmShaderCacheFeatureName[] =
 const VariationsFeature kPerBootVmShaderCacheFeature{
     kPerBootVmShaderCacheFeatureName, FEATURE_DISABLED_BY_DEFAULT};
 
-// Feature name of borealis-vcpu-tweaks
-constexpr char kBorealisVcpuTweaksFeatureName[] =
-    "CrOSLateBootBorealisVcpuTweaks";
-
-// Feature name of borealis-provision.
-constexpr char kBorealisProvisionFeature[] = "BorealisProvision";
-
 // A feature name for throttling ARCVM's crosvm with cpu.cfs_quota_us.
 constexpr char kArcVmInitialThrottleFeatureName[] =
     "CrOSLateBootArcVmInitialThrottle";
@@ -238,9 +228,6 @@ constexpr char kArcVmInitialThrottleFeatureQuotaParam[] = "quota";
 // Needs to be const as libfeatures does pointers checking.
 const VariationsFeature kArcVmInitialThrottleFeature{
     kArcVmInitialThrottleFeatureName, FEATURE_DISABLED_BY_DEFAULT};
-
-const VariationsFeature kBorealisVcpuTweaksFeature{
-    kBorealisVcpuTweaksFeatureName, FEATURE_DISABLED_BY_DEFAULT};
 
 // Rational for setting bytes-per-inode to 32KiB (rather than the default 16
 // KiB) in go/borealis-inode.
@@ -1472,7 +1459,6 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
   // Assume the stateful device is the first disk in the request.
   std::string stateful_device = base::StringPrintf("/dev/vd%c", disk_letter);
 
-  auto stateful_path = base::FilePath(request.disks()[0].path());
   uint64_t stateful_size = 0;
   bool is_first_disk = true;
 
@@ -1506,16 +1492,7 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
     vm_builder.AppendDisk(std::move(disk));
   }
 
-  bool storage_ballooning = false;
-  // Storage ballooning enabled for Borealis (for ext4 setups in order
-  // to not interfere with the storage management solutions of legacy
-  // setups) and Bruschetta VMs.
-  if (USE_BOREALIS_HOST && classification == apps::VmType::BOREALIS &&
-      GetFilesystem(stateful_path) == "ext4") {
-    storage_ballooning = request.storage_ballooning();
-  } else if (classification == apps::VmType::BRUSCHETTA) {
-    storage_ballooning = true;
-  }
+  bool storage_ballooning = (classification == apps::VmType::BRUSCHETTA);
 
   // TODO(b/288998343): remove when bug is fixed and interrupted discards are
   // not lost.
@@ -1722,30 +1699,6 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
     vm_builder.AppendCustomParam("--hugepages", "");
   }
 
-  if (USE_BOREALIS_HOST && classification == apps::BOREALIS) {
-    bool vcpu_tweaks = feature::PlatformFeatures::Get()->IsEnabledBlocking(
-        kBorealisVcpuTweaksFeature);
-
-    if (vcpu_tweaks) {
-      // Enable the vCPU tweaks here
-      vm_builder.SetCpus(GetBorealisCpuCountOverride(cpus));
-    }
-  }
-
-  // TODO(b/288361720): This is temporary while we test the 'provision'
-  // mount option. Once we're satisfied things are stable, we'll make this
-  // the default and remove this feature check.
-  if (USE_BOREALIS_HOST && classification == apps::BOREALIS) {
-    std::string error;
-    std::optional<bool> provision =
-        IsFeatureEnabled(kBorealisProvisionFeature, &error);
-    if (!provision.has_value()) {
-      LOG(WARNING) << "Failed to check borealis provision feature: " << error;
-    } else if (provision.value()) {
-      vm_builder.AppendKernelParam("maitred.provision_stateful");
-    }
-  }
-
   auto vm = TerminaVm::Create(TerminaVm::Config{
       .vsock_cid = vsock_cid,
       .network = std::move(network),
@@ -1772,10 +1725,7 @@ StartVmResponse Service::StartVmInternal(StartVmRequest request,
 
   // Wait for the VM to finish starting up and for maitre'd to signal that it's
   // ready.
-  // TODO(b/338085116) Remove Borealis special case when we fix swap creation.
-  base::TimeDelta timeout = (classification == apps::VmType::BOREALIS)
-                                ? kBorealisVmStartupDefaultTimeout
-                                : kVmStartupDefaultTimeout;
+  base::TimeDelta timeout = kVmStartupDefaultTimeout;
   if (request.timeout() != 0) {
     timeout = base::Seconds(request.timeout());
   }

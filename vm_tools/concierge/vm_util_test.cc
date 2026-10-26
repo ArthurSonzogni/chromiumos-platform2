@@ -744,8 +744,6 @@ TEST(VMUtilTest, GetDevConfPath) {
   // Others look like this:
   EXPECT_EQ(internal::GetDevConfPath(apps::VmType::TERMINA),
             "/usr/local/vms/etc/termina_dev.conf");
-  EXPECT_EQ(internal::GetDevConfPath(apps::VmType::BOREALIS),
-            "/usr/local/vms/etc/borealis_dev.conf");
   EXPECT_EQ(internal::GetDevConfPath(apps::VmType::BRUSCHETTA),
             "/usr/local/vms/etc/bruschetta_dev.conf");
 }

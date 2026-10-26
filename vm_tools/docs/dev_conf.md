@@ -11,7 +11,6 @@ Example of such files are located at:
 
 -   `/usr/local/vms/etc/arcvm_dev.conf`: ARCVM
 -   `/usr/local/vms/etc/termina_dev.conf`: termina
--   `/usr/local/vms/etc/borealis_dev.conf`: Borealis
 -   `/usr/local/vms/etc/bruschetta_dev.conf`: Bruschetta
 
 ## Format of the configuration file.
