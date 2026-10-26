@@ -746,13 +746,22 @@ bool ChromeSetup::EnsureDirectoryExists(const base::FilePath& path,
     return false;
   }
 
-  if (fchown(fd.get(), uid, gid) != 0) {
+  struct stat st = {};
+  if (fstat(fd.get(), &st) != 0) {
+    PLOG(ERROR) << "Couldn't stat " << path.value();
+    return false;
+  }
+
+  // Skip fchown/fchmod when ownership and permissions already match to avoid
+  // dirtying ext4 inodes on the stateful partition on every boot.
+  if ((st.st_uid != uid || st.st_gid != gid) &&
+      fchown(fd.get(), uid, gid) != 0) {
     PLOG(ERROR) << "Couldn't chown " << path.value() << " to " << uid << ":"
                 << gid;
     return false;
   }
 
-  if (fchmod(fd.get(), mode) != 0) {
+  if ((st.st_mode & 07777) != (mode & 07777) && fchmod(fd.get(), mode) != 0) {
     PLOG(ERROR) << "Unable to chmod " << path.value() << " to " << std::oct
                 << mode;
     return false;

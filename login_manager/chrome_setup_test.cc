@@ -4,6 +4,8 @@
 
 #include "login_manager/chrome_setup.h"
 
+#include <sys/stat.h>
+
 #include <memory>
 #include <optional>
 #include <set>
@@ -211,16 +213,23 @@ TEST_F(ChromeSetupTest, EnsureDirectoryExists) {
 
   ChromeSetup setup(cros_config_, *feature_management_);
 
-  // Verify that a new directory is created.
+  // Verify that a new directory is created with the requested permissions.
   base::FilePath path_a = temp_dir.GetPath().Append("a");
   EXPECT_TRUE(
       setup.EnsureDirectoryExists(path_a, /*uid=*/-1, /*gid=*/-1, 0755));
   EXPECT_TRUE(base::DirectoryExists(path_a));
+  struct stat st = {};
+  ASSERT_EQ(stat(path_a.value().c_str(), &st), 0);
+  EXPECT_EQ(st.st_mode & 07777, 0755);
 
-  // Verify that it doesn't fail even if the directory already exists.
-  EXPECT_TRUE(
-      setup.EnsureDirectoryExists(path_a, /*uid=*/-1, /*gid=*/-1, 0755));
+  // Verify that it succeeds when ownership and permissions already match.
+  EXPECT_TRUE(setup.EnsureDirectoryExists(path_a, st.st_uid, st.st_gid, 0755));
   EXPECT_TRUE(base::DirectoryExists(path_a));
+
+  // Verify that permissions are updated when they differ.
+  EXPECT_TRUE(setup.EnsureDirectoryExists(path_a, st.st_uid, st.st_gid, 0700));
+  ASSERT_EQ(stat(path_a.value().c_str(), &st), 0);
+  EXPECT_EQ(st.st_mode & 07777, 0700);
 
   // Verify that it doesn't fail even if a file already exists at the path.
   base::FilePath path_b = temp_dir.GetPath().Append("b");
