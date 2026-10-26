@@ -251,8 +251,10 @@ bool DBusService::IsRMAAllowed() const {
     shimless_mode = 0;
   }
 
-  if (gsc_utils_->IsTestlabModeEnabled() &&
-      shimless_mode & kShimlessModeFlagsTriggerable) {
+  // Check the bitmask first to avoid spawning `gsctool` on normal boots when
+  // `shimless_mode` is 0.
+  if ((shimless_mode & kShimlessModeFlagsTriggerable) &&
+      gsc_utils_->IsTestlabModeEnabled()) {
     LOG(INFO) << "Shimless RMA is allowed by VPD flags.";
     return true;
   }
