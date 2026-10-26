@@ -694,8 +694,6 @@ static void ApplyDeltaFile(bool full_kernel,
       .WillRepeatedly(Return(true));
   EXPECT_CALL(prefs, SetString(kPrefsUpdateStateSignedSHA256Context, _))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(prefs, SetString(kPrefsDynamicPartitionMetadataUpdated, _))
-      .WillRepeatedly(Return(true));
   EXPECT_CALL(prefs, SetString(kPrefsManifestBytes,
                                testing::SizeIs(state->metadata_signature_size +
                                                state->metadata_size)))

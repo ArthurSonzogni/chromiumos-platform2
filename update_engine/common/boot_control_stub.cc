@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "update_engine/common/boot_control_stub.h"
-#include "update_engine/common/dynamic_partition_control_stub.h"
 
 #include <base/logging.h>
 
@@ -11,8 +10,7 @@ using std::string;
 
 namespace chromeos_update_engine {
 
-BootControlStub::BootControlStub()
-    : dynamic_partition_control_(new DynamicPartitionControlStub()) {}
+BootControlStub::BootControlStub() = default;
 
 unsigned int BootControlStub::GetNumSlots() const {
   return 0;
@@ -30,15 +28,6 @@ BootControlInterface::Slot BootControlStub::GetFirstInactiveSlot() const {
 
 base::FilePath BootControlStub::GetBootDevicePath() const {
   return base::FilePath{};
-}
-
-bool BootControlStub::GetPartitionDevice(const std::string& partition_name,
-                                         BootControlInterface::Slot slot,
-                                         bool not_in_payload,
-                                         std::string* device,
-                                         bool* is_dynamic) const {
-  LOG(ERROR) << __FUNCTION__ << " should never be called.";
-  return false;
 }
 
 bool BootControlStub::GetPartitionDevice(const string& partition_name,
@@ -92,11 +81,6 @@ bool BootControlStub::MarkBootSuccessfulAsync(
 bool BootControlStub::IsSlotMarkedSuccessful(Slot slot) const {
   LOG(ERROR) << __FUNCTION__ << " should never be called.";
   return false;
-}
-
-DynamicPartitionControlInterface*
-BootControlStub::GetDynamicPartitionControl() {
-  return dynamic_partition_control_.get();
 }
 
 bool BootControlStub::GetMiniOSKernelConfig(std::string* configs) {

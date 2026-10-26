@@ -9,11 +9,9 @@
 
 #include <algorithm>
 #include <cstring>
-#include <map>
 #include <memory>
 #include <set>
 #include <string>
-#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -781,26 +779,7 @@ bool DeltaPerformer::ParseManifestPartitions(ErrorCode* error) {
   for (const PartitionUpdate& partition : manifest_.partitions()) {
     partitions_.push_back(partition);
   }
-
-  // For VAB and partial updates, the partition preparation will copy the
-  // dynamic partitions metadata to the target metadata slot, and rename the
-  // slot suffix of the partitions in the metadata.
-  if (install_plan_->target_slot != BootControlInterface::kInvalidSlot) {
-    uint64_t required_size = 0;
-    if (!PreparePartitionsForUpdate(&required_size)) {
-      if (required_size > 0) {
-        *error = ErrorCode::kNotEnoughSpace;
-      } else {
-        *error = ErrorCode::kInstallDeviceOpenError;
-      }
-      return false;
-    }
-  }
-
-  // Partitions in manifest are no longer needed after preparing partitions.
   manifest_.clear_partitions();
-  // TODO(xunchang) TBD: allow partial update only on devices with dynamic
-  // partition.
   if (manifest_.partial_update()) {
     std::set<std::string> touched_partitions;
     for (const auto& partition_update : partitions_) {
@@ -816,22 +795,6 @@ bool DeltaPerformer::ParseManifestPartitions(ErrorCode* error) {
             touched_partitions, &untouched_static_partitions));
     partitions_.insert(partitions_.end(), untouched_static_partitions.begin(),
                        untouched_static_partitions.end());
-
-    // Save the untouched dynamic partitions in install plan.
-    std::vector<std::string> dynamic_partitions;
-    if (!boot_control_->GetDynamicPartitionControl()
-             ->ListDynamicPartitionsForSlot(install_plan_->source_slot,
-                                            &dynamic_partitions)) {
-      LOG(ERROR) << "Failed to load dynamic partitions from slot "
-                 << install_plan_->source_slot;
-      return false;
-    }
-    install_plan_->untouched_dynamic_partitions.clear();
-    for (const auto& name : dynamic_partitions) {
-      if (touched_partitions.find(name) == touched_partitions.end()) {
-        install_plan_->untouched_dynamic_partitions.push_back(name);
-      }
-    }
   }
 
   // Fill in the InstallPlan::partitions based on the partitions from the
@@ -916,55 +879,6 @@ bool DeltaPerformer::ParseManifestPartitions(ErrorCode* error) {
     return false;
   }
   LogPartitionInfo(partitions_);
-  return true;
-}
-
-bool DeltaPerformer::PreparePartitionsForUpdate(uint64_t* required_size) {
-  // Call static PreparePartitionsForUpdate with hash from
-  // kPrefsUpdateCheckResponseHash to ensure hash of payload that space is
-  // preallocated for is the same as the hash of payload being applied.
-  string update_check_response_hash;
-  std::ignore = prefs_->GetString(kPrefsUpdateCheckResponseHash,
-                                  &update_check_response_hash);
-  return PreparePartitionsForUpdate(prefs_, boot_control_,
-                                    install_plan_->target_slot, manifest_,
-                                    update_check_response_hash, required_size);
-}
-
-bool DeltaPerformer::PreparePartitionsForUpdate(
-    PrefsInterface* prefs,
-    BootControlInterface* boot_control,
-    BootControlInterface::Slot target_slot,
-    const DeltaArchiveManifest& manifest,
-    const std::string& update_check_response_hash,
-    uint64_t* required_size) {
-  string last_hash;
-  std::ignore =
-      prefs->GetString(kPrefsDynamicPartitionMetadataUpdated, &last_hash);
-
-  bool is_resume = !update_check_response_hash.empty() &&
-                   last_hash == update_check_response_hash;
-
-  if (is_resume) {
-    LOG(INFO) << "Using previously prepared partitions for update. hash = "
-              << last_hash;
-  } else {
-    LOG(INFO) << "Preparing partitions for new update. last hash = "
-              << last_hash << ", new hash = " << update_check_response_hash;
-  }
-
-  if (!boot_control->GetDynamicPartitionControl()->PreparePartitionsForUpdate(
-          boot_control->GetCurrentSlot(), target_slot, manifest,
-          !is_resume /* should update */, required_size)) {
-    LOG(ERROR) << "Unable to initialize partition metadata for slot "
-               << BootControlInterface::SlotName(target_slot);
-    return false;
-  }
-
-  TEST_AND_RETURN_FALSE(prefs->SetString(kPrefsDynamicPartitionMetadataUpdated,
-                                         update_check_response_hash));
-  LOG(INFO) << "PreparePartitionsForUpdate done.";
-
   return true;
 }
 
@@ -1108,17 +1022,6 @@ bool DeltaPerformer::PerformSourceCopyOperation(
 
   TEST_AND_RETURN_FALSE(source_fd_ != nullptr);
 
-  // The device may optimize the SOURCE_COPY operation.
-  // Being this a device-specific optimization let DynamicPartitionController
-  // decide it the operation should be skipped.
-  const PartitionUpdate& partition = partitions_[current_partition_];
-  const auto& partition_control = boot_control_->GetDynamicPartitionControl();
-
-  InstallOperation buf;
-  bool should_optimize = partition_control->OptimizeOperation(
-      partition.partition_name(), operation, &buf);
-  const InstallOperation& optimized = should_optimize ? buf : operation;
-
   if (operation.has_src_sha256_hash()) {
     bool read_ok;
     brillo::Blob source_hash;
@@ -1129,20 +1032,9 @@ bool DeltaPerformer::PerformSourceCopyOperation(
     // device doesn't match or there was an error reading the source partition.
     // Note that this code will also fall back if writing the target partition
     // fails.
-    if (should_optimize) {
-      // Hash operation.src_extents(), then copy optimized.src_extents to
-      // optimized.dst_extents.
-      read_ok =
-          fd_utils::ReadAndHashExtents(source_fd_, operation.src_extents(),
-                                       block_size_, &source_hash) &&
-          fd_utils::CopyAndHashExtents(source_fd_, optimized.src_extents(),
-                                       target_fd_, optimized.dst_extents(),
-                                       block_size_, nullptr /* skip hashing */);
-    } else {
-      read_ok = fd_utils::CopyAndHashExtents(
-          source_fd_, operation.src_extents(), target_fd_,
-          operation.dst_extents(), block_size_, &source_hash);
-    }
+    read_ok = fd_utils::CopyAndHashExtents(source_fd_, operation.src_extents(),
+                                           target_fd_, operation.dst_extents(),
+                                           block_size_, &source_hash);
     if (read_ok && expected_source_hash == source_hash) {
       return true;
     }
@@ -1158,17 +1050,9 @@ bool DeltaPerformer::PerformSourceCopyOperation(
     LOG(WARNING) << "Source hash from RAW device mismatched: found "
                  << base::HexEncode(source_hash) << ", expected "
                  << base::HexEncode(expected_source_hash);
-    if (should_optimize) {
-      TEST_AND_RETURN_FALSE(fd_utils::ReadAndHashExtents(
-          source_ecc_fd_, operation.src_extents(), block_size_, &source_hash));
-      TEST_AND_RETURN_FALSE(fd_utils::CopyAndHashExtents(
-          source_ecc_fd_, optimized.src_extents(), target_fd_,
-          optimized.dst_extents(), block_size_, nullptr /* skip hashing */));
-    } else {
-      TEST_AND_RETURN_FALSE(fd_utils::CopyAndHashExtents(
-          source_ecc_fd_, operation.src_extents(), target_fd_,
-          operation.dst_extents(), block_size_, &source_hash));
-    }
+    TEST_AND_RETURN_FALSE(fd_utils::CopyAndHashExtents(
+        source_ecc_fd_, operation.src_extents(), target_fd_,
+        operation.dst_extents(), block_size_, &source_hash));
     TEST_AND_RETURN_FALSE(
         ValidateSourceHash(source_hash, operation, source_ecc_fd_, error));
     // At this point reading from the the error corrected device worked, but
@@ -1182,14 +1066,14 @@ bool DeltaPerformer::PerformSourceCopyOperation(
     // corrected device can be shorter or not available.
 
     if (OpenCurrentECCPartition() &&
-        fd_utils::CopyAndHashExtents(source_ecc_fd_, optimized.src_extents(),
-                                     target_fd_, optimized.dst_extents(),
+        fd_utils::CopyAndHashExtents(source_ecc_fd_, operation.src_extents(),
+                                     target_fd_, operation.dst_extents(),
                                      block_size_, nullptr)) {
       return true;
     }
     TEST_AND_RETURN_FALSE(fd_utils::CopyAndHashExtents(
-        source_fd_, optimized.src_extents(), target_fd_,
-        optimized.dst_extents(), block_size_, nullptr));
+        source_fd_, operation.src_extents(), target_fd_,
+        operation.dst_extents(), block_size_, nullptr));
   }
   return true;
 }
@@ -1892,10 +1776,7 @@ bool DeltaPerformer::CanResumeUpdate(PrefsInterface* prefs,
   return true;
 }
 
-bool DeltaPerformer::ResetUpdateProgress(
-    PrefsInterface* prefs,
-    bool quick,
-    bool skip_dynamic_partititon_metadata_updated) {
+bool DeltaPerformer::ResetUpdateProgress(PrefsInterface* prefs, bool quick) {
   TEST_AND_RETURN_FALSE(prefs->SetInt64(kPrefsUpdateStateNextOperation,
                                         kUpdateStateOperationInvalid));
   if (!quick) {
@@ -1909,11 +1790,6 @@ bool DeltaPerformer::ResetUpdateProgress(
     prefs->SetInt64(kPrefsResumedUpdateFailures, 0);
     prefs->Delete(kPrefsPostInstallSucceeded);
     prefs->Delete(kPrefsVerityWritten);
-
-    if (!skip_dynamic_partititon_metadata_updated) {
-      LOG(INFO) << "Resetting recorded hash for prepared partitions.";
-      prefs->Delete(kPrefsDynamicPartitionMetadataUpdated);
-    }
   }
   return true;
 }

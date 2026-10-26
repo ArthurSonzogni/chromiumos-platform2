@@ -992,8 +992,8 @@ void UpdateAttempter::BuildUpdateActions(const UpdateCheckParams& params) {
       std::make_unique<LibcurlHttpFetcher>(GetProxyResolver(),
                                            SystemState::Get()->hardware()),
       false, session_id_);
-  auto filesystem_verifier_action = std::make_unique<FilesystemVerifierAction>(
-      SystemState::Get()->boot_control()->GetDynamicPartitionControl());
+  auto filesystem_verifier_action =
+      std::make_unique<FilesystemVerifierAction>();
   auto update_complete_action = std::make_unique<OmahaRequestAction>(
       new OmahaEvent(OmahaEvent::kTypeUpdateComplete),
       std::make_unique<LibcurlHttpFetcher>(GetProxyResolver(),
@@ -1225,8 +1225,8 @@ bool UpdateAttempter::ApplyDeferredUpdate(bool shutdown) {
 
   auto install_plan_action =
       std::make_unique<InstallPlanAction>(*install_plan_);
-  auto filesystem_verifier_action = std::make_unique<FilesystemVerifierAction>(
-      boot_control->GetDynamicPartitionControl());
+  auto filesystem_verifier_action =
+      std::make_unique<FilesystemVerifierAction>();
   auto postinstall_runner_action = std::make_unique<PostinstallRunnerAction>(
       boot_control, SystemState::Get()->hardware());
   postinstall_runner_action->set_delegate(this);

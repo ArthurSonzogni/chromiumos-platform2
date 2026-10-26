@@ -6,7 +6,6 @@
 #define UPDATE_ENGINE_COMMON_FAKE_BOOT_CONTROL_H_
 
 #include <map>
-#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,7 +14,6 @@
 #include <brillo/blkdev_utils/lvm.h>
 
 #include "update_engine/common/boot_control_interface.h"
-#include "update_engine/common/dynamic_partition_control_stub.h"
 
 namespace chromeos_update_engine {
 
@@ -26,8 +24,6 @@ class FakeBootControl : public BootControlInterface {
     SetNumSlots(num_slots_);
     // The current slot should be bootable.
     is_bootable_[current_slot_] = true;
-
-    dynamic_partition_control_.reset(new DynamicPartitionControlStub());
   }
   FakeBootControl(const FakeBootControl&) = delete;
   FakeBootControl& operator=(const FakeBootControl&) = delete;
@@ -43,9 +39,7 @@ class FakeBootControl : public BootControlInterface {
 
   bool GetPartitionDevice(const std::string& partition_name,
                           BootControlInterface::Slot slot,
-                          bool not_in_payload,
-                          std::string* device,
-                          bool* is_dynamic) const override {
+                          std::string* device) const override {
     if (slot >= num_slots_) {
       return false;
     }
@@ -54,16 +48,7 @@ class FakeBootControl : public BootControlInterface {
       return false;
     }
     *device = part_it->second;
-    if (is_dynamic != nullptr) {
-      *is_dynamic = false;
-    }
     return true;
-  }
-
-  bool GetPartitionDevice(const std::string& partition_name,
-                          BootControlInterface::Slot slot,
-                          std::string* device) const override {
-    return GetPartitionDevice(partition_name, slot, false, device, nullptr);
   }
 
   bool GetErrorCounter(Slot slot, int* error_counter) const override {
@@ -148,10 +133,6 @@ class FakeBootControl : public BootControlInterface {
 
   void SetErrorCounter(int error_counter) { error_counter_ = error_counter; }
 
-  DynamicPartitionControlInterface* GetDynamicPartitionControl() override {
-    return dynamic_partition_control_.get();
-  }
-
   bool GetMiniOSKernelConfig(std::string* configs) override { return true; }
 
   bool GetMiniOSVersion(const std::string& kernel_output,
@@ -196,8 +177,6 @@ class FakeBootControl : public BootControlInterface {
   int error_counter_ = 0;
 
   bool is_lvm_stack_enabled_{false};
-
-  std::unique_ptr<DynamicPartitionControlInterface> dynamic_partition_control_;
 };
 
 }  // namespace chromeos_update_engine

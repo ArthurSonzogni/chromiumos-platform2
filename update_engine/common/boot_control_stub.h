@@ -5,11 +5,9 @@
 #ifndef UPDATE_ENGINE_COMMON_BOOT_CONTROL_STUB_H_
 #define UPDATE_ENGINE_COMMON_BOOT_CONTROL_STUB_H_
 
-#include <memory>
 #include <string>
 
 #include "update_engine/common/boot_control_interface.h"
-#include "update_engine/common/dynamic_partition_control_interface.h"
 
 namespace chromeos_update_engine {
 
@@ -34,11 +32,6 @@ class BootControlStub : public BootControlInterface {
   BootControlInterface::Slot GetFirstInactiveSlot() const override;
   base::FilePath GetBootDevicePath() const override;
   bool GetPartitionDevice(const std::string& partition_name,
-                          Slot slot,
-                          bool not_in_payload,
-                          std::string* device,
-                          bool* is_dynamic) const override;
-  bool GetPartitionDevice(const std::string& partition_name,
                           BootControlInterface::Slot slot,
                           std::string* device) const override;
   bool GetErrorCounter(Slot slot, int* error_counter) const override;
@@ -52,7 +45,6 @@ class BootControlStub : public BootControlInterface {
   bool MarkBootSuccessfulAsync(
       base::OnceCallback<void(bool)> callback) override;
   bool IsSlotMarkedSuccessful(BootControlInterface::Slot slot) const override;
-  DynamicPartitionControlInterface* GetDynamicPartitionControl() override;
   bool GetMiniOSKernelConfig(std::string* configs) override;
   bool GetMiniOSVersion(const std::string& kernel_output,
                         std::string* value) override;
@@ -63,9 +55,6 @@ class BootControlStub : public BootControlInterface {
       const std::string& partition_name) const override;
   int GetPartitionNumber(const std::string partition_name,
                          BootControlInterface::Slot slot) const override;
-
- private:
-  std::unique_ptr<DynamicPartitionControlInterface> dynamic_partition_control_;
 };
 
 }  // namespace chromeos_update_engine

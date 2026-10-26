@@ -15,7 +15,6 @@
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/strings/string_util.h>
 #include <brillo/data_encoding.h>
 #include <brillo/streams/file_stream.h>
 
@@ -82,19 +81,6 @@ void FilesystemVerifierAction::UpdateProgress(double progress) {
 
 void FilesystemVerifierAction::StartPartitionHashing() {
   if (partition_index_ == install_plan_.partitions.size()) {
-    if (!install_plan_.untouched_dynamic_partitions.empty()) {
-      LOG(INFO) << "Verifying extents of untouched dynamic partitions ["
-                << base::JoinString(install_plan_.untouched_dynamic_partitions,
-                                    ", ")
-                << "]";
-      if (!dynamic_control_->VerifyExtentsForUntouchedPartitions(
-              install_plan_.source_slot, install_plan_.target_slot,
-              install_plan_.untouched_dynamic_partitions)) {
-        Cleanup(ErrorCode::kFilesystemVerifierError);
-        return;
-      }
-    }
-
     Cleanup(ErrorCode::kSuccess);
     return;
   }

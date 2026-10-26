@@ -734,8 +734,7 @@ TEST_F(UpdateAttempterTest, GetErrorCodeForActionTest) {
   EXPECT_EQ(
       ErrorCode::kOmahaResponseHandlerError,
       GetErrorCodeForAction(&omaha_response_handler_action, ErrorCode::kError));
-  DynamicPartitionControlStub dynamic_control_stub;
-  FilesystemVerifierAction filesystem_verifier_action(&dynamic_control_stub);
+  FilesystemVerifierAction filesystem_verifier_action;
   EXPECT_EQ(
       ErrorCode::kFilesystemVerifierError,
       GetErrorCodeForAction(&filesystem_verifier_action, ErrorCode::kError));

@@ -34,8 +34,6 @@ const char kPrefsDailyMetricsLastReportedAt[] =
     "daily-metrics-last-reported-at";
 const char kPrefsDeltaUpdateFailures[] = "delta-update-failures";
 const char kPrefsMarketSegmentDisabled[] = "market-segment-disabled";
-const char kPrefsDynamicPartitionMetadataUpdated[] =
-    "dynamic-partition-metadata-updated";
 const char kPrefsFullPayloadAttemptNumber[] = "full-payload-attempt-number";
 const char kPrefsInstallDateDays[] = "install-date-days";
 const char kPrefsLastActivePingDay[] = "last-active-ping-day";

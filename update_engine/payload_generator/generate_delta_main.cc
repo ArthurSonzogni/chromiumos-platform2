@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <xz.h>
+
 #include <map>
 #include <string>
 #include <vector>
@@ -16,7 +18,6 @@
 #include <brillo/key_value_store.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/syslog_logging.h>
-#include <xz.h>
 
 #include "update_engine/common/download_action.h"
 #include "update_engine/common/fake_boot_control.h"
@@ -205,8 +206,8 @@ bool ApplyPayload(const string& payload_file,
   auto download_action = std::make_unique<DownloadAction>(
       &prefs, &fake_boot_control, &fake_hardware, new FileFetcher(),
       true /* interactive */);
-  auto filesystem_verifier_action = std::make_unique<FilesystemVerifierAction>(
-      fake_boot_control.GetDynamicPartitionControl());
+  auto filesystem_verifier_action =
+      std::make_unique<FilesystemVerifierAction>();
 
   BondActions(install_plan_action.get(), download_action.get());
   BondActions(download_action.get(), filesystem_verifier_action.get());

@@ -16,7 +16,6 @@
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
-#include "update_engine/common/dynamic_partition_control_stub.h"
 #include "update_engine/common/hash_calculator.h"
 #include "update_engine/common/test_utils.h"
 #include "update_engine/common/utils.h"
@@ -41,7 +40,6 @@ class FilesystemVerifierActionTest : public ::testing::Test {
 
   brillo::FakeMessageLoop loop_{nullptr};
   ActionProcessor processor_;
-  DynamicPartitionControlStub dynamic_control_stub_;
 };
 
 class FilesystemVerifierActionTestDelegate : public ActionProcessorDelegate {
@@ -178,8 +176,7 @@ bool FilesystemVerifierActionTest::DoTest(bool terminate_early,
 void FilesystemVerifierActionTest::BuildActions(
     const InstallPlan& install_plan) {
   auto feeder_action = std::make_unique<ObjectFeederAction<InstallPlan>>();
-  auto verifier_action =
-      std::make_unique<FilesystemVerifierAction>(&dynamic_control_stub_);
+  auto verifier_action = std::make_unique<FilesystemVerifierAction>();
   auto collector_action =
       std::make_unique<ObjectCollectorAction<InstallPlan>>();
 
@@ -208,8 +205,7 @@ class FilesystemVerifierActionTest2Delegate : public ActionProcessorDelegate {
 };
 
 TEST_F(FilesystemVerifierActionTest, MissingInputObjectTest) {
-  auto copier_action =
-      std::make_unique<FilesystemVerifierAction>(&dynamic_control_stub_);
+  auto copier_action = std::make_unique<FilesystemVerifierAction>();
   auto collector_action =
       std::make_unique<ObjectCollectorAction<InstallPlan>>();
 

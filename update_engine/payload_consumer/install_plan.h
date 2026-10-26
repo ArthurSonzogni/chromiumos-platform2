@@ -165,10 +165,6 @@ struct InstallPlan {
   // public key in the response.
   std::string public_key_rsa;
 
-  // The name of dynamic partitions not included in the payload. Only used
-  // for partial updates.
-  std::vector<std::string> untouched_dynamic_partitions;
-
   // True if download can be canceled due to restricted time interval.
   bool can_download_be_canceled{false};
 

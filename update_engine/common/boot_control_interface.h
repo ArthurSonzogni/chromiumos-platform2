@@ -14,7 +14,6 @@
 #include <base/functional/callback.h>
 #include <brillo/blkdev_utils/lvm.h>
 
-#include "update_engine/common/dynamic_partition_control_interface.h"
 #include "update_engine/update_metadata.pb.h"
 
 namespace chromeos_update_engine {
@@ -56,21 +55,8 @@ class BootControlInterface {
   // Determines the block device for the given partition name and slot number.
   // The |slot| number must be between 0 and GetNumSlots() - 1 and the
   // |partition_name| is a platform-specific name that identifies a partition on
-  // every slot. In order to access the dynamic partitions in the target slot,
-  // GetDynamicPartitionControl()->PreparePartitionsForUpdate() must be called
-  // (with |update| == true for the first time for a payload, and |false| for
-  // for the rest of the times) prior to calling this function.
-  // The handling may be different based on whether the partition is included
-  // in the update payload. On success, returns true; and stores the block
-  // device in |device|, if the partition is dynamic in |is_dynamic|.
-  virtual bool GetPartitionDevice(const std::string& partition_name,
-                                  Slot slot,
-                                  bool not_in_payload,
-                                  std::string* device,
-                                  bool* is_dynamic) const = 0;
-
-  // Overload of the above function. We assume the partition is always included
-  // in the payload.
+  // every slot. On success, returns true and stores the block device in
+  // |device|.
   virtual bool GetPartitionDevice(const std::string& partition_name,
                                   Slot slot,
                                   std::string* device) const = 0;
@@ -113,9 +99,6 @@ class BootControlInterface {
 
   // Check if |slot| is marked boot successfully.
   virtual bool IsSlotMarkedSuccessful(Slot slot) const = 0;
-
-  // Return the dynamic partition control interface.
-  virtual DynamicPartitionControlInterface* GetDynamicPartitionControl() = 0;
 
   // Get the MiniOS kernel configs. This function reads from the active MiniOS
   // partition. Returns false on failure.

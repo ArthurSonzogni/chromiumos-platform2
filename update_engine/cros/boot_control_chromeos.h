@@ -5,7 +5,7 @@
 #ifndef UPDATE_ENGINE_CROS_BOOT_CONTROL_CHROMEOS_H_
 #define UPDATE_ENGINE_CROS_BOOT_CONTROL_CHROMEOS_H_
 
-#include <memory>
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -13,7 +13,6 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "update_engine/common/boot_control_interface.h"
-#include "update_engine/common/dynamic_partition_control_interface.h"
 
 namespace chromeos_update_engine {
 
@@ -43,11 +42,6 @@ class BootControlChromeOS : public BootControlInterface {
   base::FilePath GetBootDevicePath() const override;
   bool GetPartitionDevice(const std::string& partition_name,
                           BootControlInterface::Slot slot,
-                          bool not_in_payload,
-                          std::string* device,
-                          bool* is_dynamic) const override;
-  bool GetPartitionDevice(const std::string& partition_name,
-                          BootControlInterface::Slot slot,
                           std::string* device) const override;
   bool GetErrorCounter(BootControlInterface::Slot slot,
                        int* error_counter) const override;
@@ -62,7 +56,6 @@ class BootControlChromeOS : public BootControlInterface {
   bool MarkBootSuccessfulAsync(
       base::OnceCallback<void(bool)> callback) override;
   bool IsSlotMarkedSuccessful(BootControlInterface::Slot slot) const override;
-  DynamicPartitionControlInterface* GetDynamicPartitionControl() override;
   bool GetMiniOSKernelConfig(std::string* configs) override;
   bool GetMiniOSVersion(const std::string& kernel_output,
                         std::string* value) override;
@@ -110,8 +103,6 @@ class BootControlChromeOS : public BootControlInterface {
 
   // Cached value for LVM stack enablement check.
   std::optional<bool> is_lvm_stack_enabled_;
-
-  std::unique_ptr<DynamicPartitionControlInterface> dynamic_partition_control_;
 };
 
 }  // namespace chromeos_update_engine
