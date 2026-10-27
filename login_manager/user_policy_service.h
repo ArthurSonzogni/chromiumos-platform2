@@ -40,10 +40,10 @@ class UserPolicyService : public PolicyService {
   // present.
   void PersistKeyCopy();
 
-  // Store a new policy. The only difference from the base PolicyService is that
-  // this override allows storage of policy blobs that indiciate the user is
-  // unmanaged even if they are unsigned. If a non-signed blob gets installed,
-  // we also clear the signing key.
+  // Store a new policy. In addition to the checks done by the base
+  // PolicyService, this override rejects blobs whose PolicyData cannot be
+  // parsed. Unsigned blobs are always rejected, including ones that indicate
+  // the user is unmanaged.
   void Store(const PolicyNamespace& ns,
              const std::vector<uint8_t>& policy_blob,
              int key_flags,

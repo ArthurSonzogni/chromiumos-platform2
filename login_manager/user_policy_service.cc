@@ -86,24 +86,12 @@ void UserPolicyService::Store(const PolicyNamespace& ns,
     return;
   }
 
-  // Allow to switch to unmanaged state even if no signature is present.
-  if (policy_data.state() == em::PolicyData::UNMANAGED &&
-      !policy.has_policy_data_signature()) {
-    PolicyKey* validation_key = ns.first == POLICY_DOMAIN_EXTENSION_INSTALL
-                                    ? extension_install_policy_key()
-                                    : key();
-
-    // Also clear the key.
-    if (validation_key && validation_key->IsPopulated()) {
-      validation_key->ClobberCompromisedKey(std::vector<uint8_t>());
-      PersistKey(validation_key);
-    }
-
-    GetOrCreateStore(ns)->Set(policy);
-    PersistPolicy(ns, std::move(completion));
-    return;
-  }
-
+  // SECURITY: Unsigned user policy is never accepted, including blobs whose
+  // state is UNMANAGED. StorePolicyEx is reachable by chronos, so accepting
+  // unsigned blobs would allow an unprivileged caller to clear the user policy
+  // key and persist unverified policy. Chrome only stores policy that it has
+  // already validated, so every blob must pass signature verification in
+  // PolicyService::StorePolicy().
   PolicyService::StorePolicy(ns, policy, key_flags, std::move(completion));
 }
 

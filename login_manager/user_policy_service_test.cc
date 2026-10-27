@@ -32,7 +32,6 @@
 namespace em = enterprise_management;
 
 using ::testing::_;
-using ::testing::ElementsAre;
 using ::testing::InSequence;
 using ::testing::Return;
 using ::testing::ReturnRef;
@@ -149,47 +148,66 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedSigned) {
   fake_loop_.Run();
 }
 
-TEST_F(UserPolicyServiceTest, StoreUnmanagedKeyPresent) {
+// Unsigned policy must be rejected even if its state is UNMANAGED. The existing
+// key must not be cleared and the stored policy must not be replaced.
+TEST_F(UserPolicyServiceTest, StoreUnsignedUnmanagedKeyPresentRejected) {
   InitPolicy(em::PolicyData::UNMANAGED, "");
-
-  Sequence s1;
-  ExpectStorePolicy(s1);
-  std::vector<uint8_t> key_value;
-  key_value.push_back(0x12);
 
   EXPECT_CALL(*key_, IsPopulated()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*key_, public_key_der()).WillRepeatedly(ReturnRef(key_value));
+  // The empty signature does not verify. The StrictMocks ensure that the key is
+  // neither clobbered nor persisted and that the policy store is not modified.
+  EXPECT_CALL(*key_, Verify(_, _, _)).WillOnce(Return(false));
 
-  Sequence s2;
-  EXPECT_CALL(*key_, ClobberCompromisedKey(ElementsAre())).InSequence(s2);
-  EXPECT_CALL(*key_, Persist()).InSequence(s2).WillOnce(Return(true));
-
-  EXPECT_FALSE(system_utils_.Exists(key_copy_file_));
   service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
-                  PolicyService::KEY_NONE,
-                  MockPolicyService::CreateExpectSuccessCallback());
+                  PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE,
+                  MockPolicyService::CreateExpectFailureCallback());
   fake_loop_.Run();
 
-  EXPECT_TRUE(system_utils_.Exists(key_copy_file_));
-  std::string content;
-  EXPECT_TRUE(system_utils_.ReadFileToString(key_copy_file_, &content));
-  ASSERT_EQ(1u, content.size());
-  EXPECT_EQ(key_value[0], content[0]);
+  EXPECT_FALSE(system_utils_.Exists(key_copy_file_));
 }
 
-TEST_F(UserPolicyServiceTest, StoreUnmanagedNoKey) {
+TEST_F(UserPolicyServiceTest, StoreUnsignedUnmanagedNoKeyRejected) {
   InitPolicy(em::PolicyData::UNMANAGED, "");
 
-  Sequence s1;
-  ExpectStorePolicy(s1);
-
   EXPECT_CALL(*key_, IsPopulated()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*key_, Verify(_, _, _)).WillOnce(Return(false));
 
   service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
-                  PolicyService::KEY_NONE,
-                  MockPolicyService::CreateExpectSuccessCallback());
+                  PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE,
+                  MockPolicyService::CreateExpectFailureCallback());
   fake_loop_.Run();
+
   EXPECT_FALSE(system_utils_.Exists(key_copy_file_));
+}
+
+TEST_F(UserPolicyServiceTest, StoreUnsignedUnmanagedExtensionInstallRejected) {
+  const base::FilePath policy_dir(
+      "/run/daemon-store/session_manager/__userhash__");
+
+  // The Chrome key has no expectations, so any use of it fails the test.
+  auto chrome_key = std::make_unique<StrictMock<MockPolicyKey>>();
+  auto extension_key = std::make_unique<StrictMock<MockPolicyKey>>();
+  MockPolicyKey* extension_key_ptr = extension_key.get();
+  auto extension_store = new StrictMock<MockPolicyStore>;
+
+  UserPolicyService service(&system_utils_, policy_dir, std::move(chrome_key),
+                            std::move(extension_key), key_copy_file_,
+                            extension_install_key_copy_file_);
+  service.SetStoreForTesting(MakeExtensionInstallPolicyNamespace(),
+                             base::WrapUnique(extension_store));
+
+  InitPolicy(em::PolicyData::UNMANAGED, "");
+
+  EXPECT_CALL(*extension_key_ptr, IsPopulated()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*extension_key_ptr, Verify(_, _, _)).WillOnce(Return(false));
+
+  service.Store(MakeExtensionInstallPolicyNamespace(),
+                SerializeAsBlob(policy_proto_),
+                PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE,
+                MockPolicyService::CreateExpectFailureCallback());
+  fake_loop_.Run();
+
+  EXPECT_FALSE(system_utils_.Exists(extension_install_key_copy_file_));
 }
 
 TEST_F(UserPolicyServiceTest, StoreInvalidSignature) {
