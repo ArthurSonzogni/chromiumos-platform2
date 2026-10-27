@@ -25,6 +25,12 @@ class LibusbWrapper {
   virtual void free_device_list(libusb_device** list, int unref_devices) {
     ::libusb_free_device_list(list, unref_devices);
   }
+  virtual libusb_device* ref_device(libusb_device* dev) {
+    return ::libusb_ref_device(dev);
+  }
+  virtual void unref_device(libusb_device* dev) {
+    ::libusb_unref_device(dev);
+  }
   virtual int open(libusb_device* dev, libusb_device_handle** dev_handle) {
     return ::libusb_open(dev, dev_handle);
   }

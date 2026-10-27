@@ -72,6 +72,10 @@ const struct usb_endpoint& EcUsbEndpoint::GetEndpointPtr() {
 }
 
 bool EcUsbEndpoint::AttemptInit(uint16_t vid, uint16_t pid) {
+  if (libusb_is_init_) {
+    CleanUp();
+  }
+
   int r = libusb_->init(nullptr);
   if (r != LIBUSB_SUCCESS) {
     LOG(ERROR) << "libusb_init failed: " << libusb_error_name(r);
@@ -91,6 +95,7 @@ bool EcUsbEndpoint::AttemptInit(uint16_t vid, uint16_t pid) {
     dev_found = CheckDevice(devs[i], vid, pid);
     if (dev_found) {
       VLOG(1) << "Found device " << std::hex << vid << ":" << std::hex << pid;
+      libusb_->ref_device(devs[i]);
       endpoint_.dev = devs[i];
       break;
     }
@@ -143,6 +148,7 @@ bool EcUsbEndpoint::Init(uint16_t vid, uint16_t pid) {
     LOG(INFO) << "Successfully initialized USB Endpoint after retry #"
               << (max_retries_ - retries);
   } else {
+    CleanUp();
     LOG(WARNING) << "Failed to initialize USB Endpoint after retry #"
                  << (max_retries_ - retries);
   }
@@ -222,6 +228,11 @@ bool EcUsbEndpoint::ReleaseInterface() {
 }
 
 bool EcUsbEndpoint::OpenDeviceHandle() {
+  if (endpoint_.dev == nullptr) {
+    LOG(ERROR) << "USB device is not initialized.";
+    return false;
+  }
+
   libusb_device_handle* handle = nullptr;
   int r = libusb_->open(endpoint_.dev, &handle);
   if (r != LIBUSB_SUCCESS) {
@@ -249,7 +260,13 @@ void EcUsbEndpoint::CleanUp() {
     if (endpoint_.interface_number) {
       ReleaseInterface();
     }
+    CloseDeviceHandle();
   }
+
+  if (endpoint_.dev) {
+    libusb_->unref_device(endpoint_.dev);
+  }
+  endpoint_ = {};
 
   libusb_->exit(nullptr);
 
