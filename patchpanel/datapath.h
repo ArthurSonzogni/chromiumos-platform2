@@ -37,6 +37,11 @@ namespace patchpanel {
 
 // filter INPUT chain for ingress port access rules controlled by
 // permission_broker.
+// NOTE: This chain name ("ingress_port_firewall") is referenced by
+// chromeos-firewall-init (/etc/init/iptables.conf and /etc/init/ip6tables.conf)
+// via `-N ingress_port_firewall` to detect and avoid boot-time races with
+// patchpanel's iptables setup. Do not rename this chain without updating the
+// chromeos-firewall-init Upstart scripts as well.
 constexpr char kIngressPortFirewallChain[] = "ingress_port_firewall";
 // filter OUTPUT chain for loopback port restriction rules controlled by
 // permission_broker.

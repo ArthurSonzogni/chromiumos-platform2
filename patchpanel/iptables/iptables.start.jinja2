@@ -133,6 +133,12 @@ COMMIT
 {% elif ipv6 -%}
 :enforce_ipv6_src_prefix - [0:0]
 {% endif -%}
+  {#- NOTE: "ingress_port_firewall" is referenced by name in                    #}
+  {#- chromeos-firewall-init (/etc/init/iptables.conf and                       #}
+  {#- /etc/init/ip6tables.conf) via `-N ingress_port_firewall` to detect        #}
+  {#- boot-time races between chromeos-firewall-init and patchpanel's iptables  #}
+  {#- setup. Do not rename this chain without updating the                      #}
+  {#- chromeos-firewall-init Upstart scripts too.                               #}
 :ingress_port_firewall - [0:0]
 :loopback_port_firewall - [0:0]
 :ingress_downstream_network - [0:0]

@@ -291,6 +291,11 @@ void Datapath::Start() {
                << " IPv6 functionality may be broken.";
   }
 
+  // Flush and initialize *mangle, *nat, and *filter from the static start
+  // scripts. Note that chromeos-firewall-init (/etc/init/iptables.conf and
+  // /etc/init/ip6tables.conf) may race with Datapath::Start() at boot and uses
+  // `-N ingress_port_firewall` in `iptables-restore -n -w` to detect whether
+  // these scripts have already been applied.
   if (process_runner_->iptables_restore(kIptablesStartScriptPath) != 0) {
     LOG(ERROR) << "Failed to call iptables_restore";
   }
