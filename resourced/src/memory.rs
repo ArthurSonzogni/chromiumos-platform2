@@ -1493,10 +1493,6 @@ Node 0, zone   Normal
             get_background_available_memory_kb(&meminfo, common::GameMode::Arc, false),
             400 * 1024 - GAME_MODE_OFFSET_KB
         );
-        assert_eq!(
-            get_background_available_memory_kb(&meminfo, common::GameMode::Borealis, false),
-            400 * 1024 - GAME_MODE_OFFSET_KB
-        );
 
         // When available memory is less than GAME_MODE_OFFSET_KB.
         let meminfo = MemInfo {

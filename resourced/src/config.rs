@@ -168,7 +168,6 @@ pub enum PowerPreferencesType {
     WebRTC,
     Fullscreen,
     VmBoot,
-    BorealisGaming,
     ArcvmGaming,
     BatterySaver,
     ThermalStress,
@@ -181,7 +180,6 @@ impl PowerPreferencesType {
             PowerPreferencesType::WebRTC => "web-rtc-power-preferences",
             PowerPreferencesType::Fullscreen => "fullscreen-power-preferences",
             PowerPreferencesType::VmBoot => "vm-boot-power-preferences",
-            PowerPreferencesType::BorealisGaming => "borealis-gaming-power-preferences",
             PowerPreferencesType::ArcvmGaming => "arcvm-gaming-power-preferences",
             PowerPreferencesType::BatterySaver => "battery-saver-power-preferences",
             PowerPreferencesType::ThermalStress => "thermal-stress-power-preferences",
@@ -509,7 +507,6 @@ impl ConfigProvider {
     ///     * fullscreen-power-preferences/governor/
     ///       * schedutil/
     ///     * vm-boot-power-preferences/governor/..
-    ///     * borealis-gaming-power-preferences/governor/..
     ///     * arcvm-gaming-power-preferences/governor/..
     ///     * battery-saver-power-preferences/governor/..
     ///     * default-power-preferences/governor/..
@@ -768,10 +765,6 @@ mod tests {
                 "fullscreen-power-preferences",
             ),
             (PowerPreferencesType::VmBoot, "vm-boot-power-preferences"),
-            (
-                PowerPreferencesType::BorealisGaming,
-                "borealis-gaming-power-preferences",
-            ),
             (
                 PowerPreferencesType::ArcvmGaming,
                 "arcvm-gaming-power-preferences",
@@ -1229,7 +1222,6 @@ mod tests {
                 PowerPreferencesType::WebRTC,
                 PowerPreferencesType::Fullscreen,
                 PowerPreferencesType::VmBoot,
-                PowerPreferencesType::BorealisGaming,
                 PowerPreferencesType::ArcvmGaming,
                 PowerPreferencesType::BatterySaver,
                 PowerPreferencesType::ThermalStress,

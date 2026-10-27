@@ -4,9 +4,7 @@
 
 mod auto_epp;
 mod auto_epp_config;
-mod borealis;
 mod cgroup_x86_64;
-mod cpu_scaling;
 mod globals;
 mod gpu_freq_scaling;
 mod msr_logger;
@@ -17,7 +15,6 @@ use std::path::Path;
 
 use anyhow::Context;
 use anyhow::Result;
-pub use borealis::apply_borealis_tuning;
 use log::error;
 
 use self::cgroup_x86_64::media_dynamic_cgroup;
@@ -88,7 +85,7 @@ fn set_gt_boost_freq_mhz(mode: RTCAudioActive) -> Result<()> {
 
 // Extract the impl function for unittest.
 fn set_gt_boost_freq_mhz_impl(root: &Path, mode: RTCAudioActive) -> Result<()> {
-    let mut gpu_config = intel_device::IntelGpuDeviceConfig::new(root.to_owned(), 100)?;
+    let mut gpu_config = intel_device::IntelGpuDeviceConfig::new(root.to_owned())?;
     gpu_config.set_rtc_audio_active(mode == RTCAudioActive::Active)
 }
 

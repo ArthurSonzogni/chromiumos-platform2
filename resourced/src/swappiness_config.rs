@@ -16,7 +16,6 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::common::read_from_file;
-use crate::common::TuneSwappiness;
 use crate::dbus::DEFAULT_DBUS_TIMEOUT;
 use crate::dbus_ownership_listener::monitor_dbus_service;
 use crate::dbus_ownership_listener::DbusOwnershipChangeCallback;
@@ -26,7 +25,6 @@ const DEFAULT_SWAPPINESS_VALUE: u32 = 60;
 
 enum Message {
     UpdateDefaultSwappiness(u32),
-    SetSwappinessState(Option<TuneSwappiness>),
     Connected,
 }
 
@@ -52,10 +50,6 @@ pub fn new_swappiness_config() -> (SwappinessConfig, SwappinessConfigProxy) {
 }
 
 impl SwappinessConfig {
-    pub fn update_tuning(&self, tuning: Option<TuneSwappiness>) {
-        self.do_send(Message::SetSwappinessState(tuning))
-    }
-
     pub fn update_default_swappiness(&self, swappiness: Option<u32>) {
         let swappiness = swappiness.unwrap_or(DEFAULT_SWAPPINESS_VALUE);
         self.do_send(Message::UpdateDefaultSwappiness(swappiness))
@@ -90,7 +84,6 @@ impl DbusOwnershipChangeCallback for SwapManagementMonitor {
 impl SwappinessConfigProxy {
     pub async fn run_proxy(&mut self, conn: Arc<SyncConnection>) -> Result<()> {
         let mut default_swappiness = DEFAULT_SWAPPINESS_VALUE;
-        let mut tuning: Option<TuneSwappiness> = None;
         let connected = Arc::new(Mutex::new(false));
         let swap_management_monitor = SwapManagementMonitor {
             connected: connected.clone(),
@@ -115,11 +108,10 @@ impl SwappinessConfigProxy {
         while let Some(msg) = self.receiver.recv().await {
             match msg {
                 Message::UpdateDefaultSwappiness(val) => default_swappiness = val,
-                Message::SetSwappinessState(new_tuning) => tuning = new_tuning,
                 Message::Connected => {}
             }
 
-            let new_swappiness = tuning.map_or(default_swappiness, |t| t.swappiness);
+            let new_swappiness = default_swappiness;
 
             const SWAPPINESS_PATH: &str = "/proc/sys/vm/swappiness";
             let system_swappiness = match read_from_file(&SWAPPINESS_PATH) {

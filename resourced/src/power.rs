@@ -168,11 +168,10 @@ pub trait PowerPreferencesManager {
     /// to determine which [power preference](PowerPreferences) to apply. If there is no
     /// power preference defined for an activity, the next activity in the list will be tried.
     ///
-    /// 1) [Borealis Gaming](PowerPreferencesType::BorealisGaming)
-    /// 2) [ARCVM Gaming](PowerPreferencesType::ArcvmGaming)
-    /// 3) [WebRTC](PowerPreferencesType::WebRTC)
-    /// 4) [Fullscreen Video](PowerPreferencesType::Fullscreen)
-    /// 5) [VM boot Mode] (PowerPreferencesType::VmBoot)
+    /// 1) [ARCVM Gaming](PowerPreferencesType::ArcvmGaming)
+    /// 2) [WebRTC](PowerPreferencesType::WebRTC)
+    /// 3) [Fullscreen Video](PowerPreferencesType::Fullscreen)
+    /// 4) [VM boot Mode] (PowerPreferencesType::VmBoot)
     ///
     /// The [default](PowerPreferencesType::Default) preference will be applied when no
     /// activity is active.
@@ -385,10 +384,6 @@ impl<P: PowerSourceProvider> PowerPreferencesManager for DirectoryPowerPreferenc
             preferences = self
                 .config_provider
                 .read_power_preferences(power_source, PowerPreferencesType::ThermalStress)?;
-        } else if game == GameMode::Borealis {
-            preferences = self
-                .config_provider
-                .read_power_preferences(power_source, PowerPreferencesType::BorealisGaming)?;
         } else if game == GameMode::Arc {
             preferences = self
                 .config_provider
@@ -1117,58 +1112,6 @@ mod tests {
                 common::RTCAudioActive::Inactive,
                 common::FullscreenVideo::Active,
                 common::GameMode::Off,
-                common::VmBootMode::Inactive,
-                common::BatterySaverMode::Inactive,
-                common::ThermalState::Normal,
-            )
-            .unwrap();
-
-        let powersave_bias = read_global_powersave_bias(root.path()).unwrap();
-        assert_eq!(powersave_bias, "200");
-
-        let sampling_rate = read_global_sampling_rate(root.path()).unwrap();
-        assert_eq!(sampling_rate, "16000");
-    }
-
-    #[test]
-    fn test_power_update_power_preferences_borealis_gaming_active() {
-        let root = tempdir().unwrap();
-
-        write_global_powersave_bias(root.path(), 0).unwrap();
-        write_global_sampling_rate(root.path(), 2000).unwrap();
-        test_write_cpuset_root_cpus(root.path(), "0-3");
-
-        let power_source_provider = FakePowerSourceProvider {
-            power_source: PowerSourceType::AC,
-        };
-
-        let mut fake_config = FakeConfig::new();
-        fake_config.write_power_preference(
-            PowerSourceType::AC,
-            PowerPreferencesType::BorealisGaming,
-            &PowerPreferences {
-                governor: Some(Governor::Ondemand {
-                    powersave_bias: 200,
-                    sampling_rate: Some(16000),
-                }),
-                epp: None,
-                cpu_offline: None,
-                cpufreq_disable_boost: false,
-            },
-        );
-        let config_provider = fake_config.provider();
-
-        let manager = DirectoryPowerPreferencesManager {
-            root: root.path().to_path_buf(),
-            config_provider,
-            power_source_provider,
-        };
-
-        manager
-            .update_power_preferences(
-                common::RTCAudioActive::Inactive,
-                common::FullscreenVideo::Inactive,
-                common::GameMode::Borealis,
                 common::VmBootMode::Inactive,
                 common::BatterySaverMode::Inactive,
                 common::ThermalState::Normal,

@@ -9,7 +9,6 @@ use anyhow::Result;
 use crate::common::BatterySaverMode;
 use crate::common::FullscreenVideo;
 use crate::common::RTCAudioActive;
-use crate::common::TuneSwappiness;
 use crate::config::PowerPreferences;
 use crate::config::PowerSourceType;
 use crate::cpu_utils::HotplugCpuAction;
@@ -32,10 +31,6 @@ pub fn apply_platform_power_preferences(
     _preferences: &PowerPreferences,
 ) -> Result<()> {
     Ok(())
-}
-
-pub fn apply_borealis_tuning(_root: &Path, _enable: bool) -> Option<TuneSwappiness> {
-    None
 }
 
 pub fn platform_hotplug_cpus_pre_hook(_action: HotplugCpuAction) {}

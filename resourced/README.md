@@ -26,9 +26,6 @@ The following chromeos-config values are supported:
       * vm-boot-power-preferences/
         * governor/..
         * epp/..
-      * borealis-gaming-power-preferences/
-        * governor/..
-        * epp/..
       * arcvm-gaming-power-preferences/
         * governor/..
         * epp/..

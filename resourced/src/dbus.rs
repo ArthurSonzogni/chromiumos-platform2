@@ -66,7 +66,6 @@ use crate::qos::QOS_ERROR_NO_CONTEXT;
 use crate::qos::QOS_ERROR_NO_SENDER;
 use crate::realtime;
 use crate::swappiness_config::new_swappiness_config;
-use crate::swappiness_config::SwappinessConfig;
 use crate::sync::NoPoison;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
 
@@ -139,17 +138,6 @@ fn send_pressure_signal(
     }
 }
 
-// Call swap_management SwapSetSwappiness when set_game_mode returns TuneSwappiness.
-fn set_game_mode_and_tune_swappiness(
-    power_preferences_manager: &dyn power::PowerPreferencesManager,
-    mode: common::GameMode,
-    swappiness_config: SwappinessConfig,
-) -> Result<()> {
-    let tuning = common::set_game_mode(power_preferences_manager, mode, PathBuf::from("/"));
-    swappiness_config.update_tuning(tuning);
-    Ok(())
-}
-
 async fn get_sender_euid(conn: Arc<SyncConnection>, bus_name: Option<String>) -> Result<u32> {
     let Some(bus_name) = bus_name else {
         bail!("sender bus name is empty");
@@ -201,11 +189,7 @@ fn override_critical_if_necessary(original_critical_margin: u32) -> u32 {
     overridden_critical_margin
 }
 
-fn register_interface(
-    cr: &mut Crossroads,
-    conn: Arc<SyncConnection>,
-    swappiness_config: SwappinessConfig,
-) -> IfaceToken<DbusContext> {
+fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceToken<DbusContext> {
     cr.register(INTERFACE_NAME, |b: &mut IfaceBuilder<DbusContext>| {
         b.method(
             "GetAvailableMemoryKB",
@@ -305,7 +289,6 @@ fn register_interface(
         b.method("GetGameMode", (), ("game_mode",), move |_, _, ()| {
             Ok((common::get_game_mode() as u8,))
         });
-        let swappiness_config_clone = swappiness_config.clone();
         b.method(
             "SetGameMode",
             ("game_mode",),
@@ -314,23 +297,13 @@ fn register_interface(
                 let mode = common::GameMode::try_from(mode_raw)
                     .map_err(|_| MethodErr::failed("Unsupported game mode value"))?;
 
-                set_game_mode_and_tune_swappiness(
-                    context.power_preferences_manager.as_ref(),
-                    mode,
-                    swappiness_config_clone.clone(),
-                )
-                .map_err(|e| {
-                    error!("set_game_mode failed: {e:#}");
-
-                    MethodErr::failed("Failed to set game mode")
-                })?;
+                common::set_game_mode(context.power_preferences_manager.as_ref(), mode);
                 context
                     .reset_game_mode_timer_id
                     .fetch_add(1, Ordering::Relaxed);
                 Ok(())
             },
         );
-        let swappiness_config_clone = swappiness_config.clone();
         b.method(
             "SetGameModeWithTimeout",
             ("game_mode", "timeout_sec"),
@@ -340,16 +313,7 @@ fn register_interface(
                 let mode = common::GameMode::try_from(mode_raw)
                     .map_err(|_| MethodErr::failed("Unsupported game mode value"))?;
                 let timeout = Duration::from_secs(timeout_raw.into());
-                set_game_mode_and_tune_swappiness(
-                    context.power_preferences_manager.as_ref(),
-                    mode,
-                    swappiness_config_clone.clone(),
-                )
-                .map_err(|e| {
-                    error!("set_game_mode failed: {e:#}");
-
-                    MethodErr::failed("Failed to set game mode")
-                })?;
+                common::set_game_mode(context.power_preferences_manager.as_ref(), mode);
 
                 // Increase timer id to cancel previous timer events.
                 context
@@ -360,19 +324,14 @@ fn register_interface(
                 let reset_game_mode_timer_id = context.reset_game_mode_timer_id.clone();
 
                 // Reset game mode after timeout.
-                let swappiness_config_clone2 = swappiness_config_clone.clone();
                 tokio::spawn(async move {
                     tokio::time::sleep(timeout).await;
                     // If the timer id is changed, this event is canceled.
-                    if timer_id == reset_game_mode_timer_id.load(Ordering::Relaxed)
-                        && set_game_mode_and_tune_swappiness(
+                    if timer_id == reset_game_mode_timer_id.load(Ordering::Relaxed) {
+                        common::set_game_mode(
                             power_preferences_manager.as_ref(),
                             common::GameMode::Off,
-                            swappiness_config_clone2.clone(),
-                        )
-                        .is_err()
-                    {
-                        error!("Reset game mode failed.");
+                        );
                     }
                 });
 
@@ -1060,7 +1019,7 @@ pub async fn service_main() -> Result<()> {
         }),
     )));
 
-    let token = register_interface(&mut cr, conn.clone(), swappiness_config);
+    let token = register_interface(&mut cr, conn.clone());
     cr.insert(PATH_NAME, &[token], context.clone());
 
     if common::is_vm_boot_mode_enabled() {

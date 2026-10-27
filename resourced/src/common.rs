@@ -19,7 +19,6 @@ use anyhow::Result;
 use glob::glob;
 use log::warn;
 
-use crate::arch;
 use crate::config::ThermalConfig;
 use crate::power;
 use crate::sync::NoPoison;
@@ -42,8 +41,6 @@ where
 pub enum GameMode {
     // Game mode is off.
     Off = 0,
-    // Game mode is on, borealis is the foreground subsystem.
-    Borealis = 1,
     // Game mode for ARC is on, which means we shouldn't evict Android apps that
     // are foreground or perceptible.
     Arc = 2,
@@ -55,7 +52,6 @@ impl TryFrom<u8> for GameMode {
     fn try_from(mode_raw: u8) -> Result<GameMode> {
         Ok(match mode_raw {
             0 => GameMode::Off,
-            1 => GameMode::Borealis,
             2 => GameMode::Arc,
             _ => bail!("Unsupported game mode value"),
         })
@@ -64,35 +60,18 @@ impl TryFrom<u8> for GameMode {
 
 static GAME_MODE: Mutex<GameMode> = Mutex::new(GameMode::Off);
 
-#[derive(Clone, Copy)]
-pub struct TuneSwappiness {
-    pub swappiness: u32,
-}
-
-// Returns a TuneSwappiness object when swappiness needs to be tuned after setting game mode.
 pub fn set_game_mode(
     power_preference_manager: &dyn power::PowerPreferencesManager,
     mode: GameMode,
-    root: PathBuf,
-) -> Option<TuneSwappiness> {
-    let old_mode = {
+) {
+    {
         let mut data = GAME_MODE.do_lock();
-        let old_mode = *data;
         *data = mode;
-        old_mode
-    };
+    }
 
     // Don't fail game mode settings if EPP can't be changed.
     if let Err(e) = update_power_preferences(power_preference_manager) {
         warn!("Unable to set EPP {e:?}.  Continue setting other game mode options.");
-    }
-
-    if old_mode != GameMode::Borealis && mode == GameMode::Borealis {
-        arch::apply_borealis_tuning(&root, true)
-    } else if old_mode == GameMode::Borealis && mode != GameMode::Borealis {
-        arch::apply_borealis_tuning(&root, false)
-    } else {
-        None
     }
 }
 
@@ -426,18 +405,14 @@ mod tests {
     fn test_get_set_game_mode() {
         let tmp_root = tempdir().unwrap();
         let root = tmp_root.path();
-        setup_mock_cpu_dev_dirs(root).unwrap();
-        setup_mock_cpu_files(root).unwrap();
-        setup_mock_intel_gpu_dev_dirs(root);
-        setup_mock_intel_gpu_files(root);
         let power_manager = MockPowerPreferencesManager {
             root: root.to_path_buf(),
         };
         assert_eq!(get_game_mode(), GameMode::Off);
-        set_game_mode(&power_manager, GameMode::Borealis, root.to_path_buf());
-        assert_eq!(get_game_mode(), GameMode::Borealis);
-        set_game_mode(&power_manager, GameMode::Arc, root.to_path_buf());
+        set_game_mode(&power_manager, GameMode::Arc);
         assert_eq!(get_game_mode(), GameMode::Arc);
+        set_game_mode(&power_manager, GameMode::Off);
+        assert_eq!(get_game_mode(), GameMode::Off);
     }
 
     #[test]

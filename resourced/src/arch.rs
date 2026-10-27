@@ -14,7 +14,6 @@ cfg_if::cfg_if! {
     }
 }
 
-pub use arch_impl::apply_borealis_tuning;
 pub use arch_impl::apply_platform_power_preferences;
 pub use arch_impl::apply_platform_power_settings;
 pub use arch_impl::init;
