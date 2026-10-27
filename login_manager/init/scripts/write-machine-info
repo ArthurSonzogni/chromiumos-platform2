@@ -42,14 +42,40 @@ serial_number() {
     fi
 
     # All non-Chrome OS devices get a "nonchrome" prefix.
-    echo "nonchrome-${serial_number}"
+    printf 'nonchrome-%s' "${serial_number}"
   else
-    # On Chrome OS hardware, read from VPD.
-    vpd_get_value serial_number
+    # On ChromeOS hardware, read directly from RO VPD (do not use
+    # vpd_get_value, which falls back to RW VPD).
+    local ro_vpd_serial="/sys/firmware/vpd/ro/serial_number"
+    if [ -r "${ro_vpd_serial}" ]; then
+      cat "${ro_vpd_serial}"
+    fi
   fi
 }
 
+# Writes `"key"="val"` to stdout using printf (avoiding dash echo backslash
+# expansion). Skips empty values and rejects values with non-printable ASCII
+# characters or double quotes to prevent line/key injection.
+write_var() {
+  local key="$1"
+  local val="$2"
+  case "${val}" in
+    "")
+      return 0
+      ;;
+    *[![:print:]]* | *\"*)
+      printf 'Invalid value for %s\n' "${key}" >&2
+      return 0
+      ;;
+  esac
+
+  printf '"%s"="%s"\n' "${key}" "${val}"
+}
+
+# Remove any pre-existing file first so a file with different ownership or
+# permissions in /tmp cannot block truncation or remain writable by others.
 # shellcheck disable=SC2154
+rm -f "${MACHINE_INFO}"
 true > "${MACHINE_INFO}"
 chmod 0644 "${MACHINE_INFO}"
 
@@ -58,29 +84,29 @@ MACHINE_INFO_ERR=$( {
   # If we have the Flex ID tool, output a Flex ID
   # plus additional DMI info, or a serial number if not.
   if command -v flex_id_tool >/dev/null; then
-    echo "flex_id=\"$(flex_id_tool --type=id)\""
+    write_var "flex_id" "$(flex_id_tool --type=id)"
     sys_vendor_path="/sys/class/dmi/id/sys_vendor"
     if [ -r "${sys_vendor_path}" ]; then
-      echo "flex_sys_vendor=\"$(cat "${sys_vendor_path}")\""
+      write_var "flex_sys_vendor" "$(cat "${sys_vendor_path}")"
     fi
 
     product_name_path="/sys/class/dmi/id/product_name"
     if [ -r "${product_name_path}" ]; then
-      echo "flex_product_name=\"$(cat "${product_name_path}")\""
+      write_var "flex_product_name" "$(cat "${product_name_path}")"
     fi
 
     product_version_path="/sys/class/dmi/id/product_version"
     if [ -r "${product_version_path}" ]; then
-      echo "flex_product_version=\"$(cat "${product_version_path}")\""
+      write_var "flex_product_version" "$(cat "${product_version_path}")"
     fi
   else
-    echo "serial_number=\"$(serial_number)\""
+    write_var "serial_number" "$(serial_number)"
   fi
 
   # Dynamic information.
-  echo "customization_id=\"$(cros_config /ui help-content-id)\""
-  echo "rlz_brand_code=\"$(cros_config / brand-code)\""
-  echo "wpsw_cur=\"$(crossystem wpsw_cur)\""
+  write_var "customization_id" "$(cros_config /ui help-content-id)"
+  write_var "rlz_brand_code" "$(cros_config / brand-code)"
+  write_var "wpsw_cur" "$(crossystem wpsw_cur)"
 } 2>&1 >> "${MACHINE_INFO}" )
 if [ -n "${MACHINE_INFO_ERR}" ]; then
   logger -t write-machine-info "${MACHINE_INFO_ERR}"
