@@ -8,8 +8,9 @@ bootstat shill-start
 # Double check to make sure shill related paths have been created with the
 # intended ownership and permissions. These paths should already have been
 # handled during boot, but check them again.
-systemd-tmpfiles --create --remove --clean /usr/lib/tmpfiles.d/shill.conf
-systemd-tmpfiles --create --remove --clean /usr/lib/tmpfiles.d/dhcpcd.conf
+systemd-tmpfiles --create --remove --clean \
+  /usr/lib/tmpfiles.d/shill.conf \
+  /usr/lib/tmpfiles.d/dhcpcd.conf
 
 # tmpfiles.d does not handle chown/chmod -R because of unsafe ownership
 # transitions.
