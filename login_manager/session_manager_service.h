@@ -5,12 +5,15 @@
 #ifndef LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_
 #define LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_
 
+#include <sys/types.h>
+
 #include <functional>
 #include <map>
 #include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -73,6 +76,11 @@ class SessionManagerService
 
   // Path to flag file indicating that a user has logged in since last boot.
   static const char kLoggedInFlag[];
+
+  // Looks up the UID of the D-Bus connection named |sender| (e.g. ":1.42")
+  // via |conn|. Returns std::nullopt on failure.
+  using GetSenderUidCallback = base::RepeatingCallback<std::optional<uid_t>(
+      DBusConnection* conn, const char* sender)>;
 
   // If you want to call any of these setters, you should do so before calling
   // any other methods on this class.
@@ -142,6 +150,9 @@ class SessionManagerService
                                     DBusMessage* message) {
       return SessionManagerService::FilterMessage(conn, message,
                                                   session_manager_service_);
+    }
+    void set_get_sender_uid_callback(GetSenderUidCallback callback) {
+      session_manager_service_->get_sender_uid_callback_ = std::move(callback);
     }
 
    private:
@@ -366,6 +377,10 @@ class SessionManagerService
   // Active D-Bus unique connection names (":1.X") mapped to their connection
   // timestamp.
   std::map<std::string, base::TimeTicks, std::less<>> connection_timestamps_;
+
+  // Used in FilterMessage() to look up the UID of a D-Bus method caller.
+  // Replaceable for testing.
+  GetSenderUidCallback get_sender_uid_callback_;
 
   std::unique_ptr<ArcManager> arc_manager_;
   std::unique_ptr<ArcManagerProxy> arc_manager_proxy_;

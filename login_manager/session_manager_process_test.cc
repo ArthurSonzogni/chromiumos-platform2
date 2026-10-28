@@ -18,6 +18,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_util.h>
+#include <base/test/bind.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dbus.h>
@@ -665,6 +666,22 @@ class ScopedTestDBusConnection {
   DBusConnection* conn_ = nullptr;
 };
 
+// Creates a method call message to SessionManagerInterface.|method|.
+// If |sender| is not null, it is set as the sender of the message.
+// Caller takes the ownership.
+DBusMessage* CreateSessionManagerMethodCall(const char* method,
+                                            const char* sender) {
+  DBusMessage* msg = dbus_message_new_method_call(
+      "org.chromium.SessionManagerInterface", "/org/chromium/SessionManager",
+      "org.chromium.SessionManagerInterface", method);
+  CHECK(msg);
+  dbus_message_set_serial(msg, 1);
+  if (sender) {
+    CHECK(dbus_message_set_sender(msg, sender));
+  }
+  return msg;
+}
+
 }  // namespace
 
 TEST_F(SessionManagerProcessTest, FilterMessage_NoPidCheckRequired) {
@@ -714,6 +731,105 @@ TEST_F(SessionManagerProcessTest,
             manager_->test_api().FilterMessage(conn.get(), msg));
   dbus_message_unref(msg);
 }
+
+TEST_F(SessionManagerProcessTest, FilterMessage_RestartJobFromRootIsRejected) {
+  InitManager();
+  ScopedTestDBusConnection conn;
+  base::TimeTicks now = base::TimeTicks::Now();
+  manager_->test_api().set_connection_timestamp(":1.42",
+                                                now - base::Seconds(10));
+  fake_browser_job_->set_spawn_time(now);
+  int uid_lookup_count = 0;
+  manager_->test_api().set_get_sender_uid_callback(base::BindLambdaForTesting(
+      [&uid_lookup_count](DBusConnection*,
+                          const char*) -> std::optional<uid_t> {
+        ++uid_lookup_count;
+        return 0;
+      }));
+
+  DBusMessage* msg = CreateSessionManagerMethodCall("RestartJob", ":1.42");
+  // RestartJob is allowed only for browser, even for root.
+  EXPECT_EQ(DBUS_HANDLER_RESULT_HANDLED,
+            manager_->test_api().FilterMessage(conn.get(), msg));
+  EXPECT_EQ(0, uid_lookup_count);
+  dbus_message_unref(msg);
+}
+
+TEST_F(SessionManagerProcessTest, FilterMessage_StartSessionNoSender) {
+  InitManager();
+  ScopedTestDBusConnection conn;
+  DBusMessage* msg = CreateSessionManagerMethodCall("StartSession", nullptr);
+  EXPECT_EQ(DBUS_HANDLER_RESULT_HANDLED,
+            manager_->test_api().FilterMessage(conn.get(), msg));
+  dbus_message_unref(msg);
+}
+
+class SessionManagerProcessStartSessionTest
+    : public SessionManagerProcessTest,
+      public ::testing::WithParamInterface<const char*> {};
+
+TEST_P(SessionManagerProcessStartSessionTest, FromRoot) {
+  InitManager();
+  ScopedTestDBusConnection conn;
+  // Root's connection is established before browser spawn, so the browser
+  // check would fail. Root should be allowed anyway.
+  base::TimeTicks now = base::TimeTicks::Now();
+  manager_->test_api().set_connection_timestamp(":1.42",
+                                                now - base::Seconds(10));
+  fake_browser_job_->set_spawn_time(now);
+  manager_->test_api().set_get_sender_uid_callback(base::BindRepeating(
+      [](DBusConnection*, const char* sender) -> std::optional<uid_t> {
+        EXPECT_STREQ(":1.42", sender);
+        return 0;
+      }));
+
+  DBusMessage* msg = CreateSessionManagerMethodCall(GetParam(), ":1.42");
+  EXPECT_EQ(DBUS_HANDLER_RESULT_NOT_YET_HANDLED,
+            manager_->test_api().FilterMessage(conn.get(), msg));
+  dbus_message_unref(msg);
+}
+
+TEST_P(SessionManagerProcessStartSessionTest, FromNonBrowserNonRoot) {
+  InitManager();
+  ScopedTestDBusConnection conn;
+  base::TimeTicks now = base::TimeTicks::Now();
+  manager_->test_api().set_connection_timestamp(":1.42",
+                                                now - base::Seconds(10));
+  fake_browser_job_->set_spawn_time(now);
+  manager_->test_api().set_get_sender_uid_callback(base::BindRepeating(
+      [](DBusConnection*, const char*) -> std::optional<uid_t> {
+        return 1000;  // chronos.
+      }));
+
+  DBusMessage* msg = CreateSessionManagerMethodCall(GetParam(), ":1.42");
+  // Falls through to the browser check, which rejects the sender.
+  EXPECT_EQ(DBUS_HANDLER_RESULT_HANDLED,
+            manager_->test_api().FilterMessage(conn.get(), msg));
+  dbus_message_unref(msg);
+}
+
+TEST_P(SessionManagerProcessStartSessionTest, UidLookupFailure) {
+  InitManager();
+  ScopedTestDBusConnection conn;
+  base::TimeTicks now = base::TimeTicks::Now();
+  manager_->test_api().set_connection_timestamp(":1.42",
+                                                now - base::Seconds(10));
+  fake_browser_job_->set_spawn_time(now);
+  manager_->test_api().set_get_sender_uid_callback(base::BindRepeating(
+      [](DBusConnection*, const char*) -> std::optional<uid_t> {
+        return std::nullopt;
+      }));
+
+  DBusMessage* msg = CreateSessionManagerMethodCall(GetParam(), ":1.42");
+  // Falls through to the browser check, which rejects the sender.
+  EXPECT_EQ(DBUS_HANDLER_RESULT_HANDLED,
+            manager_->test_api().FilterMessage(conn.get(), msg));
+  dbus_message_unref(msg);
+}
+
+INSTANTIATE_TEST_SUITE_P(StartSessionMethods,
+                         SessionManagerProcessStartSessionTest,
+                         ::testing::Values("StartSession", "StartSessionEx"));
 
 TEST_F(SessionManagerProcessTest, FilterMessage_NameOwnerChangedSignal) {
   InitManager();
