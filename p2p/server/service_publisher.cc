@@ -141,6 +141,12 @@ void ServicePublisherAvahi::Publish(bool may_delay) {
   int rc;
   AvahiStringList* txt;
 
+  // Avahi only accepts records once the client is running. Until then files_
+  // is just updated; OnAvahiChanged() publishes it on AVAHI_CLIENT_S_RUNNING.
+  if (avahi_client_get_state(client_) != AVAHI_CLIENT_S_RUNNING) {
+    return;
+  }
+
   if (may_delay) {
     if (delay_timeout_id_ != 0) {
       // Already have a timeout, no need to schedule a new one
@@ -229,6 +235,11 @@ void ServicePublisherAvahi::OnAvahiChanged(AvahiClient* client,
     VLOG(1) << "Server running, publishing services using LAN name '"
             << publisher->lan_name_ << "'";
     publisher->Publish(false);
+  } else if (state == AVAHI_CLIENT_CONNECTING) {
+    LOG(INFO) << "Waiting for avahi-daemon to appear on D-Bus";
+  } else if (state == AVAHI_CLIENT_FAILURE) {
+    LOG(ERROR) << "Avahi client failure: "
+               << avahi_strerror(avahi_client_errno(client));
   }
 }
 
@@ -236,7 +247,9 @@ bool ServicePublisherAvahi::Init() {
   int error;
 
   poll_ = avahi_glib_poll_new(NULL, G_PRIORITY_DEFAULT);
-  client_ = avahi_client_new(avahi_glib_poll_get(poll_), (AvahiClientFlags)0,
+  // If avahi-daemon is not on D-Bus yet (e.g. it is still starting), wait in
+  // AVAHI_CLIENT_CONNECTING for it to appear instead of failing.
+  client_ = avahi_client_new(avahi_glib_poll_get(poll_), AVAHI_CLIENT_NO_FAIL,
                              OnAvahiChanged, this, &error);
   if (client_ == NULL) {
     LOG(ERROR) << "Error constructing AvahiClient: " << error;
