@@ -17,11 +17,7 @@ group("all") {
     "xml:libandroidxml",
   ]
   if (use.arcpp) {
-    deps += [
-      ":arc-setup",
-      ":generate_squashfs",
-      ":install_config_json",
-    ]
+    deps += [ ":generate_squashfs" ]
   }
   if (use.arcvm) {
     deps += [
@@ -85,9 +81,6 @@ config("target_defaults") {
 
 install_config("install_dbus_system_d_configs") {
   sources = []
-  if (use.arcpp) {
-    sources += [ "init/dbus-1/ArcSetupUpstart.conf" ]
-  }
   if (use.arcvm) {
     sources += [ "init/dbus-1/ArcVmSetupUpstart.conf" ]
   }
@@ -99,9 +92,6 @@ install_config("install_minijail_configs") {
     "init/minijail/arc-remove-data.conf",
     "init/minijail/arc-stale-directory-remover.conf",
   ]
-  if (use.arcpp) {
-    sources += [ "init/minijail/arc-boot-continue.conf" ]
-  }
   if (use.arcvm) {
     sources += [
       "init/minijail/arcvm-per-board-features.conf",
@@ -123,18 +113,6 @@ install_config("install_upstart_configs") {
     "init/arc-remove-data.conf",
     "init/arc-stale-directory-remover.conf",
   ]
-  if (use.arcpp) {
-    sources += [
-      "init/arc-boot-continue.conf",
-      "init/arc-lifetime.conf",
-      "init/arc-sdcard-mount.conf",
-      "init/arc-sdcard.conf",
-      "init/arc-system-mount.conf",
-      "init/arc-update-restorecon-last.conf",
-      "init/arcpp-media-sharing-services.conf",
-      "init/arcpp-post-login-services.conf",
-    ]
-  }
   if (use.arcvm) {
     sources += [
       "init/arcvm-per-board-features.conf",
@@ -145,11 +123,6 @@ install_config("install_upstart_configs") {
     sources += [ "init/arcvm-bind-mount-dlc-path.conf" ]
   }
   install_path = "upstart"
-}
-
-install_config("install_config_json") {
-  sources = [ "init/arc-setup/config.json" ]
-  install_path = "/usr/share/arc-setup"
 }
 
 libarc_setup_sources = [
@@ -185,13 +158,6 @@ shared_library("libarc_setup") {
   ]
   deps = [ "xml:libandroidxml" ]
   install_path = "lib"
-}
-
-executable("arc-setup") {
-  sources = [ "main.cc" ]
-  configs += [ ":target_defaults" ]
-  deps = [ ":libarc_setup" ]
-  install_path = "sbin"
 }
 
 executable("arc-prepare-host-generated-dir") {
