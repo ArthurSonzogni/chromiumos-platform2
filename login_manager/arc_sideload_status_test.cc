@@ -125,14 +125,9 @@ class ArcSideloadStatusTest : public ::testing::Test {
   dbus::MethodCall bootlockbox_store_method_call_;
 };
 
-TEST_F(ArcSideloadStatusTest, IsAdbSideloadAllowed_Default) {
-  EXPECT_FALSE(arc_sideload_status_->IsAdbSideloadAllowed());
-}
-
 TEST_F(ArcSideloadStatusTest, Initialize_ServiceNotAvailable) {
   ExpectBootLockboxServiceToBeAvailable(false);
   arc_sideload_status_->Initialize();
-  EXPECT_FALSE(arc_sideload_status_->IsAdbSideloadAllowed());
   // Expect nothing else.
 }
 
@@ -162,7 +157,6 @@ TEST_F(ArcSideloadStatusTest, InitializeThenQueryAdbSideload) {
 
   // Verify
   EXPECT_EQ(status, ArcSideloadStatusInterface::Status::ENABLED);
-  EXPECT_TRUE(arc_sideload_status_->IsAdbSideloadAllowed());
 }
 
 TEST_F(ArcSideloadStatusTest, QueryAdbSideloadThenInitialize) {
@@ -179,7 +173,6 @@ TEST_F(ArcSideloadStatusTest, QueryAdbSideloadThenInitialize) {
 
   // Verify
   EXPECT_EQ(status, ArcSideloadStatusInterface::Status::ENABLED);
-  EXPECT_TRUE(arc_sideload_status_->IsAdbSideloadAllowed());
 }
 
 TEST_F(ArcSideloadStatusTest, QueryAdbSideload_NeedPowerwash) {
@@ -202,7 +195,6 @@ TEST_F(ArcSideloadStatusTest, QueryAdbSideload_NeedPowerwash) {
 
   // Verify
   EXPECT_EQ(status, ArcSideloadStatusInterface::Status::NEED_POWERWASH);
-  EXPECT_FALSE(arc_sideload_status_->IsAdbSideloadAllowed());
 }
 
 TEST_F(ArcSideloadStatusTest, QueryAdbSideloadThenBadInitialize) {
@@ -216,7 +208,6 @@ TEST_F(ArcSideloadStatusTest, QueryAdbSideloadThenBadInitialize) {
 
   // Verify
   EXPECT_EQ(status, ArcSideloadStatusInterface::Status::DISABLED);
-  EXPECT_FALSE(arc_sideload_status_->IsAdbSideloadAllowed());
 }
 
 TEST_F(ArcSideloadStatusTest, MultipleQueryAdbSideloadThenInitialize) {
@@ -236,7 +227,6 @@ TEST_F(ArcSideloadStatusTest, MultipleQueryAdbSideloadThenInitialize) {
   // Verify
   EXPECT_EQ(status1, ArcSideloadStatusInterface::Status::ENABLED);
   EXPECT_EQ(status2, ArcSideloadStatusInterface::Status::ENABLED);
-  EXPECT_TRUE(arc_sideload_status_->IsAdbSideloadAllowed());
 }
 
 TEST_F(ArcSideloadStatusTest, InitializeThenQueryAdbSideload_NullResponse) {
@@ -251,7 +241,6 @@ TEST_F(ArcSideloadStatusTest, InitializeThenQueryAdbSideload_NullResponse) {
 
   // Verify
   EXPECT_EQ(status, ArcSideloadStatusInterface::Status::DISABLED);
-  EXPECT_FALSE(arc_sideload_status_->IsAdbSideloadAllowed());
 }
 
 TEST_F(ArcSideloadStatusTest, InitializeThenQueryAdbSideload_BadFormat) {
@@ -270,7 +259,6 @@ TEST_F(ArcSideloadStatusTest, InitializeThenQueryAdbSideload_BadFormat) {
 
   // Verify
   EXPECT_EQ(status, ArcSideloadStatusInterface::Status::DISABLED);
-  EXPECT_FALSE(arc_sideload_status_->IsAdbSideloadAllowed());
 }
 
 TEST_F(ArcSideloadStatusTest, InitializeThenQueryAdbSideload_MissingKey) {
@@ -288,7 +276,6 @@ TEST_F(ArcSideloadStatusTest, InitializeThenQueryAdbSideload_MissingKey) {
 
   // Verify
   EXPECT_EQ(status, ArcSideloadStatusInterface::Status::DISABLED);
-  EXPECT_FALSE(arc_sideload_status_->IsAdbSideloadAllowed());
 }
 
 TEST_F(ArcSideloadStatusTest, EnableAdbSideload_Uninitialized) {

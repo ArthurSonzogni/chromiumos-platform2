@@ -36,7 +36,6 @@ class ArcSideloadStatus : public ArcSideloadStatusInterface {
 
   // Overridden from ArcSideloadStatusInterface
   void Initialize() override;
-  bool IsAdbSideloadAllowed() override;
   void EnableAdbSideload(EnableAdbSideloadCallback callback) override;
   void QueryAdbSideload(QueryAdbSideloadCallback callback) override;
 

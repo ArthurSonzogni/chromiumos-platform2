@@ -10,10 +10,6 @@ namespace login_manager {
 
 void ArcSideloadStatusStub::Initialize() {}
 
-bool ArcSideloadStatusStub::IsAdbSideloadAllowed() {
-  return false;
-}
-
 void ArcSideloadStatusStub::EnableAdbSideload(
     EnableAdbSideloadCallback callback) {
   std::move(callback).Run(ArcSideloadStatusInterface::Status::DISABLED,

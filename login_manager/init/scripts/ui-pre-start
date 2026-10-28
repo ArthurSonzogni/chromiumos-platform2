@@ -183,19 +183,6 @@ if [ ! -d "${CHROME_FREEZER_CGROUP_DIR:-}" ]; then
   chown -R chronos "${CHROME_FREEZER_CGROUP_DIR}"
 fi
 
-# Set up a cgroup for containers(Android) started by session manager.  To
-# start, limit the cpu shares of Android.  This will be reset to the default
-# once the user clicks on an Android app.  Keeping the usage low prevents
-# Android boot from slowing the login process.
-CONTAINER_CGROUP_DIR=/sys/fs/cgroup/cpu/session_manager_containers
-if [ -d "${CONTAINER_CGROUP_DIR}" ]; then
-  echo "32" > "${CONTAINER_CGROUP_DIR}/cpu.shares"
-  echo "-1" > "${CONTAINER_CGROUP_DIR}/cpu.cfs_quota_us"
-  if [ -f "${CONTAINER_CGROUP_DIR}/cpu.uclamp.min" ]; then
-    echo "100" > "${CONTAINER_CGROUP_DIR}/cpu.uclamp.min"
-  fi
-fi
-
 # Enable transparent huge pages on devices with 8GB+ RAM.
 # TODO (b/315138994): move this to chromeos_startup, to enable THP
 # as early as possible.

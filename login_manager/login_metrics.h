@@ -5,17 +5,12 @@
 #ifndef LOGIN_MANAGER_LOGIN_METRICS_H_
 #define LOGIN_MANAGER_LOGIN_METRICS_H_
 
-#include <memory>
 #include <string>
 
-#include <base/files/file_path.h>
 #include <base/time/time.h>
 #include <metrics/metrics_library.h>
 
 namespace login_manager {
-
-class CumulativeUseTimeMetric;
-class SystemUtils;
 
 class LoginMetrics {
  public:
@@ -97,14 +92,6 @@ class LoginMetrics {
     kErrorGettingState = 6,         // Failed to read status file from /proc.
     kMaxValue = kErrorGettingState  // Must be equal to the largest value
   };
-  enum class ArcContinueBootImpulseStatus {
-    // These values are persisted to logs. Entries should not be renumbered and
-    // numeric values should never be reused.
-    kArcContinueBootImpulseStatusSuccess = 0,
-    kArcContinueBootImpulseStatusFailed = 1,
-    kArcContinueBootImpulseStatusTimedOut = 2,
-    kMaxValue = kArcContinueBootImpulseStatusTimedOut
-  };
 
   // Holds the state of several policy files on disk.
   struct DevicePolicyFilesStatus {
@@ -120,7 +107,7 @@ class LoginMetrics {
     OwnershipState ownership_state;
   };
 
-  explicit LoginMetrics(SystemUtils* system_utils);
+  LoginMetrics();
   LoginMetrics(const LoginMetrics&) = delete;
   LoginMetrics& operator=(const LoginMetrics&) = delete;
 
@@ -139,14 +126,6 @@ class LoginMetrics {
   // Return true if we have already recorded that Chrome has exec'd.
   virtual bool HasRecordedChromeExec();
 
-  // Starts tracking cumulative ARC usage time. Should be called when ARC
-  // container is started.
-  virtual void StartTrackingArcUseTime();
-
-  // Stops tracking cumulative ARC usage time. Should be called when ARC
-  // container is stopped.
-  virtual void StopTrackingArcUseTime();
-
   // Submits to UMA the result of invalid policy checks.
   virtual void SendInvalidPolicyFilesStatus(
       InvalidDevicePolicyFilesStatus result);
@@ -156,10 +135,6 @@ class LoginMetrics {
 
   // Submits to UMA the browser shutdown time of normal exit.
   virtual void SendBrowserShutdownTime(base::TimeDelta browser_shutdown_time);
-
-  // Submits to UMA the status of the Arc Continue Boot time.
-  virtual void SendArcContinueBootImpulseStatus(
-      ArcContinueBootImpulseStatus status);
 
   // Submits a UMA sample indicating compatibility feature flag mapping status.
   virtual void SendSwitchToFeatureFlagMappingStatus(
@@ -193,7 +168,6 @@ class LoginMetrics {
   static int LoginUserTypeCode(bool dev_mode, bool guest, bool owner);
 
   MetricsLibrary metrics_lib_;
-  std::unique_ptr<CumulativeUseTimeMetric> arc_cumulative_use_time_;
 };
 }  // namespace login_manager
 

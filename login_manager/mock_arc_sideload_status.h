@@ -17,7 +17,6 @@ class MockArcSideloadStatus : public ArcSideloadStatusInterface {
   ~MockArcSideloadStatus() override {}
 
   MOCK_METHOD(void, Initialize, (), (override));
-  MOCK_METHOD(bool, IsAdbSideloadAllowed, (), (override));
   MOCK_METHOD(void, EnableAdbSideload, (EnableAdbSideloadCallback), (override));
   MOCK_METHOD(void, QueryAdbSideload, (QueryAdbSideloadCallback), (override));
 };

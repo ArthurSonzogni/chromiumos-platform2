@@ -18,7 +18,6 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
-#include "arc/arc.pb.h"
 #include "bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h"
 #include "login_manager/dbus_util.h"
 
@@ -43,10 +42,6 @@ void ArcSideloadStatus::Initialize() {
   boot_lockbox_proxy_->WaitForServiceToBeAvailable(
       base::BindOnce(&ArcSideloadStatus::OnBootLockboxServiceAvailable,
                      weak_ptr_factory_.GetWeakPtr()));
-}
-
-bool ArcSideloadStatus::IsAdbSideloadAllowed() {
-  return sideload_status_ == ArcSideloadStatusInterface::Status::ENABLED;
 }
 
 void ArcSideloadStatus::EnableAdbSideload(EnableAdbSideloadCallback callback) {

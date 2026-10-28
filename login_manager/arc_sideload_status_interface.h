@@ -24,11 +24,6 @@ class ArcSideloadStatusInterface {
 
   virtual void Initialize() = 0;
 
-  // Returns true IFF ARC Sideload is allowed as per bootlockbox status. Can
-  // return false if it's explicitly not yet allowed, or if the status is
-  // still unknown, e.g. due to slowness in asking bootlockbox.
-  virtual bool IsAdbSideloadAllowed() = 0;
-
   // Callback of EnableAdbSideload. The first argument indicates whether the
   // operation has succeeded. The second argument is the error message when
   // failed, or nullptr on success.

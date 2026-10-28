@@ -8,15 +8,10 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/logging.h>
-#include <base/system/sys_info.h>
-#include <base/time/default_clock.h>
-#include <base/time/default_tick_clock.h>
 #include <metrics/bootstat.h>
 #include <metrics/metrics_library.h>
-
-#include "login_manager/cumulative_use_time_metric.h"
 
 namespace login_manager {
 namespace {
@@ -29,9 +24,6 @@ const char kChromeUptimeFile[] = "/run/bootstat/uptime-chrome-exec";
 // process and when the browser process group exits (or killed via SIGABRT).
 const char kLoginBrowserShutdownTimeMetric[] = "Login.BrowserShutdownTime";
 
-const char kArcContinueBootImpulseStatus[] =
-    "Login.ArcContinueBootImpulseStatus";
-
 const char kLoginStateKeyGenerationStatus[] = "Login.StateKeyGenerationStatus";
 const char kSessionExitTypeMetric[] = "Login.SessionExitType";
 const char kLoginDevicePolicyStateMetric[] = "Login.DevicePolicyState";
@@ -39,9 +31,6 @@ const char kLoginDevicePolicyStateMetric[] = "Login.DevicePolicyState";
 const int kMaxDevicePolicyStateValue = 45;
 const char kInvalidDevicePolicyFilesStatus[] =
     "Enterprise.InvalidDevicePolicyFilesStatus";
-const char kMetricsDir[] = "/var/lib/metrics";
-
-const char kArcCumulativeUseTimeMetric[] = "Arc.CumulativeUseTime";
 const char kLoginMountNamespaceMetric[] = "Login.MountNamespaceCreationSuccess";
 
 const char kSwitchToFeatureFlagMappingStatus[] =
@@ -54,19 +43,9 @@ const char kLivenessPingResultMetric[] = "ChromeOS.Liveness.PingResult";
 
 }  // namespace
 
-LoginMetrics::LoginMetrics(SystemUtils* system_utils) {
-  if (metrics_lib_.AreMetricsEnabled()) {
-    arc_cumulative_use_time_ = std::make_unique<CumulativeUseTimeMetric>(
-        system_utils, kArcCumulativeUseTimeMetric, &metrics_lib_,
-        base::FilePath(kMetricsDir), std::make_unique<base::DefaultClock>(),
-        std::make_unique<base::DefaultTickClock>());
-    std::string version;
-    base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_VERSION", &version);
-    arc_cumulative_use_time_->Init(version);
-  }
-}
+LoginMetrics::LoginMetrics() = default;
 
-LoginMetrics::~LoginMetrics() {}
+LoginMetrics::~LoginMetrics() = default;
 
 void LoginMetrics::SendNamespaceCreationResult(bool status) {
   metrics_lib_.SendBoolToUMA(kLoginMountNamespaceMetric, status);
@@ -84,18 +63,6 @@ void LoginMetrics::RecordStats(const char* tag) {
 
 bool LoginMetrics::HasRecordedChromeExec() {
   return base::PathExists(base::FilePath(kChromeUptimeFile));
-}
-
-void LoginMetrics::StartTrackingArcUseTime() {
-  if (arc_cumulative_use_time_) {
-    arc_cumulative_use_time_->Start();
-  }
-}
-
-void LoginMetrics::StopTrackingArcUseTime() {
-  if (arc_cumulative_use_time_) {
-    arc_cumulative_use_time_->Stop();
-  }
 }
 
 void LoginMetrics::SendInvalidPolicyFilesStatus(
@@ -119,13 +86,6 @@ void LoginMetrics::SendBrowserShutdownTime(
       static_cast<int>(browser_shutdown_time.InMilliseconds()),
       static_cast<int>(base::Milliseconds(1).InMilliseconds()),
       static_cast<int>(base::Seconds(12).InMilliseconds()), 50);
-}
-
-void LoginMetrics::SendArcContinueBootImpulseStatus(
-    ArcContinueBootImpulseStatus status) {
-  metrics_lib_.SendEnumToUMA(
-      kArcContinueBootImpulseStatus, static_cast<int>(status),
-      static_cast<int>(ArcContinueBootImpulseStatus::kMaxValue));
 }
 
 void LoginMetrics::SendSwitchToFeatureFlagMappingStatus(

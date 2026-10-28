@@ -9,8 +9,6 @@
 #include <base/files/file_util.h>
 #include <gtest/gtest.h>
 
-#include "login_manager/fake_system_utils.h"
-
 namespace login_manager {
 
 struct UserTypeTestParams {
@@ -75,9 +73,7 @@ class LoginMetricsTest : public testing::Test {
   LoginMetricsTest& operator=(const LoginMetricsTest&) = delete;
   ~LoginMetricsTest() override = default;
 
-  void SetUp() override {
-    metrics_ = std::make_unique<LoginMetrics>(&system_utils_);
-  }
+  void SetUp() override { metrics_ = std::make_unique<LoginMetrics>(); }
 
   void TearDown() override { metrics_.reset(); }
 
@@ -86,7 +82,6 @@ class LoginMetricsTest : public testing::Test {
   }
 
  protected:
-  FakeSystemUtils system_utils_;
   std::unique_ptr<LoginMetrics> metrics_;
 };
 

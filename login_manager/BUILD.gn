@@ -106,7 +106,6 @@ static_library("libsession_manager") {
     "chrome_features_service_client.cc",
     "chrome_setup.cc",
     "chromium_command_builder.cc",
-    "cumulative_use_time_metric.cc",
     "dbus_util.cc",
     "device_identifier_generator.cc",
     "device_local_account_manager.cc",
@@ -219,10 +218,7 @@ install_config("install_init_scripts") {
 }
 
 install_config("install_powerd_prefs") {
-  sources = [
-    "powerd_prefs/suspend_freezer_deps_session_manager_containers",
-    "powerd_prefs/suspend_freezer_deps_ui",
-  ]
+  sources = [ "powerd_prefs/suspend_freezer_deps_ui" ]
   install_path = "/usr/share/power_manager"
 }
 
@@ -259,7 +255,6 @@ if (use.test) {
       "browser_job_test.cc",
       "chrome_setup_test.cc",
       "chromium_command_builder_test.cc",
-      "cumulative_use_time_metric_test.cc",
       "device_identifier_generator_test.cc",
       "device_local_account_manager_test.cc",
       "device_policy_service_test.cc",
