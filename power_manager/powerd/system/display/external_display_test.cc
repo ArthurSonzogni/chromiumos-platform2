@@ -14,8 +14,10 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/compiler_specific.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <brillo/syslog_logging.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/metrics_constants.h"
@@ -30,6 +32,28 @@ namespace {
 std::string Hex(uint8_t byte) {
   return base::HexEncode(base::byte_span_from_ref(byte));
 }
+
+// Captures brillo log output into brillo::GetLog() and restores global log
+// state on destruction.
+class ScopedLogCapture {
+ public:
+  ScopedLogCapture() : previous_min_log_level_(logging::GetMinLogLevel()) {
+    logging::SetMinLogLevel(logging::LOGGING_INFO);
+    brillo::ClearLog();
+    brillo::LogToString(true);
+  }
+  ScopedLogCapture(const ScopedLogCapture&) = delete;
+  ScopedLogCapture& operator=(const ScopedLogCapture&) = delete;
+
+  ~ScopedLogCapture() {
+    brillo::LogToString(false);
+    brillo::ClearLog();
+    logging::SetMinLogLevel(previous_min_log_level_);
+  }
+
+ private:
+  const int previous_min_log_level_;
+};
 
 // Test implementation of ExternalDisplay::Delegate.
 class TestDelegate : public ExternalDisplay::Delegate {
@@ -444,7 +468,8 @@ TEST_F(ExternalDisplayTest, ZeroMax) {
 TEST_F(ExternalDisplayTest, AbsoluteBrightness) {
   // Setting the brightness to 60% should result in a "get brightness" request
   // being sent.
-  display_.SetBrightness(60.0);
+  display_.SetBrightness(60.0,
+                         BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED);
   EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
 
   // After the timer fires, the reply should be read and a request to set the
@@ -458,13 +483,206 @@ TEST_F(ExternalDisplayTest, AbsoluteBrightness) {
   // since no time has passed since the previous request. After the timer fires,
   // a new request should be sent containing the last absolute request combined
   // with the adjustment.
-  display_.SetBrightness(50.0);
+  display_.SetBrightness(50.0,
+                         BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED);
   EXPECT_EQ("", delegate_->PopSentMessage());
   display_.AdjustBrightnessByPercent(35.0);
   EXPECT_EQ("", delegate_->PopSentMessage());
   EXPECT_EQ(ExternalDisplay::kDdcSetDelay, test_api_.GetTimerDelay());
   ASSERT_TRUE(test_api_.TriggerTimeout());
   EXPECT_EQ(GetSetBrightnessMessage(85), delegate_->PopSentMessage());
+}
+
+TEST_F(ExternalDisplayTest, BrightnessChangedCallback) {
+  std::vector<std::pair<double, BacklightBrightnessChange_Cause>>
+      reported_changes;
+  display_.SetBrightnessChangedCallback(base::BindRepeating(
+      [](std::vector<std::pair<double, BacklightBrightnessChange_Cause>>*
+             changes,
+         double percent, BacklightBrightnessChange_Cause cause) {
+        changes->emplace_back(percent, cause);
+      },
+      &reported_changes));
+
+  // Initial +10% adjustment reads 50/100 and writes 60% (USER_REQUEST).
+  display_.AdjustBrightnessByPercent(10.0);
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  EXPECT_TRUE(reported_changes.empty());
+
+  delegate_->set_reply_message(GetBrightnessReply(50, 100));
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(GetSetBrightnessMessage(60), delegate_->PopSentMessage());
+  ASSERT_EQ(1u, reported_changes.size());
+  EXPECT_DOUBLE_EQ(60.0, reported_changes[0].first);
+  EXPECT_EQ(BacklightBrightnessChange_Cause_USER_REQUEST,
+            reported_changes[0].second);
+
+  // Coalesced +20% and +5% adjustment writes 85% (USER_REQUEST).
+  display_.AdjustBrightnessByPercent(20.0);
+  display_.AdjustBrightnessByPercent(5.0);
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(GetSetBrightnessMessage(85), delegate_->PopSentMessage());
+  ASSERT_EQ(2u, reported_changes.size());
+  EXPECT_DOUBLE_EQ(85.0, reported_changes[1].first);
+  EXPECT_EQ(BacklightBrightnessChange_Cause_USER_REQUEST,
+            reported_changes[1].second);
+
+  // Setting absolute brightness from an ambient light sensor writes 40% ->
+  // callback receives (40.0, AMBIENT_LIGHT_CHANGED).
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  display_.SetBrightness(40.0,
+                         BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED);
+  EXPECT_EQ(GetSetBrightnessMessage(40), delegate_->PopSentMessage());
+  ASSERT_EQ(3u, reported_changes.size());
+  EXPECT_DOUBLE_EQ(40.0, reported_changes[2].first);
+  EXPECT_EQ(BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED,
+            reported_changes[2].second);
+
+  // Setting absolute brightness from a user request (e.g. Settings app) writes
+  // 30% -> callback receives (30.0, USER_REQUEST_FROM_SETTINGS_APP).
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  display_.SetBrightness(
+      30.0, BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP);
+  EXPECT_EQ(GetSetBrightnessMessage(30), delegate_->PopSentMessage());
+  ASSERT_EQ(4u, reported_changes.size());
+  EXPECT_DOUBLE_EQ(30.0, reported_changes[3].first);
+  EXPECT_EQ(BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP,
+            reported_changes[3].second);
+
+  // Coalescing a pending relative user adjustment (+10%) with an ambient-light
+  // SetBrightness(40.0) while the post-write timer is running preserves
+  // USER_REQUEST and writes 50%.
+  display_.AdjustBrightnessByPercent(10.0);
+  display_.SetBrightness(40.0,
+                         BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED);
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(GetSetBrightnessMessage(50), delegate_->PopSentMessage());
+  ASSERT_EQ(5u, reported_changes.size());
+  EXPECT_DOUBLE_EQ(50.0, reported_changes[4].first);
+  EXPECT_EQ(BacklightBrightnessChange_Cause_USER_REQUEST,
+            reported_changes[4].second);
+
+  // An ambient-light update that rounds to the same brightness level (50) must
+  // not write to the display or invoke the callback.
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  display_.SetBrightness(50.0,
+                         BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED);
+  EXPECT_EQ("", delegate_->PopSentMessage());
+  EXPECT_EQ(5u, reported_changes.size());
+
+  // Reaching 100% writes 100, and a subsequent user request at 100% must still
+  // invoke the callback with USER_REQUEST (so Ash shows the brightness popup at
+  // the boundary) without sending a redundant DDC write.
+  display_.AdjustBrightnessByPercent(60.0);
+  EXPECT_EQ(GetSetBrightnessMessage(100), delegate_->PopSentMessage());
+  ASSERT_EQ(6u, reported_changes.size());
+  EXPECT_DOUBLE_EQ(100.0, reported_changes[5].first);
+  EXPECT_EQ(BacklightBrightnessChange_Cause_USER_REQUEST,
+            reported_changes[5].second);
+
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  display_.AdjustBrightnessByPercent(5.0);
+  EXPECT_EQ("", delegate_->PopSentMessage());
+  ASSERT_EQ(7u, reported_changes.size());
+  EXPECT_DOUBLE_EQ(100.0, reported_changes[6].first);
+  EXPECT_EQ(BacklightBrightnessChange_Cause_USER_REQUEST,
+            reported_changes[6].second);
+
+  // A failed write must not invoke the callback.
+  delegate_->set_report_write_failure(true);
+  display_.AdjustBrightnessByPercent(-5.0);
+  EXPECT_EQ(7u, reported_changes.size());
+}
+
+TEST_F(ExternalDisplayTest, BrightnessLoggingByCause) {
+  ScopedLogCapture log_capture;
+
+  // A relative user request logs both the DDC/CI read and changed write at
+  // INFO.
+  display_.AdjustBrightnessByPercent(10.0);
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  EXPECT_EQ("", brillo::GetLog());
+
+  delegate_->set_reply_message(GetBrightnessReply(50, 100));
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(GetSetBrightnessMessage(60), delegate_->PopSentMessage());
+  EXPECT_TRUE(brillo::FindLog(
+      "Received current brightness 50 (50%) and maximum brightness 100 "
+      "from i2c-test"));
+  EXPECT_TRUE(brillo::FindLog(
+      "Writing brightness 60 (60%, increment 10%) to i2c-test"));
+
+  // Reaching 100% and stepping again via a user request logs the unchanged
+  // boundary level at INFO.
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  display_.AdjustBrightnessByPercent(50.0);
+  EXPECT_EQ(GetSetBrightnessMessage(100), delegate_->PopSentMessage());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+
+  brillo::ClearLog();
+  display_.AdjustBrightnessByPercent(5.0);
+  EXPECT_EQ("", delegate_->PopSentMessage());
+  EXPECT_TRUE(brillo::FindLog(
+      "Not writing unchanged brightness level 100 (100%, increment 5%) to "
+      "i2c-test"));
+
+  // Explicit SetBrightness with USER_REQUEST also logs at INFO.
+  brillo::ClearLog();
+  display_.SetBrightness(70.0, BacklightBrightnessChange_Cause_USER_REQUEST);
+  EXPECT_EQ(GetSetBrightnessMessage(70), delegate_->PopSentMessage());
+  EXPECT_TRUE(
+      brillo::FindLog("Writing brightness 70 (70%, increment 0%) to i2c-test"));
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+
+  // Non-USER_REQUEST updates (ambient light reads, changed writes, repeated
+  // unchanged levels, and Settings-app updates) do not log at INFO.
+  test_api_.AdvanceTime(ExternalDisplay::kCachedBrightnessValid +
+                        base::Milliseconds(10));
+  brillo::ClearLog();
+  display_.SetBrightness(40.0,
+                         BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED);
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  delegate_->set_reply_message(GetBrightnessReply(70, 100));
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(GetSetBrightnessMessage(40), delegate_->PopSentMessage());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+
+  display_.SetBrightness(40.0,
+                         BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED);
+  EXPECT_EQ("", delegate_->PopSentMessage());
+
+  display_.SetBrightness(
+      30.0, BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP);
+  EXPECT_EQ(GetSetBrightnessMessage(30), delegate_->PopSentMessage());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ("", brillo::GetLog());
+
+  // At VLOG(1) verbosity, non-USER_REQUEST reads, changed writes, and unchanged
+  // levels are logged.
+  logging::SetMinLogLevel(-1);
+  test_api_.AdvanceTime(ExternalDisplay::kCachedBrightnessValid +
+                        base::Milliseconds(10));
+  brillo::ClearLog();
+  display_.SetBrightness(40.0,
+                         BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED);
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  delegate_->set_reply_message(GetBrightnessReply(30, 100));
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(GetSetBrightnessMessage(40), delegate_->PopSentMessage());
+  EXPECT_TRUE(brillo::FindLog(
+      "Received current brightness 30 (30%) and maximum brightness 100 "
+      "from i2c-test"));
+  EXPECT_TRUE(
+      brillo::FindLog("Writing brightness 40 (40%, increment 0%) to i2c-test"));
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+
+  brillo::ClearLog();
+  display_.SetBrightness(40.0,
+                         BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED);
+  EXPECT_EQ("", delegate_->PopSentMessage());
+  EXPECT_TRUE(brillo::FindLog(
+      "Not writing unchanged brightness level 40 (40%, increment 0%) to "
+      "i2c-test"));
 }
 
 }  // namespace power_manager::system

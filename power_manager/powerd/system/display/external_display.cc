@@ -129,19 +129,34 @@ bool ExternalDisplay::TestApi::TriggerTimeout() {
   return true;
 }
 
+void ExternalDisplay::TestApi::SetDelegate(std::unique_ptr<Delegate> delegate) {
+  display_->delegate_ = std::move(delegate);
+}
+
 ExternalDisplay::ExternalDisplay(std::unique_ptr<Delegate> delegate)
     : delegate_(std::move(delegate)) {}
 
+void ExternalDisplay::SetBrightnessChangedCallback(
+    BrightnessChangedCallback callback) {
+  brightness_changed_callback_ = std::move(callback);
+}
+
 void ExternalDisplay::AdjustBrightnessByPercent(double percent_offset) {
   pending_brightness_adjustment_percent_ += percent_offset;
+  pending_brightness_change_cause_ =
+      BacklightBrightnessChange_Cause_USER_REQUEST;
   if (!timer_.IsRunning()) {
     DCHECK_EQ(State::IDLE, state_);
     UpdateState();
   }
 }
 
-void ExternalDisplay::SetBrightness(double percent) {
+void ExternalDisplay::SetBrightness(double percent,
+                                    BacklightBrightnessChange_Cause cause) {
   pending_brightness_percent_ = percent;
+  if (std::abs(pending_brightness_adjustment_percent_) <= kEpsilon) {
+    pending_brightness_change_cause_ = cause;
+  }
   if (!timer_.IsRunning()) {
     DCHECK_EQ(State::IDLE, state_);
     UpdateState();
@@ -225,9 +240,16 @@ bool ExternalDisplay::ReadBrightness() {
   current_brightness_percent_ = util::ClampPercent(
       static_cast<double>(current_level) / max_brightness_level_ * 100.0);
 
-  VLOG(1) << "Received current brightness " << current_level << " ("
-          << current_brightness_percent_ << "%) and maximum brightness "
-          << max_level << " from " << delegate_->GetName();
+  if (pending_brightness_change_cause_ ==
+      BacklightBrightnessChange_Cause_USER_REQUEST) {
+    LOG(INFO) << "Received current brightness " << current_level << " ("
+              << current_brightness_percent_ << "%) and maximum brightness "
+              << max_level << " from " << delegate_->GetName();
+  } else {
+    VLOG(1) << "Received current brightness " << current_level << " ("
+            << current_brightness_percent_ << "%) and maximum brightness "
+            << max_level << " from " << delegate_->GetName();
+  }
   last_brightness_update_time_ = clock_.GetCurrentTime();
   return true;
 }
@@ -244,12 +266,38 @@ bool ExternalDisplay::WriteBrightness() {
   // mashing on a brightness key, they're probably not simultaneously hitting
   // the display's physical buttons.
   if (new_level == BrightnessPercentToLevel(current_brightness_percent_)) {
+    if (pending_brightness_change_cause_ ==
+        BacklightBrightnessChange_Cause_USER_REQUEST) {
+      LOG(INFO) << "Not writing unchanged brightness level " << new_level
+                << " (" << new_percent << "%, increment "
+                << pending_brightness_adjustment_percent_ << "%) to "
+                << delegate_->GetName();
+    } else {
+      VLOG(1) << "Not writing unchanged brightness level " << new_level << " ("
+              << new_percent << "%, increment "
+              << pending_brightness_adjustment_percent_ << "%) to "
+              << delegate_->GetName();
+    }
     last_brightness_update_time_ = clock_.GetCurrentTime();
+    if (brightness_changed_callback_ &&
+        pending_brightness_change_cause_ ==
+            BacklightBrightnessChange_Cause_USER_REQUEST) {
+      brightness_changed_callback_.Run(current_brightness_percent_,
+                                       pending_brightness_change_cause_);
+    }
     return false;
   }
 
-  VLOG(1) << "Writing brightness " << new_level << " (" << new_percent
-          << "%) to " << delegate_->GetName();
+  if (pending_brightness_change_cause_ ==
+      BacklightBrightnessChange_Cause_USER_REQUEST) {
+    LOG(INFO) << "Writing brightness " << new_level << " (" << new_percent
+              << "%, increment " << pending_brightness_adjustment_percent_
+              << "%) to " << delegate_->GetName();
+  } else {
+    VLOG(1) << "Writing brightness " << new_level << " (" << new_percent
+            << "%, increment " << pending_brightness_adjustment_percent_
+            << "%) to " << delegate_->GetName();
+  }
   std::vector<uint8_t> message;
   message.push_back(kDdcSetCommand);
   message.push_back(kDdcBrightnessIndex);
@@ -262,6 +310,10 @@ bool ExternalDisplay::WriteBrightness() {
 
   current_brightness_percent_ = new_percent;
   last_brightness_update_time_ = clock_.GetCurrentTime();
+  if (brightness_changed_callback_) {
+    brightness_changed_callback_.Run(current_brightness_percent_,
+                                     pending_brightness_change_cause_);
+  }
   return true;
 }
 
@@ -282,6 +334,8 @@ void ExternalDisplay::UpdateState() {
         }
         pending_brightness_adjustment_percent_ = 0.0;
         pending_brightness_percent_ = -1.0;
+        pending_brightness_change_cause_ =
+            BacklightBrightnessChange_Cause_OTHER;
         return;
       }
 
@@ -290,6 +344,8 @@ void ExternalDisplay::UpdateState() {
       if (!RequestBrightness()) {
         pending_brightness_adjustment_percent_ = 0.0;
         pending_brightness_percent_ = -1.0;
+        pending_brightness_change_cause_ =
+            BacklightBrightnessChange_Cause_OTHER;
         return;
       }
       state_ = State::WAITING_FOR_REPLY;
@@ -302,6 +358,8 @@ void ExternalDisplay::UpdateState() {
       if (!ReadBrightness()) {
         pending_brightness_adjustment_percent_ = 0.0;
         pending_brightness_percent_ = -1.0;
+        pending_brightness_change_cause_ =
+            BacklightBrightnessChange_Cause_OTHER;
         return;
       }
 
@@ -314,6 +372,7 @@ void ExternalDisplay::UpdateState() {
       }
       pending_brightness_adjustment_percent_ = 0.0;
       pending_brightness_percent_ = -1.0;
+      pending_brightness_change_cause_ = BacklightBrightnessChange_Cause_OTHER;
       return;
   }
 }

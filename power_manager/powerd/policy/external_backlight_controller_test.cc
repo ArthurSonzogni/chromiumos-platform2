@@ -4,11 +4,20 @@
 
 #include "power_manager/powerd/policy/external_backlight_controller.h"
 
+#include <linux/i2c-dev.h>
+#include <linux/i2c.h>
+
+#include <cstring>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/compiler_specific.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
-#include <string>
-#include <utility>
 
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/powerd/policy/backlight_controller_observer_stub.h"
@@ -17,6 +26,7 @@
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
+#include "power_manager/powerd/system/display/external_display.h"
 #include "power_manager/powerd/system/external_ambient_light_sensor_factory_stub.h"
 #include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
@@ -27,6 +37,61 @@ constexpr char kFirstDisplay[] = "/sys/devices/usb1/mydisplay";
 constexpr char kFirstSensor[] = "/sys/devices/usb1/mysensor";
 constexpr char kSecondDisplay[] = "/sys/devices/usb2/mydisplay";
 constexpr char kSecondSensor[] = "/sys/devices/usb2/mysensor";
+
+// Fake ExternalDisplay::Delegate that replies with a fixed initial brightness
+// and succeeds on DDC/CI writes.
+class FakeExternalDisplayDelegate
+    : public power_manager::system::ExternalDisplay::Delegate {
+ public:
+  FakeExternalDisplayDelegate(uint16_t current_brightness,
+                              uint16_t max_brightness)
+      : current_brightness_(current_brightness),
+        max_brightness_(max_brightness) {}
+  FakeExternalDisplayDelegate(const FakeExternalDisplayDelegate&) = delete;
+  FakeExternalDisplayDelegate& operator=(const FakeExternalDisplayDelegate&) =
+      delete;
+  ~FakeExternalDisplayDelegate() override = default;
+
+  std::string GetName() const override { return "i2c-fake"; }
+
+  bool PerformI2COperation(struct i2c_rdwr_ioctl_data* data) override {
+    CHECK(data);
+    CHECK_EQ(data->nmsgs, 1u);
+    struct i2c_msg* const msg = data->msgs;
+    CHECK(msg);
+    if (msg->flags == 0) {
+      return true;
+    }
+    if (msg->flags == I2C_M_RD) {
+      using power_manager::system::ExternalDisplay;
+      std::vector<uint8_t> reply = {
+          ExternalDisplay::kDdcDisplayAddress,
+          static_cast<uint8_t>(ExternalDisplay::kDdcMessageBodyLengthMask | 8),
+          ExternalDisplay::kDdcGetReplyCommand,
+          0x0,
+          ExternalDisplay::kDdcBrightnessIndex,
+          0x0,
+          static_cast<uint8_t>(max_brightness_ >> 8),
+          static_cast<uint8_t>(max_brightness_ & 0xff),
+          static_cast<uint8_t>(current_brightness_ >> 8),
+          static_cast<uint8_t>(current_brightness_ & 0xff),
+          0x0};
+      uint8_t checksum = ExternalDisplay::kDdcVirtualHostAddress;
+      for (size_t i = 0; i < reply.size() - 1; ++i) {
+        checksum ^= reply[i];
+      }
+      reply.back() = checksum;
+      CHECK_EQ(static_cast<size_t>(msg->len), reply.size());
+      memcpy(msg->buf, reply.data(), reply.size());
+      return true;
+    }
+    return false;
+  }
+
+ private:
+  const uint16_t current_brightness_;
+  const uint16_t max_brightness_;
+};
 
 }  // namespace
 
@@ -98,6 +163,25 @@ class ExternalBacklightControllerTest : public TestEnvironment {
     ASSERT_TRUE(dbus::MessageReader(response.get()).PopBool(enabled));
   }
 
+  void AttachFakeDelegate(ExternalBacklightController* controller,
+                          uint16_t current_brightness,
+                          uint16_t max_brightness) {
+    CHECK_EQ(1u, controller->external_displays_.size());
+    system::ExternalDisplay::TestApi test_api(
+        controller->external_displays_.begin()->second.get());
+    test_api.SetDelegate(std::make_unique<FakeExternalDisplayDelegate>(
+        current_brightness, max_brightness));
+  }
+
+  bool TriggerDisplayTimeout(ExternalBacklightController* controller) {
+    if (controller->external_displays_.empty()) {
+      return false;
+    }
+    system::ExternalDisplay::TestApi test_api(
+        controller->external_displays_.begin()->second.get());
+    return test_api.TriggerTimeout();
+  }
+
   std::string default_als_steps_ = "5.0 -1 600\n100.0 500 -1";
 
   FakePrefs prefs_;
@@ -133,27 +217,54 @@ TEST_F(ExternalBacklightControllerTest, BrightnessRequests) {
 
   // If ALS-based brightness is disabled, the brightness of external displays
   // with an ambient light sensor can be adjusted with an absolute request or a
-  // relative request.
+  // relative request, and emits ExternalScreenBrightnessChanged with the
+  // user/request cause rather than AMBIENT_LIGHT_CHANGED.
+  AddDisplay(kFirstDisplay);
+  AttachFakeDelegate(&controller_, 60, 100);
+  AddSensor(kFirstSensor);
   bool enabled = false;
   CallGetExternalDisplayALSBrightness(&enabled);
   EXPECT_TRUE(enabled);
   CallSetExternalDisplayALSBrightness(false);
   CallGetExternalDisplayALSBrightness(&enabled);
   EXPECT_FALSE(enabled);
+  ASSERT_TRUE(TriggerDisplayTimeout(&controller_));
+  ASSERT_EQ(1u, dbus_wrapper_.num_sent_signals());
+  test::CheckBrightnessChangedSignal(
+      &dbus_wrapper_, 0, kExternalScreenBrightnessChangedSignal, 100.0,
+      BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP);
+
+  ASSERT_TRUE(TriggerDisplayTimeout(&controller_));
   test::CallSetScreenBrightness(
       &dbus_wrapper_, 42.0, SetBacklightBrightnessRequest_Transition_INSTANT,
-      SetBacklightBrightnessRequest_Cause_USER_REQUEST);
+      SetBacklightBrightnessRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
   EXPECT_EQ(1, controller_.GetNumUserAdjustments());
   EXPECT_TRUE(controller_.GetBrightnessPercent(&percent));
   EXPECT_EQ(42.0, percent);
+  ASSERT_EQ(2u, dbus_wrapper_.num_sent_signals());
+  test::CheckBrightnessChangedSignal(
+      &dbus_wrapper_, 1, kExternalScreenBrightnessChangedSignal, 42.0,
+      BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP);
+
+  ASSERT_TRUE(TriggerDisplayTimeout(&controller_));
   test::CallIncreaseScreenBrightness(&dbus_wrapper_);
   EXPECT_TRUE(controller_.GetBrightnessPercent(&percent));
   EXPECT_EQ(47.0, percent);
   EXPECT_EQ(2, controller_.GetNumUserAdjustments());
+  ASSERT_EQ(3u, dbus_wrapper_.num_sent_signals());
+  test::CheckBrightnessChangedSignal(
+      &dbus_wrapper_, 2, kExternalScreenBrightnessChangedSignal, 47.0,
+      BacklightBrightnessChange_Cause_USER_REQUEST);
+
+  ASSERT_TRUE(TriggerDisplayTimeout(&controller_));
   test::CallDecreaseScreenBrightness(&dbus_wrapper_, true /* allow_off */);
   EXPECT_TRUE(controller_.GetBrightnessPercent(&percent));
   EXPECT_EQ(42.0, percent);
   EXPECT_EQ(3, controller_.GetNumUserAdjustments());
+  ASSERT_EQ(4u, dbus_wrapper_.num_sent_signals());
+  test::CheckBrightnessChangedSignal(
+      &dbus_wrapper_, 3, kExternalScreenBrightnessChangedSignal, 42.0,
+      BacklightBrightnessChange_Cause_USER_REQUEST);
 }
 
 TEST_F(ExternalBacklightControllerTest, SecondaryControllerMode) {
@@ -186,15 +297,39 @@ TEST_F(ExternalBacklightControllerTest, SecondaryControllerMode) {
       kGetExternalDisplayALSBrightnessMethod));
 
   // Dedicated external display brightness methods must be exported and adjust
-  // external monitors.
+  // external monitors, emitting ExternalScreenBrightnessChanged with
+  // USER_REQUEST via the callback bound in UpdateDisplays().
+  AddDisplay(kFirstDisplay);
+  AttachFakeDelegate(&secondary_controller, 60, 100);
   EXPECT_TRUE(secondary_dbus_wrapper.IsMethodExported(
       kIncreaseExternalScreenBrightnessMethod));
   EXPECT_TRUE(secondary_dbus_wrapper.IsMethodExported(
       kDecreaseExternalScreenBrightnessMethod));
   test::CallIncreaseExternalScreenBrightness(&secondary_dbus_wrapper);
   EXPECT_EQ(1, secondary_controller.GetNumUserAdjustments());
+  ASSERT_TRUE(TriggerDisplayTimeout(&secondary_controller));
+  ASSERT_EQ(1u, secondary_dbus_wrapper.num_sent_signals());
+  test::CheckBrightnessChangedSignal(
+      &secondary_dbus_wrapper, 0, kExternalScreenBrightnessChangedSignal, 65.0,
+      BacklightBrightnessChange_Cause_USER_REQUEST);
+
+  ASSERT_TRUE(TriggerDisplayTimeout(&secondary_controller));
   test::CallDecreaseExternalScreenBrightness(&secondary_dbus_wrapper);
   EXPECT_EQ(2, secondary_controller.GetNumUserAdjustments());
+  ASSERT_EQ(2u, secondary_dbus_wrapper.num_sent_signals());
+  test::CheckBrightnessChangedSignal(
+      &secondary_dbus_wrapper, 1, kExternalScreenBrightnessChangedSignal, 60.0,
+      BacklightBrightnessChange_Cause_USER_REQUEST);
+
+  // Ambient-light brightness updates must emit ExternalScreenBrightnessChanged
+  // with AMBIENT_LIGHT_CHANGED rather than USER_REQUEST.
+  ASSERT_TRUE(TriggerDisplayTimeout(&secondary_controller));
+  secondary_controller.SetBrightnessPercentForAmbientLight(
+      display_watcher_.GetDisplays()[0], 40.0);
+  ASSERT_EQ(3u, secondary_dbus_wrapper.num_sent_signals());
+  test::CheckBrightnessChangedSignal(
+      &secondary_dbus_wrapper, 2, kExternalScreenBrightnessChangedSignal, 40.0,
+      BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED);
 
   // Lifecycle and power state callbacks must safely no-op without dereferencing
   // a null display_power_setter_ or emitting duplicate observer notifications.

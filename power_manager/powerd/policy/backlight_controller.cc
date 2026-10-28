@@ -241,6 +241,24 @@ void BacklightController::EmitBrightnessChangedSignal(
   dbus_wrapper->EmitSignal(&signal);
 }
 
+BacklightBrightnessChange_Cause
+BacklightController::ToBacklightBrightnessChangeCause(
+    SetBacklightBrightnessRequest_Cause cause) {
+  switch (cause) {
+    case SetBacklightBrightnessRequest_Cause_USER_REQUEST:
+      return BacklightBrightnessChange_Cause_USER_REQUEST;
+    case SetBacklightBrightnessRequest_Cause_MODEL:
+      return BacklightBrightnessChange_Cause_MODEL;
+    case SetBacklightBrightnessRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP:
+      return BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP;
+    case SetBacklightBrightnessRequest_Cause_RESTORED_FROM_USER_PREFERENCE:
+      return BacklightBrightnessChange_Cause_RESTORED_FROM_USER_PREFERENCE;
+    case SetBacklightBrightnessRequest_Cause_BATTERY_SAVER_STATE_CHANGED:
+      return BacklightBrightnessChange_Cause_BATTERY_SAVER_STATE_CHANGED;
+  }
+  return BacklightBrightnessChange_Cause_OTHER;
+}
+
 // static
 void BacklightController::EmitAmbientLightSensorEnabledChangedSignal(
     system::DBusWrapperInterface* dbus_wrapper,

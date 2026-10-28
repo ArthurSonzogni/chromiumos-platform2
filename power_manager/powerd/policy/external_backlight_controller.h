@@ -119,6 +119,8 @@ class ExternalBacklightController
   GetAmbientLightSensorAndDisplayMatchesForTesting();
 
  private:
+  friend class ExternalBacklightControllerTest;
+
   // Handlers for requests sent via D-Bus.
   void HandleIncreaseBrightnessRequest();
   void HandleDecreaseBrightnessRequest(bool allow_off);
@@ -140,6 +142,17 @@ class ExternalBacklightController
   // Adjusts |external_displays_| by |percent_offset|, a linearly-calculated
   // percent in the range [-100.0, 100.0].
   void AdjustBrightnessByPercent(double percent_offset);
+
+  // Sets the brightness of |display_info| in |external_displays_| to
+  // |brightness_percent| with |cause|.
+  void SetDisplayBrightnessPercent(const system::DisplayInfo& display_info,
+                                   double brightness_percent,
+                                   BacklightBrightnessChange_Cause cause);
+
+  // Emits |kExternalScreenBrightnessChangedSignal| when an external display's
+  // brightness percentage is updated over DDC/CI.
+  void OnExternalDisplayBrightnessChanged(
+      double brightness_percent, BacklightBrightnessChange_Cause cause);
 
   // Compute an association score between two syspaths. The score used is a
   // count of how many prefix path components they share.

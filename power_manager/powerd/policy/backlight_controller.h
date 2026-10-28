@@ -204,6 +204,11 @@ class BacklightController {
       double brightness_percent,
       BacklightBrightnessChange_Cause cause);
 
+  // Maps a |SetBacklightBrightnessRequest_Cause| value to the corresponding
+  // |BacklightBrightnessChange_Cause| protobuf enum value.
+  static BacklightBrightnessChange_Cause ToBacklightBrightnessChangeCause(
+      SetBacklightBrightnessRequest_Cause cause);
+
   // Emits a D-Bus signal announcing a ambient light sensor enabled change.
   static void EmitAmbientLightSensorEnabledChangedSignal(
       system::DBusWrapperInterface* dbus_wrapper,

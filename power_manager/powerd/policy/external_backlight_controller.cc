@@ -329,8 +329,10 @@ void ExternalBacklightController::HandleSetBrightnessRequest(
   // ambient light sensors, and only if ALS-based brightness is disabled.
   if (ambient_light_sensor_watcher_ &&
       !external_display_als_brightness_enabled_) {
+    const BacklightBrightnessChange_Cause change_cause =
+        ToBacklightBrightnessChangeCause(cause);
     for (auto& [path, pair] : external_als_displays_) {
-      SetBrightnessPercentForAmbientLight(pair.first, percent);
+      SetDisplayBrightnessPercent(pair.first, percent, change_cause);
     }
     external_display_with_ambient_light_sensor_brightness_ = percent;
     ++num_brightness_adjustments_in_session_;
@@ -398,8 +400,12 @@ void ExternalBacklightController::UpdateDisplays(
     }
     auto delegate = std::make_unique<system::ExternalDisplay::RealDelegate>();
     delegate->Init(info.i2c_path);
-    updated_displays.emplace(
-        info, std::make_unique<system::ExternalDisplay>(std::move(delegate)));
+    auto display =
+        std::make_unique<system::ExternalDisplay>(std::move(delegate));
+    display->SetBrightnessChangedCallback(base::BindRepeating(
+        &ExternalBacklightController::OnExternalDisplayBrightnessChanged,
+        weak_ptr_factory_.GetWeakPtr()));
+    updated_displays.emplace(info, std::move(display));
   }
   external_displays_.swap(updated_displays);
 }
@@ -414,6 +420,15 @@ void ExternalBacklightController::AdjustBrightnessByPercent(
   if (ambient_light_sensor_watcher_ &&
       !external_display_als_brightness_enabled_) {
     external_display_with_ambient_light_sensor_brightness_ += percent_offset;
+  }
+}
+
+void ExternalBacklightController::OnExternalDisplayBrightnessChanged(
+    double brightness_percent, BacklightBrightnessChange_Cause cause) {
+  if (dbus_wrapper_) {
+    EmitBrightnessChangedSignal(dbus_wrapper_,
+                                kExternalScreenBrightnessChangedSignal,
+                                brightness_percent, cause);
   }
 }
 
@@ -485,12 +500,21 @@ void ExternalBacklightController::MatchAmbientLightSensorsToDisplays() {
   external_als_displays_.swap(updated_ambient_light_sensors);
 }
 
-void ExternalBacklightController::SetBrightnessPercentForAmbientLight(
-    const system::DisplayInfo& display_info, double brightness_percent) {
+void ExternalBacklightController::SetDisplayBrightnessPercent(
+    const system::DisplayInfo& display_info,
+    double brightness_percent,
+    BacklightBrightnessChange_Cause cause) {
   auto display_it = external_displays_.find(display_info);
   if (display_it != external_displays_.end()) {
-    display_it->second->SetBrightness(brightness_percent);
+    display_it->second->SetBrightness(brightness_percent, cause);
   }
+}
+
+void ExternalBacklightController::SetBrightnessPercentForAmbientLight(
+    const system::DisplayInfo& display_info, double brightness_percent) {
+  SetDisplayBrightnessPercent(
+      display_info, brightness_percent,
+      BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED);
 }
 
 std::vector<std::pair<base::FilePath, system::DisplayInfo>>
@@ -523,8 +547,9 @@ void ExternalBacklightController::HandleSetExternalDisplayALSBrightnessRequest(
       // Set displays that had ALS-based brightness enabled back to the
       // brightness percentage they had before.
       for (auto& [path, pair] : external_als_displays_) {
-        SetBrightnessPercentForAmbientLight(
-            pair.first, external_display_with_ambient_light_sensor_brightness_);
+        SetDisplayBrightnessPercent(
+            pair.first, external_display_with_ambient_light_sensor_brightness_,
+            BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP);
       }
     }
   }

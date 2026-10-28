@@ -61,24 +61,6 @@ base::TimeDelta GetTransitionDuration(
   NOTREACHED() << "Unhandled transition style " << static_cast<int>(transition);
 }
 
-// Map a |SetBacklightBrightnessRequest_Cause| to an equivalent
-// |BacklightBrightnessChange_Cause|.
-BacklightBrightnessChange_Cause ToBacklightBrightnessChangeCause(
-    SetBacklightBrightnessRequest_Cause cause) {
-  switch (cause) {
-    case SetBacklightBrightnessRequest_Cause_USER_REQUEST:
-      return BacklightBrightnessChange_Cause_USER_REQUEST;
-    case SetBacklightBrightnessRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP:
-      return BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP;
-    case SetBacklightBrightnessRequest_Cause_MODEL:
-      return BacklightBrightnessChange_Cause_MODEL;
-    case SetBacklightBrightnessRequest_Cause_RESTORED_FROM_USER_PREFERENCE:
-      return BacklightBrightnessChange_Cause_RESTORED_FROM_USER_PREFERENCE;
-    default:
-      return BacklightBrightnessChange_Cause_OTHER;
-  }
-}
-
 }  // namespace
 
 KeyboardBacklightController::KeyboardBacklightController()

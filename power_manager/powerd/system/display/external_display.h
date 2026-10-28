@@ -18,6 +18,7 @@
 #include <base/timer/timer.h>
 
 #include "power_manager/common/clock.h"
+#include "power_manager/proto_bindings/backlight.pb.h"
 
 struct i2c_rdwr_ioctl_data;
 
@@ -193,15 +194,26 @@ class ExternalDisplay {
     // and returns true. Otherwise, returns false.
     [[nodiscard]] bool TriggerTimeout();
 
+    // Replaces |display_|'s |delegate_| for testing.
+    void SetDelegate(std::unique_ptr<Delegate> delegate);
+
    private:
     ExternalDisplay* display_;  // owned elsewhere
   };
+
+  // Callback invoked with the updated brightness percentage in [0.0, 100.0] and
+  // the cause of the change whenever a new brightness level is successfully
+  // written to the display.
+  using BrightnessChangedCallback = base::RepeatingCallback<void(
+      double brightness_percent, BacklightBrightnessChange_Cause cause)>;
 
   explicit ExternalDisplay(std::unique_ptr<Delegate> delegate);
   ExternalDisplay(const ExternalDisplay&) = delete;
   ExternalDisplay& operator=(const ExternalDisplay&) = delete;
 
   ~ExternalDisplay() = default;
+
+  void SetBrightnessChangedCallback(BrightnessChangedCallback callback);
 
   // Adjusts the display's brightness by |offset_percent|, a linearly-calculated
   // percent in the range [-100.0, 100.0]. Note that the adjustment will happen
@@ -214,7 +226,7 @@ class ExternalDisplay {
   // racy if the user is simultaneously adjusting the brightness using physical
   // buttons on the display. This should not be used with displays that have
   // physical buttons for adjusting the brightness.
-  void SetBrightness(double percent);
+  void SetBrightness(double percent, BacklightBrightnessChange_Cause cause);
 
  private:
   enum class State {
@@ -294,10 +306,16 @@ class ExternalDisplay {
   // value will be less than zero if no change is pending.
   double pending_brightness_percent_ = -1.0;
 
+  // Cause associated with the pending brightness change.
+  BacklightBrightnessChange_Cause pending_brightness_change_cause_ =
+      BacklightBrightnessChange_Cause_OTHER;
+
   // Invokes UpdateState(). Used to enforce the mandatory delays between
   // requesting the brightness and reading the reply, and after sending a "set"
   // request to the display.
   base::OneShotTimer timer_;
+
+  BrightnessChangedCallback brightness_changed_callback_;
 };
 
 }  // namespace power_manager::system
