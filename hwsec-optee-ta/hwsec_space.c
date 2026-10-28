@@ -5,11 +5,12 @@
 #include "hwsec-optee-ta/hwsec_space.h"
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-
 #include <tee_internal_api.h>
 #include <tee_internal_api_extensions.h>
+
 #include <tpm2/tpm_generated.h>
 
 #include "hwsec-optee-ta/hwsec_cmd.h"
@@ -283,10 +284,11 @@ error:
   return res;
 }
 
-TEE_Result GetVerifiedCounterData(TpmSession* session,
-                                  TPMI_RH_NV_INDEX index,
-                                  UINT16 nv_size,
-                                  TPM2B_MAX_NV_BUFFER* data) {
+static TEE_Result GetVerifiedCounterDataInternal(TpmSession* session,
+                                                 TPMI_RH_NV_INDEX index,
+                                                 UINT16 nv_size,
+                                                 TPM2B_MAX_NV_BUFFER* data,
+                                                 bool allow_initialize) {
   TEE_Result res = TEE_ERROR_GENERIC;
   TPM_RC tpm_rc;
 
@@ -395,12 +397,20 @@ TEE_Result GetVerifiedCounterData(TpmSession* session,
   }
 
   if (tag == TPM_ST_NO_SESSIONS && rc == TPM_RC_NV_UNINITIALIZED) {
+    if (!allow_initialize) {
+      EMSG("NV space is still uninitialized after increment");
+      return TEE_ERROR_BAD_STATE;
+    }
     res = IncreaseVerifiedCounter(session, index);
     if (res != TEE_SUCCESS) {
       EMSG("IncreaseVerifiedCounter failed with code 0x%x", res);
       return res;
     }
-    return GetVerifiedCounterData(session, index, nv_size, data);
+
+    // Retry at most once; a still-uninitialized space after
+    // NV_Increment indicates a broken or spoofed TPM response.
+    return GetVerifiedCounterDataInternal(session, index, nv_size, data,
+                                          /*allow_initialize=*/false);
   }
 
   if (rc != TPM_RC_SUCCESS) {
@@ -483,6 +493,14 @@ cleanup_data:
   memset(data, 0, sizeof(TPM2B_MAX_NV_BUFFER));
 
   return res;
+}
+
+TEE_Result GetVerifiedCounterData(TpmSession* session,
+                                  TPMI_RH_NV_INDEX index,
+                                  UINT16 nv_size,
+                                  TPM2B_MAX_NV_BUFFER* data) {
+  return GetVerifiedCounterDataInternal(session, index, nv_size, data,
+                                        /*allow_initialize=*/true);
 }
 
 TEE_Result IncreaseVerifiedCounter(TpmSession* session,
