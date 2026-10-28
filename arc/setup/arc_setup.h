@@ -228,12 +228,6 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   // Initializes the testharness directory and key file inside for testharness.
   void SetUpTestharness(bool is_dev_mode);
 
-  // Notifies networking service that the container is starting.
-  void StartNetworking();
-
-  // Notifies networking service that the container is stopping.
-  void StopNetworking();
-
   // Makes some mount points read-only.
   void MakeMountPointsReadOnly();
 

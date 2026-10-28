@@ -2217,8 +2217,6 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
 
   LOG(INFO) << "Running " << kCommand << " took "
             << timer.Elapsed().InMillisecondsRoundedUp() << "ms";
-
-  StartNetworking();
 }
 
 void ArcSetup::EnsureContainerDirectories() {
@@ -2259,10 +2257,6 @@ void ArcSetup::SetUpTestharness(bool is_dev_mode) {
                               arc_paths_->testharness_directory));
   }
 }
-
-void ArcSetup::StartNetworking() {}
-
-void ArcSetup::StopNetworking() {}
 
 void ArcSetup::MountOnOnetimeSetup() {
   // Try to drop as many privileges as possible. If we end up starting ARC,
@@ -2489,7 +2483,6 @@ void ArcSetup::OnBootContinue() {
 }
 
 void ArcSetup::OnStop() {
-  StopNetworking();
   CleanUpBinFmtMiscSetUp();
   // Call UnmountSdcard() before UnmountOnStop() to ensure that the esdfs mount
   // points are unmounted before unmounting `sdcard_mount_directory`.
