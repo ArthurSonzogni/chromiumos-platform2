@@ -33,6 +33,20 @@ void CallDecreaseScreenBrightness(system::DBusWrapperStub* wrapper,
   ASSERT_TRUE(wrapper->CallExportedMethodSync(&method_call));
 }
 
+void CallIncreaseExternalScreenBrightness(system::DBusWrapperStub* wrapper) {
+  DCHECK(wrapper);
+  dbus::MethodCall method_call(kPowerManagerInterface,
+                               kIncreaseExternalScreenBrightnessMethod);
+  ASSERT_TRUE(wrapper->CallExportedMethodSync(&method_call));
+}
+
+void CallDecreaseExternalScreenBrightness(system::DBusWrapperStub* wrapper) {
+  DCHECK(wrapper);
+  dbus::MethodCall method_call(kPowerManagerInterface,
+                               kDecreaseExternalScreenBrightnessMethod);
+  ASSERT_TRUE(wrapper->CallExportedMethodSync(&method_call));
+}
+
 void CallSetScreenBrightness(
     system::DBusWrapperStub* wrapper,
     double percent,

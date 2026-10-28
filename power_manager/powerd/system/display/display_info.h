@@ -40,6 +40,10 @@ struct DisplayInfo {
   ConnectorStatus connector_status = ConnectorStatus::UNKNOWN;
 };
 
+// Returns true if |drm_path| names an internal panel DRM connector (eDP, LVDS,
+// or MIPI DSI), e.g. "/sys/class/drm/card0-eDP-1".
+bool IsInternalDisplayConnector(const base::FilePath& drm_path);
+
 }  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_INFO_H_

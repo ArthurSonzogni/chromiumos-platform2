@@ -481,9 +481,29 @@ void Daemon::Init() {
                     : nullptr,
                 display_power_setter_.get(), dbus_wrapper_.get(), lid_state);
       }
+      // Instantiate a secondary external backlight controller on devices with
+      // an internal panel so external monitors can still be adjusted via
+      // dedicated DDC/CI D-Bus methods without colliding with primary internal
+      // backlight D-Bus methods or DPMS power setter calls. MetricsCollector
+      // intentionally receives only |display_backlight_controller_| so
+      // Power.UserBrightnessAdjustmentsPerSession on Chromebooks stays scoped
+      // to the internal panel while Ash records
+      // Ash.Accelerators.Actions.ExternalBrightnessDown/Up; adding
+      // |external_backlight_controller_| to |all_backlight_controllers_| below
+      // still forwards OnSessionStateChange() to reset its per-session counter.
+      external_backlight_controller_ =
+          delegate_->CreateExternalBacklightController(
+              prefs_.get(), /*ambient_light_sensor_watcher=*/nullptr,
+              /*external_ambient_light_sensor_factory=*/nullptr,
+              display_watcher_.get(), /*display_power_setter=*/nullptr,
+              dbus_wrapper_.get());
     }
     if (display_backlight_controller_) {
       all_backlight_controllers_.push_back(display_backlight_controller_.get());
+    }
+    if (external_backlight_controller_) {
+      all_backlight_controllers_.push_back(
+          external_backlight_controller_.get());
     }
 
     if (BoolPrefIsTrue(kHasKeyboardBacklightPref)) {

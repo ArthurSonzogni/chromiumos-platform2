@@ -25,6 +25,7 @@
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_interface.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
+#include "power_manager/powerd/system/display/display_info.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/display/external_display.h"
@@ -85,36 +86,56 @@ void ExternalBacklightController::Init(
   display_watcher_->AddObserver(this);
   dbus_wrapper_ = dbus_wrapper;
 
-  RegisterSetBrightnessHandler(
-      dbus_wrapper_, kSetScreenBrightnessMethod,
-      base::BindRepeating(
-          &ExternalBacklightController::HandleSetBrightnessRequest,
-          weak_ptr_factory_.GetWeakPtr()));
+  // Only export primary screen brightness D-Bus methods when acting as the
+  // primary display backlight controller (e.g. on Chromeboxes where
+  // |display_power_setter_| is non-null). On Chromebooks,
+  // InternalBacklightController owns the primary D-Bus methods.
+  if (display_power_setter_) {
+    RegisterSetBrightnessHandler(
+        dbus_wrapper_, kSetScreenBrightnessMethod,
+        base::BindRepeating(
+            &ExternalBacklightController::HandleSetBrightnessRequest,
+            weak_ptr_factory_.GetWeakPtr()));
+    RegisterIncreaseBrightnessHandler(
+        dbus_wrapper_, kIncreaseScreenBrightnessMethod,
+        base::BindRepeating(
+            &ExternalBacklightController::HandleIncreaseBrightnessRequest,
+            weak_ptr_factory_.GetWeakPtr()));
+    RegisterDecreaseBrightnessHandler(
+        dbus_wrapper_, kDecreaseScreenBrightnessMethod,
+        base::BindRepeating(
+            &ExternalBacklightController::HandleDecreaseBrightnessRequest,
+            weak_ptr_factory_.GetWeakPtr()));
+    RegisterGetBrightnessHandler(
+        dbus_wrapper_, kGetScreenBrightnessPercentMethod,
+        base::BindRepeating(
+            &ExternalBacklightController::HandleGetBrightnessRequest,
+            weak_ptr_factory_.GetWeakPtr()));
+    dbus_wrapper_->ExportMethod(
+        kSetExternalDisplayALSBrightnessMethod,
+        base::BindRepeating(&ExternalBacklightController::
+                                HandleSetExternalDisplayALSBrightnessRequest,
+                            weak_ptr_factory_.GetWeakPtr()));
+    dbus_wrapper_->ExportMethod(
+        kGetExternalDisplayALSBrightnessMethod,
+        base::BindRepeating(&ExternalBacklightController::
+                                HandleGetExternalDisplayALSBrightnessRequest,
+                            weak_ptr_factory_.GetWeakPtr()));
+  }
+
+  // Always export the dedicated external display brightness D-Bus methods so
+  // external monitor brightness shortcuts work on both Chromebooks and
+  // Chromeboxes.
   RegisterIncreaseBrightnessHandler(
-      dbus_wrapper_, kIncreaseScreenBrightnessMethod,
+      dbus_wrapper_, kIncreaseExternalScreenBrightnessMethod,
       base::BindRepeating(
           &ExternalBacklightController::HandleIncreaseBrightnessRequest,
           weak_ptr_factory_.GetWeakPtr()));
   RegisterDecreaseBrightnessHandler(
-      dbus_wrapper_, kDecreaseScreenBrightnessMethod,
+      dbus_wrapper_, kDecreaseExternalScreenBrightnessMethod,
       base::BindRepeating(
           &ExternalBacklightController::HandleDecreaseBrightnessRequest,
           weak_ptr_factory_.GetWeakPtr()));
-  RegisterGetBrightnessHandler(
-      dbus_wrapper_, kGetScreenBrightnessPercentMethod,
-      base::BindRepeating(
-          &ExternalBacklightController::HandleGetBrightnessRequest,
-          weak_ptr_factory_.GetWeakPtr()));
-  dbus_wrapper_->ExportMethod(
-      kSetExternalDisplayALSBrightnessMethod,
-      base::BindRepeating(&ExternalBacklightController::
-                              HandleSetExternalDisplayALSBrightnessRequest,
-                          weak_ptr_factory_.GetWeakPtr()));
-  dbus_wrapper_->ExportMethod(
-      kGetExternalDisplayALSBrightnessMethod,
-      base::BindRepeating(&ExternalBacklightController::
-                              HandleGetExternalDisplayALSBrightnessRequest,
-                          weak_ptr_factory_.GetWeakPtr()));
 
   UpdateDisplays(display_watcher_->GetDisplays());
   if (ambient_light_sensor_watcher_) {
@@ -170,6 +191,9 @@ void ExternalBacklightController::HandlePolicyChange(
     const PowerManagementPolicy& policy) {}
 
 void ExternalBacklightController::HandleDisplayServiceStart() {
+  if (!display_power_setter_) {
+    return;
+  }
   display_power_setter_->SetDisplaySoftwareDimming(dimmed_for_inactivity_);
   display_power_setter_->SetDisplayPower(currently_off_
                                              ? chromeos::DISPLAY_POWER_ALL_OFF
@@ -186,7 +210,9 @@ void ExternalBacklightController::HandleBatterySaverModeChange(
 void ExternalBacklightController::SetDimmedForInactivity(bool dimmed) {
   if (dimmed != dimmed_for_inactivity_) {
     dimmed_for_inactivity_ = dimmed;
-    display_power_setter_->SetDisplaySoftwareDimming(dimmed);
+    if (display_power_setter_) {
+      display_power_setter_->SetDisplaySoftwareDimming(dimmed);
+    }
   }
 }
 
@@ -334,11 +360,13 @@ void ExternalBacklightController::UpdateScreenPowerState(
       off_for_inactivity_ || suspended_ || shutting_down_ || forced_off_;
   if (should_turn_off != currently_off_) {
     currently_off_ = should_turn_off;
-    display_power_setter_->SetDisplayPower(should_turn_off
-                                               ? chromeos::DISPLAY_POWER_ALL_OFF
-                                               : chromeos::DISPLAY_POWER_ALL_ON,
-                                           base::TimeDelta());
-    NotifyObservers(cause);
+    if (display_power_setter_) {
+      display_power_setter_->SetDisplayPower(
+          should_turn_off ? chromeos::DISPLAY_POWER_ALL_OFF
+                          : chromeos::DISPLAY_POWER_ALL_ON,
+          base::TimeDelta());
+      NotifyObservers(cause);
+    }
   }
 }
 
@@ -353,7 +381,8 @@ void ExternalBacklightController::UpdateDisplays(
     const std::vector<system::DisplayInfo>& displays) {
   ExternalDisplayMap updated_displays;
   for (const system::DisplayInfo& info : displays) {
-    if (info.i2c_path.empty()) {
+    if (info.i2c_path.empty() ||
+        system::IsInternalDisplayConnector(info.drm_path)) {
       continue;
     }
     if (info.connector_status !=

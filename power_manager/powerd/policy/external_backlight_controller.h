@@ -39,8 +39,12 @@ class ExternalDisplay;
 
 namespace policy {
 
-// Controls the brightness of an external display on machines that lack internal
-// displays.
+// Controls the brightness of external displays over DDC/CI. On machines that
+// lack internal displays, this serves as the primary display backlight
+// controller and manages DPMS power states via |display_power_setter|. On
+// machines with an internal display, an instance may be initialized with a
+// null |display_power_setter| to adjust external monitor brightness over
+// DDC/CI while InternalBacklightController manages DPMS power states.
 class ExternalBacklightController
     : public BacklightController,
       public system::DisplayWatcherObserver,
@@ -55,6 +59,9 @@ class ExternalBacklightController
   ~ExternalBacklightController() override;
 
   // Initializes the object. Ownership of raw pointers remains with the caller.
+  // |ambient_light_sensor_watcher|, |external_ambient_light_sensor_factory|,
+  // and |display_power_setter| may be null when running as a secondary
+  // controller alongside InternalBacklightController.
   void Init(
       PrefsInterface* prefs,
       system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher,

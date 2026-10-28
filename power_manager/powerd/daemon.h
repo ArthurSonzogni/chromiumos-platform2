@@ -409,6 +409,7 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   std::unique_ptr<system::DisplayPowerSetterInterface> display_power_setter_;
   std::unique_ptr<system::BacklightInterface> display_backlight_;
   std::unique_ptr<policy::BacklightController> display_backlight_controller_;
+  std::unique_ptr<policy::BacklightController> external_backlight_controller_;
   std::unique_ptr<system::BacklightInterface> keyboard_backlight_;
   std::unique_ptr<policy::BacklightController> keyboard_backlight_controller_;
 
@@ -460,8 +461,9 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   std::unique_ptr<system::LockfileCheckerInterface>
       power_override_lockfile_checker_;
 
-  // Weak pointers to |display_backlight_controller_| and
-  // |keyboard_backlight_controller_|, if non-null.
+  // Weak pointers to |display_backlight_controller_|,
+  // |external_backlight_controller_|, and |keyboard_backlight_controller_|, if
+  // non-null.
   std::vector<policy::BacklightController*> all_backlight_controllers_;
 
   // True if the kFactoryModePref pref indicates that the system is running in

@@ -16,6 +16,10 @@ const char kPowerManagerServiceName[] = "org.chromium.PowerManager";
 const char kSetScreenBrightnessMethod[] = "SetScreenBrightness";
 const char kDecreaseScreenBrightnessMethod[] = "DecreaseScreenBrightness";
 const char kIncreaseScreenBrightnessMethod[] = "IncreaseScreenBrightness";
+const char kDecreaseExternalScreenBrightnessMethod[] =
+    "DecreaseExternalScreenBrightness";
+const char kIncreaseExternalScreenBrightnessMethod[] =
+    "IncreaseExternalScreenBrightness";
 const char kGetScreenBrightnessPercentMethod[] = "GetScreenBrightnessPercent";
 const char kHasKeyboardBacklightMethod[] = "HasKeyboardBacklight";
 const char kGetKeyboardBrightnessPercentMethod[] =

@@ -290,11 +290,21 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
       system::DisplayPowerSetterInterface* display_power_setter,
       system::DBusWrapperInterface* dbus_wrapper) override {
     EXPECT_EQ(prefs_, prefs);
-    EXPECT_EQ(ambient_light_sensor_watcher_, ambient_light_sensor_watcher);
-    EXPECT_EQ(external_ambient_light_sensor_factory_,
+    bool external_display_only = false;
+    prefs_->GetBool(kExternalDisplayOnlyPref, &external_display_only);
+    bool has_ext_als = false;
+    prefs_->GetBool(kExternalAmbientLightSensorPref, &has_ext_als);
+    EXPECT_EQ(external_display_only && has_ext_als
+                  ? ambient_light_sensor_watcher_
+                  : nullptr,
+              ambient_light_sensor_watcher);
+    EXPECT_EQ(external_display_only && has_ext_als
+                  ? external_ambient_light_sensor_factory_
+                  : nullptr,
               external_ambient_light_sensor_factory);
     EXPECT_EQ(display_watcher_, display_watcher);
-    EXPECT_EQ(display_power_setter_, display_power_setter);
+    EXPECT_EQ(external_display_only ? display_power_setter_ : nullptr,
+              display_power_setter);
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     return std::move(passed_external_backlight_controller_);
   }
@@ -465,7 +475,11 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     // Sometimes the `display_backlight_controller_` in Daemon is NULL for
     // tests (and factory mode).
     if (backlight_controller) {
-      EXPECT_EQ(internal_backlight_controller_, backlight_controller);
+      bool external_display_only = false;
+      prefs_->GetBool(kExternalDisplayOnlyPref, &external_display_only);
+      EXPECT_EQ(external_display_only ? external_backlight_controller_
+                                      : internal_backlight_controller_,
+                backlight_controller);
     }
     EXPECT_EQ(input_watcher_, input_watcher);
     EXPECT_EQ(power_supply_, power_supply);
@@ -1434,6 +1448,53 @@ TEST_F(DaemonTest, HasAmbientLightSensor_TwoSensors) {
   bool has_light_sensor = false;
   ASSERT_TRUE(dbus::MessageReader(response.get()).PopBool(&has_light_sensor));
   EXPECT_TRUE(has_light_sensor);
+}
+
+TEST_F(DaemonTest,
+       SecondaryExternalBacklightControllerOnInternalDisplayDevice) {
+  // When kExternalDisplayOnlyPref is false (default on Chromebooks), both the
+  // primary internal backlight controller and secondary external backlight
+  // controller should be created and registered in all_backlight_controllers_.
+  Init();
+  EXPECT_FALSE(passed_internal_backlight_controller_);
+  EXPECT_FALSE(passed_external_backlight_controller_);
+
+  EXPECT_CALL(*internal_backlight_controller_, SetSuspended(true));
+  EXPECT_CALL(*external_backlight_controller_, SetSuspended(true));
+  daemon_->PrepareToSuspend();
+
+  EXPECT_CALL(*internal_backlight_controller_, SetForcedOff(true));
+  EXPECT_CALL(*external_backlight_controller_, SetForcedOff(true));
+  dbus::MethodCall set_off_call(kPowerManagerInterface,
+                                kSetBacklightsForcedOffMethod);
+  dbus::MessageWriter(&set_off_call).AppendBool(true);
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&set_off_call).get());
+
+  EXPECT_CALL(*internal_backlight_controller_,
+              HandleSessionStateChange(SessionState::STARTED));
+  EXPECT_CALL(*external_backlight_controller_,
+              HandleSessionStateChange(SessionState::STARTED));
+  dbus::Signal session_signal(login_manager::kSessionManagerInterface,
+                              login_manager::kSessionStateChangedSignal);
+  dbus::MessageWriter(&session_signal).AppendString("started");
+  dbus_wrapper_->EmitRegisteredSignal(
+      dbus_wrapper_->GetObjectProxy(login_manager::kSessionManagerServiceName,
+                                    login_manager::kSessionManagerServicePath),
+      &session_signal);
+}
+
+TEST_F(DaemonTest, PrimaryExternalBacklightControllerOnExternalDisplayDevice) {
+  // When kExternalDisplayOnlyPref is true (Chromebox mode), only a single
+  // primary ExternalBacklightController should be created (with
+  // display_power_setter_ attached) and no InternalBacklightController should
+  // be created.
+  prefs_->SetInt64(kExternalDisplayOnlyPref, 1);
+  Init();
+  EXPECT_TRUE(passed_internal_backlight_controller_);
+  EXPECT_FALSE(passed_external_backlight_controller_);
+
+  EXPECT_CALL(*external_backlight_controller_, SetSuspended(true));
+  daemon_->PrepareToSuspend();
 }
 
 // TODO(chromeos-power): Add more tests. Namely:

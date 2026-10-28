@@ -414,4 +414,58 @@ TEST_F(DisplayWatcherTest, NonEvdiDeviceSysPath) {
   EXPECT_EQ(pci_path.value(), watcher_.GetDisplays()[0].sys_path.value());
 }
 
+TEST_F(DisplayWatcherTest, InternalConnectorsSkipI2CAndPreserveDpMstBus) {
+  base::FilePath gpu_device_path = CreateDrmDevice("device");
+  base::FilePath card_path = CreateDrmDevice("card0");
+  SetDeviceParent(card_path, gpu_device_path);
+
+  // Connect eDP, LVDS, and DSI internal connectors sharing |gpu_device_path|.
+  // Give eDP a connector-local AUX I2C bus and leave DSI/LVDS without direct
+  // I2C devices while exposing a shared DPMST I2C bus under |gpu_device_path|.
+  base::FilePath dsi_path = CreateDrmDevice("card0-DSI-1");
+  base::FilePath lvds_path = CreateDrmDevice("card0-LVDS-1");
+  base::FilePath edp_path = CreateDrmDevice("card0-eDP-1");
+  const base::FilePath internal_paths[] = {dsi_path, lvds_path, edp_path};
+  for (const base::FilePath& internal_path : internal_paths) {
+    SetDeviceParent(internal_path, card_path);
+    ASSERT_TRUE(
+        base::WriteFile(internal_path.Append(DisplayWatcher::kDrmStatusFile),
+                        DisplayWatcher::kDrmStatusConnected));
+  }
+
+  const char kEdpAuxI2CName[] = "i2c-0";
+  CreateI2CDevice(kEdpAuxI2CName);
+  ASSERT_TRUE(base::CreateDirectory(edp_path.Append(kEdpAuxI2CName)));
+
+  const char kDpMstI2CName[] = "i2c-1";
+  base::FilePath dp_mst_i2c_path = CreateI2CDevice(kDpMstI2CName);
+  base::FilePath drm_dp_mst_i2c_path = gpu_device_path.Append(kDpMstI2CName);
+  ASSERT_TRUE(base::CreateDirectory(drm_dp_mst_i2c_path));
+  ASSERT_TRUE(base::WriteFile(drm_dp_mst_i2c_path.Append("name"), "DPMST\n"));
+
+  watcher_.Init(&udev_);
+  ASSERT_EQ(static_cast<size_t>(3), watcher_.GetDisplays().size());
+  EXPECT_EQ("", watcher_.GetDisplays()[0].i2c_path.value());
+  EXPECT_EQ("", watcher_.GetDisplays()[1].i2c_path.value());
+  EXPECT_EQ("", watcher_.GetDisplays()[2].i2c_path.value());
+
+  // Connect an external DisplayPort MST monitor sharing |gpu_device_path|; it
+  // should still receive |dp_mst_i2c_path| rather than having it consumed by an
+  // internal connector.
+  base::FilePath dp_path = CreateDrmDevice("card0-DP-1");
+  SetDeviceParent(dp_path, card_path);
+  ASSERT_TRUE(base::WriteFile(dp_path.Append(DisplayWatcher::kDrmStatusFile),
+                              DisplayWatcher::kDrmStatusConnected));
+
+  NotifyAboutUdevEvent();
+  ASSERT_EQ(static_cast<size_t>(4), watcher_.GetDisplays().size());
+  EXPECT_EQ(drm_dir_.GetPath().Append("card0-DP-1").value(),
+            watcher_.GetDisplays()[0].drm_path.value());
+  EXPECT_EQ(dp_mst_i2c_path.value(),
+            watcher_.GetDisplays()[0].i2c_path.value());
+  EXPECT_EQ("", watcher_.GetDisplays()[1].i2c_path.value());
+  EXPECT_EQ("", watcher_.GetDisplays()[2].i2c_path.value());
+  EXPECT_EQ("", watcher_.GetDisplays()[3].i2c_path.value());
+}
+
 }  // namespace power_manager::system

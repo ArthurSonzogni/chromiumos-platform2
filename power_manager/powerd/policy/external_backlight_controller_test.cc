@@ -123,6 +123,10 @@ TEST_F(ExternalBacklightControllerTest, BrightnessRequests) {
   EXPECT_EQ(1, controller_.GetNumUserAdjustments());
   test::CallDecreaseScreenBrightness(&dbus_wrapper_, true /* allow_off */);
   EXPECT_EQ(2, controller_.GetNumUserAdjustments());
+  test::CallIncreaseExternalScreenBrightness(&dbus_wrapper_);
+  EXPECT_EQ(3, controller_.GetNumUserAdjustments());
+  test::CallDecreaseExternalScreenBrightness(&dbus_wrapper_);
+  EXPECT_EQ(4, controller_.GetNumUserAdjustments());
 
   controller_.HandleSessionStateChange(SessionState::STARTED);
   EXPECT_EQ(0, controller_.GetNumUserAdjustments());
@@ -150,6 +154,110 @@ TEST_F(ExternalBacklightControllerTest, BrightnessRequests) {
   EXPECT_TRUE(controller_.GetBrightnessPercent(&percent));
   EXPECT_EQ(42.0, percent);
   EXPECT_EQ(3, controller_.GetNumUserAdjustments());
+}
+
+TEST_F(ExternalBacklightControllerTest, SecondaryControllerMode) {
+  // Initialize a secondary ExternalBacklightController (as on Chromebooks with
+  // an internal panel) where ambient_light_sensor_watcher,
+  // external_ambient_light_sensor_factory, and display_power_setter are null.
+  system::DBusWrapperStub secondary_dbus_wrapper;
+  BacklightControllerObserverStub secondary_observer;
+  ExternalBacklightController secondary_controller;
+  secondary_controller.AddObserver(&secondary_observer);
+  secondary_controller.Init(
+      &prefs_, /*ambient_light_sensor_watcher=*/nullptr,
+      /*external_ambient_light_sensor_factory=*/nullptr, &display_watcher_,
+      /*display_power_setter=*/nullptr, &secondary_dbus_wrapper);
+
+  // Primary screen brightness methods must not be exported when acting as a
+  // secondary controller so they do not collide with
+  // InternalBacklightController.
+  EXPECT_FALSE(
+      secondary_dbus_wrapper.IsMethodExported(kSetScreenBrightnessMethod));
+  EXPECT_FALSE(
+      secondary_dbus_wrapper.IsMethodExported(kIncreaseScreenBrightnessMethod));
+  EXPECT_FALSE(
+      secondary_dbus_wrapper.IsMethodExported(kDecreaseScreenBrightnessMethod));
+  EXPECT_FALSE(secondary_dbus_wrapper.IsMethodExported(
+      kGetScreenBrightnessPercentMethod));
+  EXPECT_FALSE(secondary_dbus_wrapper.IsMethodExported(
+      kSetExternalDisplayALSBrightnessMethod));
+  EXPECT_FALSE(secondary_dbus_wrapper.IsMethodExported(
+      kGetExternalDisplayALSBrightnessMethod));
+
+  // Dedicated external display brightness methods must be exported and adjust
+  // external monitors.
+  EXPECT_TRUE(secondary_dbus_wrapper.IsMethodExported(
+      kIncreaseExternalScreenBrightnessMethod));
+  EXPECT_TRUE(secondary_dbus_wrapper.IsMethodExported(
+      kDecreaseExternalScreenBrightnessMethod));
+  test::CallIncreaseExternalScreenBrightness(&secondary_dbus_wrapper);
+  EXPECT_EQ(1, secondary_controller.GetNumUserAdjustments());
+  test::CallDecreaseExternalScreenBrightness(&secondary_dbus_wrapper);
+  EXPECT_EQ(2, secondary_controller.GetNumUserAdjustments());
+
+  // Lifecycle and power state callbacks must safely no-op without dereferencing
+  // a null display_power_setter_ or emitting duplicate observer notifications.
+  secondary_controller.HandleDisplayServiceStart();
+  secondary_controller.SetDimmedForInactivity(true);
+  secondary_controller.SetOffForInactivity(true);
+  secondary_controller.SetSuspended(true);
+  secondary_controller.SetShuttingDown(true);
+  secondary_controller.SetForcedOff(true);
+  EXPECT_TRUE(secondary_controller.GetForcedOff());
+  secondary_controller.SetForcedOff(false);
+  secondary_controller.SetShuttingDown(false);
+  secondary_controller.SetSuspended(false);
+  secondary_controller.SetOffForInactivity(false);
+  secondary_controller.SetDimmedForInactivity(false);
+  EXPECT_TRUE(secondary_observer.changes().empty());
+
+  secondary_controller.RemoveObserver(&secondary_observer);
+}
+
+TEST_F(ExternalBacklightControllerTest, IgnoreInternalDisplayConnectors) {
+  // Internal panel DRM connectors (eDP, LVDS, DSI) must be ignored even if
+  // they expose an I2C aux channel, while external DP/HDMI connectors are
+  // tracked in external_displays_.
+  const std::vector<system::DisplayInfo> displays = {
+      {
+          .drm_path = base::FilePath("/sys/class/drm/card0-eDP-1"),
+          .i2c_path = base::FilePath("/dev/i2c-1"),
+          .sys_path = base::FilePath(kFirstDisplay),
+          .connector_status = system::DisplayInfo::ConnectorStatus::CONNECTED,
+      },
+      {
+          .drm_path = base::FilePath("/sys/class/drm/card0-LVDS-1"),
+          .i2c_path = base::FilePath("/dev/i2c-2"),
+          .sys_path = base::FilePath(kFirstDisplay),
+          .connector_status = system::DisplayInfo::ConnectorStatus::CONNECTED,
+      },
+      {
+          .drm_path = base::FilePath("/sys/class/drm/card0-DSI-1"),
+          .i2c_path = base::FilePath("/dev/i2c-3"),
+          .sys_path = base::FilePath(kFirstDisplay),
+          .connector_status = system::DisplayInfo::ConnectorStatus::CONNECTED,
+      },
+      {
+          .drm_path = base::FilePath("/sys/class/drm/card0-DP-1"),
+          .i2c_path = base::FilePath("/dev/i2c-4"),
+          .sys_path = base::FilePath(kSecondDisplay),
+          .connector_status = system::DisplayInfo::ConnectorStatus::CONNECTED,
+      },
+  };
+  for (const auto& display : displays) {
+    display_watcher_.AddDisplay(display);
+  }
+  AddSensor(kFirstSensor);
+  AddSensor(kSecondSensor);
+
+  // Only kSecondDisplay (card0-DP-1) should be present in external_displays_
+  // and matched with its ambient light sensor.
+  std::vector<std::pair<base::FilePath, system::DisplayInfo>> matches =
+      controller_.GetAmbientLightSensorAndDisplayMatchesForTesting();
+  ASSERT_EQ(1, matches.size());
+  EXPECT_STREQ(kSecondSensor, matches[0].first.value().c_str());
+  EXPECT_STREQ(kSecondDisplay, matches[0].second.sys_path.value().c_str());
 }
 
 TEST_F(ExternalBacklightControllerTest, DimAndTurnOffScreen) {

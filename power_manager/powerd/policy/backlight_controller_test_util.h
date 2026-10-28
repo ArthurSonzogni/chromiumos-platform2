@@ -22,6 +22,8 @@ namespace policy::test {
 void CallIncreaseScreenBrightness(system::DBusWrapperStub* wrapper);
 void CallDecreaseScreenBrightness(system::DBusWrapperStub* wrapper,
                                   bool allow_off);
+void CallIncreaseExternalScreenBrightness(system::DBusWrapperStub* wrapper);
+void CallDecreaseExternalScreenBrightness(system::DBusWrapperStub* wrapper);
 void CallSetScreenBrightness(
     system::DBusWrapperStub* wrapper,
     double percent,

@@ -16,6 +16,7 @@
 #include <base/strings/string_util.h>
 
 #include "power_manager/common/tracing.h"
+#include "power_manager/powerd/system/display/display_info.h"
 #include "power_manager/powerd/system/udev.h"
 
 namespace power_manager::system {
@@ -171,6 +172,13 @@ base::FilePath DisplayWatcher::Update::GetSysPath(
 
 base::FilePath DisplayWatcher::Update::GetI2CDevicePath(
     const base::FilePath& drm_dir, const base::FilePath& sys_dir) {
+  // Internal panels do not use DDC/CI for backlight control; skip them so they
+  // neither bind an eDP AUX I2C bus nor consume a shared DPMST I2C bus from
+  // |i2c_devs_by_parent_| ahead of an external DisplayPort MST monitor.
+  if (IsInternalDisplayConnector(drm_dir)) {
+    return base::FilePath();
+  }
+
   base::FilePath i2c_dev;
 
   i2c_dev = FindI2CDeviceInDir(drm_dir.AppendASCII("ddc/i2c-dev"));

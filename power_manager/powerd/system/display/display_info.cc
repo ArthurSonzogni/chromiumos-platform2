@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/system/display/display_info.h"
 
+#include <string>
 #include <tuple>
 
 namespace power_manager::system {
@@ -17,6 +18,13 @@ bool DisplayInfo::operator<(const DisplayInfo& rhs) const {
 
 bool DisplayInfo::operator==(const DisplayInfo& o) const {
   return !(*this < o || o < *this);
+}
+
+bool IsInternalDisplayConnector(const base::FilePath& drm_path) {
+  const std::string name = drm_path.BaseName().value();
+  return name.find("-eDP-") != std::string::npos ||
+         name.find("-LVDS-") != std::string::npos ||
+         name.find("-DSI-") != std::string::npos;
 }
 
 }  // namespace power_manager::system
