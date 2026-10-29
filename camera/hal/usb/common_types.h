@@ -97,7 +97,9 @@ struct SupportedFormat {
   // supports outputting 640x480 YUYV in 15fps or 30fps.
   std::vector<float> frame_rates;
 
-  uint32_t area() const { return width * height; }
+  uint64_t area() const {
+    return static_cast<uint64_t>(width) * static_cast<uint64_t>(height);
+  }
   bool operator<(const SupportedFormat& rhs) const {
     if (area() == rhs.area()) {
       return width < rhs.width;

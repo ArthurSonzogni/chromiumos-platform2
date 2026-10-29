@@ -12,6 +12,7 @@
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/location.h>
+#include <base/numerics/safe_math.h>
 #include <base/sequence_checker.h>
 #include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
@@ -35,10 +36,10 @@ namespace {
 constexpr int kStreamingFrameIntervalDefault = 10;  // every 10th frame
 // |DirtyLensAnalyzer| requires frames to have at least 640*480 pixels. So, we
 // set this as a diagnostics service requirement.
-constexpr int kMinPixelCount = 640 * 480;
+constexpr uint64_t kMinPixelCount = 640 * 480;
 // We don't want to process too large frames. This is sufficient for all the
 // analyzers.
-constexpr int kMaxPixelCount = 1920 * 1080;
+constexpr uint64_t kMaxPixelCount = 1920 * 1080;
 
 // Calculates the smallest frame dimension with the same aspect ratio as that of
 // |size| having pixel count >= |kMinPixelCount|. Input dimension must be even.
@@ -46,21 +47,36 @@ Size GetSmallestDimension(const Size& size) {
   CHECK(size.is_valid());
   // We can reduce/increase the dimension by GCD(width,height) times without
   // having to handle fractions.
-  int gcd = std::gcd(size.width, size.height);
-  CHECK_EQ(gcd % 2, 0);  // Sanity check that input is even.
+  uint32_t gcd = std::gcd(size.width, size.height);
+  CHECK_EQ(gcd % 2, 0u);  // Sanity check that input is even.
   uint32_t dw = size.width / gcd;
   uint32_t dh = size.height / gcd;
+  uint64_t reduced_area = Size{dw, dh}.area();
+  if (reduced_area == 0 || reduced_area > kMaxPixelCount) {
+    return {0, 0};
+  }
   // We can safely increase it without having to worry about |std::ceil()|
   // conversion errors.
   uint32_t times =
-      1 + std::sqrt(kMinPixelCount / static_cast<float>((dw * dh)));
+      1 + static_cast<uint32_t>(std::sqrt(static_cast<double>(kMinPixelCount) /
+                                          static_cast<double>(reduced_area)));
   times += (times % 2);  // Making it even will ensure that the result is even.
-  return {dw * times, dh * times};
+  base::CheckedNumeric<uint32_t> target_w = dw;
+  target_w *= times;
+  base::CheckedNumeric<uint32_t> target_h = dh;
+  target_h *= times;
+  if (!target_w.IsValid() || !target_h.IsValid()) {
+    return {0, 0};
+  }
+  return {target_w.ValueOrDie(), target_h.ValueOrDie()};
 }
 
 // Creates an empty camera frame of |camera_diag::mojom::PixelFormat::kYuv420|.
 camera_diag::mojom::CameraFramePtr CreateEmptyCameraFrame(
     const camera_diag::mojom::CameraStreamPtr& stream) {
+  if (!stream) {
+    return nullptr;
+  }
   Size stream_size = {stream->width, stream->height};
   if (stream->pixel_format != camera_diag::mojom::PixelFormat::kYuv420 ||
       !stream_size.is_valid() || stream_size.width % 2 ||
@@ -70,7 +86,7 @@ camera_diag::mojom::CameraFramePtr CreateEmptyCameraFrame(
     return nullptr;
   }
   Size frame_size = GetSmallestDimension(stream_size);
-  if (frame_size.area() < kMinPixelCount ||
+  if (!frame_size.is_valid() || frame_size.area() < kMinPixelCount ||
       frame_size.area() > kMaxPixelCount) {
     LOGF(ERROR) << "Out of bounds frame size. Original "
                 << stream_size.ToString() << ", target "
@@ -92,7 +108,15 @@ camera_diag::mojom::CameraFramePtr CreateEmptyCameraFrame(
   frame->is_empty = true;
   frame->buffer = camera_diag::mojom::CameraFrameBuffer::New();
   // Only NV12 frames are supported now. Average of 12 bits per pixel.
-  frame->buffer->size = (frame->stream->width * frame->stream->height * 3) / 2;
+  base::CheckedNumeric<uint32_t> buffer_size = frame->stream->width;
+  buffer_size *= frame->stream->height;
+  buffer_size = buffer_size * 3 / 2;
+  if (!buffer_size.IsValid()) {
+    LOGF(ERROR) << "Overflow calculating buffer size for stream size: "
+                << frame_size.ToString();
+    return nullptr;
+  }
+  frame->buffer->size = buffer_size.ValueOrDie();
   frame->buffer->shm_handle =
       mojo::SharedBufferHandle::Create(frame->buffer->size);
   if (!frame->buffer->shm_handle->is_valid()) {

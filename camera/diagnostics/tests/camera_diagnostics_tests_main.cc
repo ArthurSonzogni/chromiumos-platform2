@@ -160,6 +160,25 @@ TEST_P(CameraDiagTest, NoIssue) {
             cros::camera_diag::mojom::CameraIssue::kNone);
 }
 
+TEST(CameraDiagOverflowTest, RejectsOverflowingStreamSize) {
+  CameraDiagnosticsTestsFixture fixture;
+  fixture.SetUp(DiagFixtureOptions{.enable_cros_camera = true});
+
+  // 151358 * 113518 = 17,181,857,444 = 4 * 2^32 + 1,988,260.
+  auto camera_controller = fixture.GetCameraController();
+  auto stream = camera_diag::mojom::CameraStream::New();
+  stream->width = 151358;
+  stream->height = 113518;
+  stream->pixel_format = camera_diag::mojom::PixelFormat::kYuv420;
+  camera_controller->OpenCamera(std::move(stream), FrameType::kGreen);
+
+  auto result = fixture.RunFrameAnalysis(kFrameAnalysisDurationMsDefault);
+  ASSERT_FALSE(result.is_null());
+  ASSERT_TRUE(result->is_error());
+  EXPECT_EQ(result->get_error(),
+            cros::camera_diag::mojom::ErrorCode::kDiagnosticsInternal);
+}
+
 }  // namespace cros::tests
 
 int main(int argc, char** argv) {

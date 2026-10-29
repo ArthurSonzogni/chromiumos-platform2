@@ -11,6 +11,8 @@
 #include <base/functional/bind.h>
 #include <base/location.h>
 #include <base/no_destructor.h>
+#include <base/numerics/safe_conversions.h>
+#include <base/numerics/safe_math.h>
 #include <base/synchronization/lock.h>
 #include <base/task/sequenced_task_runner.h>
 #include <chromeos/mojo/service_constants.h>
@@ -98,13 +100,25 @@ CameraDiagnosticsClientImpl::RequestEmptyFrame() {
   return frame;
 }
 
-void CameraDiagnosticsClientImpl::AddCameraSession(const Size& stream_size) {
+bool CameraDiagnosticsClientImpl::AddCameraSession(const Size& stream_size) {
   base::AutoLock lock(session_lock_);
   if (session_stream_size_.has_value()) {
     LOGF(ERROR) << "Diagnostics session is already running!";
-    return;
+    return false;
+  }
+  base::CheckedNumeric<uint32_t> nv12_size = stream_size.width;
+  nv12_size *= stream_size.height;
+  nv12_size = nv12_size * 3 / 2;
+  if (!stream_size.is_valid() || stream_size.width % 2 != 0 ||
+      stream_size.height % 2 != 0 || !nv12_size.IsValid() ||
+      !base::IsValueInRangeForNumericType<int>(stream_size.width) ||
+      !base::IsValueInRangeForNumericType<int>(stream_size.height)) {
+    LOGF(ERROR) << "Invalid diagnostics session stream size: "
+                << stream_size.ToString();
+    return false;
   }
   session_stream_size_ = stream_size;
+  return true;
 }
 
 void CameraDiagnosticsClientImpl::RemoveCameraSession() {
@@ -159,6 +173,9 @@ void CameraDiagnosticsClientImpl::StopStreaming() {
 
 void CameraDiagnosticsClientImpl::RequestFrame(
     camera_diag::mojom::CameraFramePtr frame) {
+  if (!frame || !frame->buffer || !frame->stream) {
+    return;
+  }
   base::AutoLock lock(session_lock_);
   if (session_stream_size_.has_value() && frame_analysis_enabled_) {
     VLOGF(1) << "Received frame, size " << frame->buffer->size;

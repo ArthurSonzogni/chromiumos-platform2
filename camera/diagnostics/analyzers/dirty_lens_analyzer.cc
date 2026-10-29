@@ -4,8 +4,12 @@
 
 #include "diagnostics/analyzers/dirty_lens_analyzer.h"
 
+#include <cstdint>
+
 #include <base/check_op.h>
 #include <base/functional/bind.h>
+#include <base/numerics/safe_conversions.h>
+#include <base/numerics/safe_math.h>
 #include <ml_core/dlc/dlc_ids.h>
 
 #include "cros-camera/common.h"
@@ -41,9 +45,18 @@ bool DirtyLensAnalyzer::Initialize(const base::FilePath& lib_path) {
 
 bool DirtyLensAnalyzer::IsValidFrame(
     const camera_diag::mojom::CameraFramePtr& frame) {
+  if (!frame || !frame->stream || !frame->buffer ||
+      !frame->buffer->shm_handle.is_valid()) {
+    return false;
+  }
+  base::CheckedNumeric<uint32_t> nv12_size = frame->stream->width;
+  nv12_size *= frame->stream->height;
+  nv12_size = nv12_size * 3 / 2;
   return (frame->stream->pixel_format ==
               camera_diag::mojom::PixelFormat::kYuv420 &&
-          frame->stream->width > 0 && frame->stream->height > 0);
+          frame->stream->width > 0 && frame->stream->height > 0 &&
+          frame->stream->width % 2 == 0 && frame->stream->height % 2 == 0 &&
+          nv12_size.IsValid());
 }
 
 void DirtyLensAnalyzer::AnalyzeFrame(
@@ -90,9 +103,24 @@ camera_diag::mojom::AnalyzerResultPtr DirtyLensAnalyzer::GetResult() {
 
 bool DirtyLensAnalyzer::DetectBlurOnNV12(
     const camera_diag::mojom::CameraFramePtr& frame) {
-  int width = frame->stream->width;
-  int height = frame->stream->height;
-  int nv12_size = (width * height * 3) / 2;
+  if (!base::IsValueInRangeForNumericType<int>(frame->stream->width) ||
+      !base::IsValueInRangeForNumericType<int>(frame->stream->height)) {
+    return false;
+  }
+  base::CheckedNumeric<uint32_t> checked_nv12_size = frame->stream->width;
+  checked_nv12_size *= frame->stream->height;
+  checked_nv12_size = checked_nv12_size * 3 / 2;
+  if (!checked_nv12_size.IsValid()) {
+    return false;
+  }
+  uint32_t nv12_size = checked_nv12_size.ValueOrDie();
+  if (frame->buffer->shm_handle->GetSize() < nv12_size) {
+    VLOGF(1) << "Diagnostics buffer smaller than NV12 size: "
+             << frame->buffer->shm_handle->GetSize() << " vs " << nv12_size;
+    return false;
+  }
+  int width = static_cast<int>(frame->stream->width);
+  int height = static_cast<int>(frame->stream->height);
 
   mojo::ScopedSharedBufferMapping nv12_mapping =
       frame->buffer->shm_handle->Map(nv12_size);

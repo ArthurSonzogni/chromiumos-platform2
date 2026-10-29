@@ -4,6 +4,10 @@
 
 #include "camera/diagnostics/analyzers/privacy_shutter_analyzer.h"
 
+#include <cstdint>
+
+#include <base/numerics/safe_math.h>
+
 #include "camera/mojo/camera_diagnostics.mojom.h"
 #include "cros-camera/common.h"
 
@@ -19,9 +23,16 @@ constexpr int kNoOfFramesToConsiderAFailure = 5;
 
 bool PrivacyShutterAnalyzer::IsValidFrame(
     const camera_diag::mojom::CameraFramePtr& frame) {
+  if (!frame || !frame->stream || !frame->buffer ||
+      !frame->buffer->shm_handle.is_valid()) {
+    return false;
+  }
+  base::CheckedNumeric<uint32_t> y_size = frame->stream->width;
+  y_size *= frame->stream->height;
   return (frame->stream->pixel_format ==
               camera_diag::mojom::PixelFormat::kYuv420 &&
-          frame->stream->width > 0 && frame->stream->height > 0);
+          frame->stream->width > 0 && frame->stream->height > 0 &&
+          y_size.IsValid());
 }
 
 void PrivacyShutterAnalyzer::AnalyzeFrame(
@@ -64,14 +75,29 @@ camera_diag::mojom::AnalyzerResultPtr PrivacyShutterAnalyzer::GetResult() {
 
 bool PrivacyShutterAnalyzer::DetectPrivacyShutter(
     const camera_diag::mojom::CameraFramePtr& frame) {
-  int width = frame->stream->width;
-  int height = frame->stream->height;
+  uint32_t width = frame->stream->width;
+  uint32_t height = frame->stream->height;
 
-  uint32_t y_size = width * height;
+  base::CheckedNumeric<uint32_t> checked_y_size = width;
+  checked_y_size *= height;
+  if (!checked_y_size.IsValid()) {
+    return false;
+  }
+  uint32_t y_size = checked_y_size.ValueOrDie();
   uint32_t y_stride = width;
+
+  if (frame->buffer->shm_handle->GetSize() < y_size) {
+    VLOGF(1) << "Diagnostics buffer smaller than Y plane: "
+             << frame->buffer->shm_handle->GetSize() << " vs " << y_size;
+    return false;
+  }
 
   mojo::ScopedSharedBufferMapping y_mapping =
       frame->buffer->shm_handle->Map(y_size);
+  if (y_mapping == nullptr) {
+    VLOGF(1) << "Failed to map the diagnostics buffer";
+    return false;
+  }
 
   uint8_t* y_data = static_cast<uint8_t*>(y_mapping.get());
 
@@ -90,7 +116,7 @@ bool PrivacyShutterAnalyzer::DetectPrivacyShutter(
     }
   }
 
-  double y_mean = y_sum / (width * height);
+  double y_mean = y_sum / static_cast<double>(y_size);
   if (kMeanThreshold < y_mean) {
     VLOGF(2) << "The image is overall bright: " << y_mean;
     return false;
@@ -105,7 +131,7 @@ bool PrivacyShutterAnalyzer::DetectPrivacyShutter(
     }
   }
 
-  y_var /= (width * height);
+  y_var /= static_cast<double>(y_size);
   if (kVarThreshold < y_var) {
     VLOGF(2) << "Variance is over threshold: " << y_var;
     return false;

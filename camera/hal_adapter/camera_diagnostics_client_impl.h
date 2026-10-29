@@ -9,8 +9,8 @@
 #include <optional>
 
 #include <base/synchronization/lock.h>
-#include <base/thread_annotations.h>
 #include <base/task/single_thread_task_runner.h>
+#include <base/thread_annotations.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "camera/mojo/camera_diagnostics.mojom.h"
@@ -67,7 +67,7 @@ class CameraDiagnosticsClientImpl final
 
   std::optional<camera_diag::mojom::CameraFramePtr> RequestEmptyFrame() final;
 
-  void AddCameraSession(const Size& stream_size) final;
+  bool AddCameraSession(const Size& stream_size) final;
 
   void RemoveCameraSession() final;
 

@@ -5,8 +5,11 @@
 #ifndef CAMERA_COMMON_DIAGNOSTICS_STREAM_MANIPULATOR_H_
 #define CAMERA_COMMON_DIAGNOSTICS_STREAM_MANIPULATOR_H_
 
-#include <cutils/native_handle.h>
 #include <drm_fourcc.h>
+
+#include <set>
+
+#include <cutils/native_handle.h>
 
 #include "camera/mojo/camera_diagnostics.mojom.h"
 #include "common/camera_diagnostics_client.h"
@@ -48,6 +51,7 @@ class DiagnosticsStreamManipulator : public StreamManipulator {
   CameraDiagnosticsClient* diagnostics_client_;
 
   const camera3_stream_t* selected_stream_ = nullptr;
+  std::set<Size> available_yuv_stream_sizes_;
   int next_target_frame_number_ = 0;
 };
 
