@@ -5,20 +5,20 @@
 #ifndef DEVICE_MANAGEMENT_DEVICE_MANAGEMENT_SERVICE_H_
 #define DEVICE_MANAGEMENT_DEVICE_MANAGEMENT_SERVICE_H_
 
-#include "device_management/fwmp/firmware_management_parameters.h"
-#include "device_management/install_attributes/install_attributes.h"
-#include "device_management/metrics.h"
-#include "device_management/proto_bindings/device_management_interface.pb.h"
-
 #include <memory>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include <libhwsec/factory/factory.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
 #include <libstorage/platform/platform.h>
+
+#include "device_management/fwmp/firmware_management_parameters.h"
+#include "device_management/install_attributes/install_attributes.h"
+#include "device_management/metrics.h"
+#include "device_management/proto_bindings/device_management_interface.pb.h"
 
 namespace device_management {
 class DeviceManagementService {
