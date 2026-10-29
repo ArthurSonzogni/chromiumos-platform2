@@ -120,12 +120,12 @@ fi
 # lower. The default value is 1024.
 CHROME_CPU_CGROUP_DIR=/sys/fs/cgroup/cpu/chrome_renderers
 if [ ! -d "${CHROME_CPU_CGROUP_DIR}" ]; then
-  mkdir -p "${CHROME_CPU_CGROUP_DIR}/foreground"
-  mkdir -p "${CHROME_CPU_CGROUP_DIR}/background"
   # /sys/fs/cgroup/cpu/chrome_renderers_background is for FlattenCpuCgroups
   # experiment.
   # TODO(b/385656021): Remove /sys/fs/cgroup/cpu/chrome_renderers/background.
-  mkdir -p "${CHROME_CPU_CGROUP_DIR}_background"
+  mkdir -p "${CHROME_CPU_CGROUP_DIR}/foreground" \
+    "${CHROME_CPU_CGROUP_DIR}/background" \
+    "${CHROME_CPU_CGROUP_DIR}_background"
   echo "10" > "${CHROME_CPU_CGROUP_DIR}/background/cpu.shares"
   echo "10" > "${CHROME_CPU_CGROUP_DIR}_background/cpu.shares"
   # Allow featured to still modify these values
@@ -179,7 +179,6 @@ fi
 # to freeze all the chrome renderers so that they don't take up a lot of power
 # when the system comes up in dark resume
 if [ ! -d "${CHROME_FREEZER_CGROUP_DIR:-}" ]; then
-  mkdir -p "${CHROME_FREEZER_CGROUP_DIR}"
   mkdir -p "${CHROME_FREEZER_CGROUP_DIR}/to_be_frozen"
   chown -R chronos "${CHROME_FREEZER_CGROUP_DIR}"
 fi
