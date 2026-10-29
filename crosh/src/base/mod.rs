@@ -18,7 +18,6 @@ mod force_fips;
 mod free;
 mod generate_firmware_dump;
 mod help_advanced;
-mod insert_coin;
 mod meminfo;
 mod packet_capture;
 mod printscan_debug;
@@ -54,7 +53,6 @@ pub fn register(dispatcher: &mut Dispatcher) {
     free::register(dispatcher);
     generate_firmware_dump::register(dispatcher);
     help_advanced::register(dispatcher);
-    insert_coin::register(dispatcher);
     meminfo::register(dispatcher);
     packet_capture::register(dispatcher);
     printscan_debug::register(dispatcher);
