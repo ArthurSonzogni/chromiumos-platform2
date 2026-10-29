@@ -123,53 +123,6 @@ btadapterd.
 
 ## bootstat_summary
 
-## borealis_crosvm.log
-
-Logs from the Borealis VM's output (kernel logs to serial, in-VM services).
-
-## borealis_frames
-
-Frame timings from apps running in the Borealis VM. 16 KiB.
-
-## borealis_frames_summary
-
-Summarization of borealis frame timings. 2 KiB.
-
-## borealis_launch_log
-
-Logs from Borealis game launches, including command line and compat tools used
-for the game launch.
-
-## borealis_proton_crash_reports
-
-Contains the most recent Proton crash dump containing debug info. ~11 KiB.
-
-## borealis_quirks
-
-Contains both system-provided and user-specified configs which control the
-behaviour of Borealis system components (initially just Sommelier) on a
-per-game basis. For example, a setting might permit a specific game to control
-the position of its windows on-screen.
-
-~93 bytes per setting. We print the first 10 KiB, enough for 110 settings.
-
-## borealis_rootfs_reports
-
-Contains MD5 digests for paths in the Borealis read-only rootfs.
-This report may inform if the Borealis rootfs has become corrupted. ~44 KiB.
-
-## borealis_steam_log
-
-Contains the stdout and stderr of the Steam client and any games run since
-Borealis boot. ~8 KiB for start up and login of the Steam client. Each game
-launch adds ~8 KiB.
-
-## borealis_xwindump
-
-If the Borealis VM is running, displays a list of all Borealis windows and
-each window's title, size, and other X properties, as seen by the X server.
-Expected size is ~20 KiB.
-
 ## bt_usb_disconnects
 
 ## buddyinfo
