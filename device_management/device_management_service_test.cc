@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/rpc.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -275,6 +276,8 @@ TEST_F(DeviceManagementServiceAPITest, SetFirmwareManagementParametersSuccess) {
 
   std::vector<uint8_t> out_hash;
 
+  EXPECT_CALL(*install_attrs_, status())
+      .WillOnce(Return(InstallAttributes::Status::kFirstInstall));
   EXPECT_CALL(*fwmp_, Create()).WillOnce(Return(true));
   EXPECT_CALL(*fwmp_, Store(kFlag, _))
       .WillOnce(DoAll(SaveArgPointee<1>(&out_hash), Return(true)));
@@ -292,6 +295,8 @@ TEST_F(DeviceManagementServiceAPITest, SetFirmwareManagementParametersSuccess) {
 TEST_F(DeviceManagementServiceAPITest, SetFirmwareManagementParametersNoHash) {
   constexpr uint32_t kFlag = 0x1234;
 
+  EXPECT_CALL(*install_attrs_, status())
+      .WillOnce(Return(InstallAttributes::Status::kFirstInstall));
   EXPECT_CALL(*fwmp_, Create()).WillOnce(Return(true));
   EXPECT_CALL(*fwmp_, Store(kFlag, nullptr)).WillOnce(Return(true));
 
@@ -307,6 +312,8 @@ TEST_F(DeviceManagementServiceAPITest,
   const std::string kHash = "its_a_hash";
   constexpr uint32_t kFlag = 0x1234;
 
+  EXPECT_CALL(*install_attrs_, status())
+      .WillOnce(Return(InstallAttributes::Status::kFirstInstall));
   EXPECT_CALL(*fwmp_, Create()).WillOnce(Return(false));
 
   device_management::FirmwareManagementParameters fwmp;
@@ -324,6 +331,8 @@ TEST_F(DeviceManagementServiceAPITest,
   const std::string kHash = "its_a_hash";
   constexpr uint32_t kFlag = 0x1234;
 
+  EXPECT_CALL(*install_attrs_, status())
+      .WillOnce(Return(InstallAttributes::Status::kFirstInstall));
   EXPECT_CALL(*fwmp_, Create()).WillOnce(Return(true));
   EXPECT_CALL(*fwmp_, Store(_, _)).WillOnce(Return(false));
 
@@ -338,15 +347,332 @@ TEST_F(DeviceManagementServiceAPITest,
 }
 
 TEST_F(DeviceManagementServiceAPITest,
+       SetFirmwareManagementParametersNotFirstInstall) {
+  constexpr InstallAttributes::Status disallowed_statuses[] = {
+      InstallAttributes::Status::kUnknown,
+      InstallAttributes::Status::kValid,
+      InstallAttributes::Status::kInvalid,
+  };
+
+  device_management::FirmwareManagementParameters fwmp;
+  fwmp.set_flags(0x1234);
+
+  for (auto status : disallowed_statuses) {
+    EXPECT_CALL(*install_attrs_, status()).WillOnce(Return(status));
+    EXPECT_CALL(*fwmp_, Create()).Times(0);
+    EXPECT_CALL(*fwmp_, Store(_, _)).Times(0);
+
+    EXPECT_EQ(
+        device_management::
+            DEVICE_MANAGEMENT_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
+        device_management_service_.SetFirmwareManagementParameters(fwmp));
+  }
+
+  // When status is kTpmNotOwned, SetFirmwareManagementParameters attempts lazy
+  // initialization via InitializeInstallAttributesCallback; if status remains
+  // kTpmNotOwned, the call is rejected.
+  EXPECT_CALL(*install_attrs_, status())
+      .WillRepeatedly(Return(InstallAttributes::Status::kTpmNotOwned));
+  EXPECT_CALL(*install_attrs_, Init()).WillOnce(Return(false));
+  EXPECT_CALL(*install_attrs_, Get("enterprise.owned", _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*fwmp_, Create()).Times(0);
+  EXPECT_CALL(*fwmp_, Store(_, _)).Times(0);
+  EXPECT_EQ(
+      device_management::
+          DEVICE_MANAGEMENT_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
+      device_management_service_.SetFirmwareManagementParameters(fwmp));
+}
+
+TEST_F(DeviceManagementServiceAPITest,
+       SetFirmwareManagementParametersTpmNotOwnedBecomesFirstInstall) {
+  constexpr uint32_t kFlag = 0x1234;
+
+  EXPECT_CALL(*install_attrs_, status())
+      .WillOnce(Return(InstallAttributes::Status::kTpmNotOwned))
+      .WillOnce(Return(InstallAttributes::Status::kTpmNotOwned))
+      .WillOnce(Return(InstallAttributes::Status::kTpmNotOwned))
+      .WillOnce(Return(InstallAttributes::Status::kFirstInstall));
+  EXPECT_CALL(*install_attrs_, Init()).WillOnce(Return(true));
+  EXPECT_CALL(*install_attrs_, Get("enterprise.owned", _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*fwmp_, Create()).WillOnce(Return(true));
+  EXPECT_CALL(*fwmp_, Store(kFlag, nullptr)).WillOnce(Return(true));
+
+  device_management::FirmwareManagementParameters fwmp;
+  fwmp.set_flags(kFlag);
+  EXPECT_EQ(device_management::DEVICE_MANAGEMENT_ERROR_NOT_SET,
+            device_management_service_.SetFirmwareManagementParameters(fwmp));
+}
+
+TEST_F(DeviceManagementServiceAPITest,
+       SetFirmwareManagementParametersCannotClearLockedDisableFlags) {
+  constexpr uint32_t kDisableBootAndCcdFlags =
+      cryptohome::DEVELOPER_DISABLE_BOOT |
+      cryptohome::DEVELOPER_DISABLE_CASE_CLOSED_DEBUGGING_UNLOCK;
+
+  EXPECT_CALL(*install_attrs_, status())
+      .WillRepeatedly(Return(InstallAttributes::Status::kFirstInstall));
+
+  device_management::FirmwareManagementParameters fwmp;
+
+  // Store() failure with 0x41 must not latch (a following Set(0) succeeds).
+  EXPECT_CALL(*fwmp_, Create()).WillOnce(Return(true));
+  EXPECT_CALL(*fwmp_, Store(kDisableBootAndCcdFlags, nullptr))
+      .WillOnce(Return(false));
+  fwmp.set_flags(kDisableBootAndCcdFlags);
+  EXPECT_EQ(
+      device_management::
+          DEVICE_MANAGEMENT_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
+      device_management_service_.SetFirmwareManagementParameters(fwmp));
+
+  // Initial call with flags=0 (block_devmode=false) is allowed and does not
+  // lock disable flags.
+  EXPECT_CALL(*fwmp_, Create()).WillOnce(Return(true));
+  EXPECT_CALL(*fwmp_, Store(0u, nullptr)).WillOnce(Return(true));
+  fwmp.set_flags(0u);
+  EXPECT_EQ(device_management::DEVICE_MANAGEMENT_ERROR_NOT_SET,
+            device_management_service_.SetFirmwareManagementParameters(fwmp));
+
+  // Setting DEVELOPER_DISABLE_CASE_CLOSED_DEBUGGING_UNLOCK (0x40) alone latches
+  // only bit 6: Set(DEVELOPER_DISABLE_BOOT) afterwards fails, whereas
+  // Set(DEVELOPER_DISABLE_CASE_CLOSED_DEBUGGING_UNLOCK) succeeds.
+  EXPECT_CALL(*fwmp_, Create()).WillOnce(Return(true));
+  EXPECT_CALL(*fwmp_,
+              Store(cryptohome::DEVELOPER_DISABLE_CASE_CLOSED_DEBUGGING_UNLOCK,
+                    nullptr))
+      .WillOnce(Return(true));
+  fwmp.set_flags(cryptohome::DEVELOPER_DISABLE_CASE_CLOSED_DEBUGGING_UNLOCK);
+  EXPECT_EQ(device_management::DEVICE_MANAGEMENT_ERROR_NOT_SET,
+            device_management_service_.SetFirmwareManagementParameters(fwmp));
+
+  EXPECT_CALL(*fwmp_, Create()).Times(0);
+  EXPECT_CALL(*fwmp_, Store(_, _)).Times(0);
+  fwmp.set_flags(cryptohome::DEVELOPER_DISABLE_BOOT);
+  EXPECT_EQ(
+      device_management::
+          DEVICE_MANAGEMENT_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
+      device_management_service_.SetFirmwareManagementParameters(fwmp));
+
+  EXPECT_CALL(*fwmp_, Create()).WillOnce(Return(true));
+  EXPECT_CALL(*fwmp_,
+              Store(cryptohome::DEVELOPER_DISABLE_CASE_CLOSED_DEBUGGING_UNLOCK,
+                    nullptr))
+      .WillOnce(Return(true));
+  fwmp.set_flags(cryptohome::DEVELOPER_DISABLE_CASE_CLOSED_DEBUGGING_UNLOCK);
+  EXPECT_EQ(device_management::DEVICE_MANAGEMENT_ERROR_NOT_SET,
+            device_management_service_.SetFirmwareManagementParameters(fwmp));
+
+  // Upgrading to DEVELOPER_DISABLE_BOOT |
+  // DEVELOPER_DISABLE_CASE_CLOSED_DEBUGGING_UNLOCK succeeds and locks both
+  // flags.
+  const std::string kHash1 = "first_key_hash";
+  EXPECT_CALL(*fwmp_, Create()).WillOnce(Return(true));
+  EXPECT_CALL(*fwmp_, Store(kDisableBootAndCcdFlags, _)).WillOnce(Return(true));
+  fwmp.set_flags(kDisableBootAndCcdFlags);
+  fwmp.set_developer_key_hash(kHash1);
+  EXPECT_EQ(device_management::DEVICE_MANAGEMENT_ERROR_NOT_SET,
+            device_management_service_.SetFirmwareManagementParameters(fwmp));
+
+  // Superset of flags after latch (and a different developer_key_hash) is
+  // allowed.
+  constexpr uint32_t kSupersetFlags = kDisableBootAndCcdFlags | 0x100u;
+  const std::string kHash2 = "second_key_hash";
+  std::vector<uint8_t> out_hash;
+  EXPECT_CALL(*fwmp_, Create()).WillOnce(Return(true));
+  EXPECT_CALL(*fwmp_, Store(kSupersetFlags, _))
+      .WillOnce(DoAll(SaveArgPointee<1>(&out_hash), Return(true)));
+  fwmp.set_flags(kSupersetFlags);
+  fwmp.set_developer_key_hash(kHash2);
+  EXPECT_EQ(device_management::DEVICE_MANAGEMENT_ERROR_NOT_SET,
+            device_management_service_.SetFirmwareManagementParameters(fwmp));
+  EXPECT_EQ(std::vector<uint8_t>(kHash2.begin(), kHash2.end()), out_hash);
+
+  // Subsequent attempts to clear either or both locked disable flags fail
+  // without touching fwmp_.
+  for (uint32_t downgraded_flags :
+       {0u, static_cast<uint32_t>(cryptohome::DEVELOPER_DISABLE_BOOT),
+        static_cast<uint32_t>(
+            cryptohome::DEVELOPER_DISABLE_CASE_CLOSED_DEBUGGING_UNLOCK)}) {
+    EXPECT_CALL(*fwmp_, Create()).Times(0);
+    EXPECT_CALL(*fwmp_, Store(_, _)).Times(0);
+    fwmp.set_flags(downgraded_flags);
+    EXPECT_EQ(
+        device_management::
+            DEVICE_MANAGEMENT_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
+        device_management_service_.SetFirmwareManagementParameters(fwmp));
+  }
+}
+
+TEST_F(DeviceManagementServiceAPITest,
+       LockedFwmpFlagsPersistedAcrossDaemonRestart) {
+  constexpr uint32_t kDisableBootAndCcdFlags =
+      cryptohome::DEVELOPER_DISABLE_BOOT |
+      cryptohome::DEVELOPER_DISABLE_CASE_CLOSED_DEBUGGING_UNLOCK;
+
+  NiceMock<libstorage::MockPlatform> platform;
+  brillo::Blob persisted_blob;
+  const base::FilePath marker_path(
+      DeviceManagementService::kDefaultFwmpLockedFlagsFile);
+
+  auto fwmp1 = std::make_unique<StrictMock<MockFirmwareManagementParameters>>();
+  auto install_attrs1 = std::make_unique<StrictMock<MockInstallAttributes>>();
+  auto* fwmp1_ptr = fwmp1.get();
+  auto* install_attrs1_ptr = install_attrs1.get();
+
+  DeviceManagementService service1;
+  service1.SetParamsForTesting(std::move(fwmp1), std::move(install_attrs1),
+                               &platform);
+
+  EXPECT_CALL(*install_attrs1_ptr, status())
+      .WillOnce(Return(InstallAttributes::Status::kFirstInstall));
+  EXPECT_CALL(*fwmp1_ptr, Create()).WillOnce(Return(true));
+  EXPECT_CALL(*fwmp1_ptr, Store(kDisableBootAndCcdFlags, nullptr))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      platform,
+      WriteFileAtomic(marker_path, _,
+                      DeviceManagementService::kFwmpLockedFlagsFilePermissions))
+      .WillOnce(DoAll(SaveArg<1>(&persisted_blob), Return(true)));
+
+  device_management::FirmwareManagementParameters fwmp;
+  fwmp.set_flags(kDisableBootAndCcdFlags);
+  EXPECT_EQ(device_management::DEVICE_MANAGEMENT_ERROR_NOT_SET,
+            service1.SetFirmwareManagementParameters(fwmp));
+  EXPECT_FALSE(persisted_blob.empty());
+
+  // Simulate a daemon restart on the same boot: a new DeviceManagementService
+  // instance reads the marker file in Initialize() and preserves the latch.
+  StrictMock<hwsec::MockCryptohomeFrontend> hwsec;
+  auto fwmp2 = std::make_unique<StrictMock<MockFirmwareManagementParameters>>();
+  auto install_attrs2 = std::make_unique<StrictMock<MockInstallAttributes>>();
+  auto* fwmp2_ptr = fwmp2.get();
+  auto* install_attrs2_ptr = install_attrs2.get();
+
+  DeviceManagementService service2;
+  service2.SetParamsForTesting(std::move(fwmp2), std::move(install_attrs2),
+                               &platform);
+
+  EXPECT_CALL(platform, FileExists(marker_path)).WillOnce(Return(true));
+  EXPECT_CALL(platform, ReadFile(marker_path, _))
+      .WillOnce(DoAll(SetArgPointee<1>(persisted_blob), Return(true)));
+  EXPECT_CALL(hwsec, RegisterOnReadyCallback(_));
+  EXPECT_CALL(*install_attrs2_ptr, status())
+      .WillRepeatedly(Return(InstallAttributes::Status::kFirstInstall));
+
+  service2.Initialize(hwsec, platform);
+
+  EXPECT_CALL(*fwmp2_ptr, Create()).Times(0);
+  EXPECT_CALL(*fwmp2_ptr, Store(_, _)).Times(0);
+  fwmp.set_flags(0u);
+  EXPECT_EQ(
+      device_management::
+          DEVICE_MANAGEMENT_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
+      service2.SetFirmwareManagementParameters(fwmp));
+
+  EXPECT_CALL(*fwmp2_ptr, Destroy()).Times(0);
+  EXPECT_FALSE(service2.RemoveFirmwareManagementParameters());
+}
+
+TEST_F(DeviceManagementServiceAPITest,
        RemoveFirmwareManagementParametersSuccess) {
+  EXPECT_CALL(*install_attrs_, status())
+      .WillOnce(Return(InstallAttributes::Status::kFirstInstall));
   EXPECT_CALL(*fwmp_, Destroy()).WillOnce(Return(true));
   EXPECT_TRUE(device_management_service_.RemoveFirmwareManagementParameters());
 }
 
 TEST_F(DeviceManagementServiceAPITest,
        RemoveFirmwareManagementParametersFailure) {
+  EXPECT_CALL(*install_attrs_, status())
+      .WillOnce(Return(InstallAttributes::Status::kFirstInstall));
   EXPECT_CALL(*fwmp_, Destroy()).WillOnce(Return(false));
   EXPECT_FALSE(device_management_service_.RemoveFirmwareManagementParameters());
+}
+
+TEST_F(DeviceManagementServiceAPITest,
+       RemoveFirmwareManagementParametersNotFirstInstall) {
+  constexpr InstallAttributes::Status disallowed_statuses[] = {
+      InstallAttributes::Status::kUnknown,
+      InstallAttributes::Status::kValid,
+      InstallAttributes::Status::kInvalid,
+  };
+
+  for (auto status : disallowed_statuses) {
+    EXPECT_CALL(*install_attrs_, status()).WillOnce(Return(status));
+    EXPECT_CALL(*fwmp_, Destroy()).Times(0);
+    EXPECT_FALSE(
+        device_management_service_.RemoveFirmwareManagementParameters());
+  }
+
+  // When status is kTpmNotOwned, RemoveFirmwareManagementParameters attempts
+  // lazy initialization via InitializeInstallAttributesCallback; if status
+  // remains kTpmNotOwned, the call is rejected.
+  EXPECT_CALL(*install_attrs_, status())
+      .WillRepeatedly(Return(InstallAttributes::Status::kTpmNotOwned));
+  EXPECT_CALL(*install_attrs_, Init()).WillOnce(Return(false));
+  EXPECT_CALL(*install_attrs_, Get("enterprise.owned", _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*fwmp_, Destroy()).Times(0);
+  EXPECT_FALSE(device_management_service_.RemoveFirmwareManagementParameters());
+}
+
+TEST_F(DeviceManagementServiceAPITest,
+       RemoveFirmwareManagementParametersTpmNotOwnedBecomesFirstInstall) {
+  EXPECT_CALL(*install_attrs_, status())
+      .WillOnce(Return(InstallAttributes::Status::kTpmNotOwned))
+      .WillOnce(Return(InstallAttributes::Status::kTpmNotOwned))
+      .WillOnce(Return(InstallAttributes::Status::kTpmNotOwned))
+      .WillOnce(Return(InstallAttributes::Status::kFirstInstall));
+  EXPECT_CALL(*install_attrs_, Init()).WillOnce(Return(true));
+  EXPECT_CALL(*install_attrs_, Get("enterprise.owned", _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*fwmp_, Destroy()).WillOnce(Return(true));
+  EXPECT_TRUE(device_management_service_.RemoveFirmwareManagementParameters());
+}
+
+TEST_F(DeviceManagementServiceAPITest,
+       RemoveFirmwareManagementParametersBlockedAfterDisableFlagsSet) {
+  constexpr uint32_t kDisableBootFlag = cryptohome::DEVELOPER_DISABLE_BOOT;
+
+  EXPECT_CALL(*install_attrs_, status())
+      .WillRepeatedly(Return(InstallAttributes::Status::kFirstInstall));
+  EXPECT_CALL(*fwmp_, Create()).WillOnce(Return(true));
+  EXPECT_CALL(*fwmp_, Store(kDisableBootFlag, nullptr)).WillOnce(Return(true));
+
+  device_management::FirmwareManagementParameters fwmp;
+  fwmp.set_flags(kDisableBootFlag);
+  EXPECT_EQ(device_management::DEVICE_MANAGEMENT_ERROR_NOT_SET,
+            device_management_service_.SetFirmwareManagementParameters(fwmp));
+
+  EXPECT_CALL(*fwmp_, Destroy()).Times(0);
+  EXPECT_FALSE(device_management_service_.RemoveFirmwareManagementParameters());
+}
+
+TEST_F(DeviceManagementServiceAPITest,
+       RemoveFirmwareManagementParametersAllowedAfterNonDisableFlagsSet) {
+  // Flags 0x06 (DEVELOPER_DISABLE_RECOVERY_INSTALL |
+  // DEVELOPER_DISABLE_RECOVERY_ROOTFS, used by
+  // tast.hwsec.FirmwareManagementParameters and tast.hwsec.FWMPAcrossTPMClear)
+  // do not include DEVELOPER_DISABLE_BOOT or
+  // DEVELOPER_DISABLE_CASE_CLOSED_DEBUGGING_UNLOCK, so they must not block
+  // subsequent FWMP removal or updates.
+  constexpr uint32_t kNonDisableFlags =
+      cryptohome::DEVELOPER_DISABLE_RECOVERY_INSTALL |
+      cryptohome::DEVELOPER_DISABLE_RECOVERY_ROOTFS;
+
+  EXPECT_CALL(*install_attrs_, status())
+      .WillRepeatedly(Return(InstallAttributes::Status::kFirstInstall));
+  EXPECT_CALL(*fwmp_, Create()).WillOnce(Return(true));
+  EXPECT_CALL(*fwmp_, Store(kNonDisableFlags, nullptr)).WillOnce(Return(true));
+
+  device_management::FirmwareManagementParameters fwmp;
+  fwmp.set_flags(kNonDisableFlags);
+  EXPECT_EQ(device_management::DEVICE_MANAGEMENT_ERROR_NOT_SET,
+            device_management_service_.SetFirmwareManagementParameters(fwmp));
+
+  EXPECT_CALL(*fwmp_, Destroy()).WillOnce(Return(true));
+  EXPECT_TRUE(device_management_service_.RemoveFirmwareManagementParameters());
 }
 
 TEST_F(DeviceManagementServiceAPITest, InstallAttributesEnterpriseOwned) {

@@ -28,10 +28,17 @@ class DeviceManagementService {
 
   void SetParamsForTesting(std::unique_ptr<fwmp::FirmwareManagementParameters>
                                firmware_management_parameters,
-                           std::unique_ptr<InstallAttributes> install_attrs) {
+                           std::unique_ptr<InstallAttributes> install_attrs,
+                           libstorage::Platform* platform = nullptr) {
     firmware_management_parameters_ = std::move(firmware_management_parameters);
     install_attrs_ = std::move(install_attrs);
+    platform_ = platform;
   }
+
+  // Provides the default location for the latched FWMP flags marker file.
+  static const char kDefaultFwmpLockedFlagsFile[];
+  // File permissions of the latched FWMP flags marker file (modulo umask).
+  static const mode_t kFwmpLockedFlagsFilePermissions;
 
   void Initialize(const hwsec::CryptohomeFrontend& hwsec_,
                   libstorage::Platform& platform);
@@ -111,6 +118,14 @@ class DeviceManagementService {
   std::unique_ptr<InstallAttributes> install_attrs_;
   // Whether this device is an enterprise owned device.
   bool enterprise_owned_;
+  // Bitmask of developer-disable FWMP flags that have been set during the
+  // current OOBE session. Once set, these flags cannot be cleared by
+  // subsequent SetFirmwareManagementParameters or
+  // RemoveFirmwareManagementParameters calls.
+  uint32_t locked_fwmp_flags_ = 0;
+  // Platform object used to persist `locked_fwmp_flags_` on tmpfs across
+  // daemon restarts.
+  libstorage::Platform* platform_ = nullptr;
   // The metrics object will be used to send UMA report.
   std::unique_ptr<Metrics> metrics_;
 };
