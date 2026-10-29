@@ -106,12 +106,10 @@ constexpr char kArcVmPerBoardConfigPath[] = "/run/arcvm/host_generated/oem";
 constexpr char kArcVmVendorImagePath[] =
     "/opt/google/vms/android/vendor.raw.img";
 constexpr char kApkCacheDir[] = "/mnt/stateful_partition/unencrypted/apkcache";
-constexpr char kArcBridgeSocketContext[] = "u:object_r:arc_bridge_socket:s0";
 constexpr char kArcBridgeSocketPath[] = "/run/chrome/arc_bridge.sock";
 constexpr char kAudioCodecsFilesDirectoryRelative[] = "etc/";
 constexpr char kBinFmtMiscDirectory[] = "/proc/sys/fs/binfmt_misc";
 constexpr char kBootIdFile[] = "/proc/sys/kernel/random/boot_id";
-constexpr char kBuildPropFile[] = "/usr/share/arc/properties/build.prop";
 constexpr char kBuildPropFileVm[] = "/usr/share/arcvm/properties/build.prop";
 constexpr char kCameraProfileDir[] = "/var/cache/camera";
 constexpr char kCameraTestConfig[] = "/var/cache/camera/test_config.json";
@@ -490,21 +488,12 @@ std::string GetOrCreateArcSalt() {
 
 bool IsChromeOSUserAvailable(Mode mode) {
   switch (mode) {
-    case Mode::BOOT_CONTINUE:
     case Mode::PREPARE_ARCVM_DATA:
     case Mode::REMOVE_DATA:
     case Mode::REMOVE_STALE_DATA:
-    case Mode::MOUNT_SDCARD:
       return true;
     case Mode::PREPARE_HOST_GENERATED_DIR:
     case Mode::APPLY_PER_BOARD_CONFIG:
-    case Mode::SETUP:
-    case Mode::STOP:
-    case Mode::ONETIME_SETUP:
-    case Mode::ONETIME_STOP:
-    case Mode::PRE_CHROOT:
-    case Mode::UNMOUNT_SDCARD:
-    case Mode::UPDATE_RESTORECON_LAST:
       return false;
   }
 }
@@ -595,81 +584,6 @@ void RemoveStaleDataDirectory(brillo::SafeFD& root_fd,
       err != brillo::SafeFD::Error::kDoesNotExist) {
     LOG(ERROR) << "Errors while cleaning old data from " << path
                << ": failed to remove the directory";
-  }
-}
-
-bool SetRestoreconLastXattr(const base::FilePath& mutable_data_dir,
-                            const std::string& hash) {
-  // On Android, /init writes the security.restorecon_last attribute to /data
-  // (and /cache on N) after it finishes updating labels of the files in the
-  // directories, but on ARC, writing the attribute fails silently because
-  // processes in user namespace are not allowed to write arbitrary entries
-  // under security.* even with CAP_SYS_ADMIN. (b/33084415, b/33402785)
-  // As a workaround, let this command outside the container set the
-  // attribute for ARC.
-  static constexpr char kRestoreconLastXattr[] = "security.restorecon_last";
-
-  brillo::SafeFD fd;
-  brillo::SafeFD::Error err;
-  std::tie(fd, err) =
-      brillo::SafeFD::Root().first.OpenExistingDir(mutable_data_dir);
-  if (brillo::SafeFD::IsError(err)) {
-    if (err == brillo::SafeFD::Error::kDoesNotExist) {
-      // `arc_paths_->android_mutable_source` might not be mounted at this point
-      // (b/292031836). We can/should skip errors in such cases.
-      LOG(WARNING) << "Skipping updating " << kRestoreconLastXattr
-                   << " because " << mutable_data_dir << " does not exist";
-      return true;
-    }
-    return false;
-  }
-  CHECK(fd.is_valid());
-
-  if (fsetxattr(fd.get(), kRestoreconLastXattr, hash.data(), hash.size(),
-                0 /* flags */) != 0) {
-    PLOG(ERROR) << "Failed to change xattr " << kRestoreconLastXattr << " of "
-                << mutable_data_dir;
-    return false;
-  }
-  return true;
-}
-
-void DeleteLegacyMediaProviderDatabases(
-    const base::FilePath& android_data_directory,
-    const base::FilePath& android_data_old_directory) {
-  const base::FilePath databases_directory = android_data_directory.Append(
-      "data/data/com.android.providers.media/databases");
-  if (!MoveDirIntoDataOldDir(databases_directory, android_data_old_directory)) {
-    PLOG(ERROR) << "Failed to remove legacy MediaProvider databases in "
-                << databases_directory;
-  }
-}
-
-void DeletePossiblyBrokenMediaProviderDatabases(
-    const base::FilePath& android_data_directory,
-    const base::FilePath& android_data_old_directory) {
-  // Remove the databases directory if |android_data_directory| does not contain
-  // a file named |.mediaprovider_databases_cleared|, which is created after the
-  // databases directory is removed, or when the databases directory does not
-  // exist (in which case MoveDirIntoDataOldDir() still succeeds).
-  const base::FilePath databases_cleared_file =
-      android_data_directory.Append(".mediaprovider_databases_cleared");
-  if (base::PathExists(databases_cleared_file)) {
-    return;
-  }
-
-  const base::FilePath databases_directory = android_data_directory.Append(
-      "data/data/com.android.providers.media.module/databases");
-  LOG(INFO) << "Removing possibly broken MediaProvider databases in "
-            << databases_directory;
-  if (!MoveDirIntoDataOldDir(databases_directory, android_data_old_directory)) {
-    PLOG(ERROR) << "Failed to remove MediaProvider databases in "
-                << databases_directory;
-    return;
-  }
-
-  if (!base::WriteFile(databases_cleared_file, "")) {
-    PLOG(ERROR) << "Failed to create " << databases_cleared_file;
   }
 }
 
@@ -2383,157 +2297,6 @@ void ArcSetup::DeleteAndroidMediaProviderDataOnUpgrade(
                                  arc_paths_->android_data_old_directory));
 }
 
-void ArcSetup::OnSetup() {
-  const bool is_dev_mode = config_.GetBoolOrDie("CHROMEOS_DEV_MODE");
-
-  SetUpSharedMountPoints();
-  CreateContainerFilesAndDirectories();
-  ApplyPerBoardConfigurations();
-  SetUpSharedTmpfsForExternalStorage();
-  SetUpFilesystemForObbMounter();
-  CreateAndroidCmdlineFile(is_dev_mode);
-  CreateFakeProcfsFiles();
-  SetUpMountPointForDebugFilesystem(is_dev_mode);
-  SetUpMountPointsForMedia();
-  SetUpMountPointForAdbd();
-  SetUpMountPointForAdbdUnixSocket();
-  CleanUpStaleMountPoints();
-  RestoreContext();
-  SetUpGraphicsSysfsContext();
-  SetUpTestharness(is_dev_mode);
-
-  if (!USE_ARCVM) {
-    // In case the udev rules for creating and populating this directory fail,
-    // create the directory so that the bind mount succeeds and allows ARC to
-    // boot, as this is a non-essential feature.
-    // This is intended for CTS compliance on R container: b/277541769
-    EXIT_IF(!brillo::MkdirRecursively(base::FilePath("/dev/arc_input"), 0755)
-                 .is_valid());
-  }
-  SetUpPowerSysfsContext();
-  MakeMountPointsReadOnly();
-  SetUpCameraProperty(base::FilePath(kBuildPropFile));
-  SetUpSharedApkDirectory();
-}
-
-// For R container only.
-void ArcSetup::OnBootContinue() {
-  const bool is_dev_mode = config_.GetBoolOrDie("CHROMEOS_DEV_MODE");
-  const bool is_inside_vm = config_.GetBoolOrDie("CHROMEOS_INSIDE_VM");
-  const std::string serialnumber = GetSerialNumber();
-
-  ArcBootType boot_type;
-  AndroidSdkVersion data_sdk_version;
-  GetBootTypeAndDataSdkVersion(arc_paths_->android_data_directory, &boot_type,
-                               &data_sdk_version);
-
-  SendUpgradeMetrics(data_sdk_version);
-  DeleteAndroidDataOnUpgrade(data_sdk_version);
-
-  bool should_delete_data_dalvik_cache_directory;
-  bool should_delete_data_app_executables;
-  ShouldDeleteDataExecutables(boot_type,
-                              &should_delete_data_dalvik_cache_directory,
-                              &should_delete_data_app_executables);
-  DeleteExecutableFilesInData(should_delete_data_dalvik_cache_directory,
-                              should_delete_data_app_executables);
-
-  // The socket isn't created when the mini-container is started, so the
-  // arc-setup --mode=pre-chroot call won't label it. Label it here instead.
-  EXIT_IF(!Chcon(kArcBridgeSocketContext, arc_paths_->arc_bridge_socket_path));
-
-  // Set up |android_mutable_source|. Although the container does not use
-  // the directory directly, we should still set up the directory so that
-  // session_manager can delete (to be more precise, move) the directory
-  // on opt-out. Since this creates cache and data directories when they
-  // don't exist, this has to be done before calling ShareAndroidData().
-  SetUpAndroidData(arc_paths_->android_mutable_source);
-
-  // Legacy MediaProvider databases should not be used in ARC R+.
-  DeleteLegacyMediaProviderDatabases(arc_paths_->android_data_directory,
-                                     arc_paths_->android_data_old_directory);
-  // Clear possibly broken MediaProvider databases (b/319460942).
-  // Since the function creates a file inside |android_data_directory|, call
-  // it after SetUpAndroidData() to ensure the existence of the directory.
-  DeletePossiblyBrokenMediaProviderDatabases(
-      arc_paths_->android_data_directory,
-      arc_paths_->android_data_old_directory);
-
-  InstallLinksToHostSideCode();
-
-  // Set up /run/arc/shared_mounts/{cache,data,demo_apps} to expose the user's
-  // data to the container. Demo apps are setup only for demo sessions.
-  MountSharedAndroidDirectories();
-
-  MaybeStartAdbdProxy(is_dev_mode, is_inside_vm, serialnumber);
-
-  // Asks the container to continue boot.
-  ContinueContainerBoot(boot_type, serialnumber);
-
-  // Unmount /run/arc/shared_mounts and its children. They are unnecessary at
-  // this point.
-  UnmountSharedAndroidDirectories();
-
-  const std::string env_chromeos_user = base::StringPrintf(
-      "CHROMEOS_USER=%s", config_.GetStringOrDie("CHROMEOS_USER").c_str());
-  const std::string env_container_pid = base::StringPrintf(
-      "CONTAINER_PID=%d", config_.GetIntOrDie("CONTAINER_PID"));
-  EXIT_IF(!LaunchAndWait({"/sbin/initctl", "start", "--no-wait", "arc-sdcard",
-                          env_chromeos_user, env_container_pid}));
-}
-
-void ArcSetup::OnStop() {
-  CleanUpBinFmtMiscSetUp();
-  // Call UnmountSdcard() before UnmountOnStop() to ensure that the esdfs mount
-  // points are unmounted before unmounting `sdcard_mount_directory`.
-  UnmountSdcard();
-  UnmountOnStop();
-  RemoveAndroidKmsgFifo();
-}
-
-void ArcSetup::OnOnetimeSetup() {
-  EnsureContainerDirectories();
-  MountOnOnetimeSetup();
-
-  // Setup ownership for <configfs>/sdcard, if the directory exists.
-  SetUpOwnershipForSdcardConfigfs();
-}
-
-void ArcSetup::OnOnetimeStop() {
-  UnmountOnOnetimeStop();
-}
-
-void ArcSetup::OnPreChroot() {
-  // Note: Do not try to create a directory in tmpfs here. Recent (4.8+)
-  // kernel doesn't allow us to do so and returns EOVERFLOW. b/78262683
-
-  // binfmt_misc setup has to be done before entering container
-  // namespace below (namely before CreateScopedMountNamespaceForPid).
-  ArcBinaryTranslationType binary_translation_type =
-      IdentifyBinaryTranslationType();
-  SetUpBinFmtMisc(binary_translation_type);
-
-  int container_pid;
-  base::FilePath rootfs;
-
-  EXIT_IF(!GetOciContainerState(base::FilePath("/dev/stdin"), &container_pid,
-                                &rootfs));
-
-  // Enter the container namespace since the paths we want to re-label here
-  // are easier to access from inside of it.
-  std::unique_ptr<brillo::ScopedMountNamespace> container_mount_ns =
-      brillo::ScopedMountNamespace::CreateForPid(container_pid);
-  PLOG_IF(FATAL, !container_mount_ns)
-      << "Failed to enter the container mount namespace";
-
-  BindMountInContainerNamespaceOnPreChroot(rootfs, binary_translation_type);
-  if (create_tagged_ashmem_) {
-    CreateTaggedAshmem(rootfs);
-  }
-  RestoreContextOnPreChroot(rootfs);
-  CreateDevColdbootDoneOnPreChroot(rootfs);
-}
-
 void ArcSetup::CreateTaggedAshmem(const base::FilePath& rootfs) {
   std::string boot_id;
   EXIT_IF(!base::ReadFileToString(base::FilePath(kBootIdFile), &boot_id));
@@ -2835,39 +2598,6 @@ void ArcSetup::OnPrepareArcVmData() {
   SetUpAndroidData(bind_target);
 }
 
-void ArcSetup::OnMountSdcard() {
-  // Set up sdcard asynchronously from arc-sdcard so that waiting on installd
-  // does not add latency to boot-continue (and result in session-manager
-  // related timeouts).
-  SetUpSdcard();
-}
-
-void ArcSetup::OnUnmountSdcard() {
-  UnmountSdcard();
-}
-
-void ArcSetup::OnUpdateRestoreconLast() {
-  if (GetSdkVersion() > AndroidSdkVersion::ANDROID_P) {
-    // Currently R container does not support setting security.sehash.
-    // TODO(b/292031836): Support setting security.sehash on R container.
-    return;
-  }
-
-  const base::FilePath mutable_data_dir =
-      arc_paths_->android_mutable_source.Append("data");
-  std::vector<base::FilePath> context_files;
-
-  // The order of files to read is important. Do not reorder.
-  context_files.push_back(
-      arc_paths_->android_rootfs_directory.Append("plat_file_contexts"));
-  context_files.push_back(
-      arc_paths_->android_rootfs_directory.Append("vendor_file_contexts"));
-
-  std::string hash;
-  EXIT_IF(!GetSha1HashOfFiles(context_files, &hash));
-  EXIT_IF(!SetRestoreconLastXattr(mutable_data_dir, hash));
-}
-
 std::string ArcSetup::GetSystemBuildPropertyOrDie(const std::string& name) {
   if (system_properties_.empty()) {
     // First time read of system properties file.
@@ -2891,32 +2621,6 @@ std::string ArcSetup::GetSystemBuildPropertyOrDie(const std::string& name) {
 
 void ArcSetup::Run() {
   switch (mode_) {
-    case Mode::SETUP: {
-      bootstat::BootStat bootstat;
-      bootstat.LogEvent("mini-android-start");
-      OnSetup();
-      bootstat.LogEvent("arc-setup-for-mini-android-end");
-      break;
-    }
-    case Mode::STOP:
-      OnStop();
-      break;
-    case Mode::BOOT_CONTINUE: {
-      bootstat::BootStat bootstat;
-      bootstat.LogEvent("android-start");
-      OnBootContinue();
-      bootstat.LogEvent("arc-setup-end");
-      break;
-    }
-    case Mode::ONETIME_SETUP:
-      OnOnetimeSetup();
-      break;
-    case Mode::ONETIME_STOP:
-      OnOnetimeStop();
-      break;
-    case Mode::PRE_CHROOT:
-      OnPreChroot();
-      break;
     case Mode::PREPARE_HOST_GENERATED_DIR:
       OnPrepareHostGeneratedDir();
       break;
@@ -2932,23 +2636,7 @@ void ArcSetup::Run() {
     case Mode::REMOVE_STALE_DATA:
       OnRemoveStaleData();
       break;
-    case Mode::MOUNT_SDCARD:
-      OnMountSdcard();
-      break;
-    case Mode::UNMOUNT_SDCARD:
-      OnUnmountSdcard();
-      break;
-    case Mode::UPDATE_RESTORECON_LAST:
-      OnUpdateRestoreconLast();
-      break;
   }
 }
 
-void ArcSetup::MountOnOnetimeSetupForTesting() {
-  MountOnOnetimeSetup();
-}
-
-void ArcSetup::UnmountOnOnetimeStopForTesting() {
-  UnmountOnOnetimeStop();
-}
 }  // namespace arc

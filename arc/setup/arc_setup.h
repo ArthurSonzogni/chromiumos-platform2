@@ -62,24 +62,11 @@ enum class ArcBinaryTranslationType {
 
 // Enum that describes what action ArcSetup will perform.
 enum class Mode {
-  SETUP = 0,
-  BOOT_CONTINUE,
-  STOP,
-  ONETIME_SETUP,
-
-  // None of our scripts for production uses ONETIME_STOP. Only our development
-  // script does to unmount system/vendor images before pushing new ones.
-  ONETIME_STOP,
-
-  PRE_CHROOT,
   PREPARE_HOST_GENERATED_DIR,
   APPLY_PER_BOARD_CONFIG,  // for ARCVM
   PREPARE_ARCVM_DATA,      // for ARCVM
   REMOVE_DATA,
   REMOVE_STALE_DATA,
-  MOUNT_SDCARD,
-  UNMOUNT_SDCARD,
-  UPDATE_RESTORECON_LAST,
 };
 
 // A class that does the actual setup (and stop) operations.
@@ -102,16 +89,6 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   }
   const ArcMounter* arc_mounter_for_testing() const {
     return arc_mounter_.get();
-  }
-
-  void MountOnOnetimeSetupForTesting();
-  void UnmountOnOnetimeStopForTesting();
-
-  void set_create_tagged_ashmem(bool create_tagged_ashmem) {
-    if (create_tagged_ashmem) {
-      CHECK_EQ(mode_, Mode::PRE_CHROOT);
-    }
-    create_tagged_ashmem_ = create_tagged_ashmem;
   }
 
  private:
@@ -355,25 +332,6 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   // image hasn't been mounted yet.
   AndroidSdkVersion GetSdkVersion();
 
-  // Called when arc-setup is called with --mode=setup
-  void OnSetup();
-
-  // Called when arc-setup is called with --mode=boot-continue.
-  void OnBootContinue();
-
-  // Called when arc-setup is called with --mode=stop.
-  void OnStop();
-
-  // Does a setup that is only needed once per Chrome OS boot (i.e.
-  // --mode=onetime-setup).
-  void OnOnetimeSetup();
-
-  // Called when arc-setup is called with --mode=onetime-stop.
-  void OnOnetimeStop();
-
-  // Called when arc-setup is called with --mode=pre-chroot.
-  void OnPreChroot();
-
   // Called when arc-prepare-host-generated-dir is executed.
   void OnPrepareHostGeneratedDir();
 
@@ -389,15 +347,6 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   // Called when arc-remove-stale-data is executed.
   void OnRemoveStaleData();
 
-  // Called when arc-setup is called with --mode=mount-sdcard.
-  void OnMountSdcard();
-
-  // Called when arc-setup is called with --mode=unmount-sdcard.
-  void OnUnmountSdcard();
-
-  // Called when arc-setup is called with --mode=update-restorecon-last.
-  void OnUpdateRestoreconLast();
-
   // Returns system build property.
   std::string GetSystemBuildPropertyOrDie(const std::string& name);
 
@@ -412,9 +361,6 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   // read, it's content is stored here. If map is empty this indicates that
   // properties file was never read.
   std::map<std::string, std::string> system_properties_;
-
-  // Whether to create an ashmem file suffixed with the current boot ID.
-  bool create_tagged_ashmem_{false};
 };
 
 }  // namespace arc

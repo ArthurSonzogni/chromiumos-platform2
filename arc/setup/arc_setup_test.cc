@@ -123,38 +123,4 @@ TEST(ArcSetup, TestMockArcMounter) {
   EXPECT_FALSE(mounter.LoopUmount(base::FilePath("/d")));  // now /d is unknown
 }
 
-// Tests --mode=onetime-setup and --mode=onetime-stop.
-TEST(ArcSetup, TestOnetimeSetupStop) {
-  const char* argv[] = {"test", "--mode=onetime-setup"};
-  base::CommandLine::ForCurrentProcess()->InitFromArgv(std::size(argv), argv);
-  std::unique_ptr<base::Environment> env(base::Environment::Create());
-
-  // ArcSetup needs some config variables.
-  base::ScopedTempDir temp_directory;
-  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
-  const base::FilePath config_json(temp_directory.GetPath().Append("json"));
-  ASSERT_TRUE(
-      WriteToFile(config_json, 0700, "{\"ANDROID_DEBUGGABLE\": false}"));
-
-  ArcSetup setup(Mode::ONETIME_SETUP, config_json);
-  setup.set_arc_mounter_for_testing(std::make_unique<MockArcMounter>());
-
-  // Do the one-time setup and confirm both loop and non-loop mount points are
-  // not empty.
-  setup.MountOnOnetimeSetupForTesting();
-  // Check that |loop_mount_points_| has system and vendor images etc.
-  EXPECT_FALSE(
-      static_cast<const MockArcMounter*>(setup.arc_mounter_for_testing())
-          ->loop_mount_points_.empty());
-
-  // Do the one-time stop and confirm all mount points are cleaned up.
-  setup.UnmountOnOnetimeStopForTesting();
-  EXPECT_TRUE(
-      static_cast<const MockArcMounter*>(setup.arc_mounter_for_testing())
-          ->mount_points_.empty());
-  EXPECT_TRUE(
-      static_cast<const MockArcMounter*>(setup.arc_mounter_for_testing())
-          ->loop_mount_points_.empty());
-}
-
 }  // namespace arc
