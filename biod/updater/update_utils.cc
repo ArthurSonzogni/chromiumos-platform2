@@ -27,24 +27,34 @@ constexpr char kUpdateDisableFile[] =
 constexpr char kLatestLogSymlink[] = "bio_fw_updater.LATEST";
 constexpr char kPreviousLogSymlink[] = "bio_fw_updater.PREVIOUS";
 
-void LogSetupDirectory(const base::FilePath& log_dir_path) {
+bool LogSetupDirectory(const base::FilePath& log_dir_path) {
+  if (!base::DirectoryExists(log_dir_path)) {
+    return false;
+  }
+
   const auto log_file_path = log_dir_path.Append(base::StringPrintf(
       "bio_fw_updater.%s",
       brillo::GetTimeAsLogString(base::Time::Now()).c_str()));
-
-  brillo::UpdateLogSymlinks(log_dir_path.Append(kLatestLogSymlink),
-                            log_dir_path.Append(kPreviousLogSymlink),
-                            log_file_path);
 
   logging::LoggingSettings logging_settings;
   logging_settings.logging_dest = logging::LOG_TO_FILE;
   logging_settings.log_file_path = log_file_path.value().c_str();
   logging_settings.lock_log = logging::DONT_LOCK_LOG_FILE;
-  logging::InitLogging(logging_settings);
+  if (!logging::InitLogging(logging_settings)) {
+    return false;
+  }
   logging::SetLogItems(true,    // process ID
                        true,    // thread ID
                        true,    // timestamp
                        false);  // tickcount
+
+  // Update the symlinks only once the log file exists, so that
+  // bio_fw_updater.LATEST never points to a missing file and symlink errors
+  // are recorded in the log file.
+  brillo::UpdateLogSymlinks(log_dir_path.Append(kLatestLogSymlink),
+                            log_dir_path.Append(kPreviousLogSymlink),
+                            log_file_path);
+  return true;
 }
 
 }  // namespace
@@ -70,15 +80,16 @@ bool UpdateDisallowed(const BiodSystem& system) {
   return false;
 }
 
-void SetupLogging(const base::FilePath& log_dir_path) {
-  if (base::DirectoryExists(log_dir_path)) {
-    LogSetupDirectory(log_dir_path);
-  } else {
-    LOG(ERROR) << "Log directory '" << log_dir_path.value()
-               << "' does not exist, using syslog and stderr logging.";
-    brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty |
-                    brillo::kLogHeader);
+bool SetupLogging(const base::FilePath& log_dir_path) {
+  if (LogSetupDirectory(log_dir_path)) {
+    return true;
   }
+
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty |
+                  brillo::kLogHeader);
+  LOG(ERROR) << "Failed to set up log directory '" << log_dir_path.value()
+             << "', using syslog and stderr logging.";
+  return false;
 }
 
 }  // namespace updater
