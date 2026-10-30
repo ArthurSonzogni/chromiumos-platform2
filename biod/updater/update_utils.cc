@@ -10,6 +10,12 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
+#include <base/logging/logging_settings.h>
+#include <base/strings/stringprintf.h>
+#include <base/time/time.h>
+#include <brillo/daemons/daemon.h>
+#include <brillo/syslog_logging.h>
 #include <brillo/vcsid.h>
 
 #include "biod/biod_config.h"
@@ -18,6 +24,28 @@ namespace {
 
 constexpr char kUpdateDisableFile[] =
     "/var/lib/bio_fw_updater/.disable_fp_updater";
+constexpr char kLatestLogSymlink[] = "bio_fw_updater.LATEST";
+constexpr char kPreviousLogSymlink[] = "bio_fw_updater.PREVIOUS";
+
+void LogSetupDirectory(const base::FilePath& log_dir_path) {
+  const auto log_file_path = log_dir_path.Append(base::StringPrintf(
+      "bio_fw_updater.%s",
+      brillo::GetTimeAsLogString(base::Time::Now()).c_str()));
+
+  brillo::UpdateLogSymlinks(log_dir_path.Append(kLatestLogSymlink),
+                            log_dir_path.Append(kPreviousLogSymlink),
+                            log_file_path);
+
+  logging::LoggingSettings logging_settings;
+  logging_settings.logging_dest = logging::LOG_TO_FILE;
+  logging_settings.log_file_path = log_file_path.value().c_str();
+  logging_settings.lock_log = logging::DONT_LOCK_LOG_FILE;
+  logging::InitLogging(logging_settings);
+  logging::SetLogItems(true,    // process ID
+                       true,    // thread ID
+                       true,    // timestamp
+                       false);  // tickcount
+}
 
 }  // namespace
 
@@ -40,6 +68,17 @@ bool UpdateDisallowed(const BiodSystem& system) {
   }
 
   return false;
+}
+
+void SetupLogging(const base::FilePath& log_dir_path) {
+  if (base::DirectoryExists(log_dir_path)) {
+    LogSetupDirectory(log_dir_path);
+  } else {
+    LOG(ERROR) << "Log directory '" << log_dir_path.value()
+               << "' does not exist, using syslog and stderr logging.";
+    brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty |
+                    brillo::kLogHeader);
+  }
 }
 
 }  // namespace updater

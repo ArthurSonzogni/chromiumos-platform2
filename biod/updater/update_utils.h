@@ -19,6 +19,12 @@ std::string UpdaterVersion();
 // Checks for external firmware disable mechanism.
 bool UpdateDisallowed(const BiodSystem& system);
 
+// Initializes logging to a timestamped bio_fw_updater log file in
+// |log_dir_path| and updates the bio_fw_updater.LATEST and
+// bio_fw_updater.PREVIOUS symlinks. If |log_dir_path| does not exist, falls
+// back to syslog and stderr logging.
+void SetupLogging(const base::FilePath& log_dir_path);
+
 }  // namespace updater
 }  // namespace biod
 

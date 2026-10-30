@@ -8,15 +8,11 @@
 #include <string>
 
 #include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/logging/logging_settings.h>
 #include <base/notreached.h>
-#include <base/strings/stringprintf.h>
-#include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
-#include <brillo/daemons/daemon.h>
 #include <brillo/flag_helper.h>
-#include <brillo/syslog_logging.h>
 #include <cros_config/cros_config.h>
 
 #include "biod/biod_config.h"
@@ -56,26 +52,6 @@ void LogFPMCUVersion(const biod::CrosFpDevice::EcVersion& ver) {
                    ver.current_image);
 }
 
-void LogSetupDirectory(const base::FilePath& log_dir_path) {
-  const auto log_file_path = log_dir_path.Append(base::StringPrintf(
-      "bio_fw_updater.%s",
-      brillo::GetTimeAsLogString(base::Time::Now()).c_str()));
-
-  brillo::UpdateLogSymlinks(log_dir_path.Append("bio_fw_updater.LATEST"),
-                            log_dir_path.Append("bio_fw_updater.PREVIOUS"),
-                            log_file_path);
-
-  logging::LoggingSettings logging_settings;
-  logging_settings.logging_dest = logging::LOG_TO_FILE;
-  logging_settings.log_file_path = log_file_path.value().c_str();
-  logging_settings.lock_log = logging::DONT_LOCK_LOG_FILE;
-  logging::InitLogging(logging_settings);
-  logging::SetLogItems(true,    // process ID
-                       true,    // thread ID
-                       true,    // timestamp
-                       false);  // tickcount
-}
-
 class UpdaterMetrics {
  public:
   void SetUpdateReason(UpdateReason reason) { update_reason_ = reason; }
@@ -101,14 +77,7 @@ int main(int argc, char* argv[]) {
   brillo::FlagHelper::Init(argc, argv, kHelpText);
 
   const auto log_dir_path = base::FilePath(FLAGS_log_dir);
-  if (base::DirectoryExists(log_dir_path)) {
-    LogSetupDirectory(log_dir_path);
-  } else {
-    LOG(ERROR) << "Log directory '" << log_dir_path.value()
-               << "' does not exist, using syslog and stderr logging.";
-    brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty |
-                    brillo::kLogHeader);
-  }
+  biod::updater::SetupLogging(log_dir_path);
 
   biod::LogVersion();
 
