@@ -3,10 +3,8 @@ include chromiumos/owners:v1:/firmware/OWNERS.cros_gsc
 
 # MTV
 apronin@chromium.org
-sukhomlinov@chromium.org
+sukhomlinov@google.com
 
 # TPE
-zuan@chromium.org
-
 
 per-file *oobe_config*=file:/oobe_config/OWNERS
