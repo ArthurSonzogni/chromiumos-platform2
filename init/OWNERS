@@ -2,7 +2,6 @@ include chromiumos/owners:v1:/platform/OWNERS.au
 
 vapier@chromium.org
 sarthakkukreti@google.com
-gwendal@chromium.org
 
 per-file startup/...=asavery@chromium.org
 per-file mount-encrypted/...=apronin@chromium.org
