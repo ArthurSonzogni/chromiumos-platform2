@@ -65,13 +65,13 @@ bool ComputeSharedSecret(const uint8_t peer_public_value[kKeySize],
 bool ProduceSymmetricKey(const uint8_t shared_secret[kKeySize],
                          uint8_t symmetric_key[kKeySize]) {
   // Since the keys above are only used once, no salt and context is provided.
+  // The salt is left unset rather than set to (nullptr, 0), which OpenSSL
+  // 3.5.1+ rejects; per RFC 5869 an absent salt is equivalent to an empty one.
   const crypto::ScopedEVP_PKEY_CTX pctx(
       EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, nullptr));
   if (!pctx || 1 != EVP_PKEY_derive_init(pctx.get()) ||
       1 != EVP_PKEY_CTX_set_hkdf_md(pctx.get(), EVP_sha256()) ||
       1 != EVP_PKEY_CTX_set1_hkdf_key(pctx.get(), shared_secret, kKeySize) ||
-      1 != EVP_PKEY_CTX_set1_hkdf_salt(pctx.get(), /*salt=*/nullptr,
-                                       /*saltlen=*/0) ||
       1 != EVP_PKEY_CTX_add1_hkdf_info(pctx.get(), /*info=*/nullptr,
                                        /*infolen=*/0)) {
     return false;
