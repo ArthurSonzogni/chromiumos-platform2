@@ -1,6 +1,6 @@
 include chromium/src:main:/chromeos/ash/experiences/arc/session/OWNERS
 # Native bridge / binary translation setup
-levarum@chromium.org
+levarum@google.com
 # ARC Container Setup
 vraheja@chromium.org
 # Additional backup reviewers
