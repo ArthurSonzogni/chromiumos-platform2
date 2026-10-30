@@ -83,9 +83,8 @@ bool LogSetupDirectory(const base::FilePath& log_dir_path) {
   // Update the symlinks only once the log file exists, so that
   // bio_fw_updater.LATEST never points to a missing file and symlink errors
   // are recorded in the log file.
-  brillo::UpdateLogSymlinks(log_dir_path.Append(kLatestLogSymlink),
-                            log_dir_path.Append(kPreviousLogSymlink),
-                            log_dir_path.Append(log_file_name));
+  biod::updater::UpdateLogSymlinksSafely(*log_dir_fd, kLatestLogSymlink,
+                                         kPreviousLogSymlink, log_file_name);
   return true;
 }
 
@@ -169,6 +168,50 @@ base::ScopedFILE SafeFDToScopedFILE(brillo::SafeFD fd, const char* mode) {
   }
   std::ignore = dup_fd.release();
   return stream;
+}
+
+// brillo::UpdateLogSymlinks() is unsafe for root in a biod-writable directory:
+// it operates on raw paths and calls base::Move(), which follows symlinks via
+// stat() and can fall back to recursive base::CopyDirectory() without
+// O_NOFOLLOW (allowing arbitrary root file disclosure and overwrite).
+//
+// Instead, operate relative to |dir_fd| without following symlinks: remove
+// obstacles via brillo::DeletePath(), rotate |latest_symlink| with renameat()
+// only if it is a symlink owned by |expected_uid|, and create the new link with
+// symlinkat().
+void UpdateLogSymlinksSafely(brillo::SafeFD& dir_fd,
+                             const std::string& latest_symlink,
+                             const std::string& previous_symlink,
+                             const std::string& log_file_name,
+                             uid_t expected_uid) {
+  // renameat() and symlinkat() accept paths with directory components, so
+  // make sure all operations stay inside |dir_fd|.
+  for (const std::string& name :
+       {latest_symlink, previous_symlink, log_file_name}) {
+    if (name.empty() || name == "." || name == ".." ||
+        name.find('/') != std::string::npos) {
+      LOG(ERROR) << "Invalid log symlink file name '" << name << "'";
+      return;
+    }
+  }
+
+  if (!brillo::DeletePath(&dir_fd, previous_symlink, /*deep=*/true)) {
+    PLOG(ERROR) << "Failed to remove " << previous_symlink;
+  }
+  struct stat latest_stat;
+  if (fstatat(dir_fd.get(), latest_symlink.c_str(), &latest_stat,
+              AT_SYMLINK_NOFOLLOW) == 0) {
+    if (!S_ISLNK(latest_stat.st_mode) || latest_stat.st_uid != expected_uid ||
+        HANDLE_EINTR(renameat(dir_fd.get(), latest_symlink.c_str(),
+                              dir_fd.get(), previous_symlink.c_str())) != 0) {
+      brillo::DeletePath(&dir_fd, latest_symlink, /*deep=*/true);
+    }
+  }
+  if (HANDLE_EINTR(symlinkat(log_file_name.c_str(), dir_fd.get(),
+                             latest_symlink.c_str())) != 0) {
+    PLOG(ERROR) << "Unable to create symbolic link from " << latest_symlink
+                << " to " << log_file_name;
+  }
 }
 
 bool SetupLogging(const base::FilePath& log_dir_path) {

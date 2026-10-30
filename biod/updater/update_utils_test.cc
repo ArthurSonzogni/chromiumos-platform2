@@ -138,6 +138,130 @@ TEST_F(SafeLogFileTest, SafeFDToScopedFILEWritesToFile) {
   EXPECT_EQ(contents, "hello\n");
 }
 
+class UpdateLogSymlinksSafelyTest : public ::testing::Test {
+ protected:
+  static constexpr char kPreviousLogSymlink[] = "bio_fw_updater.PREVIOUS";
+  static constexpr char kLogFile1[] = "bio_fw_updater.20260101-000001";
+  static constexpr char kLogFile2[] = "bio_fw_updater.20260101-000002";
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    std::optional<brillo::SafeFD> dir_fd =
+        OpenDirectorySafely(temp_dir_.GetPath());
+    ASSERT_TRUE(dir_fd.has_value());
+    dir_fd_ = std::move(*dir_fd);
+  }
+
+  base::FilePath LatestPath() const {
+    return temp_dir_.GetPath().Append(kLatestLogSymlink);
+  }
+  base::FilePath PreviousPath() const {
+    return temp_dir_.GetPath().Append(kPreviousLogSymlink);
+  }
+
+  void ExpectSymlinkTarget(const base::FilePath& symlink,
+                           const char* expected_target) const {
+    base::FilePath target;
+    EXPECT_TRUE(base::ReadSymbolicLink(symlink, &target));
+    EXPECT_EQ(target, base::FilePath(expected_target));
+  }
+
+  // Checks that |path| is neither a symlink (possibly dangling) nor any other
+  // file system entry.
+  void ExpectAbsent(const base::FilePath& path) const {
+    EXPECT_FALSE(base::IsLink(path));
+    EXPECT_FALSE(base::PathExists(path));
+  }
+
+  base::ScopedTempDir temp_dir_;
+  brillo::SafeFD dir_fd_;
+};
+
+TEST_F(UpdateLogSymlinksSafelyTest, CreatesAndRotatesOwnedSymlink) {
+  UpdateLogSymlinksSafely(dir_fd_, kLatestLogSymlink, kPreviousLogSymlink,
+                          kLogFile1);
+  ExpectSymlinkTarget(LatestPath(), kLogFile1);
+  ExpectAbsent(PreviousPath());
+
+  UpdateLogSymlinksSafely(dir_fd_, kLatestLogSymlink, kPreviousLogSymlink,
+                          kLogFile2);
+  ExpectSymlinkTarget(PreviousPath(), kLogFile1);
+  ExpectSymlinkTarget(LatestPath(), kLogFile2);
+}
+
+TEST_F(UpdateLogSymlinksSafelyTest, RemovesDirectoryObstacleAtPrevious) {
+  ASSERT_TRUE(
+      base::CreateSymbolicLink(base::FilePath(kLogFile1), LatestPath()));
+  ASSERT_TRUE(base::CreateDirectory(PreviousPath()));
+  ASSERT_TRUE(base::WriteFile(PreviousPath().Append("nested"), "data"));
+
+  UpdateLogSymlinksSafely(dir_fd_, kLatestLogSymlink, kPreviousLogSymlink,
+                          kLogFile2);
+  ExpectSymlinkTarget(PreviousPath(), kLogFile1);
+  ExpectSymlinkTarget(LatestPath(), kLogFile2);
+}
+
+TEST_F(UpdateLogSymlinksSafelyTest, DeletesNonSymlinkObstacleAtLatest) {
+  ASSERT_TRUE(base::WriteFile(LatestPath(), "regular_file_obstacle"));
+
+  UpdateLogSymlinksSafely(dir_fd_, kLatestLogSymlink, kPreviousLogSymlink,
+                          kLogFile1);
+  ExpectAbsent(PreviousPath());
+  ExpectSymlinkTarget(LatestPath(), kLogFile1);
+}
+
+TEST_F(UpdateLogSymlinksSafelyTest, DeletesUnownedSymlinkAtLatest) {
+  const base::FilePath target_file = temp_dir_.GetPath().Append("target_file");
+  ASSERT_TRUE(base::WriteFile(target_file, "secret"));
+  ASSERT_TRUE(base::CreateSymbolicLink(target_file, LatestPath()));
+
+  UpdateLogSymlinksSafely(dir_fd_, kLatestLogSymlink, kPreviousLogSymlink,
+                          kLogFile1, /*expected_uid=*/geteuid() + 1);
+  ExpectAbsent(PreviousPath());
+  EXPECT_TRUE(base::PathExists(target_file));
+  ExpectSymlinkTarget(LatestPath(), kLogFile1);
+}
+
+// Reproduces the layout that makes brillo::UpdateLogSymlinks() fall back to
+// base::CopyDirectory(): PREVIOUS is a non-empty directory holding a symlink
+// to a victim file, and LATEST is a symlink to a directory containing a file
+// with the same name. The victim must stay untouched.
+TEST_F(UpdateLogSymlinksSafelyTest, DoesNotCopyThroughPlantedSymlinks) {
+  const base::FilePath victim = temp_dir_.GetPath().Append("victim");
+  ASSERT_TRUE(base::WriteFile(victim, "canary"));
+
+  const base::FilePath source_dir = temp_dir_.GetPath().Append("source");
+  ASSERT_TRUE(base::CreateDirectory(source_dir));
+  ASSERT_TRUE(base::WriteFile(source_dir.Append("payload"), "overwritten"));
+
+  const base::FilePath planted_dir = PreviousPath().Append(kLatestLogSymlink);
+  ASSERT_TRUE(base::CreateDirectory(planted_dir));
+  ASSERT_TRUE(base::CreateSymbolicLink(victim, planted_dir.Append("payload")));
+  ASSERT_TRUE(base::CreateSymbolicLink(source_dir, LatestPath()));
+
+  UpdateLogSymlinksSafely(dir_fd_, kLatestLogSymlink, kPreviousLogSymlink,
+                          kLogFile1, /*expected_uid=*/geteuid() + 1);
+
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(victim, &contents));
+  EXPECT_EQ(contents, "canary");
+  EXPECT_TRUE(base::PathExists(source_dir.Append("payload")));
+  ExpectAbsent(PreviousPath());
+  ExpectSymlinkTarget(LatestPath(), kLogFile1);
+}
+
+TEST_F(UpdateLogSymlinksSafelyTest, RejectsNamesWithDirectoryComponents) {
+  const base::FilePath subdir = temp_dir_.GetPath().Append("subdir");
+  ASSERT_TRUE(base::CreateDirectory(subdir));
+
+  UpdateLogSymlinksSafely(dir_fd_, "subdir/latest", kPreviousLogSymlink,
+                          kLogFile1);
+  ExpectAbsent(subdir.Append("latest"));
+  UpdateLogSymlinksSafely(dir_fd_, kLatestLogSymlink, kPreviousLogSymlink,
+                          "../escape");
+  ExpectAbsent(LatestPath());
+}
+
 class SetupLoggingTest : public ::testing::Test {
  protected:
   void SetUp() override {

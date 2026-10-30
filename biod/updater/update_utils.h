@@ -6,6 +6,7 @@
 #define BIOD_UPDATER_UPDATE_UTILS_H_
 
 #include <sys/types.h>
+#include <unistd.h>
 
 #include <optional>
 #include <string>
@@ -40,6 +41,19 @@ std::optional<brillo::SafeFD> OpenFileForWritingSafely(
 // owns a duplicate of the underlying descriptor, so |fd| can be closed
 // independently. Returns nullptr on failure.
 base::ScopedFILE SafeFDToScopedFILE(brillo::SafeFD fd, const char* mode);
+
+// Rotates |latest_symlink| to |previous_symlink| and creates a new relative
+// |latest_symlink| pointing to |log_file_name|, all inside |dir_fd| and without
+// following symlinks. Any existing entry at |previous_symlink| is removed, and
+// |latest_symlink| is only rotated if it is a symlink owned by |expected_uid|
+// (otherwise it is removed). All names must be single path components. Safe to
+// use as root in a directory writable by an unprivileged user, unlike
+// brillo::UpdateLogSymlinks().
+void UpdateLogSymlinksSafely(brillo::SafeFD& dir_fd,
+                             const std::string& latest_symlink,
+                             const std::string& previous_symlink,
+                             const std::string& log_file_name,
+                             uid_t expected_uid = geteuid());
 
 // Initializes logging to a timestamped bio_fw_updater log file in
 // |log_dir_path| and updates the bio_fw_updater.LATEST and
