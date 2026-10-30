@@ -83,11 +83,14 @@ std::vector<std::string> GetDhcpcdArgs(Technology technology,
                     "-K",
                 });
   } else {
-    // Note that ChromeOS only support IA_PD for DHCPv6.
+    // Note that ChromeOS only supports IA_PD for DHCPv6. Request a SLAAC-sized
+    // (/64) prefix length hint per RFC 9762 / RFC 9663 using dhcpcd's
+    // --ia_pd=[<iaid>]/<prefix>/<prefix_len> syntax while omitting <iaid> so
+    // dhcpcd derives its default per-interface IAID.
     args.insert(args.end(), {
                                 "-6",
                                 "--noipv6rs",
-                                "--ia_pd",
+                                "--ia_pd=/::/64",
                             });
   }
 
