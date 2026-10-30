@@ -9,6 +9,8 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 
+#include <algorithm>
+#include <array>
 #include <memory>
 #include <optional>
 #include <ostream>
@@ -38,11 +40,15 @@ constexpr std::array<const char*, 4> kAllowedInterfacePrefixes{
 constexpr const char kLocalhost[] = "lo";
 
 // TODO(hugobenichi): eventually import these values from
-// platform2/arc/network/address_manager.cc
-// Port forwarding can only forward to IPv4 addresses within the IPv4 prefix
-// used for static IPv4 subnet assignment to guest OSs and App platforms.
-const net_base::IPv4CIDR kGuestCidr =
-    *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.0/23");
+// platform2/patchpanel/address_manager.cc
+// Port forwarding can only forward to IPv4 addresses within the IPv4 prefixes
+// used for static IPv4 subnet assignment to guest OSs and App platforms (ARC,
+// Crostini/Bruschetta VMs, and Crostini LXD containers), excluding
+// 100.115.92.128/26 which is reserved for host network namespaces.
+const std::array<net_base::IPv4CIDR, 2> kGuestCidrs = {
+    *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.0/25"),
+    *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.192/26"),
+};
 
 std::string RuleTypeName(PortTracker::PortRuleType type) {
   switch (type) {
@@ -332,9 +338,11 @@ bool PortTracker::ValidatePortRule(const PortRule& rule) {
         LOG(ERROR) << "Cannot forward to invalid IPv4 address " << rule.dst_ip;
         return false;
       }
-      if (!kGuestCidr.InSameSubnetWith(*addr)) {
-        LOG(ERROR) << "Cannot forward to IPv4 address " << rule.dst_ip
-                   << " outside of " << kGuestCidr;
+      if (std::ranges::none_of(kGuestCidrs, [&](const auto& cidr) {
+            return cidr.InSameSubnetWith(*addr);
+          })) {
+        LOG(ERROR) << "Cannot forward to non-guest IPv4 address "
+                   << rule.dst_ip;
         return false;
       }
 

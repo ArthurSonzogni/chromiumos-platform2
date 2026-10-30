@@ -51,7 +51,9 @@ class PortTrackerTest : public testing::Test {
   std::string interface = "interface";
 
   std::string arc_addr = "100.115.92.2";
-  std::string crosvm_addr = "100.115.92.6";
+  std::string crosvm_addr = "100.115.92.26";
+  std::string lxd_addr = "100.115.92.194";
+  std::string netns_addr = "100.115.92.130";
   std::string pluginvm_addr = "100.115.93.10";
   std::string non_guest_addr = "192.168.1.128";
   std::string ipv4_any = "0.0.0.0";
@@ -321,12 +323,12 @@ TEST_F(PortTrackerTest, StartPortForwarding_BaseSuccessCase) {
       udp_port, "eth0", crosvm_addr, udp_port, dbus_fd));
 
   EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(7));
-  ASSERT_TRUE(port_tracker_.StartTcpPortForwarding(
-      tcp_port, "wlan0", pluginvm_addr, tcp_port, dbus_fd));
+  ASSERT_TRUE(port_tracker_.StartTcpPortForwarding(tcp_port, "wlan0", lxd_addr,
+                                                   tcp_port, dbus_fd));
 
   EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(8));
-  ASSERT_TRUE(port_tracker_.StartUdpPortForwarding(
-      udp_port, "wlan0", pluginvm_addr, udp_port, dbus_fd));
+  ASSERT_TRUE(port_tracker_.StartUdpPortForwarding(udp_port, "wlan0", lxd_addr,
+                                                   udp_port, dbus_fd));
 
   ASSERT_TRUE(port_tracker_.HasActiveRules());
 }
@@ -425,12 +427,20 @@ TEST_F(PortTrackerTest, StartPortForwarding_TargetIpAddressValidation) {
                                                     tcp_port, dbus_fd));
   ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(
       tcp_port, "eth0", non_guest_addr, tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "eth0", netns_addr, tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "eth0", pluginvm_addr, tcp_port, dbus_fd));
   ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(
       tcp_port, "eth0", "2001:db8::1", tcp_port, dbus_fd));
   ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(tcp_port, "eth0", ipv4_any,
                                                     tcp_port, dbus_fd));
   ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(
       tcp_port, "eth0", non_guest_addr, tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(
+      tcp_port, "eth0", netns_addr, tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(
+      tcp_port, "eth0", pluginvm_addr, tcp_port, dbus_fd));
 
   ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
