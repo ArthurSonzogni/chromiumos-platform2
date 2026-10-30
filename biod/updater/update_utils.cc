@@ -4,17 +4,28 @@
 
 #include "biod/updater/update_utils.h"
 
+#include <fcntl.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <optional>
 #include <string>
 #include <string_view>
+#include <tuple>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/logging/logging_settings.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/daemons/daemon.h>
+#include <brillo/files/file_util.h>
+#include <brillo/files/safe_fd.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/vcsid.h>
 
@@ -28,17 +39,38 @@ constexpr char kLatestLogSymlink[] = "bio_fw_updater.LATEST";
 constexpr char kPreviousLogSymlink[] = "bio_fw_updater.PREVIOUS";
 
 bool LogSetupDirectory(const base::FilePath& log_dir_path) {
-  if (!base::DirectoryExists(log_dir_path)) {
+  std::optional<brillo::SafeFD> log_dir_fd =
+      biod::updater::OpenDirectorySafely(log_dir_path);
+  if (!log_dir_fd.has_value()) {
     return false;
   }
 
-  const auto log_file_path = log_dir_path.Append(base::StringPrintf(
-      "bio_fw_updater.%s",
-      brillo::GetTimeAsLogString(base::Time::Now()).c_str()));
+  const std::string log_file_name =
+      base::StringPrintf("bio_fw_updater.%s",
+                         brillo::GetTimeAsLogString(base::Time::Now()).c_str());
+
+  constexpr mode_t kLogFilePermissions = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+  std::optional<brillo::SafeFD> log_fd =
+      biod::updater::OpenFileForWritingSafely(*log_dir_fd, log_file_name,
+                                              kLogFilePermissions);
+  if (!log_fd.has_value()) {
+    return false;
+  }
+
+  // logging::LoggingSettings only accepts an open log handle as a FILE* (which
+  // it takes ownership of and closes via fclose()), whereas passing
+  // log_file_path would reopen the file by path without O_NOFOLLOW. Moreover,
+  // brillo::SafeFD has no release() method and closes its descriptor on
+  // destruction, so we cannot pass its FD directly to fdopen().
+  base::ScopedFILE log_stream =
+      biod::updater::SafeFDToScopedFILE(std::move(*log_fd), "a");
+  if (!log_stream) {
+    return false;
+  }
 
   logging::LoggingSettings logging_settings;
   logging_settings.logging_dest = logging::LOG_TO_FILE;
-  logging_settings.log_file_path = log_file_path.value().c_str();
+  logging_settings.log_file = log_stream.release();
   logging_settings.lock_log = logging::DONT_LOCK_LOG_FILE;
   if (!logging::InitLogging(logging_settings)) {
     return false;
@@ -53,7 +85,7 @@ bool LogSetupDirectory(const base::FilePath& log_dir_path) {
   // are recorded in the log file.
   brillo::UpdateLogSymlinks(log_dir_path.Append(kLatestLogSymlink),
                             log_dir_path.Append(kPreviousLogSymlink),
-                            log_file_path);
+                            log_dir_path.Append(log_file_name));
   return true;
 }
 
@@ -78,6 +110,65 @@ bool UpdateDisallowed(const BiodSystem& system) {
   }
 
   return false;
+}
+
+std::optional<brillo::SafeFD> OpenDirectorySafely(
+    const base::FilePath& dir_path) {
+  auto [root_fd, root_err] = brillo::SafeFD::Root();
+  if (brillo::SafeFD::IsError(root_err)) {
+    return std::nullopt;
+  }
+
+  auto [dir_fd, dir_err] = root_fd.OpenExistingDir(dir_path);
+  if (brillo::SafeFD::IsError(dir_err)) {
+    return std::nullopt;
+  }
+
+  return std::move(dir_fd);
+}
+
+std::optional<brillo::SafeFD> OpenFileForWritingSafely(
+    brillo::SafeFD& dir_fd, const std::string& file_name, mode_t permissions) {
+  auto [file_fd, file_err] =
+      brillo::OpenOrRemakeFile(&dir_fd, file_name, permissions, geteuid(),
+                               getegid(), O_WRONLY | O_APPEND | O_CLOEXEC);
+  if (brillo::SafeFD::IsError(file_err)) {
+    return std::nullopt;
+  }
+
+  // SafeFD::MakeFile() only checks uid, gid, and 0777 mode bits on an existing
+  // path, not the file type, so reject non-regular files such as FIFOs (with an
+  // active reader) or device nodes.
+  struct stat file_stat;
+  if (fstat(file_fd.get(), &file_stat) != 0 || !S_ISREG(file_stat.st_mode)) {
+    return std::nullopt;
+  }
+  if ((file_stat.st_mode & ALLPERMS) != permissions &&
+      HANDLE_EINTR(fchmod(file_fd.get(), permissions)) != 0) {
+    PLOG(ERROR) << "Failed to set permissions on file";
+    return std::nullopt;
+  }
+
+  return std::move(file_fd);
+}
+
+base::ScopedFILE SafeFDToScopedFILE(brillo::SafeFD fd, const char* mode) {
+  // Duplicate the underlying descriptor with close-on-exec and wrap it in a
+  // FILE* stream via fdopen() so the returned ScopedFILE owns an independent
+  // descriptor from |fd|.
+  base::ScopedFD dup_fd(HANDLE_EINTR(fcntl(fd.get(), F_DUPFD_CLOEXEC, 0)));
+  if (!dup_fd.is_valid()) {
+    PLOG(ERROR) << "Failed to duplicate file descriptor";
+    return nullptr;
+  }
+
+  base::ScopedFILE stream(fdopen(dup_fd.get(), mode));
+  if (!stream) {
+    PLOG(ERROR) << "Failed to open file stream";
+    return nullptr;
+  }
+  std::ignore = dup_fd.release();
+  return stream;
 }
 
 bool SetupLogging(const base::FilePath& log_dir_path) {
