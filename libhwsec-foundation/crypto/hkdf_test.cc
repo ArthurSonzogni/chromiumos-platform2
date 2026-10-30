@@ -55,6 +55,34 @@ TEST(HkdfTest, Hkdf) {
   EXPECT_EQ(okm, expected_okm);
 }
 
+// Tests HKDF using RFC test case 3 for SHA-256 hash, which uses zero-length
+// salt and info: https://tools.ietf.org/html/rfc5869#appendix-A.3
+TEST(HkdfTest, HkdfWithZeroLengthSaltAndInfo) {
+  constexpr HkdfHash kHash = HkdfHash::kSha256;
+  constexpr size_t kKeyLen = 42;
+  brillo::SecureBlob ikm, prk, okm, expected_prk, expected_okm;
+  const brillo::Blob info, salt;
+  ASSERT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(
+      "0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B", &ikm));
+  ASSERT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(
+      "19EF24A32C717B167F33A91D6F648BDF96596776AFDB6377AC434C1C293CCB04",
+      &expected_prk));
+  ASSERT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(
+      "8DA4E775A563C18F715F802A063C5A31B8A11F5C5EE1879EC3454E5F3C738D2D9D20"
+      "1395FAA4B61A96C8",
+      &expected_okm));
+
+  EXPECT_TRUE(HkdfExtract(kHash, ikm, salt, &prk));
+  EXPECT_EQ(prk, expected_prk);
+
+  EXPECT_TRUE(HkdfExpand(kHash, prk, info, kKeyLen, &okm));
+  EXPECT_EQ(okm, expected_okm);
+
+  okm.clear();
+  EXPECT_TRUE(Hkdf(kHash, ikm, info, salt, kKeyLen, &okm));
+  EXPECT_EQ(okm, expected_okm);
+}
+
 // Tests Hkdf interface with resulting key length equal to SHA-256 hash size.
 TEST(HkdfTest, HkdfKeyLengthEqualToHashSize) {
   constexpr HkdfHash kHash = HkdfHash::kSha256;

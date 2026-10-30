@@ -68,8 +68,12 @@ bool HkdfInternal(HkdfHash hash,
     LOG(ERROR) << "Failed to set HKDF key: " << GetOpenSSLErrors();
     return false;
   }
-  if (salt && EVP_PKEY_CTX_set1_hkdf_salt(context.get(), salt->data(),
-                                          salt->size()) <= 0) {
+  // Per RFC 5869, an empty salt is equivalent to not providing one, so only
+  // set it when non-empty. This also avoids passing nullptr (data() of an
+  // empty brillo::Blob), which OpenSSL 3.5.1+ rejects.
+  if (salt && !salt->empty() &&
+      EVP_PKEY_CTX_set1_hkdf_salt(context.get(), salt->data(), salt->size()) <=
+          0) {
     LOG(ERROR) << "Failed to set HKDF salt: " << GetOpenSSLErrors();
     return false;
   }
