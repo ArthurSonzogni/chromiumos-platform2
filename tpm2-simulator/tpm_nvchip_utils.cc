@@ -91,8 +91,11 @@ bool MountLoopbackFile(const base::FilePath& file,
   brillo::ProcessImpl mount_process;
   mount_process.AddArg("/bin/mount");
 
+  // Avoid `-o sync`: ti50-emulator issues per-word (4-byte) writes and calls
+  // fdatasync() once per flash operation; synchronous mount flushes every word
+  // write and can stall TPM commands past the 2000ms kernel timeout under I/O.
   mount_process.AddArg("-o");
-  mount_process.AddArg("loop,sync");
+  mount_process.AddArg("loop");
 
   mount_process.AddArg(file.value());
   mount_process.AddArg(mount_point.value());
