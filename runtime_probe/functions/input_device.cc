@@ -96,6 +96,10 @@ void FixTouchscreenI2cDevice(base::Value* device) {
 void AppendInputDevice(InputDeviceFunction::DataType* list_value,
                        std::unique_ptr<InputDeviceImpl> input_device,
                        const std::string& device_type_filter) {
+  if (!input_device) {
+    return;
+  }
+
   const auto device_type = DeviceTypeEnumToString(input_device->type());
   if (!device_type_filter.empty() && device_type_filter != device_type) {
     return;

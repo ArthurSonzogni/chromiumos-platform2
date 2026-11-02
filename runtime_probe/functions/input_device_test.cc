@@ -361,5 +361,50 @@ TEST_F(InputDeviceFunctionTest, ProcfsNotExist) {
   EXPECT_EQ(result, ans);
 }
 
+TEST_F(InputDeviceFunctionTest, ProbeInvalidInputDeviceSkipped) {
+  std::string input_devices =
+      R"(I: Bus=0019 Vendor=0000 Product=0000 Version=0000
+N: Name="Invalid Device"
+P: Phys=
+S: Sysfs=/devices/virtual/input/input0
+H: Handlers=
+B: KEY=0
+
+I: Bus=1234 Vendor=5678 Product=90ab Version=cdef
+N: Name="Stylus 1"
+P: Phys=i2c-ELAN6915:00
+S: Sysfs=/devices/XXX/1234:5678:90ab.0001/input/input7
+H: Handlers=event7
+B: KEY=)" +
+      GetStylusKey() + R"(
+B: ABS=0
+
+I: MalformedEntryWithoutKeyValue)";
+
+  SetFile(kInputDevicesPath, input_devices);
+
+  auto ans = CreateProbeResultFromJson(R"JSON(
+    [
+      {
+        "bus": "1234",
+        "device_type": "TYPE_STYLUS",
+        "event": "event7",
+        "name": "Stylus 1",
+        "product": "90ab",
+        "vendor": "5678",
+        "version": "cdef"
+      }
+    ]
+  )JSON");
+  ans[0].GetDict().Set(
+      "path",
+      GetPathUnderRoot({"sys/devices/XXX/1234:5678:90ab.0001/input/input7"})
+          .value());
+
+  auto probe_function = CreateProbeFunction<InputDeviceFunction>();
+  auto result = EvalProbeFunction(probe_function.get());
+  EXPECT_EQ(result, ans);
+}
+
 }  // namespace
 }  // namespace runtime_probe
