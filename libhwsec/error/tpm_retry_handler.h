@@ -95,6 +95,13 @@ class TPMRetryHandler {
   template <>
   bool ReloadObject(hwsec::Backend& backend, Metrics* metrics, const Key& key);
 
+  // If the argument type is UnsealOptions, reload its optional preload_data
+  // key.
+  template <>
+  bool ReloadObject(hwsec::Backend& backend,
+                    Metrics* metrics,
+                    const Backend::Sealing::UnsealOptions& options);
+
   bool FlushInvalidSessions(hwsec::Backend& backend, Metrics* metrics);
 
   bool SyncPinWeaverHashTree(hwsec::Backend& backend, Metrics* metrics);

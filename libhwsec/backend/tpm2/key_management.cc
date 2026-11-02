@@ -22,14 +22,14 @@
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
-#include <tpm_manager-client/tpm_manager/dbus-constants.h>
-#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
-#include <trunks/tpm_utility.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
+#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <trunks/tpm_utility.h>
 
 #include "libhwsec/backend/tpm2/static_utils.h"
 #include "libhwsec/error/tpm2_error.h"
@@ -654,6 +654,13 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKey(
     for (auto& [token, key_data_ptr] : key_map_) {
       auto& key_data = *key_data_ptr;
       if (IsKeyDataMatch(key_data, key_blob, policy)) {
+        // Reload before stopping `flush_timer` or incrementing `client_count`
+        // if `trunksd` reassigned this entry's handle while cached, so a reload
+        // failure leaves any pending lazy flush intact.
+        if (key_data.key_handle == trunks::TPM_RH_NULL) {
+          RETURN_IF_ERROR(ReloadIfPossible(Key{.token = token}));
+        }
+
         if (key_data.reload_data->flush_timer != nullptr) {
           key_data.reload_data->flush_timer->Stop();
           key_data.reload_data->flush_timer.reset();
@@ -861,7 +868,7 @@ StatusOr<ScopedKey> KeyManagementTpm2::GetPersistentKey(
 }
 
 StatusOr<brillo::Blob> KeyManagementTpm2::GetPubkeyHash(Key key) {
-  ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyData(key));
+  ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyDataEntry(key));
 
   const trunks::TPMT_PUBLIC& public_data = key_data.cache.public_area;
   if (public_data.type == trunks::TPM_ALG_RSA) {
@@ -879,7 +886,7 @@ StatusOr<brillo::Blob> KeyManagementTpm2::GetPubkeyHash(Key key) {
 }
 
 StatusOr<RSAPublicInfo> KeyManagementTpm2::GetRSAPublicInfo(Key key) {
-  ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyData(key));
+  ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyDataEntry(key));
 
   const trunks::TPMT_PUBLIC& public_data = key_data.cache.public_area;
 
@@ -903,7 +910,7 @@ StatusOr<RSAPublicInfo> KeyManagementTpm2::GetRSAPublicInfo(Key key) {
 }
 
 StatusOr<ECCPublicInfo> KeyManagementTpm2::GetECCPublicInfo(Key key) {
-  ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyData(key));
+  ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyDataEntry(key));
   return GetECCPublicInfoFromPublicData(key_data.cache.public_area);
 }
 
@@ -936,7 +943,7 @@ StatusOr<ScopedKey> KeyManagementTpm2::SideLoadKey(uint32_t key_handle) {
 }
 
 StatusOr<uint32_t> KeyManagementTpm2::GetKeyHandle(Key key) {
-  ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyData(key));
+  ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyDataEntry(key));
 
   return key_data.key_handle;
 }
@@ -968,6 +975,9 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKeyInternal(
   }
 
   KeyToken token = current_token_++;
+  if (key_type != KeyTpm2::Type::kPersistentKey) {
+    InvalidateConflictingTransientHandles(token, key_handle);
+  }
   key_map_.emplace(token, std::make_unique<KeyTpm2>(KeyTpm2{
                               .type = key_type,
                               .key_handle = key_handle,
@@ -983,7 +993,7 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKeyInternal(
 }
 
 Status KeyManagementTpm2::Flush(Key key) {
-  ASSIGN_OR_RETURN(KeyTpm2 & key_data, GetKeyData(key));
+  ASSIGN_OR_RETURN(KeyTpm2 & key_data, GetKeyDataEntry(key));
 
   switch (key_data.type) {
     case KeyTpm2::Type::kPersistentKey:
@@ -1036,16 +1046,61 @@ Status KeyManagementTpm2::FlushTransientKey(Key key, KeyTpm2& key_data) {
 
 Status KeyManagementTpm2::FlushKeyTokenAndHandle(KeyToken token,
                                                  trunks::TPM_HANDLE handle) {
+  auto it = key_map_.find(token);
+  if (it != key_map_.end()) {
+    handle = it->second->key_handle;
+    key_map_.erase(it);
+  }
+
+  // Skip flushing if the handle was already invalidated by a `trunksd` handle
+  // reassignment or is currently owned by another active transient key in
+  // `key_map_`.
+  if (handle == trunks::TPM_RH_NULL ||
+      IsTransientHandleInUseByOtherKey(token, handle)) {
+    return OkStatus();
+  }
+
+  // Wrap flush failures with `kNoRetry` so `TPMRetryHandler` does not call
+  // `ReloadIfPossible` to reload a key that is being destroyed and re-run
+  // `FlushTransientKey` (which would underflow `client_count`).
   RETURN_IF_ERROR(MakeStatus<TPM2Error>(
                       context_.GetTrunksFactory().GetTpm()->FlushContextSync(
                           handle, nullptr)))
-      .WithStatus<TPMError>("Failed to flush key handle");
+      .WithStatus<TPMError>("Failed to flush key handle",
+                            TPMRetryAction::kNoRetry);
 
-  key_map_.erase(token);
   return OkStatus();
 }
 
-StatusOr<std::reference_wrapper<KeyTpm2>> KeyManagementTpm2::GetKeyData(
+bool KeyManagementTpm2::IsTransientHandleInUseByOtherKey(
+    KeyToken token, trunks::TPM_HANDLE handle) const {
+  return std::ranges::any_of(key_map_, [&](const auto& entry) {
+    const auto& [other_token, other_key] = entry;
+    return other_token != token &&
+           other_key->type != KeyTpm2::Type::kPersistentKey &&
+           other_key->key_handle == handle;
+  });
+}
+
+void KeyManagementTpm2::InvalidateConflictingTransientHandles(
+    KeyToken current_token, trunks::TPM_HANDLE handle) {
+  // After a `trunksd` restart, `ResourceManager` resets its virtual handle
+  // counter (`0x80000000+`) and may reassign `handle` to a newly loaded or
+  // reloaded transient key while stale entries in `key_map_` still hold that
+  // handle ID. Mark any conflicting transient entry as `TPM_RH_NULL` so
+  // flushing or reloading it cannot evict the new live key, and `GetKeyData`
+  // fails fast with `TPMRetryAction::kLater` (triggering `ReloadIfPossible`)
+  // instead of operating on the wrong key object.
+  for (auto& [other_token, other_key] : key_map_) {
+    if (other_token != current_token &&
+        other_key->type != KeyTpm2::Type::kPersistentKey &&
+        other_key->key_handle == handle) {
+      other_key->key_handle = trunks::TPM_RH_NULL;
+    }
+  }
+}
+
+StatusOr<std::reference_wrapper<KeyTpm2>> KeyManagementTpm2::GetKeyDataEntry(
     Key key) {
   auto it = key_map_.find(key.token);
   if (it == key_map_.end()) {
@@ -1054,8 +1109,27 @@ StatusOr<std::reference_wrapper<KeyTpm2>> KeyManagementTpm2::GetKeyData(
   return *it->second;
 }
 
+StatusOr<std::reference_wrapper<KeyTpm2>> KeyManagementTpm2::GetKeyData(
+    Key key) {
+  ASSIGN_OR_RETURN(KeyTpm2 & key_data, GetKeyDataEntry(key));
+  // `TPM_RH_NULL` (`0x40000007`) is in `HR_PERMANENT` rather than
+  // `HR_TRANSIENT`, so `trunks::ResourceManager::ProcessInputHandle` would pass
+  // it straight to the TPM where `TPMI_DH_OBJECT` unmarshaling rejects it with
+  // `TPM_RC_VALUE` (`TPMRetryAction::kNoRetry`). Fail fast in-process with
+  // `kLater` for reloadable transient keys so `TPMRetryHandler` triggers
+  // `ReloadIfPossible`, and `kNoRetry` for unreloadable transient keys.
+  if (key_data.key_handle == trunks::TPM_RH_NULL) {
+    return MakeStatus<TPMError>(
+        "Transient key handle was invalidated",
+        key_data.type == KeyTpm2::Type::kReloadableTransientKey
+            ? TPMRetryAction::kLater
+            : TPMRetryAction::kNoRetry);
+  }
+  return key_data;
+}
+
 Status KeyManagementTpm2::ReloadIfPossible(Key key) {
-  ASSIGN_OR_RETURN(KeyTpm2 & key_data, GetKeyData(key));
+  ASSIGN_OR_RETURN(KeyTpm2 & key_data, GetKeyDataEntry(key));
 
   if (key_data.type != KeyTpm2::Type::kReloadableTransientKey) {
     // We don't need to reload un-reloadable key.
@@ -1066,11 +1140,14 @@ Status KeyManagementTpm2::ReloadIfPossible(Key key) {
     return MakeStatus<TPMError>("Empty reload data", TPMRetryAction::kNoRetry);
   }
 
-  if (auto status = MakeStatus<TPM2Error>(
-          context_.GetTrunksFactory().GetTpm()->FlushContextSync(
-              key_data.key_handle, nullptr));
-      !status.ok()) {
-    LOG(WARNING) << "Failed to flush stale key handle: " << status;
+  if (key_data.key_handle != trunks::TPM_RH_NULL &&
+      !IsTransientHandleInUseByOtherKey(key.token, key_data.key_handle)) {
+    if (auto status = MakeStatus<TPM2Error>(
+            context_.GetTrunksFactory().GetTpm()->FlushContextSync(
+                key_data.key_handle, nullptr));
+        !status.ok()) {
+      LOG(WARNING) << "Failed to flush stale key handle: " << status;
+    }
   }
 
   uint32_t key_handle;
@@ -1081,6 +1158,7 @@ Status KeyManagementTpm2::ReloadIfPossible(Key key) {
                       delegate.get(), &key_handle)))
       .WithStatus<TPMError>("Failed to reload SRK wrapped key");
 
+  InvalidateConflictingTransientHandles(key.token, key_handle);
   key_data.key_handle = key_handle;
   return OkStatus();
 }
@@ -1108,7 +1186,7 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadPublicKeyFromSpki(
 
 StatusOr<brillo::Blob> KeyManagementTpm2::GetPublicKeyDer(
     Key key, bool use_rsa_subject_key_info) {
-  ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyData(key));
+  ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyDataEntry(key));
   const trunks::TPMT_PUBLIC& public_data = key_data.cache.public_area;
   return GetPublicKeyDerFromPublicData(public_data, use_rsa_subject_key_info);
 }

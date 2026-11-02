@@ -108,7 +108,8 @@ class KeyManagementTpm2 : public KeyManagement {
 
   // Below are TPM2.0 specific code.
 
-  // Gets the reference of the internal key data.
+  // Gets the reference of the internal key data for callers that require a live
+  // TPM handle. Fails if `key_handle` has been invalidated (`TPM_RH_NULL`).
   StatusOr<std::reference_wrapper<KeyTpm2>> GetKeyData(Key key);
 
   // Loads the key from its DER-encoded Subject Public Key Info. Algorithm
@@ -153,6 +154,11 @@ class KeyManagementTpm2 : public KeyManagement {
       std::optional<KeyReloadDataTpm2> reload_data);
   Status FlushTransientKey(Key key, KeyTpm2& key_data);
   Status FlushKeyTokenAndHandle(KeyToken token, trunks::TPM_HANDLE handle);
+  StatusOr<std::reference_wrapper<KeyTpm2>> GetKeyDataEntry(Key key);
+  bool IsTransientHandleInUseByOtherKey(KeyToken token,
+                                        trunks::TPM_HANDLE handle) const;
+  void InvalidateConflictingTransientHandles(KeyToken current_token,
+                                             trunks::TPM_HANDLE handle);
   StatusOr<ECCPublicInfo> GetECCPublicInfoFromPublicData(
       const trunks::TPMT_PUBLIC& public_data);
   StatusOr<crypto::ScopedEC_KEY> GetEccPublicKey(

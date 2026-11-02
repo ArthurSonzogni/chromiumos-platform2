@@ -56,6 +56,20 @@ bool TPMRetryHandler::ReloadObject(hwsec::Backend& backend,
   return true;
 }
 
+template <>
+bool TPMRetryHandler::ReloadObject(
+    hwsec::Backend& backend,
+    Metrics* metrics,
+    const Backend::Sealing::UnsealOptions& options) {
+  // `Sealing::Unseal` receives its preloaded key inside `UnsealOptions` rather
+  // than as a top-level `Key` argument; forward it so `TPM_RC_HANDLE` after a
+  // `trunksd` restart reloads the preloaded sealed object before retrying.
+  if (!options.preload_data.has_value()) {
+    return false;
+  }
+  return ReloadObject(backend, metrics, options.preload_data.value());
+}
+
 bool TPMRetryHandler::FlushInvalidSessions(hwsec::Backend& backend,
                                            Metrics* metrics) {
   auto* session_mgr = backend.Get<Backend::SessionManagement>();

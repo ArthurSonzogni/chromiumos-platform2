@@ -93,9 +93,14 @@ StatusOr<brillo::Blob> SealingTpm2::Seal(
 
 StatusOr<std::optional<ScopedKey>> SealingTpm2::PreloadSealedData(
     const OperationPolicy& policy, const brillo::Blob& sealed_data) {
+  // Enable `auto_reload` so `TPMRetryHandler` can reload the preloaded sealed
+  // data object if `trunksd` restarts or its transient handle is invalidated
+  // before `Unseal` completes.
   ASSIGN_OR_RETURN(ScopedKey key,
                    key_management_.LoadKey(policy, sealed_data,
-                                           KeyManagement::LoadKeyOptions{}),
+                                           KeyManagement::LoadKeyOptions{
+                                               .auto_reload = true,
+                                           }),
                    _.WithStatus<TPMError>("Failed to load sealed data"));
   return std::move(key);
 }

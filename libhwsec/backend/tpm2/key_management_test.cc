@@ -15,14 +15,16 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <trunks/error_codes.h>
 #include <trunks/mock_policy_session.h>
 #include <trunks/mock_tpm.h>
 #include <trunks/mock_tpm_utility.h>
 
 #include "base/time/time.h"
 #include "libhwsec/backend/tpm2/backend_test_base.h"
+#include "libhwsec/middleware/middleware.h"
 #include "libhwsec/structures/key.h"
 #include "libhwsec/structures/permission.h"
 #include "trunks/tpm_generated.h"
@@ -350,6 +352,314 @@ TEST_F(BackendKeyManagementTpm2Test, LoadAutoReloadKey) {
 
   EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle2, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+}
+
+TEST_F(BackendKeyManagementTpm2Test,
+       ReloadSkipsFlushWhenHandleReusedByOtherKey) {
+  const OperationPolicy kPolicy1{
+      .device_configs = DeviceConfigs{DeviceConfig::kBootMode},
+  };
+  const OperationPolicy kPolicy2{
+      .device_configs = DeviceConfigs{DeviceConfig::kCurrentUser},
+  };
+  const std::string kKeyBlob1 = "fake_key_blob_1";
+  const std::string kKeyBlob2 = "fake_key_blob_2";
+  const uint32_t kReusedKeyHandle = 0x1337;
+  const uint32_t kReloadedKeyHandle1 = 0x7331;
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kKeyBlob1, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kReusedKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)))
+      .WillOnce(DoAll(SetArgPointee<2>(kReloadedKeyHandle1),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kKeyBlob2, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kReusedKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              GetKeyPublicArea(kReusedKeyHandle, _))
+      .Times(2)
+      .WillRepeatedly(Return(trunks::TPM_RC_SUCCESS));
+
+  auto key1 = backend_->GetKeyManagementTpm2().LoadKey(
+      kPolicy1, brillo::BlobFromString(kKeyBlob1),
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = true});
+  ASSERT_OK(key1);
+
+  // Simulate `trunksd` restarting and assigning the same virtual handle
+  // `kReusedKeyHandle` to a second loaded key (`key2`).
+  auto key2 = backend_->GetKeyManagementTpm2().LoadKey(
+      kPolicy2, brillo::BlobFromString(kKeyBlob2),
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = true});
+  ASSERT_OK(key2);
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().GetKeyHandle(key1->GetKey()),
+              IsOkAndHolds(trunks::TPM_RH_NULL));
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().GetKeyHandle(key2->GetKey()),
+              IsOkAndHolds(kReusedKeyHandle));
+
+  // Reloading `key1` must not call `FlushContextSync(kReusedKeyHandle)` while
+  // `key2` still owns `kReusedKeyHandle`.
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kReusedKeyHandle, _))
+      .Times(0);
+
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().ReloadIfPossible(key1->GetKey()),
+              IsOk());
+  Mock::VerifyAndClearExpectations(&proxy_->GetMockTpm());
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().GetKeyHandle(key1->GetKey()),
+              IsOkAndHolds(kReloadedKeyHandle1));
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().GetKeyHandle(key2->GetKey()),
+              IsOkAndHolds(kReusedKeyHandle));
+
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kReusedKeyHandle, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kReloadedKeyHandle1, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+}
+
+TEST_F(BackendKeyManagementTpm2Test,
+       FlushStaleAutoReloadKeyDoesNotReloadOrLeak) {
+  const OperationPolicy kPolicy{
+      .device_configs = DeviceConfigs{DeviceConfig::kCurrentUser},
+  };
+  const std::string kKeyBlob = "fake_key_blob";
+  const uint32_t kStaleKeyHandle = 0x1337;
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kKeyBlob, _, _))
+      .Times(1)
+      .WillOnce(DoAll(SetArgPointee<2>(kStaleKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kStaleKeyHandle, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
+      kPolicy, brillo::BlobFromString(kKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = true});
+  ASSERT_OK(key);
+  Key raw_key = key->GetKey();
+
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kStaleKeyHandle, _))
+      .Times(1)
+      .WillOnce(
+          Return(trunks::TPM_RC_HANDLE | trunks::kResourceManagerTpmErrorBase));
+
+  {
+    ScopedKey drop_key = std::move(key).value();
+  }
+  task_environment_.RunUntilIdle();
+
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().GetKeyHandle(raw_key), NotOk());
+}
+
+TEST_F(BackendKeyManagementTpm2Test,
+       EndToEndHandleReuseDeriveAndUnsealWithPreload) {
+  const OperationPolicy kCryptohomeKeyPolicy{};
+  const OperationPolicy kSealedPolicy{
+      .device_configs = DeviceConfigs{DeviceConfig::kCurrentUser},
+  };
+  const std::string kCryptohomeKeyBlob = "cryptohome_key_blob";
+  const std::string kSealedBlob = "sealed_hvkkm_blob";
+  const std::string kDeriveBlob(256, 'X');
+  const std::string kUnsealedData = "unsealed_hvkkm";
+  const uint32_t kReusedKeyHandle = 0x80000002;
+  const uint32_t kReloadedCryptohomeKeyHandle = 0x80000003;
+  const trunks::TPMT_PUBLIC kEccPublic = {
+      .type = trunks::TPM_ALG_ECC,
+      .name_alg = trunks::TPM_ALG_SHA256,
+      .object_attributes = trunks::kFixedTPM | trunks::kFixedParent,
+      .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
+      .parameters =
+          trunks::TPMU_PUBLIC_PARMS{
+              .ecc_detail =
+                  trunks::TPMS_ECC_PARMS{
+                      .symmetric =
+                          trunks::TPMT_SYM_DEF_OBJECT{
+                              .algorithm = trunks::TPM_ALG_NULL,
+                          },
+                      .scheme =
+                          trunks::TPMT_ECC_SCHEME{
+                              .scheme = trunks::TPM_ALG_NULL,
+                          },
+                      .curve_id = trunks::TPM_ECC_NIST_P256,
+                      .kdf =
+                          trunks::TPMT_KDF_SCHEME{
+                              .scheme = trunks::TPM_ALG_NULL,
+                          },
+                  },
+          },
+      .unique =
+          trunks::TPMU_PUBLIC_ID{
+              .ecc =
+                  trunks::TPMS_ECC_POINT{
+                      .x =
+                          trunks::TPM2B_ECC_PARAMETER{
+                              .size = 10,
+                              .buffer = "0123456789",
+                          },
+                      .y = trunks::TPM2B_ECC_PARAMETER{.size = 0},
+                  },
+          },
+  };
+  const trunks::TPM2B_ECC_POINT kFakeZPoint{
+      .size = 2 + 10 + 2,
+      .point =
+          trunks::TPMS_ECC_POINT{
+              .x =
+                  trunks::TPM2B_ECC_PARAMETER{
+                      .size = 10,
+                      .buffer = "9876543210",
+                  },
+              .y = trunks::TPM2B_ECC_PARAMETER{.size = 0},
+          },
+  };
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kCryptohomeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kReusedKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)))
+      .WillOnce(DoAll(SetArgPointee<2>(kReloadedCryptohomeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kSealedBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kReusedKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              GetKeyPublicArea(kReusedKeyHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kEccPublic), Return(trunks::TPM_RC_SUCCESS)))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+
+  auto cryptohome_key = backend_->GetKeyManagementTpm2().LoadKey(
+      kCryptohomeKeyPolicy, brillo::BlobFromString(kCryptohomeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = true});
+  ASSERT_OK(cryptohome_key);
+
+  // Simulate `trunksd` restarting and assigning `kReusedKeyHandle` to
+  // `PreloadSealedData`, invalidating `cryptohome_key` to `TPM_RH_NULL`.
+  auto preload_key = backend_->GetSealingTpm2().PreloadSealedData(
+      kSealedPolicy, brillo::BlobFromString(kSealedBlob));
+  ASSERT_OK(preload_key);
+  ASSERT_TRUE(preload_key->has_value());
+  EXPECT_THAT(
+      backend_->GetKeyManagementTpm2().GetKeyHandle(cryptohome_key->GetKey()),
+      IsOkAndHolds(trunks::TPM_RH_NULL));
+
+  // `SecureDerive` via `Middleware::CallSync` must fail fast on `TPM_RH_NULL`
+  // with `kLater`, auto-reload `cryptohome_key` without flushing
+  // `preload_key`'s `kReusedKeyHandle`, and never pass `TPM_RH_NULL` to
+  // `ECDHZGen`.
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kReusedKeyHandle, _))
+      .Times(0);
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              ECDHZGen(trunks::TPM_RH_NULL, _, _, _))
+      .Times(0);
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              ECDHZGen(kReloadedCryptohomeKeyHandle, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<3>(kFakeZPoint), Return(trunks::TPM_RC_SUCCESS)));
+
+  Middleware middleware(middleware_owner_->Derive());
+  EXPECT_THAT(middleware.CallSync<&Backend::Deriving::SecureDerive>(
+                  cryptohome_key->GetKey(), brillo::SecureBlob(kDeriveBlob)),
+              IsOkAndHolds(Sha256(brillo::SecureBlob("9876543210"))));
+  Mock::VerifyAndClearExpectations(&proxy_->GetMockTpm());
+
+  // `Unseal` with `preload_key` then succeeds on the first attempt because
+  // `kReusedKeyHandle` was preserved.
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              UnsealDataWithHandle(kReusedKeyHandle, _, _))
+      .Times(1)
+      .WillOnce(DoAll(SetArgPointee<2>(kUnsealedData),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_THAT(middleware.CallSync<&Backend::Sealing::Unseal>(
+                  kSealedPolicy, brillo::BlobFromString(kSealedBlob),
+                  Backend::Sealing::UnsealOptions{
+                      .preload_data = preload_key->value().GetKey(),
+                  }),
+              IsOkAndHolds(brillo::SecureBlob(kUnsealedData)));
+
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kReusedKeyHandle, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  EXPECT_CALL(proxy_->GetMockTpm(),
+              FlushContextSync(kReloadedCryptohomeKeyHandle, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+}
+
+TEST_F(BackendKeyManagementTpm2Test,
+       LoadKeyDeduplicationReloadsInvalidatedHandle) {
+  const OperationPolicy kDeduplicatedPolicy{};
+  const OperationPolicy kOtherPolicy{
+      .device_configs = DeviceConfigs{DeviceConfig::kCurrentUser},
+  };
+  const std::string kKeyBlob1 = "dedup_key_blob";
+  const std::string kKeyBlob2 = "other_key_blob";
+  const uint32_t kReusedKeyHandle = 0x1337;
+  const uint32_t kReloadedKeyHandle1 = 0x7331;
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kKeyBlob1, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kReusedKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)))
+      .WillOnce(DoAll(SetArgPointee<2>(kReloadedKeyHandle1),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kKeyBlob2, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kReusedKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              GetKeyPublicArea(kReusedKeyHandle, _))
+      .Times(2)
+      .WillRepeatedly(Return(trunks::TPM_RC_SUCCESS));
+
+  auto key1 = backend_->GetKeyManagementTpm2().LoadKey(
+      kDeduplicatedPolicy, brillo::BlobFromString(kKeyBlob1),
+      Backend::KeyManagement::LoadKeyOptions{
+          .auto_reload = true,
+          .lazy_expiration_time = base::Seconds(10),
+      });
+  ASSERT_OK(key1);
+  Key original_token = key1->GetKey();
+
+  // Drop `key1` so it waits in its 10s lazy-expiration window (`client_count`
+  // is 0, `flush_timer` is active).
+  {
+    ScopedKey drop_key1 = std::move(key1).value();
+  }
+  task_environment_.RunUntilIdle();
+
+  // Simulate `trunksd` restarting and assigning `kReusedKeyHandle` to `key2`,
+  // invalidating the cached `kKeyBlob1` entry to `TPM_RH_NULL`.
+  auto key2 = backend_->GetKeyManagementTpm2().LoadKey(
+      kOtherPolicy, brillo::BlobFromString(kKeyBlob2),
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = true});
+  ASSERT_OK(key2);
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().GetKeyHandle(original_token),
+              IsOkAndHolds(trunks::TPM_RH_NULL));
+
+  // Loading `kKeyBlob1` again hits the deduplication path and must eagerly
+  // reload the invalidated entry to `kReloadedKeyHandle1` without flushing
+  // `kReusedKeyHandle`.
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kReusedKeyHandle, _))
+      .Times(0);
+  auto reloaded_key1 = backend_->GetKeyManagementTpm2().LoadKey(
+      kDeduplicatedPolicy, brillo::BlobFromString(kKeyBlob1),
+      Backend::KeyManagement::LoadKeyOptions{
+          .auto_reload = true,
+          .lazy_expiration_time = base::Seconds(10),
+      });
+  ASSERT_OK(reloaded_key1);
+  Mock::VerifyAndClearExpectations(&proxy_->GetMockTpm());
+  EXPECT_EQ(reloaded_key1->GetKey().token, original_token.token);
+  EXPECT_THAT(
+      backend_->GetKeyManagementTpm2().GetKeyHandle(reloaded_key1->GetKey()),
+      IsOkAndHolds(kReloadedKeyHandle1));
+
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kReusedKeyHandle, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kReloadedKeyHandle1, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  {
+    ScopedKey drop_reloaded_key1 = std::move(reloaded_key1).value();
+    ScopedKey drop_key2 = std::move(key2).value();
+  }
+  task_environment_.FastForwardBy(base::Seconds(10));
+  Mock::VerifyAndClearExpectations(&proxy_->GetMockTpm());
 }
 
 TEST_F(BackendKeyManagementTpm2Test, GetPersistentKey) {
