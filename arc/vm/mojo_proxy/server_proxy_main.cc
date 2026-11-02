@@ -2,14 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <brillo/syslog_logging.h>
+#include <signal.h>
 
+#include <base/check.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/threading/thread.h>
+#include <brillo/syslog_logging.h>
 
 #include "arc/vm/mojo_proxy/server_proxy.h"
 
@@ -18,6 +20,10 @@ int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
                   brillo::kLogToStderrIfTty);
+
+  // Ignore SIGPIPE so write(2) on closed sockets or FIFO_WRITE pipes returns
+  // EPIPE to the error handler instead of terminating the proxy process.
+  PCHECK(signal(SIGPIPE, SIG_IGN) != SIG_ERR);
 
   if (argc < 2) {
     LOG(ERROR) << "Mount path is not specified.";
