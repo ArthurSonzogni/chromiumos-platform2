@@ -102,5 +102,45 @@ TEST_F(PersistentRamBufferTest, checkGetContentWithRotation) {
   EXPECT_EQ(buf->start, data1.length() + data2.length() - kBufferCapacity);
 }
 
+TEST_F(PersistentRamBufferTest, checkGetContentWithEmbeddedNullBytes) {
+  std::unique_ptr<char[]> buf_ = std::make_unique<char[]>(kBufferSize);
+  persistent_ram_buffer* buf =
+      reinterpret_cast<persistent_ram_buffer*>(buf_.get());
+  InitializePersistentRamBuffer(buf, kBufferCapacity);
+
+  std::string data1(static_cast<size_t>(kBufferCapacity * 0.8), 'A');
+  data1[10] = '\0';
+  StorePersistentRamBuffer(buf, kBufferCapacity, data1);
+  std::string data2(static_cast<size_t>(kBufferCapacity * 0.8), 'B');
+  data2[20] = '\0';
+  StorePersistentRamBuffer(buf, kBufferCapacity, data2);
+  std::string expected =
+      data1.substr(data1.length() + data2.length() - kBufferCapacity) + data2;
+
+  std::string actual;
+  EXPECT_TRUE(GetPersistentRamBufferContent(buf, kBufferCapacity, &actual));
+  EXPECT_EQ(actual, expected);
+}
+
+TEST_F(PersistentRamBufferTest, checkGetContentRejectsOutOfBoundsHeader) {
+  std::unique_ptr<char[]> buf_ = std::make_unique<char[]>(kBufferSize);
+  persistent_ram_buffer* buf =
+      reinterpret_cast<persistent_ram_buffer*>(buf_.get());
+  InitializePersistentRamBuffer(buf, kBufferCapacity);
+
+  std::string actual;
+  buf->start = 0;
+  buf->size = kBufferCapacity + 1;
+  EXPECT_FALSE(GetPersistentRamBufferContent(buf, kBufferCapacity, &actual));
+
+  buf->start = 100;
+  buf->size = 50;
+  EXPECT_FALSE(GetPersistentRamBufferContent(buf, kBufferCapacity, &actual));
+
+  buf->start = kBufferCapacity + 1;
+  buf->size = kBufferCapacity;
+  EXPECT_FALSE(GetPersistentRamBufferContent(buf, kBufferCapacity, &actual));
+}
+
 }  // namespace pstore_dump
 }  // namespace vm_tools

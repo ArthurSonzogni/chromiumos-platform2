@@ -85,9 +85,11 @@ const persistent_ram_buffer* FindPersistentRamBufferForDmesg(const char* pstore,
   return console;
 }
 
-bool WritePersistentRamBufferToFd(const persistent_ram_buffer* buf, int fd) {
+bool WritePersistentRamBufferToFd(const persistent_ram_buffer* buf,
+                                  size_t buf_capacity,
+                                  int fd) {
   std::string content;
-  if (!GetPersistentRamBufferContent(buf, buf->size, &content)) {
+  if (!GetPersistentRamBufferContent(buf, buf_capacity, &content)) {
     LOG(ERROR) << "Failed to read the content of persistent ram buffer";
     return false;
   }
@@ -112,16 +114,42 @@ bool GetPersistentRamBufferContent(const persistent_ram_buffer* buf,
                                    std::string* out_content) {
   DCHECK(out_content);
 
-  out_content->clear();
-
-  // buf->size matches with the capacity after the ring buffer has wrapped
-  // around.
-  if (buf->size == buf_capacity) {
-    out_content->append(reinterpret_cast<const char*>(buf->data), buf->start,
-                        buf_capacity - buf->start);
+  const uint32_t next_write_offset = buf->start;
+  const uint32_t size = buf->size;
+  // Before wrap-around, `next_write_offset == size` (< `buf_capacity`).
+  // After wrap-around, `size == buf_capacity` and `next_write_offset` wraps
+  // within [0, `buf_capacity`).
+  // Thus `next_write_offset <= size <= buf_capacity` always holds. Checking
+  // `next_write_offset <= size` prevents reading past the valid `size` bytes
+  // (or past `buf_capacity`) and prevents `buf_capacity - next_write_offset`
+  // from underflowing.
+  if (size > buf_capacity || next_write_offset > size) {
+    LOG(ERROR) << "The pstore file doesn't follow the expected format. The "
+                  "ring buffer header is out of bounds (start="
+               << next_write_offset << ", size=" << size
+               << ", capacity=" << buf_capacity << ").";
+    return false;
   }
 
-  out_content->append(reinterpret_cast<const char*>(buf->data), 0, buf->start);
+  out_content->clear();
+
+  const char* data = reinterpret_cast<const char*>(buf->data);
+
+  // Before wrap-around (size < buf_capacity, next_write_offset == size):
+  //   0                 next_write_offset                    buf_capacity
+  //   |========================|...................................|
+  //   |        content         |              unused               |
+  //
+  // After wrap-around (size == buf_capacity):
+  //   0                 next_write_offset                    buf_capacity
+  //   |========================|===================================|
+  //   |     newer content      |           older content           |
+  if (size == buf_capacity) {
+    out_content->append(data + next_write_offset,
+                        buf_capacity - next_write_offset);
+  }
+
+  out_content->append(data, next_write_offset);
   return true;
 }
 
@@ -139,7 +167,9 @@ bool HandlePstore(const base::FilePath& path) {
     return false;
   }
 
-  return WritePersistentRamBufferToFd(buf, STDOUT_FILENO);
+  constexpr size_t kConsoleCapacity =
+      kArcVmRamoopsConsoleSize - sizeof(persistent_ram_buffer);
+  return WritePersistentRamBufferToFd(buf, kConsoleCapacity, STDOUT_FILENO);
 }
 
 bool HandlePstoreDmesg(const base::FilePath& path) {
@@ -149,6 +179,7 @@ bool HandlePstoreDmesg(const base::FilePath& path) {
     return false;
   }
 
+  constexpr size_t kDmesgCapacity = kZoneSize - sizeof(persistent_ram_buffer);
   for (int i = 0; i < kZoneCount; ++i) {
     const persistent_ram_buffer* buf = FindPersistentRamBufferForDmesg(
         reinterpret_cast<const char*>(pstore.c_str()), pstore.size(), i);
@@ -157,7 +188,7 @@ bool HandlePstoreDmesg(const base::FilePath& path) {
       return false;
     }
 
-    if (!WritePersistentRamBufferToFd(buf, STDOUT_FILENO)) {
+    if (!WritePersistentRamBufferToFd(buf, kDmesgCapacity, STDOUT_FILENO)) {
       return false;
     }
   }
