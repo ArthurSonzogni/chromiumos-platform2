@@ -13,8 +13,10 @@
 
 #include <base/compiler_specific.h>
 #include <base/observer_list.h>
+#include <base/time/time.h>
 #include <dbus/exported_object.h>
 
+#include "power_manager/common/clock.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/external_ambient_light_handler.h"
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_observer.h"
@@ -121,6 +123,16 @@ class ExternalBacklightController
  private:
   friend class ExternalBacklightControllerTest;
 
+  enum class UserBrightnessCycle {
+    // No active user brightness adjustment cycle.
+    IDLE,
+    // Actively iterating through external displays to dispatch brightness
+    // steps.
+    DISPATCHING,
+    // Waiting for asynchronous DDC/CI I2C transactions to complete.
+    WAITING,
+  };
+
   // Handlers for requests sent via D-Bus.
   void HandleIncreaseBrightnessRequest();
   void HandleDecreaseBrightnessRequest(bool allow_off);
@@ -150,9 +162,25 @@ class ExternalBacklightController
                                    BacklightBrightnessChange_Cause cause);
 
   // Emits |kExternalScreenBrightnessChangedSignal| when an external display's
-  // brightness percentage is updated over DDC/CI.
+  // brightness percentage is updated over DDC/CI, and ends the active user
+  // request cycle on user-initiated adjustments.
   void OnExternalDisplayBrightnessChanged(
       double brightness_percent, BacklightBrightnessChange_Cause cause);
+
+  // Records failed user-initiated DDC/CI brightness adjustments and finishes
+  // the active user request cycle once no external display has a pending user
+  // adjustment.
+  void OnExternalDisplayBrightnessFailed(BacklightBrightnessChange_Cause cause);
+
+  // Finishes a waiting user brightness cycle once no display in
+  // |external_displays_| has a pending user adjustment, emitting
+  // |kExternalScreenBrightnessFailedSignal| if a user adjustment failed.
+  void MaybeFinishUserBrightnessCycle();
+
+  // Emits |kExternalScreenBrightnessFailedSignal| if |dbus_wrapper_| is
+  // non-null and failure signals are not currently suppressed (e.g. while
+  // displays are powered down or settling after wake).
+  void EmitBrightnessFailedSignal();
 
   // Compute an association score between two syspaths. The score used is a
   // count of how many prefix path components they share.
@@ -191,6 +219,16 @@ class ExternalBacklightController
   // Are the external displays currently turned off?
   bool currently_off_ = false;
 
+  // Minimum time to wait after external displays are powered back on before
+  // allowing DDC/CI brightness failure signals, allowing monitor scaler MCUs
+  // and AUX channels to power up and complete modesetting.
+  static constexpr base::TimeDelta kPostWakeSettleDelay = base::Seconds(2);
+
+  Clock clock_;
+
+  // Monotonic time at which external displays were turned back on.
+  base::TimeTicks wake_time_;
+
   // Map from DRM device directories to ExternalDisplay objects for controlling
   // the corresponding displays.
   typedef std::map<system::DisplayInfo,
@@ -222,6 +260,11 @@ class ExternalBacklightController
   // Number of times the user has requested that the brightness be changed in
   // the current session.
   int num_brightness_adjustments_in_session_ = 0;
+
+  // State of the current user-initiated brightness adjustment cycle across
+  // |external_displays_|.
+  UserBrightnessCycle user_brightness_cycle_ = UserBrightnessCycle::IDLE;
+  bool user_brightness_failed_in_cycle_ = false;
 
   std::string external_backlight_als_steps_;
 

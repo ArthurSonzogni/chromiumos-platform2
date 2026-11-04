@@ -94,6 +94,10 @@ const std::vector<DisplayInfo>& DisplayWatcher::GetDisplays() const {
   return displays_;
 }
 
+bool DisplayWatcher::HasPendingDisplayChange() const {
+  return debounce_timer_.IsRunning();
+}
+
 void DisplayWatcher::AddObserver(DisplayWatcherObserver* observer) {
   observers_.AddObserver(observer);
 }

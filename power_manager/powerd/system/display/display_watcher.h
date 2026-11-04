@@ -31,6 +31,10 @@ class DisplayWatcherInterface {
   // Returns the current list of connected displays.
   virtual const std::vector<DisplayInfo>& GetDisplays() const = 0;
 
+  // Returns true if a detected display configuration change is waiting to be
+  // published to observers.
+  virtual bool HasPendingDisplayChange() const = 0;
+
   // Adds or removes an observer.
   virtual void AddObserver(DisplayWatcherObserver* observer) = 0;
   virtual void RemoveObserver(DisplayWatcherObserver* observer) = 0;
@@ -77,6 +81,7 @@ class DisplayWatcher : public DisplayWatcherInterface,
 
   // DisplayWatcherInterface implementation:
   const std::vector<DisplayInfo>& GetDisplays() const override;
+  bool HasPendingDisplayChange() const override;
   void AddObserver(DisplayWatcherObserver* observer) override;
   void RemoveObserver(DisplayWatcherObserver* observer) override;
 

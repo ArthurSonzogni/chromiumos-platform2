@@ -326,8 +326,13 @@ TEST_F(DisplayWatcherTest, DebounceTimer) {
   TestObserver observer;
   watcher_.AddObserver(&observer);
   watcher_.Init(&udev_);
+  EXPECT_FALSE(watcher_.HasPendingDisplayChange());
 
-  // After adding a display, the observer should be not be notified before
+  // No-op udev events must not start the debounce timer.
+  NotifyAboutUdevEvent();
+  EXPECT_FALSE(watcher_.HasPendingDisplayChange());
+
+  // After adding a display, the observer should not be notified before the
   // debounce timer expires.
   base::FilePath device_path = CreateDrmDevice("card0-DP-1");
   base::FilePath status_path =
@@ -335,9 +340,11 @@ TEST_F(DisplayWatcherTest, DebounceTimer) {
   ASSERT_TRUE(
       base::WriteFile(status_path, DisplayWatcher::kDrmStatusConnected));
   NotifyAboutUdevEvent();
+  EXPECT_TRUE(watcher_.HasPendingDisplayChange());
   EXPECT_EQ(0, observer.num_display_changes());
   // But on timer expiry, observer should be notified.
   EXPECT_TRUE(watcher_.trigger_debounce_timeout_for_testing());
+  EXPECT_FALSE(watcher_.HasPendingDisplayChange());
   EXPECT_EQ(1, observer.num_display_changes());
 
   watcher_.RemoveObserver(&observer);

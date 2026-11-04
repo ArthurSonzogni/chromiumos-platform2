@@ -369,6 +369,9 @@ void ExternalBacklightController::UpdateScreenPowerState(
           base::TimeDelta());
       NotifyObservers(cause);
     }
+    if (!currently_off_) {
+      wake_time_ = clock_.GetCurrentTime();
+    }
   }
 }
 
@@ -405,17 +408,35 @@ void ExternalBacklightController::UpdateDisplays(
     display->SetBrightnessChangedCallback(base::BindRepeating(
         &ExternalBacklightController::OnExternalDisplayBrightnessChanged,
         weak_ptr_factory_.GetWeakPtr()));
+    display->SetBrightnessFailedCallback(base::BindRepeating(
+        &ExternalBacklightController::OnExternalDisplayBrightnessFailed,
+        weak_ptr_factory_.GetWeakPtr()));
     updated_displays.emplace(info, std::move(display));
   }
   external_displays_.swap(updated_displays);
+  MaybeFinishUserBrightnessCycle();
 }
 
 void ExternalBacklightController::AdjustBrightnessByPercent(
     double percent_offset) {
   LOG(INFO) << "Adjusting brightness by " << percent_offset << "%";
-  for (ExternalDisplayMap::const_iterator it = external_displays_.begin();
-       it != external_displays_.end(); ++it) {
-    it->second->AdjustBrightnessByPercent(percent_offset);
+  if (external_displays_.empty()) {
+    if (display_watcher_ && !display_watcher_->HasPendingDisplayChange()) {
+      EmitBrightnessFailedSignal();
+    }
+  } else {
+    // Defer finishing the cycle until every connected external display has
+    // started its adjustment so synchronous failures on an earlier display wait
+    // for remaining displays in the loop.
+    user_brightness_cycle_ = UserBrightnessCycle::DISPATCHING;
+    user_brightness_failed_in_cycle_ = false;
+    for (const auto& [info, display] : external_displays_) {
+      display->AdjustBrightnessByPercent(percent_offset);
+    }
+    if (user_brightness_cycle_ == UserBrightnessCycle::DISPATCHING) {
+      user_brightness_cycle_ = UserBrightnessCycle::WAITING;
+      MaybeFinishUserBrightnessCycle();
+    }
   }
   if (ambient_light_sensor_watcher_ &&
       !external_display_als_brightness_enabled_) {
@@ -425,10 +446,58 @@ void ExternalBacklightController::AdjustBrightnessByPercent(
 
 void ExternalBacklightController::OnExternalDisplayBrightnessChanged(
     double brightness_percent, BacklightBrightnessChange_Cause cause) {
+  if (cause == BacklightBrightnessChange_Cause_USER_REQUEST) {
+    // End the cycle on the first successful user adjustment. In mixed
+    // multi-monitor setups where at least one display supports DDC/CI, this
+    // suppresses false ExternalScreenBrightnessFailed signals from unsupported
+    // displays. Any residual user_brightness_failed_in_cycle_ flag will be
+    // reset on the next user step dispatch in AdjustBrightnessByPercent().
+    user_brightness_cycle_ = UserBrightnessCycle::IDLE;
+  }
   if (dbus_wrapper_) {
     EmitBrightnessChangedSignal(dbus_wrapper_,
                                 kExternalScreenBrightnessChangedSignal,
                                 brightness_percent, cause);
+  }
+}
+
+void ExternalBacklightController::OnExternalDisplayBrightnessFailed(
+    BacklightBrightnessChange_Cause cause) {
+  if (cause == BacklightBrightnessChange_Cause_USER_REQUEST) {
+    user_brightness_failed_in_cycle_ = true;
+    MaybeFinishUserBrightnessCycle();
+  }
+}
+
+void ExternalBacklightController::MaybeFinishUserBrightnessCycle() {
+  if (user_brightness_cycle_ != UserBrightnessCycle::WAITING) {
+    return;
+  }
+  for (const auto& [info, display] : external_displays_) {
+    if (display->HasPendingUserBrightnessAdjustment()) {
+      return;
+    }
+  }
+  user_brightness_cycle_ = UserBrightnessCycle::IDLE;
+  if (user_brightness_failed_in_cycle_) {
+    user_brightness_failed_in_cycle_ = false;
+    if (!external_displays_.empty() && display_watcher_ &&
+        !display_watcher_->HasPendingDisplayChange()) {
+      EmitBrightnessFailedSignal();
+    }
+  }
+}
+
+void ExternalBacklightController::EmitBrightnessFailedSignal() {
+  if (currently_off_ ||
+      (!wake_time_.is_null() &&
+       clock_.GetCurrentTime() - wake_time_ < kPostWakeSettleDelay)) {
+    VLOG(1) << "Suppressing failure signal while displays are "
+            << (currently_off_ ? "off" : "settling after wake");
+    return;
+  }
+  if (dbus_wrapper_) {
+    dbus_wrapper_->EmitBareSignal(kExternalScreenBrightnessFailedSignal);
   }
 }
 

@@ -83,6 +83,9 @@ class ExternalDisplay {
   // reading the reply message (per DDC/CI v1.1 4.3).
   static constexpr base::TimeDelta kDdcGetDelay = base::Milliseconds(40);
 
+  // Maximum number of retries for a failed DDC/CI read or write operation.
+  static constexpr int kMaxRetries = 1;
+
   // Amount of time that the brightness value last read from or written to the
   // display should be honored before a new brightness value is read.
   static constexpr base::TimeDelta kCachedBrightnessValid = base::Seconds(3);
@@ -197,15 +200,23 @@ class ExternalDisplay {
     // Replaces |display_|'s |delegate_| for testing.
     void SetDelegate(std::unique_ptr<Delegate> delegate);
 
+    int num_retries() const { return display_->num_retries_; }
+
    private:
     ExternalDisplay* display_;  // owned elsewhere
   };
 
-  // Callback invoked with the updated brightness percentage in [0.0, 100.0] and
-  // the cause of the change whenever a new brightness level is successfully
-  // written to the display.
+  // Callback invoked with the current brightness percentage in [0.0, 100.0] and
+  // the cause of the change when a new brightness level is written to the
+  // display, or when a user-requested adjustment completes without a write
+  // because the level is unchanged or pending adjustments cancelled out.
   using BrightnessChangedCallback = base::RepeatingCallback<void(
       double brightness_percent, BacklightBrightnessChange_Cause cause)>;
+
+  // Callback invoked with the cause of the pending change when reading or
+  // writing the brightness over DDC/CI fails.
+  using BrightnessFailedCallback =
+      base::RepeatingCallback<void(BacklightBrightnessChange_Cause cause)>;
 
   explicit ExternalDisplay(std::unique_ptr<Delegate> delegate);
   ExternalDisplay(const ExternalDisplay&) = delete;
@@ -214,6 +225,14 @@ class ExternalDisplay {
   ~ExternalDisplay() = default;
 
   void SetBrightnessChangedCallback(BrightnessChangedCallback callback);
+  void SetBrightnessFailedCallback(BrightnessFailedCallback callback);
+
+  // Returns true if a user-requested brightness adjustment is waiting to
+  // complete.
+  bool HasPendingUserBrightnessAdjustment() const {
+    return pending_brightness_change_cause_ ==
+           BacklightBrightnessChange_Cause_USER_REQUEST;
+  }
 
   // Adjusts the display's brightness by |offset_percent|, a linearly-calculated
   // percent in the range [-100.0, 100.0]. Note that the adjustment will happen
@@ -251,6 +270,19 @@ class ExternalDisplay {
   // is waiting to be applied.
   bool HavePendingBrightnessAdjustment() const;
 
+  // Clears any pending relative or absolute brightness adjustment and returns
+  // the cause that was associated with it.
+  BacklightBrightnessChange_Cause ResetPendingBrightnessAdjustment();
+
+  // Clears any pending brightness adjustment and notifies
+  // |brightness_failed_callback_| with its cause.
+  void FailPendingBrightnessAdjustment();
+
+  // Handles a failed DDC/CI read or write operation, either scheduling a retry
+  // after |retry_delay| or reporting failure via
+  // FailPendingBrightnessAdjustment() once retries are exhausted.
+  void HandleAdjustmentFailure(base::TimeDelta retry_delay);
+
   // Resets |timer_| to run UpdateState() after |delay|.
   void StartTimer(base::TimeDelta delay);
 
@@ -263,9 +295,11 @@ class ExternalDisplay {
   // true if the brightness was read successfully.
   bool ReadBrightness();
 
-  // Sends a message to the display asking it to update the current brightness
-  // level (based on |pending_brightness_adjustment_percent_|). Returns true if
-  // the request was sent successfully.
+  // Updates the display's brightness level from the pending adjustment,
+  // starting |timer_| for |kDdcSetDelay| on a successful DDC/CI write to
+  // prevent another message from being sent too soon, or retrying after
+  // |kDdcSetDelay| on failure. Returns true if a new brightness level was
+  // written to the display.
   bool WriteBrightness();
 
   // Examines the current value of |state_| and performs appropriate actions.
@@ -315,7 +349,11 @@ class ExternalDisplay {
   // request to the display.
   base::OneShotTimer timer_;
 
+  // Number of retries attempted for the current pending brightness adjustment.
+  int num_retries_ = 0;
+
   BrightnessChangedCallback brightness_changed_callback_;
+  BrightnessFailedCallback brightness_failed_callback_;
 };
 
 }  // namespace power_manager::system

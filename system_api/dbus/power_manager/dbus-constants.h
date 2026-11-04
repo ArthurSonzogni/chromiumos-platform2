@@ -84,6 +84,8 @@ const char kSetAmbientLightSensorEnabledMethod[] =
 const char kScreenBrightnessChangedSignal[] = "ScreenBrightnessChanged";
 const char kExternalScreenBrightnessChangedSignal[] =
     "ExternalScreenBrightnessChanged";
+const char kExternalScreenBrightnessFailedSignal[] =
+    "ExternalScreenBrightnessFailed";
 const char kKeyboardBrightnessChangedSignal[] = "KeyboardBrightnessChanged";
 const char kPeripheralBatteryStatusSignal[] = "PeripheralBatteryStatus";
 const char kPowerSupplyPollSignal[] = "PowerSupplyPoll";

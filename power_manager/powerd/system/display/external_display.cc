@@ -141,6 +141,11 @@ void ExternalDisplay::SetBrightnessChangedCallback(
   brightness_changed_callback_ = std::move(callback);
 }
 
+void ExternalDisplay::SetBrightnessFailedCallback(
+    BrightnessFailedCallback callback) {
+  brightness_failed_callback_ = std::move(callback);
+}
+
 void ExternalDisplay::AdjustBrightnessByPercent(double percent_offset) {
   pending_brightness_adjustment_percent_ += percent_offset;
   pending_brightness_change_cause_ =
@@ -154,7 +159,8 @@ void ExternalDisplay::AdjustBrightnessByPercent(double percent_offset) {
 void ExternalDisplay::SetBrightness(double percent,
                                     BacklightBrightnessChange_Cause cause) {
   pending_brightness_percent_ = percent;
-  if (std::abs(pending_brightness_adjustment_percent_) <= kEpsilon) {
+  if (pending_brightness_change_cause_ !=
+      BacklightBrightnessChange_Cause_USER_REQUEST) {
     pending_brightness_change_cause_ = cause;
   }
   if (!timer_.IsRunning()) {
@@ -177,6 +183,36 @@ bool ExternalDisplay::HavePendingBrightnessAdjustment() const {
   return pending_brightness_adjustment_percent_ < -kEpsilon ||
          pending_brightness_adjustment_percent_ > kEpsilon ||
          pending_brightness_percent_ >= 0;
+}
+
+BacklightBrightnessChange_Cause
+ExternalDisplay::ResetPendingBrightnessAdjustment() {
+  num_retries_ = 0;
+  const BacklightBrightnessChange_Cause cause =
+      pending_brightness_change_cause_;
+  pending_brightness_adjustment_percent_ = 0.0;
+  pending_brightness_percent_ = -1.0;
+  pending_brightness_change_cause_ = BacklightBrightnessChange_Cause_OTHER;
+  return cause;
+}
+
+void ExternalDisplay::FailPendingBrightnessAdjustment() {
+  const BacklightBrightnessChange_Cause cause =
+      ResetPendingBrightnessAdjustment();
+  if (brightness_failed_callback_) {
+    brightness_failed_callback_.Run(cause);
+  }
+}
+
+void ExternalDisplay::HandleAdjustmentFailure(base::TimeDelta retry_delay) {
+  if (num_retries_ < kMaxRetries) {
+    ++num_retries_;
+    VLOG(1) << "Retrying DDC/CI operation on " << delegate_->GetName() << " in "
+            << retry_delay;
+    StartTimer(retry_delay);
+    return;
+  }
+  FailPendingBrightnessAdjustment();
 }
 
 void ExternalDisplay::StartTimer(base::TimeDelta delay) {
@@ -279,11 +315,12 @@ bool ExternalDisplay::WriteBrightness() {
               << delegate_->GetName();
     }
     last_brightness_update_time_ = clock_.GetCurrentTime();
-    if (brightness_changed_callback_ &&
-        pending_brightness_change_cause_ ==
-            BacklightBrightnessChange_Cause_USER_REQUEST) {
-      brightness_changed_callback_.Run(current_brightness_percent_,
-                                       pending_brightness_change_cause_);
+    if (ResetPendingBrightnessAdjustment() ==
+            BacklightBrightnessChange_Cause_USER_REQUEST &&
+        brightness_changed_callback_) {
+      brightness_changed_callback_.Run(
+          current_brightness_percent_,
+          BacklightBrightnessChange_Cause_USER_REQUEST);
     }
     return false;
   }
@@ -303,78 +340,64 @@ bool ExternalDisplay::WriteBrightness() {
   message.push_back(kDdcBrightnessIndex);
   message.push_back(new_level >> 8);    // High byte.
   message.push_back(new_level & 0xff);  // Low byte.
-  const SendResult result = SendMessage(message);
-  if (result != SendResult::SUCCESS) {
+  if (SendMessage(message) != SendResult::SUCCESS) {
+    HandleAdjustmentFailure(kDdcSetDelay);
     return false;
   }
 
+  const BacklightBrightnessChange_Cause cause =
+      ResetPendingBrightnessAdjustment();
   current_brightness_percent_ = new_percent;
   last_brightness_update_time_ = clock_.GetCurrentTime();
+  StartTimer(kDdcSetDelay);
   if (brightness_changed_callback_) {
-    brightness_changed_callback_.Run(current_brightness_percent_,
-                                     pending_brightness_change_cause_);
+    brightness_changed_callback_.Run(current_brightness_percent_, cause);
   }
   return true;
 }
 
 void ExternalDisplay::UpdateState() {
   TRACE_EVENT("power", "ExternalDisplay::UpdateState", "state", state_);
-  switch (state_) {
-    case State::IDLE:
-      // Nothing to do.
-      if (!HavePendingBrightnessAdjustment()) {
-        return;
-      }
-
-      // If the current brightness is cached, write the new brightness and then
-      // start the timer to prevent another message from being sent too soon.
-      if (HaveCachedBrightness()) {
-        if (WriteBrightness()) {
-          StartTimer(kDdcSetDelay);
-        }
-        pending_brightness_adjustment_percent_ = 0.0;
-        pending_brightness_percent_ = -1.0;
-        pending_brightness_change_cause_ =
-            BacklightBrightnessChange_Cause_OTHER;
-        return;
-      }
-
-      // Otherwise, request the current brightness level and start the timer to
-      // read the reply.
-      if (!RequestBrightness()) {
-        pending_brightness_adjustment_percent_ = 0.0;
-        pending_brightness_percent_ = -1.0;
-        pending_brightness_change_cause_ =
-            BacklightBrightnessChange_Cause_OTHER;
-        return;
-      }
-      state_ = State::WAITING_FOR_REPLY;
-      StartTimer(kDdcGetDelay);
+  if (state_ == State::WAITING_FOR_REPLY) {
+    state_ = State::IDLE;
+    // If reading the brightness failed, retry or handle failure while an
+    // adjustment remains pending.
+    if (!ReadBrightness() && HavePendingBrightnessAdjustment()) {
+      HandleAdjustmentFailure(kDdcGetDelay);
       return;
-
-    case State::WAITING_FOR_REPLY:
-      state_ = State::IDLE;
-      // If reading the brightness failed, give up.
-      if (!ReadBrightness()) {
-        pending_brightness_adjustment_percent_ = 0.0;
-        pending_brightness_percent_ = -1.0;
-        pending_brightness_change_cause_ =
-            BacklightBrightnessChange_Cause_OTHER;
-        return;
-      }
-
-      // Otherwise, if there's still a pending adjustment, send it to the
-      // display and start the timer to prevent another message from being sent
-      // too soon. If the write fails, discard the pending adjustment to prevent
-      // a buggy display from resulting in infinite retries.
-      if (HavePendingBrightnessAdjustment() && WriteBrightness()) {
-        StartTimer(kDdcSetDelay);
-      }
-      pending_brightness_adjustment_percent_ = 0.0;
-      pending_brightness_percent_ = -1.0;
-      pending_brightness_change_cause_ = BacklightBrightnessChange_Cause_OTHER;
-      return;
+    }
+    num_retries_ = 0;
   }
+  DCHECK_EQ(State::IDLE, state_);
+
+  // Nothing to do unless a user-requested adjustment cancelled out and still
+  // needs to notify observers of the current brightness.
+  if (!HavePendingBrightnessAdjustment()) {
+    if (ResetPendingBrightnessAdjustment() ==
+            BacklightBrightnessChange_Cause_USER_REQUEST &&
+        max_brightness_level_ > 0 && brightness_changed_callback_) {
+      brightness_changed_callback_.Run(
+          current_brightness_percent_,
+          BacklightBrightnessChange_Cause_USER_REQUEST);
+    }
+    return;
+  }
+
+  // If the current brightness was just read or is still cached, write the new
+  // brightness.
+  if (HaveCachedBrightness()) {
+    WriteBrightness();
+    return;
+  }
+
+  // Otherwise, request the current brightness level and start the timer to read
+  // the reply.
+  if (!RequestBrightness()) {
+    HandleAdjustmentFailure(kDdcGetDelay);
+    return;
+  }
+  state_ = State::WAITING_FOR_REPLY;
+  StartTimer(kDdcGetDelay);
 }
 
 ExternalDisplay::SendResult ExternalDisplay::SendMessage(

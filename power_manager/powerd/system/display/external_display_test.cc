@@ -347,7 +347,8 @@ TEST_F(ExternalDisplayTest, InvalidBrightnessReplies) {
                                 "non-brightness index"});
 
   // Run through each test case, making sure that no subsequent request is sent
-  // after the bogus reply is returned. The timer also shouldn't be rescheduled.
+  // after the bogus reply is returned and its retry fails. The timer also
+  // shouldn't be rescheduled.
   for (const TestCase& test_case : test_cases) {
     SCOPED_TRACE(test_case.description);
 
@@ -356,36 +357,58 @@ TEST_F(ExternalDisplayTest, InvalidBrightnessReplies) {
 
     delegate_->set_reply_message(test_case.reply);
     ASSERT_TRUE(test_api_.TriggerTimeout());
-
     EXPECT_EQ("", delegate_->PopSentMessage());
+
+    // Trigger the single retry and let its read fail as well.
+    ASSERT_TRUE(test_api_.TriggerTimeout());
+    EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+    delegate_->set_reply_message(test_case.reply);
+    ASSERT_TRUE(test_api_.TriggerTimeout());
+    EXPECT_EQ("", delegate_->PopSentMessage());
+
+    // Because the message was invalid, no new brightness should be written.
     EXPECT_FALSE(test_api_.TriggerTimeout());
   }
 }
 
 TEST_F(ExternalDisplayTest, CommunicationFailures) {
-  // If the initial brightness request fails, the timer should be stopped.
+  // If the initial brightness request fails, a retry is scheduled. When the
+  // retry also fails, the timer should be stopped.
   delegate_->set_report_write_failure(true);
   display_.AdjustBrightnessByPercent(10.0);
+  EXPECT_EQ(1, test_api_.num_retries());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
   EXPECT_FALSE(test_api_.TriggerTimeout());
+  EXPECT_EQ(0, test_api_.num_retries());
 
-  // Now let the initial request succeed but make the read fail. The timer
+  // Now let the initial request succeed but make the read fail. The initial
+  // read failure schedules a retry; once the retry read also fails, the timer
   // should be stopped.
   delegate_->set_report_write_failure(false);
   delegate_->set_report_read_failure(true);
   display_.AdjustBrightnessByPercent(10.0);
   EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
   ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(1, test_api_.num_retries());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
   EXPECT_FALSE(test_api_.TriggerTimeout());
+  EXPECT_EQ(0, test_api_.num_retries());
 
   // Let the initial request and read succeed, but make the attempt to change
-  // the brightness fail. The timer should be stopped.
+  // the brightness fail. The write failure schedules a retry; once the retry
+  // fails, the pending adjustment is cleared.
   delegate_->set_report_read_failure(false);
   display_.AdjustBrightnessByPercent(10.0);
   EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
   delegate_->set_report_write_failure(true);
   delegate_->set_reply_message(GetBrightnessReply(50, 100));
   ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(1, test_api_.num_retries());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
   EXPECT_FALSE(test_api_.TriggerTimeout());
+  EXPECT_EQ(0, test_api_.num_retries());
 
   // The previously-read brightness should still be cached, so another
   // adjustment attempt should be attempted immediately. Let it succeed this
@@ -393,6 +416,7 @@ TEST_F(ExternalDisplayTest, CommunicationFailures) {
   delegate_->set_report_write_failure(false);
   display_.AdjustBrightnessByPercent(10.0);
   EXPECT_EQ(GetSetBrightnessMessage(60), delegate_->PopSentMessage());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
 }
 
 TEST_F(ExternalDisplayTest, MinimumAndMaximumBrightness) {
@@ -462,6 +486,15 @@ TEST_F(ExternalDisplayTest, ZeroMax) {
   // ExternalDisplay should report a failure and avoid writing an updated level.
   delegate_->set_reply_message(GetBrightnessReply(0, 0));
   ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ("", delegate_->PopSentMessage());
+
+  // Trigger the single retry and let its read fail as well.
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  delegate_->set_reply_message(GetBrightnessReply(0, 0));
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ("", delegate_->PopSentMessage());
+
   EXPECT_FALSE(test_api_.TriggerTimeout());
 }
 
@@ -503,6 +536,11 @@ TEST_F(ExternalDisplayTest, BrightnessChangedCallback) {
         changes->emplace_back(percent, cause);
       },
       &reported_changes));
+
+  // A zero-offset user adjustment before any brightness has been read must not
+  // report a bogus 0% brightness.
+  display_.AdjustBrightnessByPercent(0.0);
+  EXPECT_TRUE(reported_changes.empty());
 
   // Initial +10% adjustment reads 50/100 and writes 60% (USER_REQUEST).
   display_.AdjustBrightnessByPercent(10.0);
@@ -588,10 +626,271 @@ TEST_F(ExternalDisplayTest, BrightnessChangedCallback) {
   EXPECT_EQ(BacklightBrightnessChange_Cause_USER_REQUEST,
             reported_changes[6].second);
 
-  // A failed write must not invoke the callback.
+  // A failed write must not invoke the callback. Trigger the retry timeout so
+  // the failure completes and clears the pending adjustment.
   delegate_->set_report_write_failure(true);
   display_.AdjustBrightnessByPercent(-5.0);
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_FALSE(test_api_.TriggerTimeout());
   EXPECT_EQ(7u, reported_changes.size());
+
+  // Cancelling relative user adjustments (+5% then -5%) during kDdcSetDelay
+  // followed by an ambient-light SetBrightness() must preserve USER_REQUEST
+  // both when writing a new level and when the target matches the current
+  // level.
+  delegate_->set_report_write_failure(false);
+  display_.AdjustBrightnessByPercent(-20.0);
+  EXPECT_EQ(GetSetBrightnessMessage(80), delegate_->PopSentMessage());
+  ASSERT_EQ(8u, reported_changes.size());
+
+  display_.AdjustBrightnessByPercent(5.0);
+  display_.AdjustBrightnessByPercent(-5.0);
+  display_.SetBrightness(70.0,
+                         BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED);
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(GetSetBrightnessMessage(70), delegate_->PopSentMessage());
+  ASSERT_EQ(9u, reported_changes.size());
+  EXPECT_DOUBLE_EQ(70.0, reported_changes[8].first);
+  EXPECT_EQ(BacklightBrightnessChange_Cause_USER_REQUEST,
+            reported_changes[8].second);
+
+  display_.AdjustBrightnessByPercent(5.0);
+  display_.AdjustBrightnessByPercent(-5.0);
+  display_.SetBrightness(70.0,
+                         BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED);
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ("", delegate_->PopSentMessage());
+  ASSERT_EQ(10u, reported_changes.size());
+  EXPECT_DOUBLE_EQ(70.0, reported_changes[9].first);
+  EXPECT_EQ(BacklightBrightnessChange_Cause_USER_REQUEST,
+            reported_changes[9].second);
+}
+
+TEST_F(ExternalDisplayTest, BrightnessFailedCallback) {
+  std::vector<std::pair<double, BacklightBrightnessChange_Cause>>
+      reported_changes;
+  std::vector<BacklightBrightnessChange_Cause> reported_failures;
+  display_.SetBrightnessChangedCallback(base::BindRepeating(
+      [](ExternalDisplay* display,
+         std::vector<std::pair<double, BacklightBrightnessChange_Cause>>*
+             changes,
+         double percent, BacklightBrightnessChange_Cause cause) {
+        EXPECT_FALSE(display->HasPendingUserBrightnessAdjustment());
+        changes->emplace_back(percent, cause);
+      },
+      &display_, &reported_changes));
+  display_.SetBrightnessFailedCallback(base::BindRepeating(
+      [](ExternalDisplay* display,
+         std::vector<BacklightBrightnessChange_Cause>* failures,
+         BacklightBrightnessChange_Cause cause) {
+        EXPECT_FALSE(display->HasPendingUserBrightnessAdjustment());
+        failures->push_back(cause);
+      },
+      &display_, &reported_failures));
+  auto pop_failures = [&]() { return std::exchange(reported_failures, {}); };
+
+  // Failing to send RequestBrightness() schedules a retry. When the retry also
+  // fails, failure is reported.
+  delegate_->set_report_write_failure(true);
+  display_.AdjustBrightnessByPercent(10.0);
+  EXPECT_TRUE(reported_failures.empty());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(std::vector{BacklightBrightnessChange_Cause_USER_REQUEST},
+            pop_failures());
+  EXPECT_TRUE(reported_changes.empty());
+
+  display_.SetBrightness(50.0,
+                         BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED);
+  EXPECT_TRUE(reported_failures.empty());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(std::vector{BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED},
+            pop_failures());
+
+  // Failing ReadBrightness() due to an I2C read error, non-zero VCP result
+  // code, or zero maximum brightness reports failure after retry.
+  delegate_->set_report_write_failure(false);
+  delegate_->set_report_read_failure(true);
+  display_.AdjustBrightnessByPercent(10.0);
+  EXPECT_TRUE(display_.HasPendingUserBrightnessAdjustment());
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  EXPECT_TRUE(reported_failures.empty());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(std::vector{BacklightBrightnessChange_Cause_USER_REQUEST},
+            pop_failures());
+
+  delegate_->set_report_read_failure(false);
+  std::vector<uint8_t> unsupported_vcp_reply = GetBrightnessReply(50, 100);
+  unsupported_vcp_reply[3] = 0x1;
+  UpdateChecksum(ExternalDisplay::kDdcVirtualHostAddress,
+                 &unsupported_vcp_reply);
+  display_.AdjustBrightnessByPercent(10.0);
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  delegate_->set_reply_message(unsupported_vcp_reply);
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  delegate_->set_reply_message(unsupported_vcp_reply);
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(std::vector{BacklightBrightnessChange_Cause_USER_REQUEST},
+            pop_failures());
+
+  display_.AdjustBrightnessByPercent(10.0);
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  delegate_->set_reply_message(GetBrightnessReply(0, 0));
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  delegate_->set_reply_message(GetBrightnessReply(0, 0));
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(std::vector{BacklightBrightnessChange_Cause_USER_REQUEST},
+            pop_failures());
+
+  // Failing WriteBrightness() after a valid ReadBrightness(): failed adjustment
+  // is retried once then reports failure.
+  display_.AdjustBrightnessByPercent(10.0);
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  delegate_->set_reply_message(GetBrightnessReply(50, 100));
+  delegate_->set_report_write_failure(true);
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(std::vector{BacklightBrightnessChange_Cause_USER_REQUEST},
+            pop_failures());
+  EXPECT_TRUE(reported_changes.empty());
+
+  // Clearing the write failure allows self-healing; clamped boundaries and
+  // cancelling adjustments (-5% then +5%, both during kDdcSetDelay and while
+  // WAITING_FOR_REPLY) complete via BrightnessChangedCallback without failure.
+  delegate_->set_report_write_failure(false);
+  display_.AdjustBrightnessByPercent(50.0);
+  EXPECT_EQ(GetSetBrightnessMessage(100), delegate_->PopSentMessage());
+  display_.AdjustBrightnessByPercent(-5.0);
+  display_.AdjustBrightnessByPercent(5.0);
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  display_.AdjustBrightnessByPercent(5.0);
+  EXPECT_EQ("", delegate_->PopSentMessage());
+  ASSERT_EQ(3u, reported_changes.size());
+
+  test_api_.AdvanceTime(ExternalDisplay::kCachedBrightnessValid +
+                        base::Milliseconds(10));
+  display_.AdjustBrightnessByPercent(-5.0);
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  display_.AdjustBrightnessByPercent(5.0);
+  delegate_->set_reply_message(GetBrightnessReply(40, 100));
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ("", delegate_->PopSentMessage());
+  EXPECT_TRUE(reported_failures.empty());
+  ASSERT_EQ(4u, reported_changes.size());
+  EXPECT_DOUBLE_EQ(40.0, reported_changes[3].first);
+
+  // A cancelled adjustment while WAITING_FOR_REPLY whose ReadBrightness() fails
+  // drops cleanly without retrying or reporting failure, notifying observers
+  // of the current cached brightness.
+  test_api_.AdvanceTime(ExternalDisplay::kCachedBrightnessValid +
+                        base::Milliseconds(10));
+  display_.AdjustBrightnessByPercent(-5.0);
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  display_.AdjustBrightnessByPercent(5.0);
+  delegate_->set_report_read_failure(true);
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ("", delegate_->PopSentMessage());
+  EXPECT_FALSE(test_api_.TriggerTimeout());
+  EXPECT_TRUE(reported_failures.empty());
+  ASSERT_EQ(5u, reported_changes.size());
+  EXPECT_DOUBLE_EQ(40.0, reported_changes[4].first);
+  EXPECT_EQ(BacklightBrightnessChange_Cause_USER_REQUEST,
+            reported_changes[4].second);
+  delegate_->set_report_read_failure(false);
+}
+
+TEST_F(ExternalDisplayTest, TransientWriteFailureRecoversOnRetry) {
+  std::vector<std::pair<double, BacklightBrightnessChange_Cause>>
+      reported_changes;
+  std::vector<BacklightBrightnessChange_Cause> reported_failures;
+  display_.SetBrightnessChangedCallback(base::BindRepeating(
+      [](std::vector<std::pair<double, BacklightBrightnessChange_Cause>>*
+             changes,
+         double percent, BacklightBrightnessChange_Cause cause) {
+        changes->emplace_back(percent, cause);
+      },
+      &reported_changes));
+  display_.SetBrightnessFailedCallback(base::BindRepeating(
+      [](std::vector<BacklightBrightnessChange_Cause>* failures,
+         BacklightBrightnessChange_Cause cause) { failures->push_back(cause); },
+      &reported_failures));
+
+  // Initialize display with a successful read to establish
+  // max_brightness_level_ > 0.
+  display_.AdjustBrightnessByPercent(10.0);
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  delegate_->set_reply_message(GetBrightnessReply(50, 100));
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(GetSetBrightnessMessage(60), delegate_->PopSentMessage());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  ASSERT_EQ(1u, reported_changes.size());
+  EXPECT_DOUBLE_EQ(60.0, reported_changes[0].first);
+
+  // Next write experiences a transient I2C NACK on the first attempt.
+  delegate_->set_report_write_failure(true);
+  display_.AdjustBrightnessByPercent(10.0);
+  EXPECT_EQ(1, test_api_.num_retries());
+  EXPECT_TRUE(reported_failures.empty());
+
+  // Clear write failure before the retry timer fires.
+  delegate_->set_report_write_failure(false);
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(GetSetBrightnessMessage(70), delegate_->PopSentMessage());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+
+  // Write retry succeeded: changes notified, zero failures, retries reset to 0.
+  ASSERT_EQ(2u, reported_changes.size());
+  EXPECT_DOUBLE_EQ(70.0, reported_changes[1].first);
+  EXPECT_TRUE(reported_failures.empty());
+  EXPECT_EQ(0, test_api_.num_retries());
+}
+
+TEST_F(ExternalDisplayTest, TransientReadFailureRecoversOnRetry) {
+  std::vector<std::pair<double, BacklightBrightnessChange_Cause>>
+      reported_changes;
+  std::vector<BacklightBrightnessChange_Cause> reported_failures;
+  display_.SetBrightnessChangedCallback(base::BindRepeating(
+      [](std::vector<std::pair<double, BacklightBrightnessChange_Cause>>*
+             changes,
+         double percent, BacklightBrightnessChange_Cause cause) {
+        changes->emplace_back(percent, cause);
+      },
+      &reported_changes));
+  display_.SetBrightnessFailedCallback(base::BindRepeating(
+      [](std::vector<BacklightBrightnessChange_Cause>* failures,
+         BacklightBrightnessChange_Cause cause) { failures->push_back(cause); },
+      &reported_failures));
+
+  // Initial read fails with a transient I2C read error.
+  display_.AdjustBrightnessByPercent(10.0);
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  delegate_->set_report_read_failure(true);
+  ASSERT_TRUE(
+      test_api_.TriggerTimeout());  // initial read failed, retry scheduled
+  EXPECT_EQ(1, test_api_.num_retries());
+  EXPECT_TRUE(reported_failures.empty());
+
+  // Clear read failure and provide reply for retry.
+  delegate_->set_report_read_failure(false);
+  delegate_->set_reply_message(GetBrightnessReply(50, 100));
+  ASSERT_TRUE(test_api_.TriggerTimeout());  // retry request sent
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  ASSERT_TRUE(
+      test_api_.TriggerTimeout());  // retry read succeeds, triggers write
+  EXPECT_EQ(GetSetBrightnessMessage(60), delegate_->PopSentMessage());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+
+  // Succeeded: changes notified, zero failures, retries reset to 0.
+  ASSERT_EQ(1u, reported_changes.size());
+  EXPECT_DOUBLE_EQ(60.0, reported_changes[0].first);
+  EXPECT_TRUE(reported_failures.empty());
+  EXPECT_EQ(0, test_api_.num_retries());
 }
 
 TEST_F(ExternalDisplayTest, BrightnessLoggingByCause) {
