@@ -4,6 +4,8 @@
 
 #include "fusebox/file_system.h"
 
+#include <errno.h>
+
 namespace fusebox {
 
 FileSystem::FileSystem() = default;
