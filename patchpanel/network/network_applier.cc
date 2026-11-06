@@ -59,23 +59,23 @@ constexpr uint32_t kPriorityStep = 10;
 // An offset added to the priority of non-VPN services, so their rules comes
 // after the main table rule.
 constexpr uint32_t kPhysicalPriorityOffset = 1000;
-// Priority for rules corresponding to IPConfig::Properties::routes.
-// Allowed dsts rules are added right before the catchall rule. In this way,
-// existing traffic from a different interface will not be "stolen" by these
-// rules and sent out of the wrong interface, but the routes added to
-// |table_id| will not be ignored.
-constexpr uint32_t kDstRulePriority =
-    RoutingPolicyService::kRulePriorityMain - 5;
 // Priority for rules routing traffic from certain VMs through CLAT.
 constexpr uint32_t kClatRulePriority =
-    RoutingPolicyService::kRulePriorityMain - 4;
+    RoutingPolicyService::kRulePriorityMain - 5;
 // Priority for rules routing traffic with BYPASS_VPN mark to the default
 // physical network.
 constexpr uint32_t kBypassVpnRulePriority =
-    RoutingPolicyService::kRulePriorityMain - 3;
+    RoutingPolicyService::kRulePriorityMain - 4;
 // Priority for VPN rules routing traffic or specific uids with the routing
 // table of a VPN connection.
 constexpr uint32_t kVpnUidRulePriority =
+    RoutingPolicyService::kRulePriorityMain - 3;
+// Priority for rules corresponding to DHCP Option 121 classless static routes.
+// Allowed dsts rules are added right before the catchall rule. In this way,
+// existing traffic from a different interface or VPN rules will not be "stolen"
+// by these rules and sent out of the wrong interface, but the routes added to
+// |table_id| will not be ignored.
+constexpr uint32_t kDstRulePriority =
     RoutingPolicyService::kRulePriorityMain - 2;
 // Priority for the rule sending any remaining traffic to the default physical
 // interface.
