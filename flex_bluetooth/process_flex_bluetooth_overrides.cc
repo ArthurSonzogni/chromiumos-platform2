@@ -37,6 +37,7 @@ struct hci_dev_list_req {
   struct hci_dev_req dev_req[1];  // we only want the first device
 };
 
+const char kSubsystemUsb[] = "usb";
 const char kAttributeDeviceClass[] = "bDeviceClass";
 const char kAttributeDeviceSubClass[] = "bDeviceSubClass";
 const char kAttributeInterfaceClass[] = "bInterfaceClass";
@@ -291,7 +292,12 @@ bool get_devices(const std::unique_ptr<brillo::Udev>& udev,
                  std::vector<std::unique_ptr<brillo::UdevDevice>>* result) {
   const auto dev_enumerate = udev->CreateEnumerate();
 
-  if (!dev_enumerate->AddMatchSysAttribute(classAttribute,
+  // Restrict enumeration to the usb subsystem so ScanDevices() only walks
+  // /sys/bus/usb/devices instead of all of /sys. This is safe because
+  // get_devices() is only called for btusb adapters, and the kernel registers
+  // both usb_device and usb_interface on usb_bus_type (/sys/bus/usb/devices).
+  if (!dev_enumerate->AddMatchSubsystem(kSubsystemUsb) ||
+      !dev_enumerate->AddMatchSysAttribute(classAttribute,
                                            kBluetoothDeviceClass) ||
       !dev_enumerate->AddMatchSysAttribute(subClassAttribute,
                                            kBluetoothDeviceSubClass) ||
