@@ -5,6 +5,8 @@
 #ifndef VM_TOOLS_COMMON_SPAWN_UTIL_H_
 #define VM_TOOLS_COMMON_SPAWN_UTIL_H_
 
+#include <sys/types.h>
+
 #include <map>
 #include <string>
 #include <vector>
