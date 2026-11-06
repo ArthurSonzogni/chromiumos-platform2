@@ -13,8 +13,7 @@
  *  - on failure: nullptr.
  */
 
-#include "tools/mctk/control.h"
-
+#include <errno.h>
 #include <linux/media.h>
 #include <linux/types.h>
 #include <linux/videodev2.h>
@@ -24,6 +23,7 @@
 #include <memory>
 #include <string> /* to_string */
 
+#include "tools/mctk/control.h"
 #include "tools/mctk/control_helpers.h"
 #include "tools/mctk/debug.h"
 
