@@ -635,7 +635,9 @@ bool Daemon::ChangeModemPowerState(const std::string& device_id,
   if (modems_.count(device_id) == 0) {
     return false;
   }
-  if (target_state == Modem::PowerState::ON) {
+  if (target_state == Modem::PowerState::ON &&
+      (modems_[device_id]->GetPowerState() == Modem::PowerState::OFF ||
+       modems_[device_id]->GetPowerState() == Modem::PowerState::UNKNOWN)) {
     res = helper->PowerOn();
     // Do not update power state here; wait for MM to report
   } else if (target_state == Modem::PowerState::OFF &&

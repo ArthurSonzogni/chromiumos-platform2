@@ -432,8 +432,8 @@ class ModemImpl : public Modem {
   }
 
  private:
-  State state_;
-  PowerState power_state_;
+  State state_ = State::UNKNOWN;
+  PowerState power_state_ = PowerState::UNKNOWN;
   std::string heartbeat_port_;
   std::string device_id_;
   std::string equipment_id_;
@@ -598,8 +598,8 @@ class StubModem : public Modem {
   bool UpdatePowerState(PowerState new_power_state) override { return true; }
 
  private:
-  State state_;
-  PowerState power_state_;
+  State state_ = State::UNKNOWN;
+  PowerState power_state_ = PowerState::UNKNOWN;
   std::string heartbeat_port_;
   std::string carrier_id_;
   std::string device_id_;

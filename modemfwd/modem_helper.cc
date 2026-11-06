@@ -4,6 +4,8 @@
 
 #include "modemfwd/modem_helper.h"
 
+#include <sysexits.h>
+
 #include <utility>
 
 #include <base/containers/span.h>
@@ -123,6 +125,13 @@ bool RunHelperProcess(const HelperInfo& helper_info,
     if (bytes_read.has_value()) {
       output->assign(buf, *bytes_read);
     }
+  }
+
+  if (exit_code == EX_USAGE && !arguments.empty() &&
+      (arguments[0] == kPowerOn || arguments[0] == kPowerOff)) {
+    EVLOG(1) << "Operation \"" << base::JoinString(arguments, " ")
+             << "\" is not supported by the modem helper";
+    return false;
   }
 
   if (exit_code != 0) {
