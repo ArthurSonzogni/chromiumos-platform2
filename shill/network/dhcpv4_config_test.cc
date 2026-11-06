@@ -50,23 +50,18 @@ TEST(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   EXPECT_EQ(*net_base::IPv4Address::CreateFromString(kRouter0),
             network_config.ipv4_gateway);
 
-  // The two routes (including the one which would have otherwise been
-  // classified as a default route) are added to the routing table.
-  EXPECT_EQ(2, network_config.rfc3442_routes.size());
+  // Only the non-default route is added to rfc3442_routes; the duplicate
+  // default route is ignored rather than treated as a classless static route.
+  ASSERT_EQ(1, network_config.rfc3442_routes.size());
   const auto& route0 = network_config.rfc3442_routes[0];
-  EXPECT_EQ(*net_base::IPv4CIDR::CreateFromStringAndPrefix(kDefaultAddress, 0),
-            route0.first);
-  EXPECT_EQ(*net_base::IPv4Address::CreateFromString(kRouter2), route0.second);
-
-  const auto& route1 = network_config.rfc3442_routes[1];
   EXPECT_EQ(*net_base::IPv4CIDR::CreateFromStringAndPrefix(kAddress1, 24),
-            route1.first);
-  EXPECT_EQ(*net_base::IPv4Address::CreateFromString(kRouter1), route1.second);
+            route0.first);
+  EXPECT_EQ(*net_base::IPv4Address::CreateFromString(kRouter1), route0.second);
 
   // A malformed routing table should not affect the current table.
   EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(
       kBrokenClasslessRoutes1, &network_config, "wlan0 mock_service sid=0"));
-  EXPECT_EQ(2, network_config.rfc3442_routes.size());
+  EXPECT_EQ(1, network_config.rfc3442_routes.size());
   EXPECT_EQ(*net_base::IPv4Address::CreateFromString(kRouter0),
             network_config.ipv4_gateway);
 }
@@ -107,6 +102,28 @@ TEST(DHCPv4ConfigTest, ParseConfiguration) {
   EXPECT_EQ("foo.com", network_config.dns_search_domains[0]);
   EXPECT_EQ("bar.com", network_config.dns_search_domains[1]);
   EXPECT_EQ(600, network_config.mtu);
+}
+
+TEST(DHCPv4ConfigTest, ParseConfigurationWithRoutersAndClasslessDefaultRoute) {
+  KeyValueStore conf;
+  conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
+  conf.Set<uint8_t>(DHCPv4Config::kConfigurationKeySubnetCIDR, 16);
+  conf.Set<std::vector<uint32_t>>(DHCPv4Config::kConfigurationKeyRouters,
+                                  {0x02040608});
+  conf.Set<std::string>(DHCPv4Config::kConfigurationKeyClasslessStaticRoutes,
+                        "0.0.0.0/0 10.0.0.254 192.168.1.0/24 10.0.0.253");
+
+  net_base::NetworkConfig network_config;
+  DHCPv4Config::Data dhcp_data;
+  ASSERT_TRUE(DHCPv4Config::ParseConfiguration(
+      conf, &network_config, &dhcp_data, "wlan0 mock_service sid=0"));
+  EXPECT_EQ(*net_base::IPv4Address::CreateFromString("8.6.4.2"),
+            network_config.ipv4_gateway);
+  ASSERT_EQ(1, network_config.rfc3442_routes.size());
+  EXPECT_EQ(*net_base::IPv4CIDR::CreateFromStringAndPrefix("192.168.1.0", 24),
+            network_config.rfc3442_routes[0].first);
+  EXPECT_EQ(*net_base::IPv4Address::CreateFromString("10.0.0.253"),
+            network_config.rfc3442_routes[0].second);
 }
 
 TEST(DHCPv4ConfigTest, ParseConfigurationRespectingMinimumMTU) {

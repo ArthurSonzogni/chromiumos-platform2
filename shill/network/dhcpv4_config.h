@@ -69,8 +69,8 @@ class DHCPv4Config {
 
   // Parses |classless_routes| into |network_config|.  Sets the default gateway
   // if one is supplied and |network_config| does not already contain one. It
-  // also sets |network_config.rfc3442_routes| for all routes not converted into
-  // the default gateway.  Returns true on success, and false otherwise.
+  // also sets |network_config.rfc3442_routes| for all non-default routes.
+  // Returns true on success, and false otherwise.
   static bool ParseClasslessStaticRoutes(
       const std::string& classless_routes,
       net_base::NetworkConfig* network_config,

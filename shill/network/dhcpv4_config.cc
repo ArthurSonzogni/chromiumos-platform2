@@ -78,17 +78,26 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
       return false;
     }
 
-    if (destination->prefix_length() == 0 && !network_config->ipv4_gateway) {
-      // If a default route is provided in the classless parameters and
-      // we don't already have one, apply this as the default route.
-      SLOG(2) << logging_tag << " " << __func__
-              << ": Setting default gateway to " << gateway_as_string;
-      network_config->ipv4_gateway = gateway;
-    } else {
-      routes.emplace_back(std::make_pair(*destination, *gateway));
-      SLOG(2) << logging_tag << " " << __func__ << ": Adding route to to "
-              << destination_as_string << " via " << gateway_as_string;
+    if (destination->prefix_length() == 0) {
+      if (!network_config->ipv4_gateway) {
+        // If a default route is provided in the classless parameters and
+        // we don't already have one, apply this as the default route.
+        SLOG(2) << logging_tag << " " << __func__
+                << ": Setting default gateway to " << gateway_as_string;
+        network_config->ipv4_gateway = gateway;
+      } else if (*network_config->ipv4_gateway != *gateway) {
+        LOG(WARNING) << logging_tag << " " << __func__
+                     << ": Ignoring duplicate default route via "
+                     << gateway_as_string
+                     << " in classless static routes, default gateway is "
+                     << *network_config->ipv4_gateway;
+      }
+      continue;
     }
+
+    routes.emplace_back(std::make_pair(*destination, *gateway));
+    SLOG(2) << logging_tag << " " << __func__ << ": Adding route to "
+            << destination_as_string << " via " << gateway_as_string;
   }
 
   network_config->rfc3442_routes.swap(routes);
