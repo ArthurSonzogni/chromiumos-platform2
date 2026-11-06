@@ -46,7 +46,14 @@ fi
 set --
 
 # Test for existence to skip over wildcards that didn't match anything.
+# Match device power/wakeup files via /sys/devices/*, /sys/bus/*, and
+# /sys/class/* instead of walking /sys/devices/ with find; usb4_port devices
+# have neither bus nor class and live under their parent thunderbolt switch.
 for FILE in \
+    /sys/devices/*/power/wakeup \
+    /sys/bus/*/devices/*/power/wakeup \
+    /sys/bus/thunderbolt/devices/*/usb4_port*/power/wakeup \
+    /sys/class/*/*/power/wakeup \
     /sys/power/pm_test \
     /proc/acpi/wakeup \
     /sys/class/backlight/*/* \
@@ -64,11 +71,6 @@ done
 # NOTE: beware of byte size and argument limit for $@ in case
 # the size of iteration above grows too big.
 chown power:power "$@" || true
-
-# wakeup files that are used by powerd lives in nested directory,
-# use find to find all files and pass it to chown.
-find /sys/devices/ -path "*/power/wakeup" -print0 | \
-  xargs -0 chown power:power || true
 
 if [ -e "/sys/power/pm_print_times" ]; then
   echo 1 > /sys/power/pm_print_times
