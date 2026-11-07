@@ -14,6 +14,7 @@ rseq: 1
 # CDROM_LAST_WRITTEN = 0x5395
 # FS_IOC_FIEMAP = 0xc020660b
 # BLKGETZONESZ = 0x80041284
+# FICLONE = 0x40049409
 ioctl: arg1 == BLKALIGNOFF || arg1 == BLKDISCARD || \
        arg1 == BLKDISCARDZEROES || arg1 == BLKGETSIZE64 || \
        arg1 == BLKIOMIN || arg1 == BLKIOOPT || arg1 == BLKPBSZGET || \
@@ -25,7 +26,7 @@ ioctl: arg1 == BLKALIGNOFF || arg1 == BLKDISCARD || \
        arg1 == TIOCGWINSZ || arg1 == 0x1269 || arg1 == 0x5331 || \
        arg1 == 0x301 || arg1 == 0x80306d02 || arg1 == 0x5382 || \
        arg1 == 0x4c0a || arg1 == 0x5395 || arg1 == FDGETFDCSTAT || \
-       arg1 == 0xc020660b || arg1 == 0x80041284
+       arg1 == 0xc020660b || arg1 == 0x80041284 || arg1 == 0x40049409
 
 access: 1
 arch_prctl: 1
@@ -56,7 +57,9 @@ fadvise64: 1
 fallocate: 1
 fchdir: 1
 fchmod: 1
+fchmodat: 1
 fchown: 1
+fchownat: 1
 fcntl: 1
 fgetxattr: 1
 flistxattr: 1
@@ -94,6 +97,7 @@ lseek: 1
 lsetxattr: 1
 lstat: 1
 mkdir: 1
+mkdirat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL
 mseal: 1
@@ -114,8 +118,13 @@ prlimit64: 1
 pwrite64: 1
 read: 1
 readlink: 1
+readlinkat: 1
 recvmsg: 1
+rename: 1
+renameat: 1
+renameat2: 1
 restart_syscall: 1
+rmdir: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
