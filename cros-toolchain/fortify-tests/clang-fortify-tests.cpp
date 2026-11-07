@@ -389,8 +389,16 @@ void Tests::TestPoll() {
   struct pollfd invalid_poll_fd = {kBogusFD, 0, 0};
   {
     struct pollfd few_fds[] = {invalid_poll_fd, invalid_poll_fd};
+    // Clang 24+ emits built-in -Wfortify-source diagnostics for poll/ppoll
+    // (and recv/recvfrom below) in addition to glibc's diagnose_if warnings.
+#if __clang_major__ >= 24
+    // expected-warning@+3{{'poll' size argument is too large}}
+#endif
     // expected-warning@+1{{fds buffer too small}}
     EXPECT_DEATH(poll(few_fds, 3, 0));
+#if __clang_major__ >= 24
+    // expected-warning@+3{{'ppoll' size argument is too large}}
+#endif
     // expected-warning@+1{{fds buffer too small}}
     EXPECT_DEATH(ppoll(few_fds, 3, 0, 0));
   }
@@ -403,12 +411,18 @@ void Tests::TestPoll() {
     _Static_assert(sizeof(fds) >= sizeof(struct pollfd) * 3, "");
 
 #if _FORTIFY_SOURCE > 1
+#if __clang_major__ >= 24
+    // expected-warning@+4{{'poll' size argument is too large}}
+#endif
     // expected-warning@+2{{fds buffer too small}}
 #endif
     EXPECT_DEATH_STRUCT(poll(fds.few, 3, 0));
 
     struct timespec timeout = {};
 #if _FORTIFY_SOURCE > 1
+#if __clang_major__ >= 24
+    // expected-warning@+4{{'ppoll' size argument is too large}}
+#endif
     // expected-warning@+2{{fds buffer too small}}
 #endif
     EXPECT_DEATH_STRUCT(ppoll(fds.few, 3, &timeout, 0));
@@ -418,8 +432,14 @@ void Tests::TestPoll() {
 void Tests::TestSocket() {
   {
     char small_buffer[8];
+#if __clang_major__ >= 24
+    // expected-warning@+3{{'recv' size argument is too large}}
+#endif
     // expected-warning@+1{{bigger length than size of destination buffer}}
     EXPECT_DEATH(recv(kBogusFD, small_buffer, sizeof(small_buffer) + 1, 0));
+#if __clang_major__ >= 24
+    // expected-warning@+3{{'recvfrom' size argument is too large}}
+#endif
     // expected-warning@+1{{bigger length than size of destination buffer}}
     EXPECT_DEATH(
         recvfrom(kBogusFD, small_buffer, sizeof(small_buffer) + 1, 0, 0, 0));
