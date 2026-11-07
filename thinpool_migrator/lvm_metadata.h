@@ -5,6 +5,8 @@
 #ifndef THINPOOL_MIGRATOR_LVM_METADATA_H_
 #define THINPOOL_MIGRATOR_LVM_METADATA_H_
 
+#include <time.h>
+
 #include <map>
 #include <string>
 #include <vector>
