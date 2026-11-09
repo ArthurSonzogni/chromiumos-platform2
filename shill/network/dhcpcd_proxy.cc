@@ -91,10 +91,13 @@ std::vector<std::string> GetDhcpcdArgs(Technology technology,
                             });
   }
 
-  // Request hostname from server.
+  // Request hostname from server. Quote the hostname so that dhcpcd always
+  // parses it as a string instead of a hardware address when it only contains
+  // hex characters (b/579864384).
   if (!options.hostname.empty()) {
     args.insert(args.end(),
-                {"-h", redact_args ? "<redacted_hostname>" : options.hostname});
+                {"-h", redact_args ? "<redacted_hostname>"
+                                   : "\"" + options.hostname + "\""});
   }
 
   if (options.use_rfc_8925 && family == net_base::IPFamily::kIPv4) {
