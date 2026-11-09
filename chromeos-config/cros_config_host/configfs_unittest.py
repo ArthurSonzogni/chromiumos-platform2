@@ -147,6 +147,7 @@ class ConfigFSTests(unittest.TestCase):
     )
     def testConfigFsEquivalence(self, filename, config, output_dir):
         """Verify extracted SquashFS tree against expected configuration."""
+
         def _VerifyNode(node, path):
             if isinstance(node, dict):
                 self.assertTrue(os.path.isdir(path))
@@ -161,9 +162,59 @@ class ConfigFSTests(unittest.TestCase):
             else:
                 self.assertTrue(os.path.isfile(path))
                 self.assertEqual(oct(os.stat(path).st_mode & 0o777), "0o644")
-                self.assertEqual(Path(path).read_bytes(), configfs.Serialize(node))
+                self.assertEqual(
+                    Path(path).read_bytes(), configfs.Serialize(node)
+                )
 
         _VerifyNode(config, os.path.join(output_dir, "squashfs-root/v1"))
+
+    def testHardlinkDeduplication(self):
+        """Verify repeated leaf values across SKUs share hardlinked inodes."""
+        test_config = {
+            "chromeos": {
+                "configs": [
+                    {"name": "shared_model", "identity": {"sku-id": 1}},
+                    {"name": "shared_model", "identity": {"sku-id": 2}},
+                    {"name": "shared_model", "identity": {"sku-id": 3}},
+                ]
+            }
+        }
+        with tempfile.TemporaryDirectory(prefix="test_dedup.") as temp_dir:
+            img_path = os.path.join(temp_dir, "configfs.img")
+            configfs.GenerateConfigFSData(test_config, img_path)
+
+            stat_res = subprocess.run(
+                ["unsquashfs", "-s", img_path],
+                check=True,
+                stdout=subprocess.PIPE,
+                text=True,
+            )
+            self.assertIn("Compression zstd", stat_res.stdout)
+
+            extract_dir = os.path.join(temp_dir, "extracted")
+            subprocess.run(
+                ["unsquashfs", "-d", extract_dir, img_path],
+                check=True,
+                stdout=subprocess.PIPE,
+            )
+            name_paths = [
+                Path(extract_dir, f"v1/chromeos/configs/{idx}/name")
+                for idx in range(3)
+            ]
+            first_stat = os.lstat(name_paths[0])
+            for path in name_paths:
+                st = os.lstat(path)
+                self.assertFalse(os.path.islink(path))
+                self.assertEqual(st.st_mode & 0o777, 0o644)
+                self.assertEqual(path.read_bytes(), b"shared_model")
+                self.assertEqual(st.st_ino, first_stat.st_ino)
+            self.assertEqual(first_stat.st_nlink, 3)
+
+            sku0 = Path(extract_dir, "v1/chromeos/configs/0/identity/sku-id")
+            sku1 = Path(extract_dir, "v1/chromeos/configs/1/identity/sku-id")
+            self.assertEqual(sku0.read_bytes(), b"1")
+            self.assertEqual(sku1.read_bytes(), b"2")
+            self.assertNotEqual(os.lstat(sku0).st_ino, os.lstat(sku1).st_ino)
 
 
 if __name__ == "__main__":
