@@ -27,7 +27,6 @@ namespace thinpool_migrator {
 namespace {
 constexpr const char kThinpoolSuperblockMetadataPath[] = "/tmp/thinpool.xml";
 constexpr const char kVgcfgRestoreFile[] = "/tmp/vgcfgrestore.txt";
-constexpr const char kVpdSysfsPath[] = "/sys/firmware/vpd/rw";
 constexpr const char kMigrationStatusKey[] = "thinpool_migration_status";
 
 constexpr const uint64_t kPartitionHeaderSize = 1ULL * 1024 * 1024;
@@ -429,10 +428,6 @@ bool ThinpoolMigrator::DuplicateHeader(uint64_t from,
 }
 
 bool ThinpoolMigrator::EnableMigration() {
-  if (!IsVpdSupported()) {
-    return true;
-  }
-
   MigrationStatus status;
   status.set_state(MigrationStatus::NOT_STARTED);
   status.set_tries(5);
@@ -440,10 +435,6 @@ bool ThinpoolMigrator::EnableMigration() {
 }
 
 bool ThinpoolMigrator::CleanupState() {
-  if (!IsVpdSupported()) {
-    return true;
-  }
-
   return vpd_->DeleteKey(vpd::VpdRw, kMigrationStatusKey);
 }
 
@@ -452,10 +443,6 @@ bool ThinpoolMigrator::PersistMigrationStatus() {
 }
 
 bool ThinpoolMigrator::PersistStatus(MigrationStatus status) {
-  if (!IsVpdSupported()) {
-    return true;
-  }
-
   std::string serialized = status.SerializeAsString();
   auto base64_encoded = base::Base64Encode(serialized);
 
@@ -464,10 +451,6 @@ bool ThinpoolMigrator::PersistStatus(MigrationStatus status) {
 }
 
 bool ThinpoolMigrator::RetrieveMigrationStatus() {
-  if (!IsVpdSupported()) {
-    return true;
-  }
-
   auto encoded = vpd_->GetValue(vpd::VpdRw, kMigrationStatusKey);
   if (!encoded) {
     LOG(ERROR) << "Failed to retreive migration status";
@@ -553,16 +536,6 @@ bool ThinpoolMigrator::CheckFilesystemState() {
   }
 
   return true;
-}
-
-bool ThinpoolMigrator::IsVpdSupported() {
-  static bool is_vpd_supported = true;
-  if (is_vpd_supported && !base::PathExists(base::FilePath(kVpdSysfsPath))) {
-    LOG(WARNING) << "VPD not supported; falling back to initial state";
-    is_vpd_supported = false;
-  }
-
-  return is_vpd_supported;
 }
 
 }  // namespace thinpool_migrator

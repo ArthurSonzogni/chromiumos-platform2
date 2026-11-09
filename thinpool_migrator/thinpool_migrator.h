@@ -100,9 +100,6 @@ class BRILLO_EXPORT ThinpoolMigrator {
   bool CleanupState();
 
  protected:
-  // Checks if the device supports Vpd.
-  virtual bool IsVpdSupported();
-
   // ResizeStatefulFilesyste is used for making space for the thinpool's
   // metadata or for expanding the stateful filesystem iff the migration
   // fails for some reason.

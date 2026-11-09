@@ -50,7 +50,6 @@ class MockThinpoolMigrator : public ThinpoolMigrator {
               (uint64_t, uint64_t, uint64_t),
               (override));
 
-  MOCK_METHOD(bool, IsVpdSupported, (), (override));
 };
 
 class ThinpoolMigratorTest : public ::testing::Test {
@@ -70,15 +69,7 @@ class ThinpoolMigratorTest : public ::testing::Test {
 
 // Go through the possibilities of migration and ensure that the state machine
 // is consistent.
-TEST_F(ThinpoolMigratorTest, NoVpd) {
-  EXPECT_CALL(*m, IsVpdSupported()).WillRepeatedly(Return(false));
-
-  EXPECT_FALSE(m->Migrate(false, true));
-}
-
 TEST_F(ThinpoolMigratorTest, BasicSanity) {
-  EXPECT_CALL(*m, IsVpdSupported()).WillRepeatedly(Return(true));
-
   MigrationStatus s;
   s.set_tries(1);
   s.set_state(MigrationStatus::NOT_STARTED);
@@ -101,8 +92,6 @@ TEST_F(ThinpoolMigratorTest, BasicSanity) {
 }
 
 TEST_F(ThinpoolMigratorTest, FailedResize) {
-  EXPECT_CALL(*m, IsVpdSupported()).WillRepeatedly(Return(true));
-
   MigrationStatus s;
   s.set_tries(1);
   s.set_state(MigrationStatus::NOT_STARTED);
@@ -119,8 +108,6 @@ TEST_F(ThinpoolMigratorTest, FailedResize) {
 }
 
 TEST_F(ThinpoolMigratorTest, FailedHeaderCopy) {
-  EXPECT_CALL(*m, IsVpdSupported()).WillRepeatedly(Return(true));
-
   MigrationStatus s;
   s.set_tries(1);
   s.set_state(MigrationStatus::NOT_STARTED);
@@ -141,8 +128,6 @@ TEST_F(ThinpoolMigratorTest, FailedHeaderCopy) {
 }
 
 TEST_F(ThinpoolMigratorTest, FailedThinpoolMetadataPersist) {
-  EXPECT_CALL(*m, IsVpdSupported()).WillRepeatedly(Return(true));
-
   MigrationStatus s;
   s.set_tries(1);
   s.set_state(MigrationStatus::NOT_STARTED);
@@ -164,8 +149,6 @@ TEST_F(ThinpoolMigratorTest, FailedThinpoolMetadataPersist) {
 }
 
 TEST_F(ThinpoolMigratorTest, FailedPhysicalVolumeInitialization) {
-  EXPECT_CALL(*m, IsVpdSupported()).WillRepeatedly(Return(true));
-
   MigrationStatus s;
   s.set_tries(1);
   s.set_state(MigrationStatus::NOT_STARTED);
@@ -188,8 +171,6 @@ TEST_F(ThinpoolMigratorTest, FailedPhysicalVolumeInitialization) {
 }
 
 TEST_F(ThinpoolMigratorTest, FailedVolumeGroupInitialization) {
-  EXPECT_CALL(*m, IsVpdSupported()).WillRepeatedly(Return(true));
-
   MigrationStatus s;
   s.set_tries(1);
   s.set_state(MigrationStatus::NOT_STARTED);
@@ -213,8 +194,6 @@ TEST_F(ThinpoolMigratorTest, FailedVolumeGroupInitialization) {
 }
 
 TEST_F(ThinpoolMigratorTest, ZeroTries) {
-  EXPECT_CALL(*m, IsVpdSupported()).WillRepeatedly(Return(true));
-
   MigrationStatus s;
   s.set_tries(0);
   CHECK(m->PersistStatus(s));
@@ -225,8 +204,6 @@ TEST_F(ThinpoolMigratorTest, ZeroTries) {
 }
 
 TEST_F(ThinpoolMigratorTest, ZeroTries_RevertMigration) {
-  EXPECT_CALL(*m, IsVpdSupported()).WillRepeatedly(Return(true));
-
   MigrationStatus s;
   s.set_tries(0);
   s.set_state(MigrationStatus::THINPOOL_METADATA_PERSISTED);
@@ -242,8 +219,6 @@ TEST_F(ThinpoolMigratorTest, ZeroTries_RevertMigration) {
 }
 
 TEST_F(ThinpoolMigratorTest, LastTry_RevertMigration) {
-  EXPECT_CALL(*m, IsVpdSupported()).WillRepeatedly(Return(true));
-
   MigrationStatus s;
   s.set_tries(1);
   s.set_state(MigrationStatus::THINPOOL_METADATA_PERSISTED);
@@ -262,8 +237,6 @@ TEST_F(ThinpoolMigratorTest, LastTry_RevertMigration) {
 }
 
 TEST_F(ThinpoolMigratorTest, ResumeInterruptedMigration) {
-  EXPECT_CALL(*m, IsVpdSupported()).WillRepeatedly(Return(true));
-
   MigrationStatus s;
   s.set_tries(2);
   s.set_state(MigrationStatus::FILESYSTEM_RESIZED);
