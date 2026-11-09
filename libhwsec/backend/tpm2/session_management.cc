@@ -34,17 +34,16 @@ Status SessionManagementTpm2::FlushInvalidSessions() {
 
 StatusOr<std::reference_wrapper<trunks::HmacSession>>
 SessionManagementTpm2::GetOrCreateHmacSession(SessionSecuritySetting setting) {
-  auto [iter, new_insert] = hmac_sessions_.insert({setting, nullptr});
-  if (!new_insert && iter->second != nullptr) {
+  auto iter = hmac_sessions_.find(setting);
+  if (iter != hmac_sessions_.end() && iter->second != nullptr) {
     // The session already exists.
     // Reset the entity authorization value.
     iter->second->SetEntityAuthorizationValue("");
     return *iter->second;
   }
 
-  std::unique_ptr<trunks::HmacSession>& hmac_session = iter->second;
-
-  hmac_session = context_.GetTrunksFactory().GetHmacSession();
+  std::unique_ptr<trunks::HmacSession> hmac_session =
+      context_.GetTrunksFactory().GetHmacSession();
 
   SessionSecurityDetail detail = ToSessionSecurityDetail(setting);
 
@@ -54,7 +53,9 @@ SessionManagementTpm2::GetOrCreateHmacSession(SessionSecuritySetting setting) {
 
   hmac_session->SetEntityAuthorizationValue("");
 
-  return *hmac_session;
+  trunks::HmacSession& session = *hmac_session;
+  hmac_sessions_[setting] = std::move(hmac_session);
+  return session;
 }
 
 }  // namespace hwsec

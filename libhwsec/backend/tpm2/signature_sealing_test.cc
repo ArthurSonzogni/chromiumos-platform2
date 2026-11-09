@@ -16,12 +16,15 @@
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
+#include <trunks/error_codes.h>
 #include <trunks/mock_authorization_delegate.h>
+#include <trunks/mock_hmac_session.h>
 #include <trunks/mock_policy_session.h>
 #include <trunks/mock_tpm_state.h>
 #include <trunks/mock_tpm_utility.h>
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
+#include "libhwsec/middleware/middleware.h"
 #include "libhwsec/structures/signature_sealed_data_test_utils.h"
 
 using hwsec_foundation::error::testing::IsOk;
@@ -41,6 +44,9 @@ namespace hwsec {
 namespace {
 
 using Algorithm = Backend::SignatureSealing::Algorithm;
+
+constexpr trunks::TPM_RC kRmHandleError =
+    trunks::TPM_RC_HANDLE | trunks::kResourceManagerTpmErrorBase;
 
 bool GenerateRsaKey(int key_size_bits,
                     crypto::ScopedEVP_PKEY* pkey,
@@ -565,6 +571,482 @@ TEST_F(BackendSignatureSealingTpm2Test, UnsealWrongData) {
       backend_->GetSignatureSealingTpm2().Unseal(
           challenge_id, brillo::BlobFromString(fake_challenge_response_)),
       NotOk());
+}
+
+TEST_F(BackendSignatureSealingTpm2Test,
+       UnsealPassesNullDelegateWithoutStartingHmacSession) {
+  // Construct |sealed_data| directly instead of calling SetupSealing(), which
+  // starts an HMAC session during Seal().
+  SignatureSealedData sealed_data = Tpm2PolicySignedData{
+      .public_key_spki_der = public_key_spki_der_,
+      .srk_wrapped_secret = brillo::BlobFromString(trunks_sealed_data_),
+      .scheme = trunks::TPM_ALG_RSASSA,
+      .hash_alg = trunks::TPM_ALG_SHA256,
+      .pcr_policy_digests =
+          {
+              Tpm2PolicyDigest{.digest =
+                                   brillo::BlobFromString(fake_digests1_)},
+              Tpm2PolicyDigest{.digest =
+                                   brillo::BlobFromString(fake_digests2_)},
+          },
+  };
+
+  EXPECT_CALL(proxy_->GetMockHmacSession(), StartUnboundSession(_, _)).Times(0);
+
+  StatusOr<Backend::SignatureSealing::ChallengeResult> challenge_result =
+      SetupChallenge(sealed_data);
+  ASSERT_OK(challenge_result);
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyName(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(fake_key_name_),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(
+      proxy_->GetMockPolicySession(),
+      PolicySigned(_, fake_key_name_, fake_tpm_nonce_, _, _, _, _, nullptr))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDigest(_))
+      .WillOnce(DoAll(SetArgPointee<0>(fake_digests3_),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  trunks::MockAuthorizationDelegate unseal_delegate;
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDelegate())
+      .WillOnce(Return(&unseal_delegate));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              UnsealData(trunks_sealed_data_, &unseal_delegate, _))
+      .WillOnce(DoAll(SetArgPointee<2>(unsealed_data_.to_string()),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  Middleware middleware(middleware_owner_->Derive());
+  EXPECT_THAT(middleware.CallSync<&Backend::SignatureSealing::Unseal>(
+                  challenge_result->challenge_id,
+                  brillo::BlobFromString(fake_challenge_response_)),
+              IsOkAndHolds(unsealed_data_));
+}
+
+TEST_F(BackendSignatureSealingTpm2Test, ChallengeDropsPriorActiveChallenge) {
+  StatusOr<SignatureSealedData> seal_result = SetupSealing();
+  ASSERT_OK(seal_result);
+
+  StatusOr<Backend::SignatureSealing::ChallengeResult> challenge_result1 =
+      SetupChallenge(seal_result.value());
+  ASSERT_OK(challenge_result1);
+
+  // Case 1: If starting the new policy session fails in a subsequent
+  // Challenge(), the prior challenge was already dropped before starting the
+  // session, and Middleware stops with kLater after flushing SetupSealing()'s
+  // cached HMAC session once.
+  EXPECT_CALL(proxy_->GetMockHmacSession(), StartUnboundSession(_, _)).Times(0);
+  EXPECT_CALL(proxy_->GetMockPolicySession(), StartUnboundSession(true, false))
+      .Times(2)
+      .WillRepeatedly(Return(kRmHandleError));
+
+  Middleware middleware(middleware_owner_->Derive());
+  StatusOr<Backend::SignatureSealing::ChallengeResult> failed_challenge =
+      middleware.CallSync<&Backend::SignatureSealing::Challenge>(
+          operation_policy_, seal_result.value(), public_key_spki_der_,
+          key_algorithms_);
+  ASSERT_NOT_OK(failed_challenge);
+  EXPECT_EQ(failed_challenge.err_status()->ToTPMRetryAction(),
+            TPMRetryAction::kLater);
+
+  StatusOr<brillo::SecureBlob> stale_unseal =
+      backend_->GetSignatureSealingTpm2().Unseal(
+          challenge_result1->challenge_id,
+          brillo::BlobFromString(fake_challenge_response_));
+  ASSERT_NOT_OK(stale_unseal);
+  EXPECT_EQ(stale_unseal.err_status()->ToTPMRetryAction(),
+            TPMRetryAction::kNoRetry);
+
+  // Case 2: When a challenge is active and a subsequent Challenge() succeeds,
+  // the previous challenge ID is superseded and the new challenge ID unseals.
+  StatusOr<Backend::SignatureSealing::ChallengeResult> challenge_a =
+      SetupChallenge(seal_result.value());
+  ASSERT_OK(challenge_a);
+
+  StatusOr<Backend::SignatureSealing::ChallengeResult> challenge_b =
+      SetupChallenge(seal_result.value());
+  ASSERT_OK(challenge_b);
+  ASSERT_NE(challenge_a->challenge_id, challenge_b->challenge_id);
+
+  StatusOr<brillo::SecureBlob> superseded_unseal =
+      backend_->GetSignatureSealingTpm2().Unseal(
+          challenge_a->challenge_id,
+          brillo::BlobFromString(fake_challenge_response_));
+  ASSERT_NOT_OK(superseded_unseal);
+  EXPECT_EQ(superseded_unseal.err_status()->ToTPMRetryAction(),
+            TPMRetryAction::kNoRetry);
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyName(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(fake_key_name_),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(
+      proxy_->GetMockPolicySession(),
+      PolicySigned(_, fake_key_name_, fake_tpm_nonce_, _, _, _, _, nullptr))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDigest(_))
+      .WillOnce(DoAll(SetArgPointee<0>(fake_digests3_),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  trunks::MockAuthorizationDelegate delegate;
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDelegate())
+      .WillOnce(Return(&delegate));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              UnsealData(trunks_sealed_data_, &delegate, _))
+      .WillOnce(DoAll(SetArgPointee<2>(unsealed_data_.to_string()),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_THAT(middleware.CallSync<&Backend::SignatureSealing::Unseal>(
+                  challenge_b->challenge_id,
+                  brillo::BlobFromString(fake_challenge_response_)),
+              IsOkAndHolds(unsealed_data_));
+}
+
+TEST_F(BackendSignatureSealingTpm2Test,
+       UnsealDropsLostChallengeSessionAndPreservesRetryAction) {
+  StatusOr<SignatureSealedData> seal_result = SetupSealing();
+  ASSERT_OK(seal_result);
+
+  StatusOr<Backend::SignatureSealing::ChallengeResult> challenge_result =
+      SetupChallenge(seal_result.value());
+  ASSERT_OK(challenge_result);
+
+  // Even though SetupSealing() left a cached HMAC session in
+  // SessionManagementTpm2, a lost challenge policy session (0xb08b) in
+  // PolicySigned drops the challenge and flushes cached HMAC sessions
+  // immediately so Middleware returns kLater on the first attempt instead of
+  // re-entering Unseal() and returning kNoRetry ("No valid challenge data").
+  EXPECT_CALL(proxy_->GetMockHmacSession(), StartUnboundSession(_, _)).Times(0);
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyName(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(fake_key_name_),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(
+      proxy_->GetMockPolicySession(),
+      PolicySigned(_, fake_key_name_, fake_tpm_nonce_, _, _, _, _, nullptr))
+      .WillOnce(Return(kRmHandleError));
+
+  Middleware middleware(middleware_owner_->Derive());
+  StatusOr<brillo::SecureBlob> unseal_result =
+      middleware.CallSync<&Backend::SignatureSealing::Unseal>(
+          challenge_result->challenge_id,
+          brillo::BlobFromString(fake_challenge_response_));
+  ASSERT_NOT_OK(unseal_result);
+  EXPECT_EQ(unseal_result.err_status()->ToTPMRetryAction(),
+            TPMRetryAction::kLater);
+  EXPECT_THAT(backend_->GetSessionManagementTpm2().FlushInvalidSessions(),
+              NotOk());
+
+  StatusOr<brillo::SecureBlob> evicted_retry =
+      backend_->GetSignatureSealingTpm2().Unseal(
+          challenge_result->challenge_id,
+          brillo::BlobFromString(fake_challenge_response_));
+  ASSERT_NOT_OK(evicted_retry);
+  EXPECT_EQ(evicted_retry.err_status()->ToTPMRetryAction(),
+            TPMRetryAction::kNoRetry);
+
+  // Subsequent Challenge() + Unseal() round-trip recovers cleanly.
+  StatusOr<Backend::SignatureSealing::ChallengeResult> retry_challenge =
+      SetupChallenge(seal_result.value());
+  ASSERT_OK(retry_challenge);
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyName(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(fake_key_name_),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(
+      proxy_->GetMockPolicySession(),
+      PolicySigned(_, fake_key_name_, fake_tpm_nonce_, _, _, _, _, nullptr))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDigest(_))
+      .WillOnce(DoAll(SetArgPointee<0>(fake_digests3_),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  trunks::MockAuthorizationDelegate delegate;
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDelegate())
+      .WillOnce(Return(&delegate));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              UnsealData(trunks_sealed_data_, &delegate, _))
+      .WillOnce(DoAll(SetArgPointee<2>(unsealed_data_.to_string()),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_THAT(middleware.CallSync<&Backend::SignatureSealing::Unseal>(
+                  retry_challenge->challenge_id,
+                  brillo::BlobFromString(fake_challenge_response_)),
+              IsOkAndHolds(unsealed_data_));
+}
+
+TEST_F(BackendSignatureSealingTpm2Test, UnsealOnTransientRetryError) {
+  StatusOr<SignatureSealedData> seal_result = SetupSealing();
+  ASSERT_OK(seal_result);
+
+  // Case 1: Transient TPM_RC_RETRY (0x922) in PolicySigned does not mean the
+  // challenge session is gone; the challenge survives and succeeds on in-place
+  // retry. TPMRetryHandler retries kLater only if FlushInvalidSessions()
+  // succeeds, which here relies on the HMAC session cached by SetupSealing().
+  StatusOr<Backend::SignatureSealing::ChallengeResult> challenge_result1 =
+      SetupChallenge(seal_result.value());
+  ASSERT_OK(challenge_result1);
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyName(_, _))
+      .Times(2)
+      .WillRepeatedly(DoAll(SetArgPointee<1>(fake_key_name_),
+                            Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(
+      proxy_->GetMockPolicySession(),
+      PolicySigned(_, fake_key_name_, fake_tpm_nonce_, _, _, _, _, nullptr))
+      .WillOnce(Return(trunks::TPM_RC_RETRY))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDigest(_))
+      .WillOnce(DoAll(SetArgPointee<0>(fake_digests3_),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  trunks::MockAuthorizationDelegate delegate1;
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDelegate())
+      .WillOnce(Return(&delegate1));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              UnsealData(trunks_sealed_data_, &delegate1, _))
+      .WillOnce(DoAll(SetArgPointee<2>(unsealed_data_.to_string()),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  Middleware middleware(middleware_owner_->Derive());
+  EXPECT_THAT(middleware.CallSync<&Backend::SignatureSealing::Unseal>(
+                  challenge_result1->challenge_id,
+                  brillo::BlobFromString(fake_challenge_response_)),
+              IsOkAndHolds(unsealed_data_));
+
+  // Case 2: Transient TPM_RC_RETRY in GetDigest after PolicySigned succeeded
+  // keeps the already-extended challenge session and succeeds on in-place retry
+  // without re-applying PolicySigned.
+  EXPECT_CALL(proxy_->GetMockHmacSession(), StartUnboundSession(true, true))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  ASSERT_THAT(backend_->GetSessionManagementTpm2().GetOrCreateHmacSession(
+                  SessionSecuritySetting::kSaltAndEncrypted),
+              IsOk());
+
+  StatusOr<Backend::SignatureSealing::ChallengeResult> challenge_result2 =
+      SetupChallenge(seal_result.value());
+  ASSERT_OK(challenge_result2);
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyName(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(fake_key_name_),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(
+      proxy_->GetMockPolicySession(),
+      PolicySigned(_, fake_key_name_, fake_tpm_nonce_, _, _, _, _, nullptr))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDigest(_))
+      .WillOnce(Return(trunks::TPM_RC_RETRY))
+      .WillOnce(DoAll(SetArgPointee<0>(fake_digests3_),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  trunks::MockAuthorizationDelegate delegate2;
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDelegate())
+      .WillOnce(Return(&delegate2));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              UnsealData(trunks_sealed_data_, &delegate2, _))
+      .WillOnce(DoAll(SetArgPointee<2>(unsealed_data_.to_string()),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_THAT(middleware.CallSync<&Backend::SignatureSealing::Unseal>(
+                  challenge_result2->challenge_id,
+                  brillo::BlobFromString(fake_challenge_response_)),
+              IsOkAndHolds(unsealed_data_));
+}
+
+TEST_F(BackendSignatureSealingTpm2Test,
+       UnsealPostPolicySignedCommunicationRetryAndResponseMismatch) {
+  StatusOr<SignatureSealedData> seal_result = SetupSealing();
+  ASSERT_OK(seal_result);
+
+  StatusOr<Backend::SignatureSealing::ChallengeResult> challenge_result =
+      SetupChallenge(seal_result.value());
+  ASSERT_OK(challenge_result);
+
+  // If UnsealData fails once with a communication error after PolicySigned has
+  // already succeeded, TPMRetryHandler retries without calling PolicySigned a
+  // second time on the already-extended policy session.
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyName(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(fake_key_name_),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(
+      proxy_->GetMockPolicySession(),
+      PolicySigned(_, fake_key_name_, fake_tpm_nonce_, _, _, _, _, nullptr))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDigest(_))
+      .Times(2)
+      .WillRepeatedly(DoAll(SetArgPointee<0>(fake_digests3_),
+                            Return(trunks::TPM_RC_SUCCESS)));
+  trunks::MockAuthorizationDelegate delegate;
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDelegate())
+      .Times(2)
+      .WillRepeatedly(Return(&delegate));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              UnsealData(trunks_sealed_data_, &delegate, _))
+      .WillOnce(Return(trunks::SAPI_RC_NO_RESPONSE_RECEIVED))
+      .WillOnce(DoAll(SetArgPointee<2>(unsealed_data_.to_string()),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  Middleware middleware(middleware_owner_->Derive());
+  EXPECT_THAT(middleware.CallSync<&Backend::SignatureSealing::Unseal>(
+                  challenge_result->challenge_id,
+                  brillo::BlobFromString(fake_challenge_response_)),
+              IsOkAndHolds(unsealed_data_));
+
+  // If GetDigest fails with a communication error after PolicySigned has
+  // already succeeded, a subsequent Unseal() carrying a different
+  // challenge_response must be rejected rather than skipping PolicySigned.
+  StatusOr<Backend::SignatureSealing::ChallengeResult> challenge_result2 =
+      SetupChallenge(seal_result.value());
+  ASSERT_OK(challenge_result2);
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyName(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(fake_key_name_),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(
+      proxy_->GetMockPolicySession(),
+      PolicySigned(_, fake_key_name_, fake_tpm_nonce_, _, _, _, _, nullptr))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDigest(_))
+      .WillOnce(Return(trunks::SAPI_RC_NO_RESPONSE_RECEIVED));
+
+  StatusOr<brillo::SecureBlob> comm_fail =
+      backend_->GetSignatureSealingTpm2().Unseal(
+          challenge_result2->challenge_id,
+          brillo::BlobFromString(fake_challenge_response_));
+  ASSERT_NOT_OK(comm_fail);
+  EXPECT_EQ(comm_fail.err_status()->ToTPMRetryAction(),
+            TPMRetryAction::kCommunication);
+
+  StatusOr<brillo::SecureBlob> mismatch_unseal =
+      backend_->GetSignatureSealingTpm2().Unseal(
+          challenge_result2->challenge_id,
+          brillo::BlobFromString("different challenge response"));
+  ASSERT_NOT_OK(mismatch_unseal);
+  EXPECT_EQ(mismatch_unseal.err_status()->ToTPMRetryAction(),
+            TPMRetryAction::kNoRetry);
+  StatusOr<brillo::SecureBlob> cleared_after_mismatch =
+      backend_->GetSignatureSealingTpm2().Unseal(
+          challenge_result2->challenge_id,
+          brillo::BlobFromString(fake_challenge_response_));
+  ASSERT_NOT_OK(cleared_after_mismatch);
+  EXPECT_EQ(cleared_after_mismatch.err_status()->ToTPMRetryAction(),
+            TPMRetryAction::kNoRetry);
+}
+
+TEST_F(BackendSignatureSealingTpm2Test,
+       UnsealStopsRetryingOnPostPolicySignedErrors) {
+  StatusOr<SignatureSealedData> seal_result = SetupSealing();
+  ASSERT_OK(seal_result);
+
+  // Case 1: GetDigest fails with kRmHandleError (kLater) -> drops challenge and
+  // cached HMAC sessions immediately without retrying.
+  StatusOr<Backend::SignatureSealing::ChallengeResult> challenge_result1 =
+      SetupChallenge(seal_result.value());
+  ASSERT_OK(challenge_result1);
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyName(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(fake_key_name_),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(
+      proxy_->GetMockPolicySession(),
+      PolicySigned(_, fake_key_name_, fake_tpm_nonce_, _, _, _, _, nullptr))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDigest(_))
+      .WillOnce(Return(kRmHandleError));
+
+  Middleware middleware(middleware_owner_->Derive());
+  StatusOr<brillo::SecureBlob> unseal_result1 =
+      middleware.CallSync<&Backend::SignatureSealing::Unseal>(
+          challenge_result1->challenge_id,
+          brillo::BlobFromString(fake_challenge_response_));
+  ASSERT_NOT_OK(unseal_result1);
+  EXPECT_EQ(unseal_result1.err_status()->ToTPMRetryAction(),
+            TPMRetryAction::kLater);
+  EXPECT_THAT(backend_->GetSessionManagementTpm2().FlushInvalidSessions(),
+              NotOk());
+  StatusOr<brillo::SecureBlob> cleared_check1 =
+      backend_->GetSignatureSealingTpm2().Unseal(
+          challenge_result1->challenge_id,
+          brillo::BlobFromString(fake_challenge_response_));
+  ASSERT_NOT_OK(cleared_check1);
+  EXPECT_EQ(cleared_check1.err_status()->ToTPMRetryAction(),
+            TPMRetryAction::kNoRetry);
+
+  // Case 2: UnsealData fails with TPM_RC_REFERENCE_S0 (kSession) -> drops
+  // challenge and cached HMAC sessions immediately and preserves kSession.
+  EXPECT_CALL(proxy_->GetMockHmacSession(), StartUnboundSession(true, true))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  ASSERT_THAT(backend_->GetSessionManagementTpm2().GetOrCreateHmacSession(
+                  SessionSecuritySetting::kSaltAndEncrypted),
+              IsOk());
+  StatusOr<Backend::SignatureSealing::ChallengeResult> challenge_result2 =
+      SetupChallenge(seal_result.value());
+  ASSERT_OK(challenge_result2);
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyName(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(fake_key_name_),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(
+      proxy_->GetMockPolicySession(),
+      PolicySigned(_, fake_key_name_, fake_tpm_nonce_, _, _, _, _, nullptr))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDigest(_))
+      .WillOnce(DoAll(SetArgPointee<0>(fake_digests3_),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  trunks::MockAuthorizationDelegate delegate2;
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDelegate())
+      .WillOnce(Return(&delegate2));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              UnsealData(trunks_sealed_data_, &delegate2, _))
+      .WillOnce(Return(trunks::TPM_RC_REFERENCE_S0));
+
+  StatusOr<brillo::SecureBlob> unseal_result2 =
+      middleware.CallSync<&Backend::SignatureSealing::Unseal>(
+          challenge_result2->challenge_id,
+          brillo::BlobFromString(fake_challenge_response_));
+  ASSERT_NOT_OK(unseal_result2);
+  EXPECT_EQ(unseal_result2.err_status()->ToTPMRetryAction(),
+            TPMRetryAction::kSession);
+  EXPECT_THAT(backend_->GetSessionManagementTpm2().FlushInvalidSessions(),
+              NotOk());
+  StatusOr<brillo::SecureBlob> cleared_check2 =
+      backend_->GetSignatureSealingTpm2().Unseal(
+          challenge_result2->challenge_id,
+          brillo::BlobFromString(fake_challenge_response_));
+  ASSERT_NOT_OK(cleared_check2);
+  EXPECT_EQ(cleared_check2.err_status()->ToTPMRetryAction(),
+            TPMRetryAction::kNoRetry);
+
+  // Case 3: UnsealData fails with TPM_RC_POLICY_FAIL (kNoRetry) -> drops the
+  // consumed challenge policy session immediately.
+  StatusOr<Backend::SignatureSealing::ChallengeResult> challenge_result3 =
+      SetupChallenge(seal_result.value());
+  ASSERT_OK(challenge_result3);
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyName(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(fake_key_name_),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(
+      proxy_->GetMockPolicySession(),
+      PolicySigned(_, fake_key_name_, fake_tpm_nonce_, _, _, _, _, nullptr))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDigest(_))
+      .WillOnce(DoAll(SetArgPointee<0>(fake_digests3_),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  trunks::MockAuthorizationDelegate delegate3;
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDelegate())
+      .WillOnce(Return(&delegate3));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              UnsealData(trunks_sealed_data_, &delegate3, _))
+      .WillOnce(Return(trunks::TPM_RC_POLICY_FAIL));
+
+  StatusOr<brillo::SecureBlob> unseal_result3 =
+      middleware.CallSync<&Backend::SignatureSealing::Unseal>(
+          challenge_result3->challenge_id,
+          brillo::BlobFromString(fake_challenge_response_));
+  ASSERT_NOT_OK(unseal_result3);
+  EXPECT_EQ(unseal_result3.err_status()->ToTPMRetryAction(),
+            TPMRetryAction::kNoRetry);
+  StatusOr<brillo::SecureBlob> cleared_check3 =
+      backend_->GetSignatureSealingTpm2().Unseal(
+          challenge_result3->challenge_id,
+          brillo::BlobFromString(fake_challenge_response_));
+  ASSERT_NOT_OK(cleared_check3);
+  EXPECT_EQ(cleared_check3.err_status()->ToTPMRetryAction(),
+            TPMRetryAction::kNoRetry);
 }
 
 }  // namespace hwsec

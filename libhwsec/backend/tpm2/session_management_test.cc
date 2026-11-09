@@ -2,15 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libhwsec/backend/tpm2/session_management.h"
+
 #include <memory>
 #include <utility>
 
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <trunks/error_codes.h>
 #include <trunks/mock_hmac_session.h>
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
-#include "libhwsec/backend/tpm2/session_management.h"
 
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::error::testing::NotOk;
@@ -81,6 +83,24 @@ TEST_F(BackendSessionManagementTpm2Test, GetOrCreateHmacSessionAndFlush) {
   auto result6 = backend_->GetSessionManagementTpm2().GetOrCreateHmacSession(
       SessionSecuritySetting::kEncrypted);
   EXPECT_THAT(result6, IsOk());
+}
+
+TEST_F(BackendSessionManagementTpm2Test, GetOrCreateHmacSessionStartFailure) {
+  EXPECT_CALL(proxy_->GetMockHmacSession(), StartUnboundSession(true, true))
+      .WillOnce(Return(trunks::SAPI_RC_NO_RESPONSE_RECEIVED))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+
+  EXPECT_THAT(backend_->GetSessionManagementTpm2().GetOrCreateHmacSession(
+                  SessionSecuritySetting::kSaltAndEncrypted),
+              NotOk());
+  EXPECT_THAT(backend_->GetSessionManagementTpm2().FlushInvalidSessions(),
+              NotOk());
+
+  EXPECT_THAT(backend_->GetSessionManagementTpm2().GetOrCreateHmacSession(
+                  SessionSecuritySetting::kSaltAndEncrypted),
+              IsOk());
+  EXPECT_THAT(backend_->GetSessionManagementTpm2().FlushInvalidSessions(),
+              IsOk());
 }
 
 }  // namespace hwsec

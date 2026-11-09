@@ -56,6 +56,7 @@ class SignatureSealingTpm2 : public SignatureSealing {
     trunks::TPM_ALG_ID hash_alg;
     std::unique_ptr<trunks::PolicySession> session;
     std::string session_nonce;
+    std::optional<brillo::Blob> authorized_challenge_response;
   };
 
   TrunksContext& context_;

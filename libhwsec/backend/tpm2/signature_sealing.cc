@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <utility>
 
 #include <base/functional/callback_helpers.h>
@@ -15,6 +16,7 @@
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <openssl/sha.h>
+#include <trunks/error_codes.h>
 #include <trunks/tpm_utility.h>
 
 #include "libhwsec/error/tpm2_error.h"
@@ -106,6 +108,19 @@ StatusOr<AlgorithmDetail> ChooseAlgorithm(
 
   return MakeStatus<TPMError>("No supported signature algorithm",
                               TPMRetryAction::kNoRetry);
+}
+
+// Returns whether |rc| means the challenge policy session no longer exists.
+// trunksd's ResourceManager rejects a session handle it no longer tracks with
+// TPM_RC_HANDLE in its own error layer (see
+// ResourceManager::EnsureSessionIsLoaded() and ParseCommand()). The TPM itself
+// reports an unloaded session as TPM_RC_REFERENCE_S0..S6 when it authorizes a
+// command (UnsealData). As a handle (PolicySigned, PolicyGetDigest) it would be
+// TPM_RC_REFERENCE_H0..H6 instead; those are not matched and stay kLater.
+bool IsChallengeSessionLost(TPM_RC rc) {
+  return rc == trunks::kResourceManagerTpmErrorBase + trunks::TPM_RC_HANDLE ||
+         (rc >= trunks::TPM_RC_REFERENCE_S0 &&
+          rc <= trunks::TPM_RC_REFERENCE_S6);
 }
 
 }  // namespace
@@ -309,6 +324,10 @@ StatusOr<SignatureSealingTpm2::ChallengeResult> SignatureSealingTpm2::Challenge(
     pcr_policy_digests.push_back(BlobToString(digest.digest));
   }
 
+  // Drop any previous active challenge before starting a new policy session so
+  // its session handle is released first.
+  current_challenge_data_ = std::nullopt;
+
   // Start a policy session that will be used for obtaining the TPM nonce and
   // unsealing the secret value.
   ASSIGN_OR_RETURN(std::unique_ptr<trunks::PolicySession> session,
@@ -355,63 +374,125 @@ StatusOr<brillo::SecureBlob> SignatureSealingTpm2::Unseal(
                                 TPMRetryAction::kNoRetry);
   }
 
-  const InternalChallengeData& challenge_data = current_challenge_data_.value();
+  InternalChallengeData& challenge_data = current_challenge_data_.value();
 
   if (challenge != challenge_data.challenge_id) {
     return MakeStatus<TPMError>("Challenge ID mismatch",
                                 TPMRetryAction::kNoRetry);
   }
 
-  // Start a TPM authorization session.
-  ASSIGN_OR_RETURN(trunks::HmacSession & hmac_session,
-                   session_management_.GetOrCreateHmacSession(
-                       SessionSecuritySetting::kSaltAndEncrypted),
-                   _.WithStatus<TPMError>("Failed to start hmac session"));
+  // If PolicySigned already succeeded on an earlier retryable attempt, reject
+  // and drop the active challenge if a caller tries to reuse the extended
+  // session with a different signature.
+  if (challenge_data.authorized_challenge_response.has_value() &&
+      challenge_data.authorized_challenge_response.value() !=
+          challenge_response) {
+    current_challenge_data_ = std::nullopt;
+    return MakeStatus<TPMError>("Challenge response mismatch",
+                                TPMRetryAction::kNoRetry);
+  }
 
-  // Load the protection public key onto the TPM.
-  ASSIGN_OR_RETURN(ScopedKey key,
-                   key_management_.LoadPublicKeyFromSpki(
-                       challenge_data.public_key_spki_der,
-                       challenge_data.scheme, challenge_data.hash_alg),
-                   _.WithStatus<TPMError>("Failed to load protection key"));
+  // Once the challenge policy session itself is lost, Unseal() cannot recover
+  // in place because challenge_response is signed over that session's nonce.
+  // Clear current_challenge_data_ (invalidating |challenge_data|, so callers
+  // must return immediately) and flush any cached HMAC sessions left by earlier
+  // operations (e.g. Seal()) so TPMRetryHandler stops immediately and returns
+  // kSession/kLater to the caller instead of re-entering Unseal() and failing
+  // with "No valid challenge data" (kNoRetry).
+  auto drop_lost_challenge_session = [this]() {
+    current_challenge_data_ = std::nullopt;
+    std::ignore = session_management_.FlushInvalidSessions();
+  };
 
-  ASSIGN_OR_RETURN(const KeyTpm2& key_data,
-                   key_management_.GetKeyData(key.GetKey()));
+  // Skip re-applying PolicySigned on in-place retries once the policy session
+  // digest has already been extended by PolicySigned with the same
+  // challenge_response; applying PolicySigned twice to the same policy session
+  // would hash TPM_CC_PolicySigned a second time and fail TPM2_Unseal with
+  // TPM_RC_POLICY_FAIL.
+  if (!challenge_data.authorized_challenge_response.has_value()) {
+    // Load the protection public key onto the TPM.
+    ASSIGN_OR_RETURN(ScopedKey key,
+                     key_management_.LoadPublicKeyFromSpki(
+                         challenge_data.public_key_spki_der,
+                         challenge_data.scheme, challenge_data.hash_alg),
+                     _.WithStatus<TPMError>("Failed to load protection key"));
 
-  std::string key_name;
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context_.GetTpmUtility().GetKeyName(
-                      key_data.key_handle, &key_name)))
-      .WithStatus<TPMError>("Failed to get key name");
+    ASSIGN_OR_RETURN(const KeyTpm2& key_data,
+                     key_management_.GetKeyData(key.GetKey()));
 
-  // Update the policy with the signature.
-  trunks::TPMT_SIGNATURE signature;
-  memset(&signature, 0, sizeof(trunks::TPMT_SIGNATURE));
-  signature.sig_alg = challenge_data.scheme;
-  signature.signature.rsassa.hash = challenge_data.hash_alg;
-  signature.signature.rsassa.sig =
-      trunks::Make_TPM2B_PUBLIC_KEY_RSA(BlobToString(challenge_response));
+    std::string key_name;
+    RETURN_IF_ERROR(MakeStatus<TPM2Error>(context_.GetTpmUtility().GetKeyName(
+                        key_data.key_handle, &key_name)))
+        .WithStatus<TPMError>("Failed to get key name");
 
-  RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(challenge_data.session->PolicySigned(
-          key_data.key_handle, key_name, challenge_data.session_nonce,
-          /*cp_hash=*/std::string(), /*policy_ref=*/std::string(),
-          /*expiration=*/0, signature, hmac_session.GetDelegate())))
-      .WithStatus<TPMError>(
-          "Failed to restrict policy to signature with the public key");
+    // TPM2_PolicySigned has no authorization role on either handle, and neither
+    // nonceTPM nor the returned timeout is secret, so no HMAC session is needed
+    // here. Not starting one avoids creating a new TPM session between
+    // Challenge() and Unseal() that could evict the challenge policy session.
+    trunks::TPMT_SIGNATURE signature;
+    memset(&signature, 0, sizeof(trunks::TPMT_SIGNATURE));
+    signature.sig_alg = challenge_data.scheme;
+    signature.signature.rsassa.hash = challenge_data.hash_alg;
+    signature.signature.rsassa.sig =
+        trunks::Make_TPM2B_PUBLIC_KEY_RSA(BlobToString(challenge_response));
+
+    if (TPM_RC rc = challenge_data.session->PolicySigned(
+            key_data.key_handle, key_name, challenge_data.session_nonce,
+            /*cp_hash=*/std::string(), /*policy_ref=*/std::string(),
+            /*expiration=*/0, signature, /*delegate=*/nullptr);
+        rc != TPM_RC_SUCCESS) {
+      if (IsChallengeSessionLost(rc)) {
+        drop_lost_challenge_session();
+      }
+      return MakeStatus<TPMError>(
+                 "Failed to restrict policy to signature with the public key")
+          .Wrap(MakeStatus<TPM2Error>(rc));
+    }
+
+    challenge_data.authorized_challenge_response = challenge_response;
+  }
+
+  // Once PolicySigned has extended |challenge_data.session|, keep the session
+  // alive for transient errors (kCommunication, or non-loss kLater/kSession
+  // such as TPM_RC_RETRY) and drop the consumed session on lost-session or
+  // non-retryable errors. TPMRetryHandler retries kLater/kSession in place only
+  // if FlushInvalidSessions() succeeds (Unseal() has no Key argument to
+  // reload); otherwise the error goes back to cryptohome, whose next
+  // Challenge() drops this one.
+  auto handle_post_policy_signed_error = [this, &drop_lost_challenge_session](
+                                             TPM_RC rc, TPMRetryAction action) {
+    if (IsChallengeSessionLost(rc)) {
+      drop_lost_challenge_session();
+      return;
+    }
+    if (action != TPMRetryAction::kCommunication &&
+        action != TPMRetryAction::kLater &&
+        action != TPMRetryAction::kSession) {
+      current_challenge_data_ = std::nullopt;
+    }
+  };
 
   // Obtain the resulting policy digest.
   std::string policy_digest;
-  RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(challenge_data.session->GetDigest(&policy_digest)))
-      .WithStatus<TPMError>("Failed to get policy digest");
+  if (TPM_RC rc = challenge_data.session->GetDigest(&policy_digest);
+      rc != TPM_RC_SUCCESS) {
+    Status status = MakeStatus<TPM2Error>(rc);
+    handle_post_policy_signed_error(rc, status->ToTPMRetryAction());
+    return MakeStatus<TPMError>("Failed to get policy digest")
+        .Wrap(std::move(status));
+  }
 
   // Unseal the secret value.
   std::string unsealed_value_string;
-  RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context_.GetTpmUtility().UnsealData(
+  if (TPM_RC rc = context_.GetTpmUtility().UnsealData(
           BlobToString(challenge_data.srk_wrapped_secret),
-          challenge_data.session->GetDelegate(), &unsealed_value_string)))
-      .WithStatus<TPMError>("Failed to seal secret data");
+          challenge_data.session->GetDelegate(), &unsealed_value_string);
+      rc != TPM_RC_SUCCESS) {
+    Status status = MakeStatus<TPM2Error>(rc);
+    handle_post_policy_signed_error(rc, status->ToTPMRetryAction());
+    return MakeStatus<TPMError>("Failed to unseal secret data")
+        .Wrap(std::move(status));
+  }
 
   // Unseal succeeded, remove the internal data.
   current_challenge_data_ = std::nullopt;
