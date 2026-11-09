@@ -39,6 +39,10 @@
 
 class InstallAttributesReader;
 
+namespace arc {
+class UpgradeArcContainerRequest;
+}  // namespace arc
+
 namespace dbus {
 class Bus;
 class Error;
@@ -54,6 +58,7 @@ class NssUtil;
 class PolicyDescriptor;
 class PolicyKey;
 class ProcessManagerServiceInterface;
+class StartArcMiniContainerRequest;
 class SystemUtils;
 class UserPolicyServiceFactory;
 class VpdProcess;
@@ -71,7 +76,8 @@ constexpr bool __attribute__((unused)) IsolateUserSession() {
 class SessionManagerImpl
     : public SessionManagerInterface,
       public PolicyService::Delegate,
-      public org::chromium::SessionManagerInterfaceInterface {
+      public org::chromium::SessionManagerInterfaceInterface,
+      public ArcManagerProxy::Observer {
  public:
   enum class RestartJobMode : uint32_t {
     kGuest = 0,
@@ -298,6 +304,15 @@ class SessionManagerImpl
 
   bool InitMachineInfo(brillo::ErrorPtr* error,
                        const std::string& in_data) override;
+  bool StartArcMiniContainer(brillo::ErrorPtr* error,
+                             const std::vector<uint8_t>& in_request) override;
+  bool UpgradeArcContainer(brillo::ErrorPtr* error,
+                           const std::vector<uint8_t>& in_request) override;
+  bool StopArcInstance(brillo::ErrorPtr* error,
+                       const std::string& account_id,
+                       bool should_backup_log) override;
+  bool SetArcCpuRestriction(brillo::ErrorPtr* error,
+                            uint32_t in_restriction_state) override;
   bool EmitArcBooted(brillo::ErrorPtr* error,
                      const std::string& in_account_id) override;
   bool GetArcStartTimeTicks(brillo::ErrorPtr* error,
@@ -308,6 +323,9 @@ class SessionManagerImpl
   void QueryAdbSideload(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
       override;
+
+  // Sends arc-instance-stopped signal.
+  void OnArcInstanceStopped(uint32_t value) override;
 
   // PolicyService::Delegate implementation:
   void OnPolicyPersisted(bool success) override;
@@ -398,6 +416,7 @@ class SessionManagerImpl
   std::unique_ptr<InitDaemonController> init_controller_;
 
   base::TimeDelta system_clock_last_sync_info_retry_delay_;
+  base::TimeTicks arc_start_time_;
 
   std::unique_ptr<base::TickClock> tick_clock_;
   scoped_refptr<dbus::Bus> bus_;
@@ -424,6 +443,8 @@ class SessionManagerImpl
 
   // Owned by SessionManagerService. Maybe nullptr in tests.
   const raw_ptr<ArcManagerProxy> arc_manager_;
+  base::ScopedObservation<ArcManagerProxy, ArcManagerProxy::Observer>
+      arc_observation_{this};
 
   // Callbacks passed to RequestServerBackedStateKeys() while
   // |system_clock_synchronized_| was false. They will be run by

@@ -56,18 +56,22 @@
 #include <libpasswordprovider/password.h>
 #include <libpasswordprovider/password_provider.h>
 
+#include "arc/arc.pb.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "dbus/login_manager/dbus-constants.h"
 #include "libpasswordprovider/fake_password_provider.h"
+#include "login_manager/arc_manager.h"
 #include "login_manager/blob_util.h"
 #include "login_manager/dbus_test_util.h"
 #include "login_manager/dbus_util.h"
 #include "login_manager/device_local_account_manager.h"
+#include "login_manager/fake_container_manager.h"
 #include "login_manager/fake_secret_util.h"
 #include "login_manager/fake_system_utils.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/matchers.h"
+#include "login_manager/mock_arc_sideload_status.h"
 #include "login_manager/mock_device_identifier_generator.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
@@ -585,6 +589,7 @@ class SessionManagerImplTest : public ::testing::Test,
 
   static const pid_t kFakePid;
   static const char kNothing[];
+  static const char kContainerInstanceId[];
 
  private:
   // Returns a response for the given method call. Used to implement
@@ -1057,8 +1062,8 @@ TEST_F(SessionManagerImplTest, GetStateKeysWithTimeQuantumIndex_TimeSync) {
 
   ResponseCapturer capturer;
   impl_->GetStateKeysWithTimeQuantumIndex(
-      capturer
-          .CreateMethodResponse<std::vector<std::vector<uint8_t>>, int64_t>());
+      capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>,
+                                    int64_t>());
   ASSERT_NO_FATAL_FAILURE(GotLastSyncInfo(true));
 }
 
@@ -1066,8 +1071,8 @@ TEST_F(SessionManagerImplTest, GetStateKeysWithTimeQuantumIndex_NoTimeSync) {
   EXPECT_CALL(device_identifier_generator_, RequestStateKeys(_)).Times(0);
   ResponseCapturer capturer;
   impl_->GetStateKeysWithTimeQuantumIndex(
-      capturer
-          .CreateMethodResponse<std::vector<std::vector<uint8_t>>, int64_t>());
+      capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>,
+                                    int64_t>());
 }
 
 TEST_F(SessionManagerImplTest, GetPsmDeviceActiveSecretSuccess) {

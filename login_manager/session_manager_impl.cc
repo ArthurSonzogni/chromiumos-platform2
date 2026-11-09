@@ -407,8 +407,9 @@ class SessionManagerImpl::DBusService {
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           std::vector<std::vector<uint8_t>>,
           int64_t>> response) {
-    return base::BindOnce(&DBusService::HandleStateKeyWithQuantumIndexCallback,
-                          weak_ptr_factory_.GetWeakPtr(), std::move(response));
+    return base::BindOnce(
+        &DBusService::HandleStateKeyWithQuantumIndexCallback,
+        weak_ptr_factory_.GetWeakPtr(), std::move(response));
   }
 
   // Adaptor for DBusMethodResponse to
@@ -552,6 +553,9 @@ SessionManagerImpl::SessionManagerImpl(
           std::make_unique<secret_util::SharedMemoryUtil>())),
       weak_ptr_factory_(this) {
   DCHECK(delegate_);
+  if (arc_manager_) {
+    arc_observation_.Observe(arc_manager_.get());
+  }
 }
 
 SessionManagerImpl::~SessionManagerImpl() {
@@ -1447,17 +1451,35 @@ bool SessionManagerImpl::InitMachineInfo(brillo::ErrorPtr* error,
   return true;
 }
 
+bool SessionManagerImpl::StartArcMiniContainer(
+    brillo::ErrorPtr* error, const std::vector<uint8_t>& in_request) {
+  return arc_manager_->StartArcMiniContainer(error, in_request);
+}
+
+bool SessionManagerImpl::UpgradeArcContainer(
+    brillo::ErrorPtr* error, const std::vector<uint8_t>& in_request) {
+  return arc_manager_->UpgradeArcContainer(error, in_request);
+}
+
+bool SessionManagerImpl::StopArcInstance(brillo::ErrorPtr* error,
+                                         const std::string& account_id,
+                                         bool should_backup_log) {
+  return arc_manager_->StopArcInstance(error, account_id, should_backup_log);
+}
+
+bool SessionManagerImpl::SetArcCpuRestriction(brillo::ErrorPtr* error,
+                                              uint32_t in_restriction_state) {
+  return arc_manager_->SetArcCpuRestriction(error, in_restriction_state);
+}
+
 bool SessionManagerImpl::EmitArcBooted(brillo::ErrorPtr* error,
                                        const std::string& in_account_id) {
   return arc_manager_->EmitArcBooted(error, in_account_id);
 }
 
-// TODO(b/578795076): Remove once crash-reporter drops GetArcContainerUptime.
 bool SessionManagerImpl::GetArcStartTimeTicks(brillo::ErrorPtr* error,
                                               int64_t* out_start_time) {
-  *error =
-      CreateError(dbus_error::kNotAvailable, "ARC container not supported.");
-  return false;
+  return arc_manager_->GetArcStartTimeTicks(error, out_start_time);
 }
 
 void SessionManagerImpl::EnableAdbSideload(
@@ -1619,6 +1641,10 @@ void SessionManagerImpl::RestartDevice(const std::string& reason) {
 
 bool SessionManagerImpl::IsSessionStarted() {
   return !user_sessions_.empty();
+}
+
+void SessionManagerImpl::OnArcInstanceStopped(uint32_t value) {
+  adaptor_.SendArcInstanceStoppedSignal(value);
 }
 
 }  // namespace login_manager

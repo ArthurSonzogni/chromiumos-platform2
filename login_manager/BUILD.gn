@@ -39,6 +39,7 @@ pkg_config("target_defaults") {
     "dbus-1",
     "libbrillo",
     "libchrome",
+    "libcontainer",
     "libcros_config",
     "libcrossystem",
     "libmetrics",
@@ -96,6 +97,7 @@ generate_dbus_proxies("arc_manager-proxies") {
 
 static_library("libsession_manager") {
   sources = [
+    "android_oci_wrapper.cc",
     "arc_dlc_hardware_filter_helper.cc",
     "arc_dlc_hardware_filter_impl.cc",
     "arc_dlc_platform_info_impl.cc",
@@ -106,6 +108,7 @@ static_library("libsession_manager") {
     "chrome_features_service_client.cc",
     "chrome_setup.cc",
     "chromium_command_builder.cc",
+    "container_manager_interface.cc",
     "cumulative_use_time_metric.cc",
     "dbus_util.cc",
     "device_identifier_generator.cc",
@@ -163,7 +166,10 @@ static_library("libsession_manager") {
 executable("session_manager") {
   sources = [ "session_manager_main.cc" ]
   configs += [ ":target_defaults" ]
-  libs = [ "rootdev" ]
+  libs = [
+    "rootdev",
+    "container",
+  ]
   deps = [ ":libsession_manager" ]
 
   # See the comment at "keygen".
@@ -174,6 +180,7 @@ executable("session_manager") {
 executable("arc_manager") {
   sources = [ "arc_manager_main.cc" ]
   configs += [ ":target_defaults" ]
+  libs = [ "container" ]
   deps = [ ":libsession_manager" ]
 
   # See the comment at "keygen".
@@ -253,6 +260,7 @@ if (use.test) {
   }
   executable("session_manager_test") {
     sources = [
+      "android_oci_wrapper_test.cc",
       "arc_dlc_hardware_filter_helper_test.cc",
       "arc_dlc_hardware_filter_impl_test.cc",
       "arc_manager_test.cc",
@@ -265,6 +273,7 @@ if (use.test) {
       "device_policy_service_test.cc",
       "fake_browser_job.cc",
       "fake_child_process.cc",
+      "fake_container_manager.cc",
       "fake_secret_util.cc",
       "fake_system_utils.cc",
       "feature_flags_util_test.cc",

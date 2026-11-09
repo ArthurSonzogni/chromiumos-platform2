@@ -280,7 +280,8 @@ bool SessionManagerService::Initialize() {
 #if USE_DBUS_ARC_MANAGER
   arc_manager_proxy_ = std::make_unique<ArcManagerProxyDBus>(bus_);
 #else
-  arc_manager_ = std::make_unique<ArcManager>(*system_utils_, bus_);
+  arc_manager_ = std::make_unique<ArcManager>(*system_utils_, *login_metrics_,
+                                              process_reaper_, bus_);
   arc_manager_->Initialize();
   CHECK(arc_manager_->StartDBusService())
       << "Unable to start " << arc_manager::kArcManagerServiceName
@@ -544,7 +545,15 @@ void SessionManagerService::HandleBrowserExit(const siginfo_t& status) {
   }
   browser_->ClearPid();
 
-  // Ensure ARCVM and related Upstart jobs are stopped (b/290194650).
+  // Ensure ARC containers are gone.
+  if (arc_manager_proxy_) {
+    // Note: in tests, arc_manager_proxy_ is not set up.
+    arc_manager_proxy_->RequestJobExit(
+        static_cast<uint32_t>(ArcContainerStopReason::BROWSER_SHUTDOWN));
+    arc_manager_proxy_->EnsureJobExit(
+        ArcManager::kContainerTimeout.InMilliseconds());
+    // Ensure ARCVM and related Upstart jobs are stopped (b/290194650).
+  }
   MaybeStopArcVm();
 
   // Note: in tests, arc_manager_proxy_ is not set up.
@@ -819,9 +828,22 @@ void SessionManagerService::CleanupChildrenBeforeExit(ExitCode code) {
 
   const base::TimeTicks browser_exit_start_time = base::TimeTicks::Now();
   browser_->Kill(SIGTERM, reason);
+  if (arc_manager_proxy_) {
+    // In test, arc_manager_ is nullptr.
+    arc_manager_proxy_->RequestJobExit(static_cast<uint32_t>(
+        code == ExitCode::SUCCESS
+            ? ArcContainerStopReason::SESSION_MANAGER_SHUTDOWN
+            : ArcContainerStopReason::BROWSER_SHUTDOWN));
+  }
   const base::TimeDelta browser_timeout = GetKillTimeout();
   DLOG(INFO) << "Waiting up to " << browser_timeout.InSeconds()
              << " seconds for browser process group to exit";
+
+  // We're going to wait several times for various processes to exit, but we
+  // want those timeouts to be running in parallel. That is, if we end up
+  // waiting 5 seconds for the browser to stop, we should reduce the later
+  // timeouts by that time.
+  const base::TimeTicks timeout_start = base::TimeTicks::Now();
 
   if (!browser_->WaitForExit(browser_timeout)) {
     LOG(WARNING) << "Browser process did not exit "
@@ -833,6 +855,14 @@ void SessionManagerService::CleanupChildrenBeforeExit(ExitCode code) {
     // Only record shutdown time for normal exit.
     login_metrics_->SendBrowserShutdownTime(base::TimeTicks::Now() -
                                             browser_exit_start_time);
+  }
+
+  if (arc_manager_proxy_) {
+    // In test, arc_manager_proxy_ is nullptr.
+    arc_manager_proxy_->EnsureJobExit(
+        std::max(int64_t{0}, (ArcManager::kContainerTimeout -
+                              (base::TimeTicks::Now() - timeout_start))
+                                 .InMilliseconds()));
   }
 }
 
