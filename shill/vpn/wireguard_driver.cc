@@ -4,10 +4,9 @@
 
 #include "shill/vpn/wireguard_driver.h"
 
-#include <poll.h>
-
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <iterator>
 #include <memory>
 #include <optional>
@@ -18,9 +17,7 @@
 #include <vector>
 
 #include <base/base64.h>
-#include <base/files/file_util.h>
 #include <base/functional/bind.h>
-#include <base/functional/callback_helpers.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
@@ -37,6 +34,8 @@
 #include <chromeos/net-base/ipv6_address.h>
 #include <chromeos/net-base/network_config.h>
 #include <chromeos/net-base/process_manager.h>
+#include <crypto/scoped_openssl_types.h>
+#include <openssl/evp.h>
 
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -129,67 +128,41 @@ std::string GenerateBase64PrivateKey() {
   return base::Base64Encode(base::span<uint8_t>(key, kWgKeyLength));
 }
 
-// Invokes wireguard-tools to calculates the public key based on the given
-// private key. Returns an empty string on error. Note that the call to
-// wireguard-tools is blocking but with a timeout (kPollTimeout below).
-std::string CalculateBase64PublicKey(
-    const std::string& base64_private_key,
-    net_base::ProcessManager* process_manager) {
-  constexpr auto kPollTimeout = base::Seconds(1);
-
-  constexpr uint64_t kCapMask = 0;
-  int stdin_fd = -1;
-  int stdout_fd = -1;
-  pid_t pid = process_manager->StartProcessInMinijailWithPipes(
-      FROM_HERE, base::FilePath(kWireGuardToolsPath), {"pubkey"},
-      /*environment=*/{}, VPNUtil::BuildMinijailOptions(kCapMask),
-      /*exit_callback=*/base::DoNothing(),
-      {.stdin_fd = &stdin_fd, .stdout_fd = &stdout_fd});
-  if (pid == -1) {
-    LOG(ERROR) << "Failed to run 'wireguard-tools pubkey'";
+// Calculates the Curve25519 (X25519) public key based on the given
+// base64-encoded private key. Returns an empty string on error.
+std::string CalculateBase64PublicKey(std::string_view base64_private_key) {
+  if (base64_private_key.size() != kWgBase64KeyLength) {
+    LOG(ERROR) << "Invalid base64 private key length";
+    return "";
+  }
+  const std::optional<std::vector<uint8_t>> private_key =
+      base::Base64Decode(base64_private_key);
+  // A 32-byte key in 44-char base64 has 2 unused bits before the '=' padding
+  // that Base64Decode ignores; re-encoding ensures canonical base64 (zero
+  // trailing bits) to match wg's strict key parser.
+  if (!private_key || private_key->size() != kWgKeyLength ||
+      base::Base64Encode(*private_key) != base64_private_key) {
+    LOG(ERROR) << "Invalid base64 private key";
     return "";
   }
 
-  base::ScopedFD scoped_stdin(stdin_fd);
-  base::ScopedFD scoped_stdout(stdout_fd);
-
-  if (!base::WriteFileDescriptor(scoped_stdin.get(), base64_private_key)) {
-    LOG(ERROR) << "Failed to send private key to wireguard-tools";
-    process_manager->StopProcess(pid);
-    return "";
-  }
-  scoped_stdin.reset();
-
-  struct pollfd pollfds[] = {{
-      .fd = scoped_stdout.get(),
-      .events = POLLIN,
-  }};
-  int ret = poll(pollfds, 1, kPollTimeout.InMilliseconds());
-  if (ret == -1) {
-    PLOG(ERROR) << "poll() failed";
-    process_manager->StopProcess(pid);
-    return "";
-  } else if (ret == 0) {
-    LOG(ERROR) << "poll() timeout";
-    process_manager->StopProcess(pid);
+  crypto::ScopedEVP_PKEY pkey(EVP_PKEY_new_raw_private_key(
+      EVP_PKEY_X25519, nullptr, private_key->data(), private_key->size()));
+  if (!pkey) {
+    LOG(ERROR) << "Failed to create X25519 EVP_PKEY from private key";
     return "";
   }
 
-  char buf[kWgBase64KeyLength];
-  ssize_t read_cnt =
-      HANDLE_EINTR(read(scoped_stdout.get(), buf, size_t{kWgBase64KeyLength}));
-  if (read_cnt == -1) {
-    PLOG(ERROR) << "read() failed";
-    process_manager->StopProcess(pid);
-    return "";
-  } else if (read_cnt != kWgBase64KeyLength) {
-    LOG(ERROR) << "Failed to read enough chars for a public key. read_cnt="
-               << read_cnt;
-    process_manager->StopProcess(pid);
+  uint8_t public_key[kWgKeyLength];
+  size_t public_key_len = kWgKeyLength;
+  if (EVP_PKEY_get_raw_public_key(pkey.get(), public_key, &public_key_len) !=
+          1 ||
+      public_key_len != kWgKeyLength) {
+    LOG(ERROR) << "Failed to derive X25519 public key";
     return "";
   }
 
-  return std::string{buf, std::string::size_type{kWgBase64KeyLength}};
+  return base::Base64Encode(public_key);
 }
 
 // Checks if the input string value for a property contains any invalid
@@ -398,8 +371,7 @@ bool WireGuardDriver::Save(StoreInterface* storage,
     key_pair_source_ = Metrics::kVpnWireGuardKeyPairSourceUserInput;
   }
   if (private_key != saved_private_key_) {
-    std::string public_key =
-        CalculateBase64PublicKey(private_key, process_manager());
+    std::string public_key = CalculateBase64PublicKey(private_key);
     if (public_key.empty()) {
       LOG(ERROR) << "Failed to calculate public key in Save().";
       return false;

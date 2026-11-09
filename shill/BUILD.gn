@@ -106,6 +106,7 @@ pkg_config("target_defaults") {
     "libnet-base",
     "libpatchpanel-client",
     "mojo_service_manager",
+    "openssl",
     "re2",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear

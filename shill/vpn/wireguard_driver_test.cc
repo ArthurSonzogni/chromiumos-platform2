@@ -69,9 +69,11 @@ constexpr pid_t kWireGuardToolsPid = 12346;
 constexpr char kIfName[] = "wg0";
 constexpr int kIfIndex = 123;
 
-// Randomly generated key for testing.
+// Randomly generated keys and their corresponding Curve25519 public keys.
 constexpr char kPrivateKey1[] = "gOL/kVF88Mdr7rVM2Fz91UgyAW4L8iYogU/M+9hlKmM=";
+constexpr char kPublicKey1[] = "ZrTtBx+5NLVyS2KWfr4W53+RCnCL5seegKvXP8a7v0U=";
 constexpr char kPrivateKey2[] = "wARBVZOPBWo7OoyHLfv2mDgFxYJ3S6uc9lIOpRiGqVI=";
+constexpr char kPublicKey2[] = "iUDT5e9XYvd5aqYSYt1ARRbyD37M/ZaYjTne8cF1o0c=";
 
 // Consistent with the properties set in
 // WireGuardDriverTest::InitializePropertyStore().
@@ -115,7 +117,6 @@ class WireGuardDriverTest : public testing::Test {
  public:
   WireGuardDriverTest() : manager_(&control_, &dispatcher_, &metrics_) {
     ResetDriver();
-    SetFakeKeyGenerator();
   }
 
  protected:
@@ -150,37 +151,6 @@ class WireGuardDriverTest : public testing::Test {
              {kWireGuardPeerAllowedIPs, "fd00:0:0:0:1::/128,fd00:0:0:2::/64"}},
         },
         &err);
-  }
-
-  // Whenever the driver asks for calculating a public key, just echoes the
-  // input back.
-  // TODO(jiejiang): Consider returning a different key to avoid missing the
-  // failure that keys are misused.
-  void SetFakeKeyGenerator() {
-    EXPECT_CALL(
-        process_manager_,
-        StartProcessInMinijailWithPipes(
-            _, base::FilePath("/usr/bin/wg"),
-            std::vector<std::string>{"pubkey"}, _,
-            AllOf(
-                net_base::MinijailOptionsMatchUserGroup("vpn", "vpn"),
-                net_base::MinijailOptionsMatchCapMask(0u),
-                net_base::MinijailOptionsMatchInheritSupplementaryGroup(true)),
-            _, _))
-        .WillRepeatedly([](const base::Location&, const base::FilePath&,
-                           const std::vector<std::string>&,
-                           const std::map<std::string, std::string>&,
-                           const net_base::ProcessManager::MinijailOptions&,
-                           base::OnceCallback<void(int)>,
-                           struct net_base::std_file_descriptors std_fds) {
-          CHECK(std_fds.stdin_fd);
-          CHECK(std_fds.stdout_fd);
-          int echo_pipe[2];
-          CHECK_EQ(pipe(echo_pipe), 0);
-          *std_fds.stdin_fd = echo_pipe[1];
-          *std_fds.stdout_fd = echo_pipe[0];
-          return 0;
-        });
   }
 
   void InvokeConnectAsyncKernel() {
@@ -585,24 +555,43 @@ TEST_F(WireGuardDriverTest, KeyPairGeneration) {
     ASSERT_FALSE(provider.Get<std::string>(kWireGuardPublicKey).empty());
   };
 
-  driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
+  EXPECT_TRUE(driver_->Save(&fake_store_, kStorageId,
+                            /*save_credentials=*/true));
   assert_pubkey_not_empty();
 
   ResetDriver();
-  driver_->Load(&fake_store_, kStorageId);
+  EXPECT_TRUE(driver_->Load(&fake_store_, kStorageId));
   assert_pubkey_not_empty();
 
   property_store_->SetStringProperty(kWireGuardPrivateKey, kPrivateKey1, &err);
-  driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
-  assert_pubkey_is(kPrivateKey1);
+  EXPECT_TRUE(driver_->Save(&fake_store_, kStorageId,
+                            /*save_credentials=*/true));
+  assert_pubkey_is(kPublicKey1);
 
   property_store_->SetStringProperty(kWireGuardPrivateKey, "", &err);
-  driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
+  EXPECT_TRUE(driver_->Save(&fake_store_, kStorageId,
+                            /*save_credentials=*/true));
   assert_pubkey_not_empty();
 
   property_store_->SetStringProperty(kWireGuardPrivateKey, kPrivateKey2, &err);
-  driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
-  assert_pubkey_is(kPrivateKey2);
+  EXPECT_TRUE(driver_->Save(&fake_store_, kStorageId,
+                            /*save_credentials=*/true));
+  assert_pubkey_is(kPublicKey2);
+
+  // Invalid base64 private keys (wrong length, non-base64 characters, wrong
+  // decoded byte length, or non-canonical trailing padding bits) should cause
+  // Save() to fail without overwriting the previously calculated public key.
+  for (const char* invalid_key : {
+           "invalid-key",
+           "gOL/kVF88Mdr7rVM2Fz91UgyAW4L8iYogU/M+9hlKm?=",
+           "gOL/kVF88Mdr7rVM2Fz91UgyAW4L8iYogU/M+9hlKg==",
+           "gOL/kVF88Mdr7rVM2Fz91UgyAW4L8iYogU/M+9hlKmN=",
+       }) {
+    property_store_->SetStringProperty(kWireGuardPrivateKey, invalid_key, &err);
+    EXPECT_FALSE(driver_->Save(&fake_store_, kStorageId,
+                               /*save_credentials=*/true));
+    assert_pubkey_is(kPublicKey2);
+  }
 }
 
 // Checks interface cleanup on timeout.
