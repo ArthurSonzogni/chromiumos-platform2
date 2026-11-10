@@ -7,6 +7,7 @@
 #include <net/if.h>
 #include <sys/socket.h>
 // NOLINTNEXTLINE(build/include_alpha)
+#include <linux/neighbour.h>
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
 #include <linux/rtnetlink.h>
 #include <sys/ioctl.h>
@@ -18,8 +19,8 @@
 #include <utility>
 
 #include <base/functional/bind.h>
-#include <base/test/test_future.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <gtest/gtest.h>
 
 #include "net-base/byte_utils.h"
@@ -575,6 +576,46 @@ TEST_F(RTNLHandlerTest, AddInterfaceTest) {
   ReturnError(kSequenceNumber, kErrorNumber);
 
   EXPECT_EQ(error_future.Get(), kErrorNumber);
+
+  StopRTNLHandler();
+}
+
+TEST_F(RTNLHandlerTest, ProbeNeighbor) {
+  StartRTNLHandler();
+
+  std::vector<uint8_t> msg_bytes;
+  EXPECT_CALL(*GetMockSocket(), Send(_, 0))
+      .Times(2)
+      .WillRepeatedly([&](base::span<const uint8_t> buf, int /*flags*/) {
+        msg_bytes = {std::begin(buf), std::end(buf)};
+        return buf.size();
+      });
+
+  const IPAddress kIPv4Addr = *IPAddress::CreateFromString("192.168.1.1");
+  EXPECT_TRUE(
+      RTNLHandler::GetInstance()->ProbeNeighbor(kTestDeviceIndex, kIPv4Addr));
+  auto sent_msg = RTNLMessage::Decode(msg_bytes);
+  ASSERT_NE(sent_msg, nullptr);
+  EXPECT_EQ(sent_msg->type(), RTNLMessage::kTypeNeighbor);
+  EXPECT_EQ(sent_msg->mode(), RTNLMessage::kModeAdd);
+  EXPECT_EQ(sent_msg->flags(), NLM_F_REQUEST | NLM_F_REPLACE);
+  EXPECT_EQ(sent_msg->interface_index(), kTestDeviceIndex);
+  EXPECT_EQ(sent_msg->family(), AF_INET);
+  EXPECT_EQ(sent_msg->neighbor_status().state, NUD_PROBE);
+  EXPECT_EQ(sent_msg->GetAttribute(NDA_DST), kIPv4Addr.ToBytes());
+
+  const IPAddress kIPv6Addr = *IPAddress::CreateFromString("fe80::1");
+  EXPECT_TRUE(
+      RTNLHandler::GetInstance()->ProbeNeighbor(kTestDeviceIndex, kIPv6Addr));
+  sent_msg = RTNLMessage::Decode(msg_bytes);
+  ASSERT_NE(sent_msg, nullptr);
+  EXPECT_EQ(sent_msg->type(), RTNLMessage::kTypeNeighbor);
+  EXPECT_EQ(sent_msg->mode(), RTNLMessage::kModeAdd);
+  EXPECT_EQ(sent_msg->flags(), NLM_F_REQUEST | NLM_F_REPLACE);
+  EXPECT_EQ(sent_msg->interface_index(), kTestDeviceIndex);
+  EXPECT_EQ(sent_msg->family(), AF_INET6);
+  EXPECT_EQ(sent_msg->neighbor_status().state, NUD_PROBE);
+  EXPECT_EQ(sent_msg->GetAttribute(NDA_DST), kIPv6Addr.ToBytes());
 
   StopRTNLHandler();
 }

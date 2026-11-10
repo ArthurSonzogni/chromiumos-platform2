@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <linux/neighbour.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <net/if.h>
@@ -494,6 +495,18 @@ bool RTNLHandler::AddInterface(const std::string& interface_name,
     response_callbacks_[seq] = std::move(response_callback);
   }
   return true;
+}
+
+bool RTNLHandler::ProbeNeighbor(int interface_index, const IPAddress& ip_addr) {
+  auto msg = std::make_unique<RTNLMessage>(
+      RTNLMessage::kTypeNeighbor, RTNLMessage::kModeAdd,
+      NLM_F_REQUEST | NLM_F_REPLACE, /*seq=*/0, /*pid=*/0, interface_index,
+      ToSAFamily(ip_addr.GetFamily()));
+  // We don't need to set |ndm_flags| and |ndm_type| for this message.
+  msg->set_neighbor_status(
+      RTNLMessage::NeighborStatus(NUD_PROBE, /*ndm_flags=*/0, /*ndm_type=*/0));
+  msg->SetAttribute(NDA_DST, ip_addr.ToBytes());
+  return SendMessage(std::move(msg), /*msg_seq=*/nullptr);
 }
 
 bool RTNLHandler::SendMessage(std::unique_ptr<RTNLMessage> message,

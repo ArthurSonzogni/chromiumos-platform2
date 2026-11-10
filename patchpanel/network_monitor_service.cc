@@ -247,7 +247,10 @@ void NeighborLinkMonitor::ProbeAll() {
       LOG(INFO) << "Has an unknown entry on " << ifname_ << " with "
                 << entry.ToString();
     } else if (NeedProbeForState(entry.nud_state)) {
-      SendNeighborProbeRTNLMessage(entry);
+      if (!rtnl_handler_->ProbeNeighbor(ifindex_, entry.addr)) {
+        LOG(WARNING) << "Failed to send neighbor probe message for "
+                     << entry.ToString() << " on " << ifname_;
+      }
     }
   }
 
@@ -268,25 +271,6 @@ void NeighborLinkMonitor::SendNeighborDumpRTNLMessage() {
   // from kernel here. We may need to serialize the DUMP requests.
   if (!rtnl_handler_->SendMessage(std::move(msg), /*msg_seq=*/nullptr)) {
     LOG(WARNING) << "Failed to send neighbor dump message for on " << ifname_;
-  }
-}
-
-void NeighborLinkMonitor::SendNeighborProbeRTNLMessage(
-    const WatchingEntry& entry) {
-  // |seq| will be set by RTNLHandler.
-  auto msg = std::make_unique<net_base::RTNLMessage>(
-      net_base::RTNLMessage::kTypeNeighbor, net_base::RTNLMessage::kModeAdd,
-      NLM_F_REQUEST | NLM_F_REPLACE, /*seq=*/0, /*pid=*/0, ifindex_,
-      net_base::ToSAFamily(entry.addr.GetFamily()));
-
-  // We don't need to set |ndm_flags| and |ndm_type| for this message.
-  msg->set_neighbor_status(net_base::RTNLMessage::NeighborStatus(
-      NUD_PROBE, /*ndm_flags=*/0, /*ndm_type=*/0));
-  msg->SetAttribute(NDA_DST, entry.addr.ToBytes());
-
-  if (!rtnl_handler_->SendMessage(std::move(msg), /*msg_seq=*/nullptr)) {
-    LOG(WARNING) << "Failed to send neighbor probe message for "
-                 << entry.ToString() << " on " << ifname_;
   }
 }
 
@@ -323,7 +307,10 @@ void NeighborLinkMonitor::OnNeighborMessage(const net_base::RTNLMessage& msg) {
   // from NUD_NONE, e.g., the monitor just started, or this entry has been
   // removed once).
   if (old_nud_state == NUD_NONE && NeedProbeForState(new_nud_state)) {
-    SendNeighborProbeRTNLMessage(it->second);
+    if (!rtnl_handler_->ProbeNeighbor(ifindex_, it->second.addr)) {
+      LOG(WARNING) << "Failed to send neighbor probe message for "
+                   << it->second.ToString() << " on " << ifname_;
+    }
   }
 
   // When the "valid" state (i.e., whether kernel knows the MAC address of a

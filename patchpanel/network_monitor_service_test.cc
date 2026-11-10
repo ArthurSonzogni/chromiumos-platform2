@@ -39,24 +39,6 @@ MATCHER(IsNeighborDumpMessage, "") {
   return true;
 }
 
-MATCHER_P(IsNeighborProbeMessage, address, "") {
-  if (!(arg->type() == net_base::RTNLMessage::kTypeNeighbor &&
-        arg->flags() == (NLM_F_REQUEST | NLM_F_REPLACE) &&
-        arg->mode() == net_base::RTNLMessage::kModeAdd &&
-        arg->neighbor_status().state == NUD_PROBE &&
-        arg->interface_index() == kTestInterfaceIndex &&
-        arg->HasAttribute(NDA_DST))) {
-    return false;
-  }
-
-  const auto addr_bytes = arg->GetAttribute(NDA_DST);
-  const auto msg_address = net_base::IPAddress::CreateFromBytes(addr_bytes);
-  CHECK(msg_address.has_value());
-  const auto expected_address = net_base::IPAddress::CreateFromString(address);
-  CHECK(expected_address.has_value());
-  return msg_address == expected_address;
-}
-
 // Helper class for testing. Similar to mock class but only allowed one
 // expectation set at the same time.
 class FakeNeighborReachabilityEventHandler {
@@ -233,10 +215,12 @@ TEST_F(NeighborLinkMonitorTest, WatchLinkLocalIPv6DNSServerAddress) {
   link_monitor_->OnIPConfigChanged(ipconfig);
 
   EXPECT_CALL(*mock_rtnl_handler_,
-              DoSendMessage(IsNeighborProbeMessage("fe80::1"), _))
+              ProbeNeighbor(kTestInterfaceIndex,
+                            *net_base::IPAddress::CreateFromString("fe80::1")))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_rtnl_handler_,
-              DoSendMessage(IsNeighborProbeMessage("fe80::2"), _))
+              ProbeNeighbor(kTestInterfaceIndex,
+                            *net_base::IPAddress::CreateFromString("fe80::2")))
       .WillOnce(Return(true));
 
   NotifyNUDStateChanged("fe80::1", NUD_REACHABLE);
@@ -254,13 +238,15 @@ TEST_F(NeighborLinkMonitorTest, SendNeighborProbeMessage) {
   // Creates a RTNL message about the NUD state of the gateway is NUD_REACHABLE
   // now. A probe message should be sent immediately after we know this address.
   EXPECT_CALL(*mock_rtnl_handler_,
-              DoSendMessage(IsNeighborProbeMessage("1.2.3.5"), _))
+              ProbeNeighbor(kTestInterfaceIndex,
+                            *net_base::IPAddress::CreateFromString("1.2.3.5")))
       .WillOnce(Return(true));
   NotifyNUDStateChanged("1.2.3.5", NUD_REACHABLE);
 
   // Another probe message should be sent when the timer is triggered.
   EXPECT_CALL(*mock_rtnl_handler_,
-              DoSendMessage(IsNeighborProbeMessage("1.2.3.5"), _))
+              ProbeNeighbor(kTestInterfaceIndex,
+                            *net_base::IPAddress::CreateFromString("1.2.3.5")))
       .WillOnce(Return(true));
   task_env_.FastForwardBy(NeighborLinkMonitor::kActiveProbeInterval);
 
@@ -308,10 +294,12 @@ TEST_F(NeighborLinkMonitorTest, UpdateWatchingEntries) {
   // Checks if probe requests sent for both addresses when the timer is
   // triggered.
   EXPECT_CALL(*mock_rtnl_handler_,
-              DoSendMessage(IsNeighborProbeMessage("1.2.3.5"), _))
+              ProbeNeighbor(kTestInterfaceIndex,
+                            *net_base::IPAddress::CreateFromString("1.2.3.5")))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_rtnl_handler_,
-              DoSendMessage(IsNeighborProbeMessage("1.2.3.7"), _))
+              ProbeNeighbor(kTestInterfaceIndex,
+                            *net_base::IPAddress::CreateFromString("1.2.3.7")))
       .WillOnce(Return(true));
   task_env_.FastForwardBy(NeighborLinkMonitor::kActiveProbeInterval);
 }

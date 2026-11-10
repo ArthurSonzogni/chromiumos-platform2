@@ -176,7 +176,6 @@ class NeighborLinkMonitor {
   void UpdateWatchingEntry(const net_base::IPAddress& addr, NeighborRole role);
 
   void SendNeighborDumpRTNLMessage();
-  void SendNeighborProbeRTNLMessage(const WatchingEntry& entry);
   void OnNeighborMessage(const net_base::RTNLMessage& msg);
 
   int ifindex_;

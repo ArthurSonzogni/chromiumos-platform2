@@ -51,6 +51,10 @@ class BRILLO_EXPORT MockRTNLHandler : public RTNLHandler {
                base::span<const uint8_t> link_info_data,
                ResponseCallback response_callback),
               (override));
+  MOCK_METHOD(bool,
+              ProbeNeighbor,
+              (int interface_index, const IPAddress& ip_addr),
+              (override));
   bool SendMessage(std::unique_ptr<RTNLMessage> message,
                    uint32_t* seq) override {
     return DoSendMessage(message.get(), seq);

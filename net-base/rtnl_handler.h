@@ -124,6 +124,11 @@ class BRILLO_EXPORT RTNLHandler {
                             base::span<const uint8_t> link_info_data,
                             ResponseCallback response_callback);
 
+  // Sends a RTM_NEWNEIGH request setting the neighbor state of |ip_addr| on
+  // |interface_index| to NUD_PROBE, prompting the kernel to actively probe its
+  // L2 reachability. Returns false on sending failures.
+  virtual bool ProbeNeighbor(int interface_index, const IPAddress& ip_addr);
+
   // Sends an RTNL message. If the message is successfully sent, and |seq| is
   // not null, then it will be set to the message's assigned sequence number.
   virtual bool SendMessage(std::unique_ptr<RTNLMessage> message, uint32_t* seq);
