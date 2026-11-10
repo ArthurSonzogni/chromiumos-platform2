@@ -73,6 +73,12 @@ static const char kDisableChromeRestartFile[] = "disable-chrome-restart-file";
 static const char kDisableChromeRestartFileDefault[] =
     "/run/disable_chrome_restart";
 
+// Name of the flag that contains the PID of the process which acts as the
+// browser in tests, but is not spawned by session_manager, such as Crosier's
+// chromeos_integration_tests. The process is allowed to call some D-Bus
+// methods that are otherwise restricted to the browser.
+static const char kTestBrowserPid[] = "test-browser-pid";
+
 // Flag that causes session manager to show the help message and exit.
 static const char kHelp[] = "help";
 // The help message shown if help flag is passed to the program.
@@ -86,7 +92,10 @@ static const char kHelpMessage[] =
     "    another program. (default: /opt/google/chrome/chrome)\n"
     "  --disable-chrome-restart-file=</path/to/file>\n"
     "    Magic file that causes this program to stop restarting the\n"
-    "    chrome binary and exit. (default: /run/disable_chrome_restart)\n";
+    "    chrome binary and exit. (default: /run/disable_chrome_restart)\n"
+    "  --test-browser-pid=<pid>\n"
+    "    For testing only. PID of the process which acts as the browser,\n"
+    "    but is not spawned by this program.\n";
 }  // namespace switches
 
 using login_manager::BrowserJob;
@@ -169,6 +178,18 @@ int main(int argc, char* argv[]) {
       cl->GetSwitchValueASCII(switches::kDisableChromeRestartFile);
   if (magic_chrome_file.empty()) {
     magic_chrome_file.assign(switches::kDisableChromeRestartFileDefault);
+  }
+
+  std::optional<pid_t> test_browser_pid;
+  if (cl->HasSwitch(switches::kTestBrowserPid)) {
+    const string value = cl->GetSwitchValueASCII(switches::kTestBrowserPid);
+    int pid;
+    if (base::StringToInt(value, &pid) && pid > 0) {
+      LOG(INFO) << "Test browser PID: " << pid;
+      test_browser_pid = pid;
+    } else {
+      LOG(ERROR) << "Invalid --" << switches::kTestBrowserPid << ": " << value;
+    }
   }
 
   // Used to report various metrics around user type (guest vs non), dev-mode,
@@ -284,7 +305,7 @@ int main(int argc, char* argv[]) {
           chrome_setup->uid),
       base::FilePath(magic_chrome_file), ns_path, kKillTimeout,
       enable_hang_detection, hang_detection_interval, hang_detection_retires,
-      &metrics, &system_utils);
+      test_browser_pid, &metrics, &system_utils);
 
   if (manager->Initialize()) {
     // Returns when brillo_loop.BreakLoop() is called.

@@ -145,27 +145,97 @@ std::optional<DBusMethodName> GetMethodName(DBusMessage* message) {
   return DBusMethodName{interface ? interface : "", name};
 }
 
-// Returns true if the D-Bus method being called requires
-// to check the caller's PID for extra safeness.
-bool IsPidCheckRequired(const DBusMethodName& method_name) {
+// Policy describing which callers are allowed to call a D-Bus method, on top of
+// the D-Bus policy config (SessionManager.conf).
+enum class CallerPolicy {
+  // No additional check.
+  kAny,
+  // Only the browser process spawned by session_manager is allowed.
+  kBrowserOnly,
+  // The browser process spawned by session_manager or root is allowed.
+  // Root can modify the files managed by session_manager directly anyway,
+  // so allowing it does not expand the attack surface. This is used by
+  // tests that drive session_manager directly.
+  // In addition, the process specified by --test-browser-pid is allowed.
+  // It is used by tests where the process acting as the browser is not
+  // spawned by session_manager (e.g. Crosier). Only root can start
+  // session_manager with the flag, so this does not expand the attack surface
+  // either.
+  kBrowserOrRoot,
+};
+
+// Returns the CallerPolicy for the D-Bus method being called.
+CallerPolicy GetCallerPolicy(const DBusMethodName& method_name) {
   if (!method_name.interface.empty() &&
       method_name.interface != kSessionManagerInterface) {
-    return false;
+    return CallerPolicy::kAny;
   }
 
-  // The names of the methods that require caller PID check.
-  static constexpr const char* kTargetMethods[] = {
+  // The names of the methods that can be called only by the browser.
+  static constexpr const char* kBrowserOnlyMethods[] = {
       kSessionManagerRestartJob,
       kSessionManagerSetFlagsForUser,
       kSessionManagerHandleLockScreenDismissed,
   };
-  for (const char* method : kTargetMethods) {
+  for (const char* method : kBrowserOnlyMethods) {
     if (method_name.name == method) {
-      return true;
+      return CallerPolicy::kBrowserOnly;
     }
   }
 
-  return false;
+  // The names of the methods that can be called only by the browser or root.
+  static constexpr const char* kBrowserOrRootMethods[] = {
+      // Session bookkeeping is used for authorization decisions, such as
+      // whether the device owner is signed in (b/537017672).
+      kSessionManagerStartSession,
+      kSessionManagerStartSessionEx,
+  };
+  for (const char* method : kBrowserOrRootMethods) {
+    if (method_name.name == method) {
+      return CallerPolicy::kBrowserOrRoot;
+    }
+  }
+
+  return CallerPolicy::kAny;
+}
+
+// Calls the org.freedesktop.DBus.|method| for |sender|, which is expected
+// to return a uint32 value, such as GetConnectionUnixProcessID or
+// GetConnectionUnixUser. Returns std::nullopt on failure.
+std::optional<uint32_t> GetConnectionUint32Property(DBusConnection* conn,
+                                                    const char* method,
+                                                    const char* sender) {
+  DBusMessage* request = ::dbus_message_new_method_call(
+      DBUS_SERVICE_DBUS, DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS, method);
+  CHECK(request);
+  ::dbus_message_append_args(request, DBUS_TYPE_STRING, &sender,
+                             DBUS_TYPE_INVALID);
+  DBusMessage* response =
+      ::dbus_connection_send_with_reply_and_block(conn, request, -1, nullptr);
+  ::dbus_message_unref(request);
+  if (!response) {
+    LOG(ERROR) << "Failed to call " << method << " for " << sender;
+    return std::nullopt;
+  }
+  uint32_t value;
+  if (!::dbus_message_get_args(response, nullptr, DBUS_TYPE_UINT32, &value,
+                               DBUS_TYPE_INVALID)) {
+    ::dbus_message_unref(response);
+    LOG(ERROR) << "Failed to extract the response of " << method << " for "
+               << sender;
+    return std::nullopt;
+  }
+  ::dbus_message_unref(response);
+  return value;
+}
+
+std::optional<uid_t> GetSenderUid(DBusConnection* conn, const char* sender) {
+  return GetConnectionUint32Property(conn, "GetConnectionUnixUser", sender);
+}
+
+std::optional<pid_t> GetSenderPid(DBusConnection* conn, const char* sender) {
+  return GetConnectionUint32Property(conn, "GetConnectionUnixProcessID",
+                                     sender);
 }
 
 }  // anonymous namespace
@@ -194,6 +264,7 @@ SessionManagerService::SessionManagerService(
     bool enable_browser_abort_on_hang,
     base::TimeDelta hang_detection_interval,
     int hang_detection_retries,
+    std::optional<pid_t> test_browser_pid,
     LoginMetrics* metrics,
     SystemUtils* system_utils)
     : chrome_mount_ns_path_(ns_path),
@@ -216,6 +287,9 @@ SessionManagerService::SessionManagerService(
       aborted_browser_pid_path_(kAbortedBrowserPidPath),
       shutdown_browser_pid_path_(kShutdownBrowserPidPath),
       browser_(std::move(browser_job_factory).Run(process_reaper_)),
+      get_sender_uid_callback_(base::BindRepeating(&GetSenderUid)),
+      get_sender_pid_callback_(base::BindRepeating(&GetSenderPid)),
+      test_browser_pid_(test_browser_pid),
       vpd_process_(system_utils, process_reaper_) {
   DCHECK(browser_);
   SetUpHandlers();
@@ -610,7 +684,18 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
   }
 
   const auto method_name = GetMethodName(message);
-  if (method_name.has_value() && IsPidCheckRequired(method_name.value())) {
+  CallerPolicy caller_policy = method_name.has_value()
+                                   ? GetCallerPolicy(method_name.value())
+                                   : CallerPolicy::kAny;
+  if (caller_policy == CallerPolicy::kBrowserOrRoot &&
+      !service->test_browser_pid_.has_value()) {
+    // TODO(b/537017672): Enforce the check regardless of --test-browser-pid,
+    // once Crosier is updated to pass the flag. Until then, the check is
+    // enabled only when the flag is given, so that Crosier, where the process
+    // acting as the browser is not spawned by session_manager, keeps working.
+    caller_policy = CallerPolicy::kAny;
+  }
+  if (caller_policy != CallerPolicy::kAny) {
     const char* raw_sender = ::dbus_message_get_sender(message);
     if (!raw_sender) {
       LOG(ERROR) << "Call to " << method_name->name << " has no sender";
@@ -618,6 +703,16 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
     }
     std::string_view sender(raw_sender);
     LOG(INFO) << "Received " << method_name->name << " from " << sender;
+
+    if (caller_policy == CallerPolicy::kBrowserOrRoot) {
+      std::optional<uid_t> uid =
+          service->get_sender_uid_callback_.Run(conn, raw_sender);
+      if (uid.has_value() && *uid == 0) {
+        LOG(INFO) << "Allowing " << method_name->name << " from root.";
+        return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+      }
+      // Otherwise, fall through to the browser check.
+    }
 
     if (!service->IsSenderConnectedAfterBrowserSpawn(sender)) {
       LOG(WARNING) << "Sender " << sender << " of " << method_name->name
@@ -634,30 +729,21 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
       return DBUS_HANDLER_RESULT_HANDLED;
     }
 
-    DBusMessage* get_pid = ::dbus_message_new_method_call(
-        DBUS_SERVICE_DBUS, DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS,
-        "GetConnectionUnixProcessID");
-    CHECK(get_pid);
-    ::dbus_message_append_args(get_pid, DBUS_TYPE_STRING, &raw_sender,
-                               DBUS_TYPE_INVALID);
-    DBusMessage* got_pid =
-        ::dbus_connection_send_with_reply_and_block(conn, get_pid, -1, nullptr);
-    ::dbus_message_unref(get_pid);
-    if (!got_pid) {
-      LOG(ERROR) << "Could not look up sender of " << method_name->name << ".";
-      return DBUS_HANDLER_RESULT_HANDLED;
-    }
-    uint32_t pid;
-    if (!::dbus_message_get_args(got_pid, nullptr, DBUS_TYPE_UINT32, &pid,
-                                 DBUS_TYPE_INVALID)) {
-      ::dbus_message_unref(got_pid);
-      LOG(ERROR) << "Could not extract pid of sender of " << method_name->name
+    std::optional<pid_t> pid =
+        service->get_sender_pid_callback_.Run(conn, raw_sender);
+    if (!pid.has_value()) {
+      LOG(ERROR) << "Could not look up pid of sender of " << method_name->name
                  << ".";
       return DBUS_HANDLER_RESULT_HANDLED;
     }
-    ::dbus_message_unref(got_pid);
-    if (!service->IsBrowser(pid)) {
-      LOG(WARNING) << "Sender of " << method_name->name << " (PID " << pid
+    if (caller_policy == CallerPolicy::kBrowserOrRoot &&
+        *pid == service->test_browser_pid_) {
+      LOG(INFO) << "Allowing " << method_name->name
+                << " from test browser (PID " << *pid << ").";
+      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    }
+    if (!service->IsBrowser(*pid)) {
+      LOG(WARNING) << "Sender of " << method_name->name << " (PID " << *pid
                    << ") is no child of mine!";
       DBusMessage* denial = dbus_message_new_error(
           message, DBUS_ERROR_ACCESS_DENIED, "Sender is not browser.");

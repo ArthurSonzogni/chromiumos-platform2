@@ -5,12 +5,15 @@
 #ifndef LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_
 #define LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_
 
+#include <sys/types.h>
+
 #include <functional>
 #include <map>
 #include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -73,6 +76,16 @@ class SessionManagerService
 
   // Path to flag file indicating that a user has logged in since last boot.
   static const char kLoggedInFlag[];
+
+  // Looks up the UID of the D-Bus connection named |sender| (e.g. ":1.42")
+  // via |conn|. Returns std::nullopt on failure.
+  using GetSenderUidCallback = base::RepeatingCallback<std::optional<uid_t>(
+      DBusConnection* conn, const char* sender)>;
+
+  // Looks up the PID of the D-Bus connection named |sender| (e.g. ":1.42")
+  // via |conn|. Returns std::nullopt on failure.
+  using GetSenderPidCallback = base::RepeatingCallback<std::optional<pid_t>(
+      DBusConnection* conn, const char* sender)>;
 
   // If you want to call any of these setters, you should do so before calling
   // any other methods on this class.
@@ -143,6 +156,12 @@ class SessionManagerService
       return SessionManagerService::FilterMessage(conn, message,
                                                   session_manager_service_);
     }
+    void set_get_sender_uid_callback(GetSenderUidCallback callback) {
+      session_manager_service_->get_sender_uid_callback_ = std::move(callback);
+    }
+    void set_get_sender_pid_callback(GetSenderPidCallback callback) {
+      session_manager_service_->get_sender_pid_callback_ = std::move(callback);
+    }
 
    private:
     friend class SessionManagerService;
@@ -151,6 +170,9 @@ class SessionManagerService
     SessionManagerService* session_manager_service_;
   };
 
+  // |test_browser_pid| is the PID of the process which acts as the browser in
+  // tests, but is not spawned by session_manager (e.g. Crosier's
+  // chromeos_integration_tests). See FilterMessage() for details.
   SessionManagerService(base::OnceCallback<std::unique_ptr<BrowserJobInterface>(
                             brillo::ProcessReaper&)> browser_job_factory,
                         const base::FilePath& magic_chrome_file,
@@ -159,6 +181,7 @@ class SessionManagerService
                         bool enable_browser_abort_on_hang,
                         base::TimeDelta hang_detection_interval,
                         int hang_detection_retries,
+                        std::optional<pid_t> test_browser_pid,
                         LoginMetrics* metrics,
                         SystemUtils* system_utils);
   SessionManagerService(const SessionManagerService&) = delete;
@@ -366,6 +389,18 @@ class SessionManagerService
   // Active D-Bus unique connection names (":1.X") mapped to their connection
   // timestamp.
   std::map<std::string, base::TimeTicks, std::less<>> connection_timestamps_;
+
+  // Used in FilterMessage() to look up the UID of a D-Bus method caller.
+  // Replaceable for testing.
+  GetSenderUidCallback get_sender_uid_callback_;
+
+  // Used in FilterMessage() to look up the PID of a D-Bus method caller.
+  // Replaceable for testing.
+  GetSenderPidCallback get_sender_pid_callback_;
+
+  // PID of the process acting as the browser in tests, passed via
+  // --test-browser-pid. See FilterMessage() for details.
+  const std::optional<pid_t> test_browser_pid_;
 
   std::unique_ptr<ArcManager> arc_manager_;
   std::unique_ptr<ArcManagerProxy> arc_manager_proxy_;

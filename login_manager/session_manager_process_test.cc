@@ -13,11 +13,13 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_util.h>
+#include <base/test/bind.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dbus.h>
@@ -115,12 +117,12 @@ class SessionManagerProcessTest : public ::testing::Test {
         kFakePid, exit_status, manager_->test_api()));
   }
 
-  void InitManager() {
+  void InitManager(std::optional<pid_t> test_browser_pid = std::nullopt) {
     manager_ = new SessionManagerService(
         base::BindOnce(&SessionManagerProcessTest::CreateFakeBrowserJob,
                        base::Unretained(this)),
         GetChromeMagicFilePath(), std::nullopt, base::Seconds(3), false,
-        base::TimeDelta(), 0, &metrics_, &system_utils_);
+        base::TimeDelta(), 0, test_browser_pid, &metrics_, &system_utils_);
     manager_->test_api().set_liveness_checker(liveness_checker_);
     manager_->test_api().set_session_manager(session_manager_impl_);
     manager_->test_api().set_aborted_browser_pid_path(
@@ -665,6 +667,22 @@ class ScopedTestDBusConnection {
   DBusConnection* conn_ = nullptr;
 };
 
+// Creates a method call message to SessionManagerInterface.|method|.
+// If |sender| is not null, it is set as the sender of the message.
+// Caller takes the ownership.
+DBusMessage* CreateSessionManagerMethodCall(const char* method,
+                                            const char* sender) {
+  DBusMessage* msg = dbus_message_new_method_call(
+      "org.chromium.SessionManagerInterface", "/org/chromium/SessionManager",
+      "org.chromium.SessionManagerInterface", method);
+  CHECK(msg);
+  dbus_message_set_serial(msg, 1);
+  if (sender) {
+    CHECK(dbus_message_set_sender(msg, sender));
+  }
+  return msg;
+}
+
 }  // namespace
 
 TEST_F(SessionManagerProcessTest, FilterMessage_NoPidCheckRequired) {
@@ -710,6 +728,211 @@ TEST_F(SessionManagerProcessTest,
   dbus_message_set_sender(msg, ":1.42");
 
   // Connection lifetime check fails -> handled and rejected.
+  EXPECT_EQ(DBUS_HANDLER_RESULT_HANDLED,
+            manager_->test_api().FilterMessage(conn.get(), msg));
+  dbus_message_unref(msg);
+}
+
+TEST_F(SessionManagerProcessTest, FilterMessage_RestartJobFromRootIsRejected) {
+  InitManager();
+  ScopedTestDBusConnection conn;
+  base::TimeTicks now = base::TimeTicks::Now();
+  manager_->test_api().set_connection_timestamp(":1.42",
+                                                now - base::Seconds(10));
+  fake_browser_job_->set_spawn_time(now);
+  int uid_lookup_count = 0;
+  manager_->test_api().set_get_sender_uid_callback(base::BindLambdaForTesting(
+      [&uid_lookup_count](DBusConnection*,
+                          const char*) -> std::optional<uid_t> {
+        ++uid_lookup_count;
+        return 0;
+      }));
+
+  DBusMessage* msg = CreateSessionManagerMethodCall("RestartJob", ":1.42");
+  // RestartJob is allowed only for browser, even for root.
+  EXPECT_EQ(DBUS_HANDLER_RESULT_HANDLED,
+            manager_->test_api().FilterMessage(conn.get(), msg));
+  EXPECT_EQ(0, uid_lookup_count);
+  dbus_message_unref(msg);
+}
+
+namespace {
+
+// PID of the process passed via --test-browser-pid.
+constexpr pid_t kTestBrowserPid = 1234;
+// PID of a process which is neither the browser nor the test browser.
+constexpr pid_t kOtherPid = 5678;
+
+}  // namespace
+
+TEST_F(SessionManagerProcessTest, FilterMessage_StartSessionNoSender) {
+  InitManager(kTestBrowserPid);
+  ScopedTestDBusConnection conn;
+  DBusMessage* msg = CreateSessionManagerMethodCall("StartSession", nullptr);
+  EXPECT_EQ(DBUS_HANDLER_RESULT_HANDLED,
+            manager_->test_api().FilterMessage(conn.get(), msg));
+  dbus_message_unref(msg);
+}
+
+class SessionManagerProcessStartSessionTest
+    : public SessionManagerProcessTest,
+      public ::testing::WithParamInterface<const char*> {
+ protected:
+  // Starts the fake browser, then records ":1.42" as connected after that.
+  void StartBrowserAndConnectSender() {
+    fake_browser_job_->set_schedule_exit(false);
+    fake_browser_job_->set_fake_child_process(
+        std::make_unique<FakeChildProcess>(kFakePid, 0, manager_->test_api()));
+    fake_browser_job_->RunInBackground(base::DoNothing());
+    manager_->test_api().set_connection_timestamp(":1.42",
+                                                  base::TimeTicks::Now());
+  }
+
+  void SetSenderUid(std::optional<uid_t> uid) {
+    manager_->test_api().set_get_sender_uid_callback(base::BindRepeating(
+        [](std::optional<uid_t> result, DBusConnection*,
+           const char* sender) -> std::optional<uid_t> {
+          EXPECT_STREQ(":1.42", sender);
+          return result;
+        },
+        uid));
+  }
+
+  void SetSenderPid(std::optional<pid_t> pid) {
+    manager_->test_api().set_get_sender_pid_callback(base::BindRepeating(
+        [](std::optional<pid_t> result, DBusConnection*,
+           const char* sender) -> std::optional<pid_t> {
+          EXPECT_STREQ(":1.42", sender);
+          return result;
+        },
+        pid));
+  }
+
+  // Calls FilterMessage() for the method call of GetParam() from ":1.42".
+  DBusHandlerResult FilterStartSession() {
+    ScopedTestDBusConnection conn;
+    DBusMessage* msg = CreateSessionManagerMethodCall(GetParam(), ":1.42");
+    DBusHandlerResult result =
+        manager_->test_api().FilterMessage(conn.get(), msg);
+    dbus_message_unref(msg);
+    return result;
+  }
+};
+
+TEST_P(SessionManagerProcessStartSessionTest, WithoutTestBrowserPid) {
+  // TODO(b/537017672): Remove this test once the check is enforced regardless
+  // of --test-browser-pid.
+  InitManager();
+  StartBrowserAndConnectSender();
+  int lookup_count = 0;
+  manager_->test_api().set_get_sender_uid_callback(base::BindLambdaForTesting(
+      [&lookup_count](DBusConnection*, const char*) -> std::optional<uid_t> {
+        ++lookup_count;
+        return 1000;  // chronos.
+      }));
+  manager_->test_api().set_get_sender_pid_callback(base::BindLambdaForTesting(
+      [&lookup_count](DBusConnection*, const char*) -> std::optional<pid_t> {
+        ++lookup_count;
+        return kOtherPid;
+      }));
+
+  // The check is not enabled without --test-browser-pid.
+  EXPECT_EQ(DBUS_HANDLER_RESULT_NOT_YET_HANDLED, FilterStartSession());
+  EXPECT_EQ(0, lookup_count);
+}
+
+TEST_P(SessionManagerProcessStartSessionTest, FromRoot) {
+  InitManager(kTestBrowserPid);
+  // Root's connection is established before browser spawn, so the browser
+  // check would fail. Root should be allowed anyway.
+  base::TimeTicks now = base::TimeTicks::Now();
+  manager_->test_api().set_connection_timestamp(":1.42",
+                                                now - base::Seconds(10));
+  fake_browser_job_->set_spawn_time(now);
+  SetSenderUid(0);
+
+  EXPECT_EQ(DBUS_HANDLER_RESULT_NOT_YET_HANDLED, FilterStartSession());
+}
+
+TEST_P(SessionManagerProcessStartSessionTest, FromBrowser) {
+  InitManager(kTestBrowserPid);
+  StartBrowserAndConnectSender();
+  SetSenderUid(1000);  // chronos.
+  SetSenderPid(kFakePid);
+
+  EXPECT_EQ(DBUS_HANDLER_RESULT_NOT_YET_HANDLED, FilterStartSession());
+}
+
+TEST_P(SessionManagerProcessStartSessionTest, FromTestBrowser) {
+  InitManager(kTestBrowserPid);
+  StartBrowserAndConnectSender();
+  SetSenderUid(1000);  // chronos.
+  SetSenderPid(kTestBrowserPid);
+
+  EXPECT_EQ(DBUS_HANDLER_RESULT_NOT_YET_HANDLED, FilterStartSession());
+}
+
+TEST_P(SessionManagerProcessStartSessionTest,
+       FromTestBrowserConnectedBeforeBrowserSpawn) {
+  InitManager(kTestBrowserPid);
+  StartBrowserAndConnectSender();
+  // Move the browser spawn time after the connection.
+  fake_browser_job_->set_spawn_time(base::TimeTicks::Now() + base::Seconds(10));
+  SetSenderUid(1000);  // chronos.
+  SetSenderPid(kTestBrowserPid);
+
+  // Connection lifetime check fails -> handled and rejected.
+  EXPECT_EQ(DBUS_HANDLER_RESULT_HANDLED, FilterStartSession());
+}
+
+TEST_P(SessionManagerProcessStartSessionTest, FromNonBrowserNonRoot) {
+  InitManager(kTestBrowserPid);
+  StartBrowserAndConnectSender();
+  SetSenderUid(1000);  // chronos.
+  SetSenderPid(kOtherPid);
+
+  EXPECT_EQ(DBUS_HANDLER_RESULT_HANDLED, FilterStartSession());
+}
+
+TEST_P(SessionManagerProcessStartSessionTest, UidLookupFailure) {
+  InitManager(kTestBrowserPid);
+  StartBrowserAndConnectSender();
+  SetSenderUid(std::nullopt);
+  SetSenderPid(kOtherPid);
+
+  // Falls through to the browser check, which rejects the sender.
+  EXPECT_EQ(DBUS_HANDLER_RESULT_HANDLED, FilterStartSession());
+}
+
+TEST_P(SessionManagerProcessStartSessionTest, PidLookupFailure) {
+  InitManager(kTestBrowserPid);
+  StartBrowserAndConnectSender();
+  SetSenderUid(1000);  // chronos.
+  SetSenderPid(std::nullopt);
+
+  EXPECT_EQ(DBUS_HANDLER_RESULT_HANDLED, FilterStartSession());
+}
+
+INSTANTIATE_TEST_SUITE_P(StartSessionMethods,
+                         SessionManagerProcessStartSessionTest,
+                         ::testing::Values("StartSession", "StartSessionEx"));
+
+TEST_F(SessionManagerProcessTest, FilterMessage_RestartJobFromTestBrowser) {
+  InitManager(kTestBrowserPid);
+  ScopedTestDBusConnection conn;
+  fake_browser_job_->set_schedule_exit(false);
+  fake_browser_job_->set_fake_child_process(
+      std::make_unique<FakeChildProcess>(kFakePid, 0, manager_->test_api()));
+  fake_browser_job_->RunInBackground(base::DoNothing());
+  manager_->test_api().set_connection_timestamp(":1.42",
+                                                base::TimeTicks::Now());
+  manager_->test_api().set_get_sender_pid_callback(base::BindRepeating(
+      [](DBusConnection*, const char*) -> std::optional<pid_t> {
+        return kTestBrowserPid;
+      }));
+
+  DBusMessage* msg = CreateSessionManagerMethodCall("RestartJob", ":1.42");
+  // The test browser is allowed only for StartSession and StartSessionEx.
   EXPECT_EQ(DBUS_HANDLER_RESULT_HANDLED,
             manager_->test_api().FilterMessage(conn.get(), msg));
   dbus_message_unref(msg);
