@@ -54,6 +54,7 @@ getrandom: arg2 in ~GRND_RANDOM
 write: 1
 faccessat2: 1
 brk: 1
+recvfrom: 1
 recvmsg: 1
 sendmsg: 1
 getdents64: 1
@@ -67,11 +68,13 @@ prlimit64: 1
 getpid: 1
 set_robust_list: 1
 fcntl: 1
+# execve is used to run external utilities.
 execve: 1
 rseq: 1
 set_tid_address: 1
 sched_getaffinity: 1
 flock: 1
+# clone is used to spawn threads and child processes.
 clone: 1
 clone3: 1
 exit_group: 1

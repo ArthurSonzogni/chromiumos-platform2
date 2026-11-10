@@ -17,6 +17,7 @@ clock_gettime64: 1
 clock_gettime: 1
 clock_nanosleep: 1
 clock_nanosleep_time64: 1
+# clone is used to spawn threads and child processes.
 clone: 1
 clone3: 1
 close: 1
@@ -122,6 +123,7 @@ ioctl: arg1 == TCGETS || arg1 == TCGETS2 || arg1 == BLKGETSIZE64 || arg1 == BLKS
        arg1 == 0x40046445 || arg1 == 0xc0306443 || arg1 == 0x80086444 || \
        arg1 == 0x6442 || arg1 == 0x40206441
 kcmp: 1
+# kill is used to terminate child processes.
 kill: 1
 lstat64: 1
 madvise: 1
@@ -137,6 +139,7 @@ openat: 1
 pipe2: 1
 pipe: 1
 poll: 1
+# prctl is used to set thread names and seccomp filters.
 prctl: arg0 == PR_SET_NO_NEW_PRIVS || arg0 == PR_SET_NAME
 pread64: 1
 prlimit64: 1
@@ -145,6 +148,8 @@ pwrite64: 1
 read: 1
 readlink: 1
 readlinkat: 1
+recv: 1
+recvfrom: 1
 recvmsg: 1
 restart_syscall: 1
 rt_sigaction: 1

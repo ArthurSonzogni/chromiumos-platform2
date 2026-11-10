@@ -69,6 +69,8 @@ pwrite64: 1
 process_vm_readv: 1
 read: 1
 readv: 1
+recv: 1
+recvfrom: 1
 recvmmsg_time64: 1
 recvmsg: 1
 restart_syscall: 1
@@ -88,6 +90,7 @@ setresuid32: 1
 shutdown: 1
 sigaltstack: 1
 signalfd4: 1
+# AF_UNIX = 0x1
 socket: arg0 == 0x1
 socketpair: 1
 # Used by the diagnostic check to inspect socket unread outbound buffer sizes.

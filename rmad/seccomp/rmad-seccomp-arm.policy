@@ -44,6 +44,8 @@ munmap: 1
 write: 1
 sendto: 1
 pread64: 1
+recv: 1
+recvfrom: 1
 recvmsg: 1
 faccessat2: 1
 fstatfs64: 1
@@ -67,9 +69,11 @@ rseq: 1
 epoll_ctl: 1
 ugetrlimit: 1
 unlink: 1
+# execve is used to run external utilities.
 execve: 1
 ARM_set_tls: 1
 set_tid_address: 1
+# clone is used to spawn threads and child processes.
 clone: 1
 clone3: 1
 uname: 1
