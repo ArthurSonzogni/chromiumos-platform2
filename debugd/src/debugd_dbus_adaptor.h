@@ -28,7 +28,6 @@
 #include "debugd/src/container_tool.h"
 #include "debugd/src/crash_sender_tool.h"
 #include "debugd/src/crosh_shell_tool.h"
-#include "debugd/src/cups_tool.h"
 #include "debugd/src/debug_logs_tool.h"
 #include "debugd/src/debug_mode_tool.h"
 #include "debugd/src/dev_features_tool.h"
@@ -144,22 +143,6 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   void BackupArcBugReport(const std::string& username) override;
   void DeleteArcBugReportBackup(const std::string& username) override;
   std::string GetExample() override;
-  int32_t CupsAddAutoConfiguredPrinter(const std::string& name,
-                                       const std::string& uri) override;
-  int32_t CupsAddAutoConfiguredPrinterV2(const std::string& name,
-                                         const std::string& uri,
-                                         const std::string& language) override;
-  int32_t CupsAddManuallyConfiguredPrinter(
-      const std::string& name,
-      const std::string& uri,
-      const std::vector<uint8_t>& ppd_contents) override;
-  int32_t CupsAddManuallyConfiguredPrinterV2(
-      const std::string& name,
-      const std::string& uri,
-      const std::string& language,
-      const std::vector<uint8_t>& ppd_contents) override;
-  bool CupsRemovePrinter(const std::string& name) override;
-  std::vector<uint8_t> CupsRetrievePpd(const std::string& name) override;
   std::string GetInterfaces() override;
   std::string TestICMP(const std::string& host) override;
   std::string TestICMPWithOptions(
@@ -299,7 +282,6 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<ContainerTool> container_tool_;
   std::unique_ptr<CrashSenderTool> crash_sender_tool_;
   std::unique_ptr<CroshShellTool> crosh_shell_tool_;
-  std::unique_ptr<CupsTool> cups_tool_;
   std::unique_ptr<DebugLogsTool> debug_logs_tool_;
   std::unique_ptr<DebugModeTool> debug_mode_tool_;
   std::unique_ptr<DmesgTool> dmesg_tool_;

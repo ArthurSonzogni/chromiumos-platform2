@@ -39,9 +39,6 @@ const char kShouldSendRlzPingKey[] = "should_send_rlz_ping";
 
 const char kRlzEmbargoEndDateKey[] = "rlz_embargo_end_date";
 
-const char kLanguageAllowedChars[] =
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-@";
-
 }  // namespace
 
 std::optional<FirmwareDumpType> ConvertFirmwareDumpType(uint32_t type) {
@@ -73,7 +70,6 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus,
   container_tool_ = std::make_unique<ContainerTool>();
   crash_sender_tool_ = std::make_unique<CrashSenderTool>();
   crosh_shell_tool_ = std::make_unique<CroshShellTool>();
-  cups_tool_ = std::make_unique<CupsTool>();
   debug_logs_tool_ = std::make_unique<DebugLogsTool>(bus);
   debug_mode_tool_ = std::make_unique<DebugModeTool>(bus);
   dev_features_tool_wrapper_ =
@@ -306,50 +302,6 @@ void DebugdDBusAdaptor::DeleteArcBugReportBackup(const std::string& username) {
 
 std::string DebugdDBusAdaptor::GetExample() {
   return example_tool_->GetExample();
-}
-
-int32_t DebugdDBusAdaptor::CupsAddAutoConfiguredPrinter(
-    const std::string& name, const std::string& uri) {
-  return cups_tool_->AddAutoConfiguredPrinter(name, uri, "en");
-}
-
-int32_t DebugdDBusAdaptor::CupsAddAutoConfiguredPrinterV2(
-    const std::string& name,
-    const std::string& uri,
-    const std::string& language) {
-  return cups_tool_->AddAutoConfiguredPrinter(
-      name, uri,
-      base::ContainsOnlyChars(language, kLanguageAllowedChars) ? language
-                                                               : "en");
-}
-
-int32_t DebugdDBusAdaptor::CupsAddManuallyConfiguredPrinter(
-    const std::string& name,
-    const std::string& uri,
-    const std::vector<uint8_t>& ppd_contents) {
-  return cups_tool_->AddManuallyConfiguredPrinter(name, uri, "en",
-                                                  ppd_contents);
-}
-
-int32_t DebugdDBusAdaptor::CupsAddManuallyConfiguredPrinterV2(
-    const std::string& name,
-    const std::string& uri,
-    const std::string& language,
-    const std::vector<uint8_t>& ppd_contents) {
-  return cups_tool_->AddManuallyConfiguredPrinter(
-      name, uri,
-      base::ContainsOnlyChars(language, kLanguageAllowedChars) ? language
-                                                               : "en",
-      ppd_contents);
-}
-
-bool DebugdDBusAdaptor::CupsRemovePrinter(const std::string& name) {
-  return cups_tool_->RemovePrinter(name);
-}
-
-std::vector<uint8_t> DebugdDBusAdaptor::CupsRetrievePpd(
-    const std::string& name) {
-  return cups_tool_->RetrievePpd(name);
 }
 
 std::string DebugdDBusAdaptor::GetInterfaces() {

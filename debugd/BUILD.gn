@@ -12,7 +12,6 @@ group("all") {
     ":bt_usb_disconnect_helper",
     ":capture_packets",
     ":cryptohome-proto",
-    ":cups_uri_helper",
     ":debugd",
     ":debugd-adaptors",
     ":debugd_dbus_utils",
@@ -42,9 +41,6 @@ group("all") {
   }
   if (use.test) {
     deps += [ ":debugd_testrunner" ]
-  }
-  if (use.fuzzer) {
-    deps += [ ":debugd_cups_uri_helper_utils_fuzzer" ]
   }
 }
 
@@ -123,7 +119,6 @@ static_library("libdebugd") {
     "src/container_tool.cc",
     "src/crash_sender_tool.cc",
     "src/crosh_shell_tool.cc",
-    "src/cups_tool.cc",
     "src/debug_logs_tool.cc",
     "src/debug_mode_tool.cc",
     "src/debugd_dbus_adaptor.cc",
@@ -140,7 +135,6 @@ static_library("libdebugd") {
     "src/ipaddrs_tool.cc",
     "src/kernel_feature_tool.cc",
     "src/log_tool.cc",
-    "src/lp_tools.cc",
     "src/memory_tool.cc",
     "src/metrics.cc",
     "src/netif_tool.cc",
@@ -248,15 +242,6 @@ executable("capture_packets") {
   ]
   install_path = debugd_helpers_install_path
   libs = [ "pcap" ]
-}
-
-executable("cups_uri_helper") {
-  sources = [
-    "src/helpers/cups_uri_helper.cc",
-    "src/helpers/cups_uri_helper_utils.cc",
-  ]
-  install_path = debugd_helpers_install_path
-  configs += [ ":target_defaults" ]
 }
 
 executable("dev_features_chrome_remote_debugging") {
@@ -451,7 +436,6 @@ if (use.test) {
       "src/binary_log_tool_test.cc",
       "src/bluetooth_tool_test.cc",
       "src/crash_sender_tool_test.cc",
-      "src/cups_tool_test.cc",
       "src/dev_mode_no_owner_restriction_test.cc",
       "src/dmesg_tool_test.cc",
       "src/drm_trace_tool_test.cc",
@@ -461,8 +445,6 @@ if (use.test) {
       "src/helpers/audit_log_utils.cc",
       "src/helpers/audit_log_utils_test.cc",
       "src/helpers/capture_utility_test.cc",
-      "src/helpers/cups_uri_helper_test.cc",
-      "src/helpers/cups_uri_helper_utils.cc",
       "src/helpers/dev_features_password_utils.cc",
       "src/helpers/dev_features_password_utils_test.cc",
       "src/helpers/modetest_helper_utils.cc",
@@ -495,19 +477,6 @@ if (use.test) {
       ":libdebugd",
       ":scheduler_configuration_utils",
       "//common-mk/testrunner",
-    ]
-  }
-}
-
-if (use.fuzzer) {
-  executable("debugd_cups_uri_helper_utils_fuzzer") {
-    sources = [
-      "src/helpers/cups_uri_helper_utils.cc",
-      "src/helpers/cups_uri_helper_utils_fuzzer.cc",
-    ]
-    configs += [
-      "//common-mk/common_fuzzer",
-      ":target_defaults",
     ]
   }
 }
