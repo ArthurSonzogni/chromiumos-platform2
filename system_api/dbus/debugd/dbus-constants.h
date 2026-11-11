@@ -11,14 +11,6 @@ const char kDebugdServicePath[] = "/org/chromium/debugd";
 const char kDebugdServiceName[] = "org.chromium.debugd";
 
 // Methods.
-const char kCupsAddManuallyConfiguredPrinter[] =
-    "CupsAddManuallyConfiguredPrinter";
-const char kCupsAddManuallyConfiguredPrinterV2[] =
-    "CupsAddManuallyConfiguredPrinterV2";
-const char kCupsAddAutoConfiguredPrinter[] = "CupsAddAutoConfiguredPrinter";
-const char kCupsAddAutoConfiguredPrinterV2[] = "CupsAddAutoConfiguredPrinterV2";
-const char kCupsRemovePrinter[] = "CupsRemovePrinter";
-const char kCupsRetrievePpd[] = "CupsRetrievePpd";
 const char kDumpDebugLogs[] = "DumpDebugLogs";
 const char kGetInterfaces[] = "GetInterfaces";
 const char kGetNetworkStatus[] = "GetNetworkStatus";
@@ -98,21 +90,6 @@ enum DevFeatureFlag {
   DEV_FEATURE_DEV_MODE_ROOT_PASSWORD_SET = 1 << 4,
   DEV_FEATURE_SYSTEM_ROOT_PASSWORD_SET = 1 << 5,
   DEV_FEATURE_CHROME_REMOTE_DEBUGGING_ENABLED = 1 << 6,
-};
-
-// CupsAdd* error codes
-enum CupsResult {
-  CUPS_SUCCESS = 0,
-  CUPS_FATAL = 1,
-  CUPS_INVALID_PPD = 2,
-  CUPS_LPADMIN_FAILURE = 3,
-  CUPS_AUTOCONF_FAILURE = 4,
-  CUPS_BAD_URI = 5,
-  CUPS_IO_ERROR = 6,
-  CUPS_MEMORY_ALLOC_ERROR = 7,
-  CUPS_PRINTER_UNREACHABLE = 8,
-  CUPS_PRINTER_WRONG_RESPONSE = 9,
-  CUPS_PRINTER_NOT_AUTOCONF = 10
 };
 
 // DRMTraceCategories flags. These values must align with those in
