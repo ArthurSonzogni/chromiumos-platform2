@@ -191,37 +191,101 @@ class FakeSaneWrapper : public LibsaneWrapperFake {
   const SANE_Device** device_list_ = nullptr;
 };
 
+// Verifies that ConnectToDevice() rejects undiscovered network/URI SANE device
+// strings that target loopback, unspecified, DNS hostnames, custom Epson ports,
+// or arbitrary network backends (b/524240148).
 TEST_F(SaneClientTest, SaneClientRejectsUndiscoveredDevices) {
   FakeSaneWrapper libsane;
-  libsane.CreateScanner("airscan:escl:poc:http://127.0.0.1:34653/eSCL/");
+  const char* kInvalidDevices[] = {
+      "airscan:escl:poc:http://127.0.0.1:34653/eSCL/",
+      "airscan:escl:poc:http://localhost:34653/eSCL/",
+      "airscan:escl:poc:http://[::1]:34653/eSCL/",
+      "airscan:escl:poc:http://[::ffff:127.0.0.1]:34653/eSCL/",
+      "airscan:escl:poc:http://0.0.0.0:34653/eSCL/",
+      "epsonds:net:127.0.0.1:34653",
+      "epson2:net:127.0.0.1:34653",
+      "epsonds:net:127.0.0.1",
+      "epson2:net:192.168.1.50:34653",
+      "net:127.0.0.1:test",
+      "escl:http://127.0.0.1:34653/eSCL/",
+      "xerox_mfp:tcp 127.0.0.1 34653",
+  };
+  for (const char* dev_name : kInvalidDevices) {
+    libsane.CreateScanner(dev_name);
+  }
   std::unique_ptr<SaneClient> client = SaneClientImpl::Create(&libsane);
 
-  SANE_Status status = SANE_STATUS_GOOD;
-  brillo::ErrorPtr error;
-  std::unique_ptr<SaneDevice> device = client->ConnectToDevice(
-      &error, &status, "airscan:escl:poc:http://127.0.0.1:34653/eSCL/");
-  EXPECT_EQ(device, nullptr);
-  EXPECT_NE(error, nullptr);
-  EXPECT_EQ(status, SANE_STATUS_INVAL);
+  for (const char* dev_name : kInvalidDevices) {
+    SANE_Status status = SANE_STATUS_GOOD;
+    brillo::ErrorPtr error;
+    std::unique_ptr<SaneDevice> device =
+        client->ConnectToDevice(&error, &status, dev_name);
+    EXPECT_EQ(device, nullptr) << "Expected rejection for " << dev_name;
+    EXPECT_NE(error, nullptr) << "Expected error for " << dev_name;
+    EXPECT_EQ(status, SANE_STATUS_INVAL)
+        << "Unexpected status for " << dev_name;
+  }
 }
 
+// Verifies that AirScan (eSCL/WSD) and Epson network scanners targeting valid
+// remote IPv4/IPv6 addresses can be opened without a prior ListDevices() call,
+// supporting Chrome mDNS discovery, airscan-discover, epson_probe, and daemon
+// restarts after idle shutdown (b/584727512).
+TEST_F(SaneClientTest, SaneClientAllowsRemoteNetworkScannersWithoutDiscovery) {
+  FakeSaneWrapper libsane;
+  const char* kRemoteNetworkScanners[] = {
+      "airscan:escl:HP LaserJet MFP M234dw (09195A):"
+      "https://100.107.108.192/eSCL/",
+      "airscan:escl:Other:http://192.168.1.99:80/eSCL/",
+      "airscan:wsd:Konica Minolta Bizhub 3622:http://192.168.0.15:443/eSCL/",
+      "airscan:escl:IPv6Scanner:http://[2001:db8::1]:8080/eSCL/",
+      "epson2:net:192.168.1.50",
+      "epsonds:net:192.168.1.50",
+  };
+  for (const char* dev_name : kRemoteNetworkScanners) {
+    libsane.CreateScanner(dev_name);
+  }
+  std::unique_ptr<SaneClient> client = SaneClientImpl::Create(&libsane);
+
+  for (const char* dev_name : kRemoteNetworkScanners) {
+    SANE_Status status = SANE_STATUS_INVAL;
+    brillo::ErrorPtr error;
+    std::unique_ptr<SaneDevice> device =
+        client->ConnectToDevice(&error, &status, dev_name);
+    EXPECT_NE(device, nullptr) << "Expected success for " << dev_name;
+    EXPECT_EQ(status, SANE_STATUS_GOOD) << "Unexpected status for " << dev_name;
+  }
+}
+
+// Verifies that other network backends (e.g. kodakaio) are rejected before
+// ListDevices() and permitted once discovered by ListDevices(), while local USB
+// backends (e.g. pixma) work across idle restarts without ListDevices().
 TEST_F(SaneClientTest, SaneClientAllowsDiscoveredFakeDevices) {
   FakeSaneWrapper libsane;
-  dev_.name = "pixma:04A9176D_123456";
+  dev_.name = "kodakaio:net:192.168.1.60";
   dev_two_.name = "epson2:net:192.168.1.50";
   libsane.SetDeviceList(two_devices_);
+  libsane.CreateScanner("kodakaio:net:192.168.1.60");
   libsane.CreateScanner("pixma:04A9176D_123456");
   libsane.CreateScanner("epsonds:net:192.168.1.50");
-  libsane.CreateScanner("airscan:escl:Other:http://192.168.1.99:80/eSCL/");
 
   std::unique_ptr<SaneClient> client = SaneClientImpl::Create(&libsane);
 
-  // Before ListDevices(), opening a fake scanner must fail.
+  // Before ListDevices(), opening an undiscovered network backend must fail,
+  // while local USB backends are allowed across idle restarts.
   SANE_Status status = SANE_STATUS_GOOD;
   brillo::ErrorPtr error;
-  EXPECT_EQ(client->ConnectToDevice(&error, &status, "pixma:04A9176D_123456"),
-            nullptr);
+  EXPECT_EQ(
+      client->ConnectToDevice(&error, &status, "kodakaio:net:192.168.1.60"),
+      nullptr);
   EXPECT_EQ(status, SANE_STATUS_INVAL);
+
+  error.reset();
+  std::unique_ptr<SaneDevice> pixma_device =
+      client->ConnectToDevice(&error, &status, "pixma:04A9176D_123456");
+  EXPECT_NE(pixma_device, nullptr);
+  EXPECT_EQ(status, SANE_STATUS_GOOD);
+  pixma_device.reset();
 
   // Discover devices via ListDevices().
   error.reset();
@@ -230,11 +294,11 @@ TEST_F(SaneClientTest, SaneClientAllowsDiscoveredFakeDevices) {
   ASSERT_TRUE(scanners.has_value());
   EXPECT_EQ(scanners->size(), 2);
 
-  // Discovered fake scanner can now be opened.
+  // Discovered network scanner can now be opened.
   error.reset();
-  std::unique_ptr<SaneDevice> pixma_device =
-      client->ConnectToDevice(&error, &status, "pixma:04A9176D_123456");
-  EXPECT_NE(pixma_device, nullptr);
+  std::unique_ptr<SaneDevice> kodak_device =
+      client->ConnectToDevice(&error, &status, "kodakaio:net:192.168.1.60");
+  EXPECT_NE(kodak_device, nullptr);
   EXPECT_EQ(status, SANE_STATUS_GOOD);
 
   // Discovered "epson2:" scanner also allows probing via "epsonds:".
@@ -243,16 +307,11 @@ TEST_F(SaneClientTest, SaneClientAllowsDiscoveredFakeDevices) {
       client->ConnectToDevice(&error, &status, "epsonds:net:192.168.1.50");
   EXPECT_NE(epsonds_device, nullptr);
   EXPECT_EQ(status, SANE_STATUS_GOOD);
-
-  // Undiscovered fake scanner is still rejected.
-  error.reset();
-  EXPECT_EQ(client->ConnectToDevice(
-                &error, &status,
-                "airscan:escl:Other:http://192.168.1.99:80/eSCL/"),
-            nullptr);
-  EXPECT_EQ(status, SANE_STATUS_INVAL);
 }
 
+// Verifies that caller-supplied `airscan:...:unix://` device strings are
+// rejected regardless of scheme casing (only `ippusb:` strings rewritten
+// internally by BackendForDevice() may use `:unix://`).
 TEST_F(SaneClientTest, SaneClientRejectsDirectUnixSocketDevices) {
   FakeSaneWrapper libsane;
   std::unique_ptr<SaneClient> client = SaneClientImpl::Create(&libsane);

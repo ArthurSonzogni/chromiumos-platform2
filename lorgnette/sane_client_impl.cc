@@ -1,4 +1,3 @@
-#include <base/posix/eintr_wrapper.h>
 // Copyright 2020 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -6,6 +5,7 @@
 #include "lorgnette/sane_client_impl.h"
 
 #include <arpa/inet.h>
+#include <ifaddrs.h>
 #include <linux/inet_diag.h>
 #include <linux/netlink.h>
 #include <linux/sock_diag.h>
@@ -13,11 +13,14 @@
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 
+#include <cstring>
 #include <optional>
 
 #include <base/check.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <re2/re2.h>
@@ -87,6 +90,170 @@ bool IsRootOwnedLocalhostListener(uint16_t port) {
     }
   }
   return false;
+}
+
+// Returns true if `target` matches an IPv4 address assigned to any local
+// network interface on this host. Used to prevent SSRF against local services
+// bound to the host's non-loopback interface IP addresses.
+bool IsLocalInterfaceIpv4(const struct in_addr& target) {
+  struct ifaddrs* ifaddr = nullptr;
+  if (getifaddrs(&ifaddr) == -1) {
+    PLOG(ERROR) << "getifaddrs failed";
+    return false;
+  }
+  bool found = false;
+  for (struct ifaddrs* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
+    if (!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET) {
+      continue;
+    }
+    const auto* sin =
+        reinterpret_cast<const struct sockaddr_in*>(ifa->ifa_addr);
+    if (sin->sin_addr.s_addr == target.s_addr) {
+      found = true;
+      break;
+    }
+  }
+  freeifaddrs(ifaddr);
+  return found;
+}
+
+// Returns true if `target` matches an IPv6 address assigned to any local
+// network interface on this host. Used to prevent SSRF against local services
+// bound to the host's non-loopback interface IPv6 addresses.
+bool IsLocalInterfaceIpv6(const struct in6_addr& target) {
+  struct ifaddrs* ifaddr = nullptr;
+  if (getifaddrs(&ifaddr) == -1) {
+    PLOG(ERROR) << "getifaddrs failed";
+    return false;
+  }
+  bool found = false;
+  for (struct ifaddrs* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
+    if (!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET6) {
+      continue;
+    }
+    const auto* sin6 =
+        reinterpret_cast<const struct sockaddr_in6*>(ifa->ifa_addr);
+    if (memcmp(&sin6->sin6_addr, &target, sizeof(struct in6_addr)) == 0) {
+      found = true;
+      break;
+    }
+  }
+  freeifaddrs(ifaddr);
+  return found;
+}
+
+// Validates that `addr4` is a remote unicast IPv4 address suitable for a
+// network scanner connection. Rejects unspecified (0.0.0.0/8), loopback
+// (127.0.0.0/8), multicast (224.0.0.0/4), broadcast (255.255.255.255), and any
+// IPv4 address assigned to a local interface on this host.
+bool IsValidRemoteIpv4(const struct in_addr& addr4) {
+  uint32_t ip = ntohl(addr4.s_addr);
+  // Reject 0.0.0.0/8 ("this" network / unspecified) and 127.0.0.0/8 (loopback).
+  if ((ip >> 24) == 0 || (ip >> 24) == IN_LOOPBACKNET) {
+    return false;
+  }
+  // Reject multicast (224.0.0.0/4) and broadcast (255.255.255.255).
+  if (IN_MULTICAST(ip) || ip == INADDR_BROADCAST) {
+    return false;
+  }
+  return !IsLocalInterfaceIpv4(addr4);
+}
+
+// Verifies that `host` is a literal IPv4 or IPv6 address (rejecting DNS
+// hostnames that could resolve to localhost) pointing to a remote device.
+// Handles bracketed IPv6 literals, optional IPv6 zone IDs (e.g. "%eth0"), and
+// IPv4-mapped/compatible IPv6 addresses (e.g. "::ffff:127.0.0.1").
+bool IsValidRemoteIpAddress(std::string host) {
+  if (host.empty()) {
+    return false;
+  }
+  if (host.front() == '[' && host.back() == ']' && host.size() > 2) {
+    host = host.substr(1, host.size() - 2);
+  }
+
+  struct in_addr addr4;
+  if (inet_pton(AF_INET, host.c_str(), &addr4) == 1) {
+    return IsValidRemoteIpv4(addr4);
+  }
+
+  // Strip optional IPv6 zone ID (e.g. "%eth0" or "%25eth0").
+  std::string ipv6_str = host;
+  size_t zone_pos = ipv6_str.find('%');
+  if (zone_pos != std::string::npos) {
+    if (zone_pos + 1 >= ipv6_str.size()) {
+      return false;
+    }
+    ipv6_str = ipv6_str.substr(0, zone_pos);
+  }
+
+  struct in6_addr addr6;
+  if (inet_pton(AF_INET6, ipv6_str.c_str(), &addr6) == 1) {
+    if (IN6_IS_ADDR_UNSPECIFIED(&addr6) || IN6_IS_ADDR_LOOPBACK(&addr6) ||
+        IN6_IS_ADDR_MULTICAST(&addr6)) {
+      return false;
+    }
+    if (IN6_IS_ADDR_V4MAPPED(&addr6) || IN6_IS_ADDR_V4COMPAT(&addr6)) {
+      struct in_addr mapped4;
+      memcpy(&mapped4.s_addr, &addr6.s6_addr[12], sizeof(mapped4.s_addr));
+      return IsValidRemoteIpv4(mapped4);
+    }
+    return !IsLocalInterfaceIpv6(addr6);
+  }
+
+  return false;
+}
+
+// Returns true if `port_str` is a valid decimal TCP port number in [1, 65535].
+bool IsValidPort(const std::string& port_str) {
+  if (port_str.empty() || port_str.size() > 5) {
+    return false;
+  }
+  for (char c : port_str) {
+    if (!base::IsAsciiDigit(c)) {
+      return false;
+    }
+  }
+  unsigned int port = 0;
+  if (!base::StringToUint(port_str, &port)) {
+    return false;
+  }
+  return port >= 1 && port <= 65535;
+}
+
+// Validates the `<host>[:<port>]` or `[<ipv6>][:<port>]` authority component of
+// an `airscan:` HTTP/HTTPS scanner URL, ensuring the port (if present) is valid
+// and the host is a valid remote IP literal.
+bool IsValidRemoteHttpAuthority(const std::string& authority) {
+  if (authority.empty()) {
+    return false;
+  }
+  std::string host;
+  if (authority.front() == '[') {
+    size_t close_bracket = authority.find(']');
+    if (close_bracket == std::string::npos || close_bracket <= 1) {
+      return false;
+    }
+    host = authority.substr(1, close_bracket - 1);
+    if (close_bracket + 1 < authority.size()) {
+      if (authority[close_bracket + 1] != ':') {
+        return false;
+      }
+      if (!IsValidPort(authority.substr(close_bracket + 2))) {
+        return false;
+      }
+    }
+  } else {
+    size_t colon = authority.find(':');
+    if (colon != std::string::npos) {
+      host = authority.substr(0, colon);
+      if (!IsValidPort(authority.substr(colon + 1))) {
+        return false;
+      }
+    } else {
+      host = authority;
+    }
+  }
+  return IsValidRemoteIpAddress(host);
 }
 
 }  // namespace
@@ -194,23 +361,79 @@ std::optional<std::vector<ScannerInfo>> SaneClientImpl::DeviceListToScannerInfo(
 SaneClientImpl::SaneClientImpl(LibsaneWrapper* libsane)
     : libsane_(libsane), open_devices_(std::make_shared<DeviceSet>()) {}
 
+// Validates `device_name` before passing it to `sane_open()` to prevent SSRF
+// and confused-deputy attacks via arbitrary network/socket SANE strings while
+// supporting scanners discovered outside `sane_get_devices()` and across
+// lorgnette's 2-second idle shutdown timeout.
 bool SaneClientImpl::IsDeviceKnown(const std::string& device_name) {
+  // Allow SANE's built-in virtual test backend.
   if (device_name == "test" || base::StartsWith(device_name, "test:")) {
     return true;
   }
-  // Rewritten IPP-USB devices (airscan:...:unix://<vid>-<pid>.sock/...) were
-  // already verified by BackendForDevice() in SaneClient::ConnectToDevice().
-  if (base::StartsWith(device_name, "airscan:") &&
-      base::ToLowerASCII(device_name).find(":unix://") != std::string::npos) {
-    return true;
+
+  if (base::StartsWith(device_name, "airscan:")) {
+    // Rewritten IPP-USB devices (airscan:...:unix://<vid>-<pid>.sock/...) were
+    // already verified by BackendForDevice() in SaneClient::ConnectToDevice(),
+    // which rejects direct caller-supplied `airscan:...:unix://` strings.
+    if (base::ToLowerASCII(device_name).find(":unix://") != std::string::npos) {
+      return true;
+    }
+    // Tast virtual network scanner (ippusb_bridge -p 60000) runs as root (uid
+    // 0).
+    if (device_name == "airscan:escl:TestScanner:http://localhost:60000/eSCL" &&
+        IsRootOwnedLocalhostListener(60000)) {
+      return true;
+    }
+    // Network AirScan scanners are discovered via mDNS in Chrome
+    // (ZeroconfScannerDetector) or airscan-discover in lorgnette_cli rather
+    // than sane_get_devices() (since /etc/sane.d/airscan.conf sets
+    // `discovery = disable`). Allow them if they target a valid remote IP.
+    std::string authority;
+    if (RE2::FullMatch(device_name,
+                       "airscan:(?:escl|wsd):[^:]+:https?://([^/?#]+)(?:/.*)?",
+                       &authority)) {
+      return IsValidRemoteHttpAuthority(authority);
+    }
+    return false;
   }
-  // Tast virtual network scanner (ippusb_bridge -p 60000) runs as root (uid 0).
-  if (device_name == "airscan:escl:TestScanner:http://localhost:60000/eSCL" &&
-      IsRootOwnedLocalhostListener(60000)) {
-    return true;
+
+  // Epson network scanners may be discovered via epson_probe outside
+  // sane_get_devices() or opened after lorgnette's idle shutdown timeout.
+  // Allow them if they target a valid remote IP address without a custom port.
+  if (base::StartsWith(device_name, "epson2:net:")) {
+    return IsValidRemoteIpAddress(device_name.substr(11));
   }
-  base::AutoLock auto_lock(known_devices_lock_);
-  return known_devices_.count(device_name) > 0;
+  if (base::StartsWith(device_name, "epsonds:net:")) {
+    return IsValidRemoteIpAddress(device_name.substr(12));
+  }
+
+  // Allow any other network scanner backend (e.g. kodakaio, pixma, xerox_mfp)
+  // that was explicitly enumerated by `sane_get_devices()` during ListDevices()
+  // in the current daemon lifetime.
+  {
+    base::AutoLock auto_lock(known_devices_lock_);
+    if (known_devices_.count(device_name) > 0) {
+      return true;
+    }
+  }
+
+  // Reject any other network or URI-based SANE device strings that were not
+  // discovered by ListDevices().
+  std::string lower_name = base::ToLowerASCII(device_name);
+  if (base::StartsWith(lower_name, "net:") ||
+      base::StartsWith(lower_name, "escl:") ||
+      base::StartsWith(lower_name, "dell1600n_net:") ||
+      base::StartsWith(lower_name, "magicolor:") ||
+      base::StartsWith(lower_name, "hpaio:") ||
+      lower_name.find("://") != std::string::npos ||
+      lower_name.find(":net:") != std::string::npos ||
+      lower_name.find(":tcp") != std::string::npos) {
+    return false;
+  }
+
+  // Allow local USB SANE backends (e.g. pixma, fujitsu, genesys, epson2:libusb)
+  // across lorgnette idle restarts without requiring a prior ListDevices() call.
+  return true;
 }
 
 std::unique_ptr<SaneDevice> SaneClientImpl::ConnectToDeviceInternal(

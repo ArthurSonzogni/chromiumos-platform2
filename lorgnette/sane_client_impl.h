@@ -45,12 +45,18 @@ class SaneClientImpl : public SaneClient {
  private:
   explicit SaneClientImpl(LibsaneWrapper* libsane);
 
+  // Checks whether `device_name` is safe and permitted to be opened by SANE.
+  // Returns true if the device was previously discovered by ListDevices(), is
+  // a known local USB or test backend, or is a supported remote network
+  // scanner endpoint targeting a valid non-local IP address.
   bool IsDeviceKnown(const std::string& device_name);
 
   LibsaneWrapper* libsane_;  // Not owned.
   base::Lock lock_;
   std::shared_ptr<DeviceSet> open_devices_;
   base::Lock known_devices_lock_;
+  // Tracks SANE device names discovered during ListDevices() in the current
+  // daemon lifetime.
   std::unordered_set<std::string> known_devices_;
 };
 
