@@ -128,17 +128,13 @@ libarc_setup_sources = [
   "arc_setup.cc",
   "arc_setup_metrics.cc",
   "arc_setup_util.cc",
-  "art_container.cc",
   "config.cc",
 ]
 
 static_library("libarc_setup_static") {
   sources = libarc_setup_sources
   configs += [ ":target_defaults" ]
-  libs = [
-    "arc_setup_rs",
-    "bootstat",
-  ]
+  libs = [ "arc_setup_rs" ]
   deps = [ "xml:libandroidxml" ]
 }
 
@@ -150,10 +146,7 @@ shared_library("libarc_setup") {
     "USE_ARC_HW_OEMCRYPTO=${use.arc_hw_oemcrypto}",
   ]
   configs += [ ":target_defaults" ]
-  libs = [
-    "arc_setup_rs",
-    "bootstat",
-  ]
+  libs = [ "arc_setup_rs" ]
   deps = [ "xml:libandroidxml" ]
   install_path = "lib"
 }
@@ -250,7 +243,6 @@ if (use.test) {
       "arc_setup_metrics_test.cc",
       "arc_setup_test.cc",
       "arc_setup_util_test.cc",
-      "art_container_test.cc",
       "config_test.cc",
       "xml/android_binary_xml_tokenizer_test.cc",
       "xml/android_binary_xml_tokenizer_test_util.cc",

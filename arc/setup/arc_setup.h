@@ -52,14 +52,6 @@ enum class ArcBootType {
   REGULAR_BOOT = 3,
 };
 
-// Enum that describes which native bridge mode is used to run arm binaries on
-// x86.
-enum class ArcBinaryTranslationType {
-  NONE = 0,
-  HOUDINI = 1,
-  NDK_TRANSLATION = 2,
-};
-
 // Enum that describes what action ArcSetup will perform.
 enum class Mode {
   PREPARE_HOST_GENERATED_DIR,
@@ -92,151 +84,16 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   }
 
  private:
-  enum class PlayStoreAutoUpdate { kDefault, kOn, kOff };
-
-  // Converts |PlayStoreAutoUpdate| to Android string param.
-  static std::string GetPlayStoreAutoUpdateParam(
-      PlayStoreAutoUpdate play_store_auto_update);
-
-  // Clears executables /data/app/*/oat and /data/dalvik-cache.
-  void DeleteExecutableFilesInData(
-      bool should_delete_data_dalvik_cache_directory,
-      bool should_delete_data_app_executables);
-
-  // Clears unused cache directory that was used in ARC-N.
-  void DeleteUnusedCacheDirectory();
-
-  // Waits for the rt-limits job to start.
-  void WaitForRtLimitsJob();
-
-  // Waits for directories in /run the container depends on to be created.
-  void WaitForArcDirectories();
-
-  // Remounts /vendor.
-  void RemountVendorDirectory();
-
-  // Identifies type of binary translation.
-  ArcBinaryTranslationType IdentifyBinaryTranslationType();
-
-  // Sets up binfmt_misc handler to run arm binaries on x86.
-  void SetUpBinFmtMisc(ArcBinaryTranslationType bin_type);
-
-  // Sets up a dummy android-data directory on tmpfs.
-  void SetUpDummyAndroidDataOnTmpfs();
-
   // Sets up android-data directory. It bind-mounts
   // /home/root/<hash>/android-data to |bind_target|.
   void SetUpAndroidData(const base::FilePath& bind_target);
 
-  // Sets up shared APK cache directory.
-  void SetUpSharedApkDirectory();
-
-  // Sets up sdcard mount, if required.
-  void SetUpSdcard();
-
-  // Creates files and directories needed by the container.
-  void CreateContainerFilesAndDirectories();
-
   // Detects and applies per-board hardware configurations.
-  void ApplyPerBoardConfigurations();
   void ApplyPerBoardConfigurationsInternal(
       const base::FilePath& oem_mount_directory);
 
-  // Sets up shared tmpfs to share mount points for external storage.
-  void SetUpSharedTmpfsForExternalStorage();
-
-  // Sets up /mnt filesystem for arc-obb-mounter.
-  void SetUpFilesystemForObbMounter();
-
-  // Calls InstallHostSideCodeInternal() for each isa the device supports.
-  void InstallLinksToHostSideCode();
-
-  // Installs links to *boot*.{art,oat} files to |dest_isa_directory|. Returns
-  // false when |src_isa_directory| is empty.
-  bool InstallLinksToHostSideCodeInternal(
-      const base::FilePath& src_isa_directory,
-      const base::FilePath& dest_isa_directory,
-      const std::string& isa);
-
-  // Provides some fake kernel command line arguments that are needed.
-  void CreateAndroidCmdlineFile(bool is_dev_mode);
-
-  // Create fake procfs entries expected by android.
-  void CreateFakeProcfsFiles();
-
-  // Bind-mounts /sys/kernel/tracing to |arc_paths.debugfs_directory|/tracing.
-  void SetUpMountPointForDebugFilesystem(bool is_dev_mode);
-
-  // Sets up media mount points such as arc-removable-media and arc-myfiles.
-  void SetUpMountPointsForMedia();
-
-  // Sets up a mount point for arc-adbd.
-  void SetUpMountPointForAdbd();
-
-  // Sets up a mount point for arc-adbd UNIX domain sockets.
-  void SetUpMountPointForAdbdUnixSocket();
-
-  // Cleans up mount points for arc-removable-media if any.
-  void CleanUpStaleMountPoints();
-
-  // Sets up a mount point for passing the user's /data and /cache to the
-  // container.
-  void SetUpSharedMountPoints();
-
-  // Sets up the correct ownership for <configfs>/sdcardfs, if the directory
-  // exists.
-  void SetUpOwnershipForSdcardConfigfs();
-
-  // Restores the labels of files and directories. This has to be called before
-  // MakeMountpointsReadOnly() makes the directories read-only.
-  void RestoreContext();
-
-  // Initializes SELinux contexts of SysFS entries necessary to enumerate
-  // graphics hardware. Cannot be done using RestoreContext(), because
-  // symbolic links are involved.
-  void SetUpGraphicsSysfsContext();
-
-  // Initializes SELinux contexts of SysFS entries necessary to enumerate
-  // power supplies (batteries, line power, etc.) As with graphics symbolic
-  // links are involved.
-  // TODO(ejcaruso, b/78300746): remove this when we can use genfs_contexts
-  void SetUpPowerSysfsContext();
-
-  // Initializes the testharness directory and key file inside for testharness.
-  void SetUpTestharness(bool is_dev_mode);
-
-  // Makes some mount points read-only.
-  void MakeMountPointsReadOnly();
-
   // Sets up a subset property file for camera.
   void SetUpCameraProperty(const base::FilePath& build_prop);
-
-  // Sets up a default apps.
-  void SetUpDefaultApps();
-
-  // Creates an ashmem device file with the boot ID appended to its basename.
-  // This is needed for container only. Otherwise, the file is created in
-  // DeviceHandler::HandleAshmemUevent in init:
-  // http://cs/rvc-arc/system/core/init/devices.cpp;l=444;rcl=e87d4841a777e35ee6f7e15d5ce8357a7e47dc3f
-  // We don't do this for P, as P has not historically done so, so it is not
-  // tested, and P doesn't require this in its Selinux policy. See b/260273725
-  void CreateTaggedAshmem(const base::FilePath& rootfs);
-
-  // Cleans up binfmt_misc handlers that run arm binaries on x86.
-  void CleanUpBinFmtMiscSetUp();
-
-  // Cleanup sdcard mount.
-  void UnmountSdcard();
-
-  // Unmounts files and directories that are not necessary after shutting down
-  // the container.
-  void UnmountOnStop();
-
-  // Removes the pipe for 'bugreport'.
-  void RemoveBugreportPipe();
-
-  // Removes the FIFO file for emulating /dev/kmsg.
-  void RemoveAndroidKmsgFifo();
 
   // Removes ARC /data in LVM stateful partition.
   void RemoveDataInLvm();
@@ -253,66 +110,6 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   // Returns the SDK version read from packages.xml in ARCVM /data by internally
   // calling GetBootTypeAndDataSdkVersion().
   AndroidSdkVersion GetArcVmDataSdkVersion();
-
-  // Checks if arc-setup should clobber /data/dalvik-cache and /data/app/*/oat
-  // before starting the container.
-  void ShouldDeleteDataExecutables(
-      ArcBootType boot_type,
-      bool* out_should_delete_data_dalvik_cache_directory,
-      bool* out_should_delete_data_app_executables);
-
-  // Returns a serial number for the user.
-  std::string GetSerialNumber();
-
-  // Mounts pre-installed demo apps to the shared mount point that will be
-  // passed into the container.
-  // |demo_apps_image| - path to the image containing set of demo session apps.
-  // |demo_apps_mount_directory| - the path to which demo apps should be
-  // mounted.
-  void MountDemoApps(const base::FilePath& demo_apps_image,
-                     const base::FilePath& demo_apps_mount_directory);
-
-  // Bind-mounts the user's /data and /cache to the shared mount point to pass
-  // them into the container. For demo sessions, it additionally mounts demo
-  // apps that should be loaded as pre-installed by the container.
-  void MountSharedAndroidDirectories();
-
-  // Unmounts the user's /data and /cache bind-mounted to the shared mount
-  // point.
-  void UnmountSharedAndroidDirectories();
-
-  // Starts the adbd proxy if the system is running in dev mode, not in a VM,
-  // and there is kernel support for it.
-  void MaybeStartAdbdProxy(bool is_dev_mode,
-                           bool is_inside_vm,
-                           const std::string& serialnumber);
-
-  // Asks the (partially booted) container to turn itself into a fully
-  // functional one.
-  void ContinueContainerBoot(ArcBootType boot_type,
-                             const std::string& serialnumber);
-
-  // Ensures that directories that are necessary for starting a container
-  // exist.
-  void EnsureContainerDirectories();
-
-  // Mounts image files that are necessary for container startup.
-  void MountOnOnetimeSetup();
-
-  // Unmounts image files that have been mounted in MountOnOnetimeSetup.
-  void UnmountOnOnetimeStop();
-
-  // Various bind-mounts inside the container's mount namespace on pre-chroot
-  // stage.
-  void BindMountInContainerNamespaceOnPreChroot(
-      const base::FilePath& rootfs,
-      const ArcBinaryTranslationType binary_translation_type);
-
-  // Restores SELinux contexts of files inside the container's mount namespace.
-  void RestoreContextOnPreChroot(const base::FilePath& rootfs);
-
-  // Creates /dev/.coldboot_done file in the container's mount namespace.
-  void CreateDevColdbootDoneOnPreChroot(const base::FilePath& rootfs);
 
   // Sends details about updated version to UMA.
   void SendUpgradeMetrics(AndroidSdkVersion data_sdk_version);
