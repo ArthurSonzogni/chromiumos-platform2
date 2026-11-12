@@ -13,6 +13,7 @@ getrandom: arg2 in ~GRND_RANDOM
 getresgid: 1
 getresuid: 1
 getsockname: 1
+lseek: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 madvise: arg2 == MADV_DONTNEED || arg2 == MADV_GUARD_INSTALL || arg2 == MADV_HUGEPAGE
 mseal: 1
