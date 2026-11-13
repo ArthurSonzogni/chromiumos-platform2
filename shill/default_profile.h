@@ -75,7 +75,6 @@ class DefaultProfile : public Profile {
       "SingleCACertVerificationPhase1";
   static constexpr char kStorageEnableSingleCACertVerificationPhase2[] =
       "SingleCACertVerificationPhase2";
-  static constexpr char kStorageUseLegacyDHCPCD[] = "UseLegacyDHCPCD";
 
   void HelpRegisterConstDerivedBool(std::string_view name,
                                     bool (DefaultProfile::*get)(Error* error));

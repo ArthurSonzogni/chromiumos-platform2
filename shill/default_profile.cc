@@ -28,6 +28,9 @@ constexpr char kStorageUseSwanctlDriver[] = "UseSwanctlDriver";
 
 // Removed in crrev/c/5040178. Left to remove entries from profile.
 constexpr char kStorageIgnoredDNSSearchPaths[] = "IgnoredDNSSearchPaths";
+
+// Removed in b/584562443. Left to remove entries from profile.
+constexpr char kStorageUseLegacyDHCPCD[] = "UseLegacyDHCPCD";
 }  // namespace
 
 // static
@@ -95,8 +98,6 @@ void DefaultProfile::LoadManagerProperties(ManagerProperties* manager_props) {
                      &manager_props->enable_single_ca_cert_verification_phase1);
   storage()->GetBool(kStorageId, kStorageEnableSingleCACertVerificationPhase2,
                      &manager_props->enable_single_ca_cert_verification_phase2);
-  storage()->GetBool(kStorageId, kStorageUseLegacyDHCPCD,
-                     &manager_props->use_legacy_dhcpcd);
   if (!storage()->GetString(kStorageId, kStorageCheckPortalList,
                             &manager_props->check_portal_list)) {
     manager_props->check_portal_list = PortalDetector::kDefaultCheckPortalList;
@@ -172,6 +173,8 @@ bool DefaultProfile::Save() {
   storage()->DeleteKey(kStorageId, kStorageUseSwanctlDriver);
   // IgnoredDNSSearchPaths was removed in crrev/c/5040178Í.
   storage()->DeleteKey(kStorageId, kStorageIgnoredDNSSearchPaths);
+  // UseLegacyDHCPCD was removed in b/584562443.
+  storage()->DeleteKey(kStorageId, kStorageUseLegacyDHCPCD);
 
   storage()->SetBool(kStorageId, kStorageArpGateway, props_.arp_gateway);
   storage()->SetBool(kStorageId, kStorageEnableRFC8925, props_.enable_rfc_8925);
@@ -179,8 +182,6 @@ bool DefaultProfile::Save() {
                      props_.enable_single_ca_cert_verification_phase1);
   storage()->SetBool(kStorageId, kStorageEnableSingleCACertVerificationPhase2,
                      props_.enable_single_ca_cert_verification_phase2);
-  storage()->SetBool(kStorageId, kStorageUseLegacyDHCPCD,
-                     props_.use_legacy_dhcpcd);
   storage()->SetString(kStorageId, kStorageName, GetFriendlyName());
   storage()->SetString(kStorageId, kStorageCheckPortalList,
                        props_.check_portal_list);
