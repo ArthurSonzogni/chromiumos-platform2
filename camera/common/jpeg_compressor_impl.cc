@@ -427,8 +427,7 @@ bool JpegCompressorImpl::EncodeHwLegacy(const uint8_t* input_buffer,
     }
   }
   if (status == cros::JpegEncodeAccelerator::ENCODE_OK) {
-    memcpy(static_cast<unsigned char*>(out_buffer), output_shm_mapping.memory(),
-           *out_data_size);
+    memcpy(out_buffer, output_shm_mapping.data(), *out_data_size);
     camera_metrics_->SendJpegProcessLatency(JpegProcessType::kEncode,
                                             JpegProcessMethod::kHardware,
                                             timer.Elapsed());

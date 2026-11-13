@@ -176,7 +176,7 @@ void JpegDecodeAcceleratorTest::PrepareMemory(Frame* frame) {
     frame->in_shm_mapping = frame->in_shm_region.Map();
     LOG_ASSERT(frame->in_shm_mapping.IsValid());
   }
-  memcpy(frame->in_shm_mapping.memory(), frame->data_str.data(), input_size);
+  memcpy(frame->in_shm_mapping.data(), frame->data_str.data(), input_size);
 
   if (!frame->hw_out_shm_mapping.IsValid() ||
       output_size > frame->hw_out_shm_mapping.mapped_size()) {
@@ -185,7 +185,7 @@ void JpegDecodeAcceleratorTest::PrepareMemory(Frame* frame) {
     frame->hw_out_shm_mapping = frame->hw_out_shm_region.Map();
     LOG_ASSERT(frame->hw_out_shm_mapping.IsValid());
   }
-  memset(frame->hw_out_shm_mapping.memory(), 0, output_size);
+  memset(frame->hw_out_shm_mapping.data(), 0, output_size);
 
   if (!frame->sw_out_shm_mapping.IsValid() ||
       output_size > frame->sw_out_shm_mapping.mapped_size()) {
@@ -194,7 +194,7 @@ void JpegDecodeAcceleratorTest::PrepareMemory(Frame* frame) {
     frame->sw_out_shm_mapping = frame->sw_out_shm_region.Map();
     LOG_ASSERT(frame->sw_out_shm_mapping.IsValid());
   }
-  memset(frame->sw_out_shm_mapping.memory(), 0, output_size);
+  memset(frame->sw_out_shm_mapping.data(), 0, output_size);
 }
 
 double JpegDecodeAcceleratorTest::GetMeanAbsoluteDifference(Frame* frame) {
@@ -231,7 +231,7 @@ void JpegDecodeAcceleratorTest::DecodeTest(Frame* frame, size_t decoder_id) {
   int input_fd, output_fd;
 
   // Clear HW Decode results.
-  memset(frame->hw_out_shm_mapping.memory(), 0,
+  memset(frame->hw_out_shm_mapping.data(), 0,
          frame->hw_out_shm_mapping.mapped_size());
 
   input_fd = frame->in_shm_region.GetPlatformHandle().fd;
@@ -255,7 +255,7 @@ void JpegDecodeAcceleratorTest::DecodeTestAsync(Frame* frame,
   int input_fd, output_fd;
 
   // Clear HW Decode results.
-  memset(frame->hw_out_shm_mapping.memory(), 0,
+  memset(frame->hw_out_shm_mapping.data(), 0,
          frame->hw_out_shm_mapping.mapped_size());
 
   input_fd = in_platform_shm.GetPlatformHandle().fd;
@@ -313,7 +313,7 @@ TEST_F(JpegDecodeAcceleratorTest, DecodeFailTest) {
   PrepareMemory(&jpeg_frame1_);
 
   // Corrupt jpeg content
-  memset(jpeg_frame1_.in_shm_mapping.memory(), 0,
+  memset(jpeg_frame1_.in_shm_mapping.data(), 0,
          jpeg_frame1_.in_shm_mapping.mapped_size());
   base::subtle::PlatformSharedMemoryRegion in_platform_shm =
       base::WritableSharedMemoryRegion::TakeHandleForSerialization(

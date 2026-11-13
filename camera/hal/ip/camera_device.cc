@@ -3,19 +3,22 @@
  * found in the LICENSE file.
  */
 
-#include <cctype>
+#include "hal/ip/camera_device.h"
+
 #include <libyuv.h>
 #include <linux/videodev2.h>
+
+#include <cctype>
 #include <memory>
+#include <utility>
+
 #include <base/check.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/system/platform_handle.h>
-#include <utility>
 
 #include "absl/strings/str_cat.h"
 #include "cros-camera/common.h"
 #include "cros-camera/ipc_util.h"
-#include "hal/ip/camera_device.h"
 #include "hal/ip/camera_hal.h"
 #include "hal/ip/metadata_handler.h"
 
@@ -515,11 +518,9 @@ void CameraDevice::CopyFromMappingToOutputBuffer(
 
   // Convert from I420 to NV12 while copying the buffer since the buffer manager
   // allocates an NV12 buffer
-  const uint8_t* in_y = reinterpret_cast<const uint8_t*>(mapping->memory());
-  const uint8_t* in_u =
-      reinterpret_cast<const uint8_t*>(mapping->memory()) + width_ * height_;
-  const uint8_t* in_v = reinterpret_cast<const uint8_t*>(mapping->memory()) +
-                        width_ * height_ * 5 / 4;
+  const uint8_t* in_y = mapping->data();
+  const uint8_t* in_u = mapping->data() + width_ * height_;
+  const uint8_t* in_v = mapping->data() + width_ * height_ * 5 / 4;
   uint8_t* out_y = reinterpret_cast<uint8_t*>(ycbcr.y);
   uint8_t* out_uv = reinterpret_cast<uint8_t*>(ycbcr.cb);
 

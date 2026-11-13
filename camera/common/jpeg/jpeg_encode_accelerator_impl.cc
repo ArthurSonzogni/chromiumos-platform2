@@ -274,7 +274,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::EncodeLegacy(
   }
   // Copy content from input buffer or file descriptor to shared memory.
   if (input_buffer) {
-    memcpy(input_shm_mapping.memory(), input_buffer, input_buffer_size);
+    memcpy(input_shm_mapping.data(), input_buffer, input_buffer_size);
   } else {
     uint8_t* mmap_buf = static_cast<uint8_t*>(
         mmap(NULL, input_buffer_size, PROT_READ, MAP_SHARED, input_fd, 0));
@@ -285,7 +285,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::EncodeLegacy(
       return;
     }
 
-    memcpy(input_shm_mapping.memory(), mmap_buf, input_buffer_size);
+    memcpy(input_shm_mapping.data(), mmap_buf, input_buffer_size);
     munmap(mmap_buf, input_buffer_size);
   }
 
@@ -302,7 +302,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::EncodeLegacy(
     return;
   }
   if (exif_buffer_size) {
-    memcpy(exif_shm_mapping.memory(), exif_buffer, exif_buffer_size);
+    memcpy(exif_shm_mapping.data(), exif_buffer, exif_buffer_size);
   }
 
   base::subtle::PlatformSharedMemoryRegion input_platform_shm =
@@ -366,7 +366,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Encode(
     return;
   }
   if (exif_buffer_size) {
-    memcpy(exif_shm_mapping.memory(), exif_buffer, exif_buffer_size);
+    memcpy(exif_shm_mapping.data(), exif_buffer, exif_buffer_size);
   }
   base::subtle::PlatformSharedMemoryRegion exif_platform_shm =
       base::WritableSharedMemoryRegion::TakeHandleForSerialization(

@@ -243,7 +243,7 @@ void JpegEncodeAcceleratorTest::PrepareMemory(Frame* frame) {
     frame->sw_out_shm_mapping = frame->sw_out_shm_region.Map();
     LOG_ASSERT(frame->sw_out_shm_mapping.IsValid());
   }
-  memset(frame->sw_out_shm_mapping.memory(), 0, output_size);
+  memset(frame->sw_out_shm_mapping.data(), 0, output_size);
 }
 
 double JpegEncodeAcceleratorTest::GetMeanAbsoluteDifference(
@@ -261,7 +261,7 @@ bool JpegEncodeAcceleratorTest::GetSoftwareEncodeResult(Frame* frame) {
   if (!compressor->CompressImage(frame->data_str.data(), frame->width,
                                  frame->height, kJpegDefaultQuality, nullptr, 0,
                                  frame->sw_out_shm_mapping.mapped_size(),
-                                 frame->sw_out_shm_mapping.memory(),
+                                 frame->sw_out_shm_mapping.data(),
                                  &frame->sw_out_size,
                                  /*enable_hw_encode=*/false)) {
     LOG(ERROR) << "Software encode failed.";
