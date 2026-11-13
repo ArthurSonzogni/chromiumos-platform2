@@ -151,7 +151,6 @@ constexpr char kTetheringConfigProperty[] = "TetheringConfig";
 constexpr char kTetheringStatusProperty[] = "TetheringStatus";
 constexpr char kUninitializedTechnologiesProperty[] =
     "UninitializedTechnologies";
-constexpr char kUseLegacyDHCPCDProperty[] = "UseLegacyDHCPCD";
 constexpr char kWakeOnLanEnabledProperty[] = "WakeOnLanEnabled";
 constexpr char kWifiGlobalFTEnabledProperty[] = "WiFi.GlobalFTEnabled";
 constexpr char kWifiScanAllowRoamProperty[] = "WiFi.ScanAllowRoam";

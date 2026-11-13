@@ -673,8 +673,6 @@ class Manager {
   bool SetCheckPortalList(const std::string& portal_list, Error* error);
   bool SetPortalFallbackHttpUrls(const std::string& urls, Error* error);
   bool SetPortalFallbackHttpsUrls(const std::string& urls, Error* error);
-  bool GetUseLegacyDHCPCD(Error* error);
-  bool SetUseLegacyDHCPCD(const bool& use_legacy_dhcpcd, Error* error);
   // Emit a kDefaultServiceProperty property-changed D-Bus signal if the default
   // Service has changed. Returns true only if the default Service did actually
   // change.

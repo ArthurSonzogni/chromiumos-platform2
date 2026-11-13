@@ -1206,10 +1206,6 @@ Properties	object ActiveProfile [readonly]
 			yet (i.e.  the Device object is not created yet). The strings are
 			the same as the ones from the service types.
 
-		boolean UseLegacyDHCPCD [readwrite]
-
-			This property is deprecated and does not have any effect.
-
 		bool WakeOnLanEnabled [readwrite]
 
 			Specifies whether the Wake on LAN feature should be enabled on new

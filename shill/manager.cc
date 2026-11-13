@@ -234,9 +234,6 @@ Manager::Manager(ControlInterface* control_interface,
   HelpRegisterDerivedBool(kEnableSingleCACertVerificationPhase2Property,
                           &Manager::GetCACertExperimentPhase2,
                           &Manager::SetCACertExperimentPhase2);
-  HelpRegisterDerivedBool(kUseLegacyDHCPCDProperty,
-                          &Manager::GetUseLegacyDHCPCD,
-                          &Manager::SetUseLegacyDHCPCD);
   HelpRegisterConstDerivedStrings(kAvailableTechnologiesProperty,
                                   &Manager::AvailableTechnologies);
   HelpRegisterDerivedString(kCheckPortalListProperty,
@@ -2531,16 +2528,6 @@ bool Manager::SetPortalFallbackHttpsUrls(const std::string& urls,
       base::SplitString(urls, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   props_.portal_fallback_https_urls = url_list;
   return true;
-}
-
-// UseLegacyDHCPCD is deprecated.
-bool Manager::GetUseLegacyDHCPCD(Error* /*error*/) {
-  return false;
-}
-
-bool Manager::SetUseLegacyDHCPCD(const bool& /*use_legacy_dhcpcd*/,
-                                 Error* /*error*/) {
-  return false;
 }
 
 // called via RPC (e.g., from ManagerDBusAdaptor)
