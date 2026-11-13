@@ -264,7 +264,7 @@ static ReadOnlySharedMemoryRegionPtr ToSharedMemory(
     const std::vector<uint8_t>& data) {
   base::MappedReadOnlyRegion mapped_region =
       base::ReadOnlySharedMemoryRegion::Create(data.size());
-  memcpy(mapped_region.mapping.memory(), data.data(), data.size());
+  memcpy(mapped_region.mapping.data(), data.data(), data.size());
   auto image = mojo_base::mojom::ReadOnlySharedMemoryRegion::New();
   image->buffer =
       mojo::WrapReadOnlySharedMemoryRegion(std::move(mapped_region.region));
