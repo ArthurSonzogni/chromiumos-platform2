@@ -234,7 +234,9 @@ Manager::Manager(ControlInterface* control_interface,
   HelpRegisterDerivedBool(kEnableSingleCACertVerificationPhase2Property,
                           &Manager::GetCACertExperimentPhase2,
                           &Manager::SetCACertExperimentPhase2);
-  store_.RegisterBool(kUseLegacyDHCPCDProperty, &props_.use_legacy_dhcpcd);
+  HelpRegisterDerivedBool(kUseLegacyDHCPCDProperty,
+                          &Manager::GetUseLegacyDHCPCD,
+                          &Manager::SetUseLegacyDHCPCD);
   HelpRegisterConstDerivedStrings(kAvailableTechnologiesProperty,
                                   &Manager::AvailableTechnologies);
   HelpRegisterDerivedString(kCheckPortalListProperty,
@@ -1187,7 +1189,6 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
 
 DHCPController::Options Manager::CreateDefaultDHCPOption() const {
   return DHCPController::Options{
-      .use_legacy_dhcpcd = props_.use_legacy_dhcpcd,
       .use_arp_gateway = props_.arp_gateway,
       .use_rfc_8925 = props_.enable_rfc_8925,
       .apply_dscp = props_.enable_dhcp_qos,
@@ -2530,6 +2531,16 @@ bool Manager::SetPortalFallbackHttpsUrls(const std::string& urls,
       base::SplitString(urls, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   props_.portal_fallback_https_urls = url_list;
   return true;
+}
+
+// UseLegacyDHCPCD is deprecated.
+bool Manager::GetUseLegacyDHCPCD(Error* /*error*/) {
+  return false;
+}
+
+bool Manager::SetUseLegacyDHCPCD(const bool& /*use_legacy_dhcpcd*/,
+                                 Error* /*error*/) {
+  return false;
 }
 
 // called via RPC (e.g., from ManagerDBusAdaptor)

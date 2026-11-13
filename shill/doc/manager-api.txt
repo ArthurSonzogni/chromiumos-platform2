@@ -1208,11 +1208,7 @@ Properties	object ActiveProfile [readonly]
 
 		boolean UseLegacyDHCPCD [readwrite]
 
-			If set, shill will use the legacy dhcpcd7 for IPv4 provisioning.
-			Otherwise for IPv4, the latest dhcpcd will be used. Note that currently
-			shill uses both the latest dhcpcd and the legacy dhcpcd7 as DHCP clients.
-			For IPv6 (DHCPv6-PD), no matter whether this flag is set, the latest
-			dhcpcd will always be used.
+			This property is deprecated and does not have any effect.
 
 		bool WakeOnLanEnabled [readwrite]
 

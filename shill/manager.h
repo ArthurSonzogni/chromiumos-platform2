@@ -102,9 +102,6 @@ struct ManagerProperties {
   // Use a single CA cert for the EAP network if CA cert was selected, no
   // fallback.
   bool enable_single_ca_cert_verification_phase2 = false;
-  // Whether to use the legacy dhcpcd7 or to enable the latest dhcpcd for
-  // IPv4 provisioning.
-  bool use_legacy_dhcpcd = false;
   // Comma-separated list of technologies for which auto-connect is disabled.
   std::string no_auto_connect_technologies;
   // Comma-separated list of technologies that should never be enabled.
@@ -676,6 +673,8 @@ class Manager {
   bool SetCheckPortalList(const std::string& portal_list, Error* error);
   bool SetPortalFallbackHttpUrls(const std::string& urls, Error* error);
   bool SetPortalFallbackHttpsUrls(const std::string& urls, Error* error);
+  bool GetUseLegacyDHCPCD(Error* error);
+  bool SetUseLegacyDHCPCD(const bool& use_legacy_dhcpcd, Error* error);
   // Emit a kDefaultServiceProperty property-changed D-Bus signal if the default
   // Service has changed. Returns true only if the default Service did actually
   // change.
