@@ -23,7 +23,6 @@ class Device;
 class EventDispatcher;
 class HostsConnectivityDiagnostics;
 class DeviceAdaptorInterface;
-class DHCPClientProxyFactory;
 class IPConfig;
 class IPConfigAdaptorInterface;
 class Manager;
@@ -130,9 +129,6 @@ class ControlInterface {
   // Network context is provided per-request via RequestInfo.
   virtual std::unique_ptr<HostsConnectivityDiagnostics>
   CreateHostsConnectivityDiagnostics(EventDispatcher* dispatcher) = 0;
-
-  virtual std::unique_ptr<DHCPClientProxyFactory>
-  CreateDHCPClientProxyFactory() = 0;
 
   virtual std::unique_ptr<DBusPropertiesProxy> CreateDBusPropertiesProxy(
       const RpcIdentifier& path, const std::string& service) = 0;

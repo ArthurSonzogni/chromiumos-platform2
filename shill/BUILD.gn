@@ -200,11 +200,6 @@ generate_dbus_proxies("generate_cellular_proxies") {
   ]
 }
 
-generate_dbus_proxies("generate_dhcpcd_proxies") {
-  proxy_output_file = "include/dhcpcd/dbus-proxies.h"
-  sources = [ "dbus_bindings/dhcpcd.dbus-xml" ]
-}
-
 generate_dbus_proxies("generate_upstart_proxies") {
   proxy_output_file = "include/upstart/dbus-proxies.h"
   sources = [
@@ -323,8 +318,6 @@ static_library("libshill") {
     "network/hosts_connectivity_diagnostics_util.cc",
     "network/http_request.cc",
     "network/icmp_session.cc",
-    "network/legacy_dhcpcd/legacy_dhcpcd_listener.cc",
-    "network/legacy_dhcpcd/legacy_dhcpcd_proxy.cc",
     "network/network.cc",
     "network/network_context.cc",
     "network/network_manager.cc",
@@ -419,7 +412,6 @@ static_library("libshill") {
   ]
   deps = [
     ":generate_cellular_proxies",
-    ":generate_dhcpcd_proxies",
     ":generate_supplicant_proxies",
     ":generate_upstart_proxies",
     ":mobile_operator_db",
@@ -798,8 +790,6 @@ if (use.test) {
       "network/hosts_connectivity_diagnostics_util_test.cc",
       "network/http_request_test.cc",
       "network/icmp_session_test.cc",
-      "network/legacy_dhcpcd/legacy_dhcpcd_listener_test.cc",
-      "network/legacy_dhcpcd/legacy_dhcpcd_proxy_test.cc",
       "network/mock_capport_proxy.cc",
       "network/mock_connection_diagnostics.cc",
       "network/mock_dhcp_client_proxy.cc",

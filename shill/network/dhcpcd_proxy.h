@@ -56,8 +56,7 @@ class DHCPCDProxy : public DHCPClientProxy {
   // Parses the configuration and delegates the DHCP event to the event handler.
   void OnDHCPEvent(const std::map<std::string, std::string>& configuration);
 
-  // Converts the configuration to the KeyValueStore, which format is the same
-  // as LegacyDHCPCDProxy.
+  // Converts the configuration to a KeyValueStore.
   static KeyValueStore ConvertConfigurationToKeyValueStore(
       const std::map<std::string, std::string>& configuration);
 

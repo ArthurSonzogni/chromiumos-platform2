@@ -23,7 +23,6 @@
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/debugd_proxy_interface.h"
-#include "shill/network/dhcp_client_proxy.h"
 #include "shill/network/hosts_connectivity_diagnostics.h"
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
@@ -107,11 +106,6 @@ class MockControl : public ControlInterface {
   MOCK_METHOD(std::unique_ptr<SupplicantPeerProxyInterface>,
               CreateSupplicantPeerProxy,
               (const RpcIdentifier&),
-              (override));
-
-  MOCK_METHOD(std::unique_ptr<DHCPClientProxyFactory>,
-              CreateDHCPClientProxyFactory,
-              (),
               (override));
 
   std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() override {

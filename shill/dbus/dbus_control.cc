@@ -41,7 +41,6 @@
 #include "shill/dbus/upstart_proxy.h"
 #include "shill/manager.h"
 #include "shill/network/hosts_connectivity_diagnostics.h"
-#include "shill/network/legacy_dhcpcd/legacy_dhcpcd_proxy.h"
 
 namespace shill {
 
@@ -204,11 +203,6 @@ DBusControl::CreateSupplicantGroupProxy(
 std::unique_ptr<SupplicantPeerProxyInterface>
 DBusControl::CreateSupplicantPeerProxy(const RpcIdentifier& object_path) {
   return std::make_unique<SupplicantPeerProxy>(proxy_bus_, object_path);
-}
-
-std::unique_ptr<DHCPClientProxyFactory>
-DBusControl::CreateDHCPClientProxyFactory() {
-  return std::make_unique<LegacyDHCPCDProxyFactory>(dispatcher_, proxy_bus_);
 }
 
 std::unique_ptr<UpstartProxyInterface> DBusControl::CreateUpstartProxy() {

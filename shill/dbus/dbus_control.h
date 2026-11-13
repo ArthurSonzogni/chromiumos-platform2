@@ -85,9 +85,6 @@ class DBusControl : public ControlInterface {
   std::unique_ptr<HostsConnectivityDiagnostics>
   CreateHostsConnectivityDiagnostics(EventDispatcher* dispatcher) override;
 
-  std::unique_ptr<DHCPClientProxyFactory> CreateDHCPClientProxyFactory()
-      override;
-
   std::unique_ptr<DBusPropertiesProxy> CreateDBusPropertiesProxy(
       const RpcIdentifier& path, const std::string& service) override;
 
