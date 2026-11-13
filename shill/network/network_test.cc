@@ -152,18 +152,16 @@ patchpanel::Client::TrafficCounter CreateCounter(
 // Allows us to fake/mock some functions in this test.
 class NetworkInTest : public Network {
  public:
-  NetworkInTest(
-      int interface_index,
-      const std::string& interface_name,
-      Technology technology,
-      bool fixed_ip_params,
-      ControlInterface* control_interface,
-      EventDispatcher* dispatcher,
-      Metrics* metrics,
-      patchpanel::Client* patchpanel_client,
-      std::unique_ptr<NetworkMonitorFactory> network_monitor_factory,
-      std::unique_ptr<DHCPControllerFactory> legacy_dhcp_controller_factory,
-      std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory)
+  NetworkInTest(int interface_index,
+                const std::string& interface_name,
+                Technology technology,
+                bool fixed_ip_params,
+                ControlInterface* control_interface,
+                EventDispatcher* dispatcher,
+                Metrics* metrics,
+                patchpanel::Client* patchpanel_client,
+                std::unique_ptr<NetworkMonitorFactory> network_monitor_factory,
+                std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory)
       : Network(interface_index,
                 interface_name,
                 technology,
@@ -172,7 +170,6 @@ class NetworkInTest : public Network {
                 dispatcher,
                 metrics,
                 patchpanel_client,
-                std::move(legacy_dhcp_controller_factory),
                 std::move(dhcp_controller_factory),
                 /*resolver=*/nullptr,
                 std::move(network_monitor_factory)) {
@@ -203,9 +200,6 @@ class NetworkTest : public ::testing::Test {
       return std::make_unique<MockNetworkMonitor>();
     });
 
-    auto legacy_dhcp_controller_factory =
-        std::make_unique<MockDHCPControllerFactory>();
-    legacy_dhcp_controller_factory_ = legacy_dhcp_controller_factory.get();
     auto dhcp_controller_factory =
         std::make_unique<MockDHCPControllerFactory>();
     dhcp_controller_factory_ = dhcp_controller_factory.get();
@@ -214,7 +208,6 @@ class NetworkTest : public ::testing::Test {
         kTestIfindex, kTestIfname, kTestTechnology,
         /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
         &patchpanel_client_, std::move(network_monitor_factory),
-        std::move(legacy_dhcp_controller_factory),
         std::move(dhcp_controller_factory));
     network_->RegisterEventHandler(&event_handler_);
     network_->RegisterEventHandler(&event_handler2_);
@@ -235,8 +228,7 @@ class NetworkTest : public ::testing::Test {
   void ExpectCreateDHCPController(
       bool request_ip_result,
       const DHCPController::Options& options = kDHCPOptions) {
-    EXPECT_CALL(options.use_legacy_dhcpcd ? *legacy_dhcp_controller_factory_
-                                          : *dhcp_controller_factory_,
+    EXPECT_CALL(*dhcp_controller_factory_,
                 Create(kTestIfname, kTestTechnology, options, _, _, _,
                        net_base::IPFamily::kIPv4))
         .WillOnce([request_ip_result, this](
@@ -328,7 +320,6 @@ class NetworkTest : public ::testing::Test {
   std::unique_ptr<NiceMock<NetworkInTest>> network_;
 
   // Variables owned by |network_|. Not guaranteed valid even if it's not null.
-  MockDHCPControllerFactory* legacy_dhcp_controller_factory_ = nullptr;
   MockDHCPControllerFactory* dhcp_controller_factory_ = nullptr;
   MockDHCPController* dhcp_controller_ = nullptr;
   MockDHCPController* dhcp_pd_controller_ = nullptr;
@@ -506,33 +497,6 @@ TEST_F(NetworkTest, EnableIPv6FlagsLinkProtocol) {
       .link_protocol_network_config = std::move(network_config),
   };
   network_->Start(opts);
-}
-
-TEST_F(NetworkTest, UseLegacyDHCPCD) {
-  EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
-  EXPECT_CALL(event_handler_, OnGetDHCPFailure).Times(0);
-  EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
-  EXPECT_CALL(event_handler2_, OnGetDHCPFailure).Times(0);
-
-  // If the legacy dhcpcd is used, legacy_dhcp_controller_factory_ should be
-  // used to create the DHCP controller.
-  const DHCPController::Options options_use_legacy_dhcpcd = {
-      .use_legacy_dhcpcd = true,
-      .hostname = kHostname,
-  };
-  ExpectCreateDHCPController(/*request_ip_result=*/true,
-                             /*options=*/options_use_legacy_dhcpcd);
-  network_->Start(Network::StartOptions{.dhcp = options_use_legacy_dhcpcd});
-
-  // If the legacy dhcpcd is not used, dhcp_controller_factory_ should be used
-  // to create the DHCP controller.
-  const DHCPController::Options options_disuse_legacy_dhcpcd = {
-      .use_legacy_dhcpcd = false,
-      .hostname = kHostname,
-  };
-  ExpectCreateDHCPController(/*request_ip_result=*/true,
-                             /*options=*/options_disuse_legacy_dhcpcd);
-  network_->Start(Network::StartOptions{.dhcp = options_disuse_legacy_dhcpcd});
 }
 
 // Verifies that the DHCP options in Network::Start() is properly used when
@@ -804,7 +768,6 @@ TEST_F(NetworkTest, NeighborReachabilityEventsMetrics) {
       /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
       &patchpanel_client_,
       /*network_monitor_factory=*/nullptr,
-      /*legacy_dhcp_controller_factory=*/nullptr,
       /*dhcp_controller_factory=*/nullptr);
   wifi_network->set_ignore_link_monitoring_for_testing(true);
 
@@ -861,7 +824,6 @@ TEST_F(NetworkTest, NeighborReachabilityEventsMetrics) {
       /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
       &patchpanel_client_,
       /*network_monitor_factory=*/nullptr,
-      /*legacy_dhcp_controller_factory=*/nullptr,
       /*dhcp_controller_factory=*/nullptr);
   eth_network->set_ignore_link_monitoring_for_testing(true);
 

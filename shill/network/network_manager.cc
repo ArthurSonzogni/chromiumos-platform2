@@ -22,8 +22,6 @@ NetworkManager::NetworkManager(ControlInterface* control_interface,
     : control_interface_(control_interface),
       dispatcher_(dispatcher),
       metrics_(metrics),
-      legacy_dhcpcd_proxy_factory_(
-          control_interface_->CreateDHCPClientProxyFactory()),
       dhcpcd_proxy_factory_(std::make_unique<DHCPCDProxyFactory>()) {}
 NetworkManager::~NetworkManager() = default;
 
@@ -36,9 +34,6 @@ std::unique_ptr<Network> NetworkManager::CreateNetwork(
   auto network = base::WrapUnique(new Network(
       interface_index, std::string(interface_name), technology, fixed_ip_params,
       control_interface_, dispatcher_, metrics_, patchpanel_client,
-      std::make_unique<DHCPControllerFactory>(
-          dispatcher_, metrics_, Time::GetInstance(),
-          legacy_dhcpcd_proxy_factory_.get()),
       std::make_unique<DHCPControllerFactory>(dispatcher_, metrics_,
                                               Time::GetInstance(),
                                               dhcpcd_proxy_factory_.get())));

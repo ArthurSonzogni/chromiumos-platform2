@@ -10,7 +10,6 @@
 #include <string>
 #include <string_view>
 
-#include "shill/network/dhcp_client_proxy.h"
 #include "shill/network/dhcpcd_proxy.h"
 #include "shill/network/network.h"
 
@@ -60,9 +59,6 @@ class NetworkManager : Network::EventHandler {
   EventDispatcher* const dispatcher_;
   Metrics* const metrics_;
 
-  // TODO(b/344500617): Remove `legacy_dhcpcd_proxy_factory_` after DHCPv4
-  // migrated to be using DHCPCDProxy too.
-  std::unique_ptr<DHCPClientProxyFactory> legacy_dhcpcd_proxy_factory_;
   std::unique_ptr<DHCPCDProxyFactory> dhcpcd_proxy_factory_;
 
   // Tracks all the alive Network instances.

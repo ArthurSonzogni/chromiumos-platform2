@@ -126,23 +126,20 @@ std::unique_ptr<Network> Network::CreateForTesting(
   return base::WrapUnique(new Network(
       interface_index, std::string(interface_name), technology, fixed_ip_params,
       control_interface, dispatcher, metrics, patchpanel_client,
-      /*legacy_dhcp_controller_factory=*/nullptr,
       /*dhcp_controller_factory=*/nullptr));
 }
 
-Network::Network(
-    int interface_index,
-    std::string_view interface_name,
-    Technology technology,
-    bool fixed_ip_params,
-    ControlInterface* control_interface,
-    EventDispatcher* dispatcher,
-    Metrics* metrics,
-    patchpanel::Client* patchpanel_client,
-    std::unique_ptr<DHCPControllerFactory> legacy_dhcp_controller_factory,
-    std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory,
-    Resolver* resolver,
-    std::unique_ptr<NetworkMonitorFactory> network_monitor_factory)
+Network::Network(int interface_index,
+                 std::string_view interface_name,
+                 Technology technology,
+                 bool fixed_ip_params,
+                 ControlInterface* control_interface,
+                 EventDispatcher* dispatcher,
+                 Metrics* metrics,
+                 patchpanel::Client* patchpanel_client,
+                 std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory,
+                 Resolver* resolver,
+                 std::unique_ptr<NetworkMonitorFactory> network_monitor_factory)
     : network_id_(next_network_id_++),
       interface_index_(interface_index),
       interface_name_(interface_name),
@@ -150,8 +147,6 @@ Network::Network(
       fixed_ip_params_(fixed_ip_params),
       context_(interface_name_),
       proc_fs_(std::make_unique<net_base::ProcFsStub>(interface_name_)),
-      legacy_dhcp_controller_factory_(
-          std::move(legacy_dhcp_controller_factory)),
       dhcp_controller_factory_(std::move(dhcp_controller_factory)),
       config_(interface_name_),
       network_monitor_factory_(std::move(network_monitor_factory)),
@@ -251,14 +246,11 @@ void Network::Start(const Network::StartOptions& opts) {
     // started but not succeeded/failed yet.
     ipconfig_ = std::make_unique<IPConfig>(control_interface_, interface_name_,
                                            kTypeDHCP);
-    dhcp_controller_ =
-        (dhcp_opts.use_legacy_dhcpcd ? legacy_dhcp_controller_factory_
-                                     : dhcp_controller_factory_)
-            ->Create(interface_name_, technology_, dhcp_opts,
-                     base::BindRepeating(&Network::OnIPConfigUpdatedFromDHCP,
-                                         AsWeakPtr()),
-                     base::BindRepeating(&Network::OnDHCPDrop, AsWeakPtr()),
-                     context_.logging_tag());
+    dhcp_controller_ = dhcp_controller_factory_->Create(
+        interface_name_, technology_, dhcp_opts,
+        base::BindRepeating(&Network::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
+        base::BindRepeating(&Network::OnDHCPDrop, AsWeakPtr()),
+        context_.logging_tag());
     dhcp_started = dhcp_controller_->RenewIP(DHCPProvisionReason::kConnect);
     if (!dhcp_started) {
       LOG(ERROR) << *this << " " << __func__ << ": Failed to request DHCP IP";
@@ -708,7 +700,7 @@ bool Network::RenewDHCPLease(DHCPProvisionReason reason) {
     return false;
   }
   SLOG(2) << *this << " " << __func__;
-  // If RenewIP() fails, LegacyDHCPController will output a ERROR log.
+  // If RenewIP() fails, DHCPController will output a ERROR log.
   return dhcp_controller_->RenewIP(reason);
 }
 

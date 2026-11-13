@@ -21,7 +21,6 @@ DHCPClientProxy::~DHCPClientProxy() = default;
 std::string DHCPClientProxy::Options::ToString() const {
   std::ostringstream oss;
   oss << "{";
-  oss << "use_legacy_dhcpcd=" << use_legacy_dhcpcd << ", ";
   oss << "use_arp_gateway=" << use_arp_gateway << ", ";
   oss << "use_rfc_8925=" << use_rfc_8925 << ", ";
   oss << "apply_dscp=" << apply_dscp;

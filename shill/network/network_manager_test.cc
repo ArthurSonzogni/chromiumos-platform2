@@ -10,7 +10,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_control.h"
-#include "shill/network/mock_dhcp_client_proxy.h"
 #include "shill/network/network.h"
 
 namespace shill {
@@ -24,9 +23,6 @@ constexpr bool kFixedIPParams = false;
 class NetworkManagerTest : public testing::Test {
  public:
   NetworkManagerTest() {
-    EXPECT_CALL(mock_control_, CreateDHCPClientProxyFactory).WillOnce([]() {
-      return std::make_unique<MockDHCPClientProxyFactory>();
-    });
     network_manager_ =
         std::make_unique<NetworkManager>(&mock_control_, nullptr, nullptr);
   }
