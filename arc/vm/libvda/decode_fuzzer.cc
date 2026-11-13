@@ -291,7 +291,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         base::WritableSharedMemoryMapping shm_mapping = shm_region.Map();
 
         base::ScopedFD random_fd(HANDLE_EINTR(open("/dev/urandom", O_RDONLY)));
-        HANDLE_EINTR(read(random_fd.get(), shm_mapping.memory(), data_size));
+        HANDLE_EINTR(read(random_fd.get(), shm_mapping.data(), data_size));
 
         base::subtle::PlatformSharedMemoryRegion platform_shm =
             base::WritableSharedMemoryRegion::TakeHandleForSerialization(
