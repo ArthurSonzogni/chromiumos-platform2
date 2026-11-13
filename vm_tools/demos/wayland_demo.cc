@@ -298,7 +298,7 @@ int main(int argc, char* argv[]) {
   base::WritableSharedMemoryRegion shm_region =
       base::WritableSharedMemoryRegion::Create(shm_size);
   base::WritableSharedMemoryMapping shm_mapping = shm_region.Map();
-  data.shm_ptr = shm_mapping.memory();
+  data.shm_ptr = shm_mapping.data();
   base::subtle::PlatformSharedMemoryRegion platform_region =
       base::WritableSharedMemoryRegion::TakeHandleForSerialization(
           std::move(shm_region));
