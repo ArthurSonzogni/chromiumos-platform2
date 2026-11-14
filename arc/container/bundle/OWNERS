@@ -1,3 +1,0 @@
-include chromium/src:main:/chromeos/ash/experiences/arc/session/OWNERS
-# Additional backup reviewers
-linben@chromium.org
