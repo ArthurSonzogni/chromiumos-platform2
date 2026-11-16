@@ -28,7 +28,8 @@ class SodaRecognizerImpl
   // Constructs a SodaRecognizerImpl; and set disconnect handler so
   // that the SodaRecognizerImpl will be deleted when the mojom
   // connection is destroyed.
-  // Returns whether the object is create successfully.
+  // Returns whether the object is create successfully. On failure, closes
+  // `soda_recognizer` so that later calls on it are dropped.
   static bool Create(
       chromeos::machine_learning::mojom::SodaConfigPtr spec,
       mojo::PendingRemote<chromeos::machine_learning::mojom::SodaClient>
@@ -72,9 +73,9 @@ class SodaRecognizerImpl
 
   // Pointer handle to the internal implementation of SodaRecognizer inside
   // the SodaLibrary.
-  void* recognizer_;
+  void* recognizer_ = nullptr;
   // Not owned: owned by a std::map in soda.h::GetInstanceAt.
-  SodaLibrary* soda_library_;
+  SodaLibrary* soda_library_ = nullptr;
 
   mojo::Receiver<chromeos::machine_learning::mojom::SodaRecognizer> receiver_;
 

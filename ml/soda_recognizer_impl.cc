@@ -73,12 +73,20 @@ bool SodaRecognizerImpl::Create(
   // cause an error. Therefore, we annotate it as an intentional leak.
   ANNOTATE_LEAKING_OBJECT_PTR(recognizer_impl);
 
+  if (!recognizer_impl->successfully_loaded_) {
+    // The client may send `Start()` before it sees the load error. Close the
+    // pipe so those calls are dropped instead of reaching a recognizer with no
+    // library.
+    recognizer_impl->receiver_.reset();
+    return false;
+  }
+
   //  Set the disconnection handler to quit the message loop (i.e. exit the
   //  process) when the connection is gone, because this model is always run in
   //  a dedicated process.
   recognizer_impl->receiver_.set_disconnect_handler(
       base::BindOnce([]() { brillo::MessageLoop::current()->BreakLoop(); }));
-  return recognizer_impl->successfully_loaded_;
+  return true;
 }
 
 void SodaRecognizerImpl::AddAudio(const std::vector<uint8_t>& audio) {

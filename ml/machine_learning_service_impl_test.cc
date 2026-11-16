@@ -1780,6 +1780,43 @@ TEST(SODARecognizerTest, FakeImplMojoCallback) {
 #endif
 }
 
+// Tests that calls sent before the client sees a SODA load error are dropped
+// instead of crashing the worker (b/428562164).
+TEST(SODARecognizerTest, CallsAfterFailedLoadAreDropped) {
+#if defined(USE_ONDEVICE_SPEECH) && USE_ONDEVICE_SPEECH
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
+  StrictMock<MockSodaClientImpl> soda_client_impl;
+  mojo::Receiver<SodaClient> soda_client(&soda_client_impl);
+  // Empty library and language DLC paths fail validation.
+  auto soda_config = SodaConfig::New();
+  mojo::Remote<SodaRecognizer> soda_recognizer;
+
+  mojo::Remote<MachineLearningService> ml_service;
+  const MachineLearningServiceImplForTesting ml_service_impl(
+      ml_service.BindNewPipeAndPassReceiver());
+
+  bool load_callback_done = false;
+  ml_service->LoadSpeechRecognizer(
+      std::move(soda_config), soda_client.BindNewPipeAndPassRemote(),
+      soda_recognizer.BindNewPipeAndPassReceiver(),
+      base::BindOnce(
+          [](bool* load_callback_done, LoadModelResult result) {
+            EXPECT_EQ(result, LoadModelResult::LOAD_MODEL_ERROR);
+            *load_callback_done = true;
+          },
+          &load_callback_done));
+  // Queued before the load result arrives, as Chrome does with `Start()`.
+  soda_recognizer->Start();
+  soda_recognizer->AddAudio({});
+  base::RunLoop().RunUntilIdle();
+
+  ASSERT_TRUE(load_callback_done);
+  EXPECT_FALSE(soda_recognizer.is_connected());
+#endif
+}
+
 TEST(GrammarCheckerTest, LoadModelAndInference) {
   if (ml::GrammarLibrary::GetInstance()->GetStatus() ==
       ml::GrammarLibrary::Status::kNotSupported) {
