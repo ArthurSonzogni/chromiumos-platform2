@@ -20,6 +20,9 @@ class Executor : public lpa::util::Executor {
   virtual void PostDelayedTask(const base::Location& from_here,
                                base::OnceClosure task,
                                base::TimeDelta delay);
+  bool BelongsToCurrentThread() const {
+    return task_runner_->BelongsToCurrentThread();
+  }
 
  protected:
   // Used by MockExecutor to forward time

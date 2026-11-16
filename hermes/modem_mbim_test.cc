@@ -251,9 +251,10 @@ class ModemMbimTest : public testing::Test {
 
   void TearDown() override { modem_.reset(); }
 
-  void CreateModem() {
-    modem_ = ModemMbim::Create(nullptr, &executor_, std::move(libmbim_),
-                               std::move(modem_manager_proxy_));
+  void CreateModem(bool sgp22_v25_enabled = false) {
+    modem_ =
+        ModemMbim::Create(nullptr, &executor_, std::move(libmbim_),
+                          std::move(modem_manager_proxy_), sgp22_v25_enabled);
     ASSERT_NE(modem_, nullptr);
   }
 
@@ -353,6 +354,21 @@ TEST_F(ModemMbimTest, TransmitApdu) {
   }
   EXPECT_EQ((raw_eid[raw_eid.size() - 1] << 8 | raw_eid[raw_eid.size() - 2]),
             ModemMbim::kMbimMessageSuccess);
+}
+
+TEST_F(ModemMbimTest, Sgp22V25EnabledFlagPropagation) {
+  CreateModem(/*sgp22_v25_enabled=*/false);
+  EXPECT_FALSE(modem_->sgp22_v25_enabled());
+  EXPECT_FALSE(static_cast<const lpa::card::EuiccCard*>(modem_.get())
+                   ->sgp22_v25_enabled());
+
+  modem_.reset();
+  modem_manager_proxy_ = std::make_unique<MockModemManagerProxy>();
+  libmbim_ = std::make_unique<FakeLibmbim>();
+  CreateModem(/*sgp22_v25_enabled=*/true);
+  EXPECT_TRUE(modem_->sgp22_v25_enabled());
+  EXPECT_TRUE(static_cast<const lpa::card::EuiccCard*>(modem_.get())
+                  ->sgp22_v25_enabled());
 }
 
 }  // namespace hermes

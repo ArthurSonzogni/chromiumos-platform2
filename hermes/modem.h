@@ -50,7 +50,8 @@ class Modem : public EuiccInterface {
  public:
   Modem(Logger* logger,
         Executor* executor,
-        std::unique_ptr<ModemManagerProxyInterface> modem_manager_proxy)
+        std::unique_ptr<ModemManagerProxyInterface> modem_manager_proxy,
+        bool sgp22_v25_enabled)
       : euicc_manager_(nullptr),
         logger_(logger),
         executor_(executor),
@@ -58,6 +59,7 @@ class Modem : public EuiccInterface {
         modem_manager_proxy_(std::move(modem_manager_proxy)),
         current_transaction_id_(static_cast<uint16_t>(-1)),
         weak_factory_(this) {
+    SetSgp22V25Enabled(sgp22_v25_enabled);
     // Set SGP.22 specification version supported by this implementation (this
     // is not currently constrained by the eUICC we use).
     spec_version_.set_major(2);

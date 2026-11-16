@@ -5,6 +5,8 @@
 #ifndef HERMES_MODEM_QRTR_H_
 #define HERMES_MODEM_QRTR_H_
 
+#include <libqrtr.h>
+
 #include <deque>
 #include <iostream>
 #include <map>
@@ -16,7 +18,6 @@
 #include <vector>
 
 #include <google-lpa/lpa/card/euicc_card.h>
-#include <libqrtr.h>
 
 #include "hermes/dms_cmd.h"
 #include "hermes/executor.h"
@@ -36,7 +37,8 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
       std::unique_ptr<SocketInterface> socket,
       Logger* logger,
       Executor* executor,
-      std::unique_ptr<ModemManagerProxy> modem_manager_proxy);
+      std::unique_ptr<ModemManagerProxy> modem_manager_proxy,
+      bool sgp22_v25_enabled);
   virtual ~ModemQrtr();
 
   // EuiccInterface overrides
@@ -64,7 +66,8 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
   ModemQrtr(std::unique_ptr<SocketInterface> socket,
             Logger* logger,
             Executor* executor,
-            std::unique_ptr<ModemManagerProxy> modem_manager_proxy);
+            std::unique_ptr<ModemManagerProxy> modem_manager_proxy,
+            bool sgp22_v25_enabled);
   void InitializeUim();
   void Shutdown() override;
 

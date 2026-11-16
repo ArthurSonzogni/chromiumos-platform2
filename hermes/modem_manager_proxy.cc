@@ -17,7 +17,8 @@ constexpr auto kInhibitTimeout = base::Minutes(1);
 
 namespace hermes {
 
-ModemManagerProxy::ModemManagerProxy(const scoped_refptr<dbus::Bus>& bus)
+ModemManagerProxy::ModemManagerProxy(const scoped_refptr<dbus::Bus>& bus,
+                                     bool sgp22_v25_enabled)
     : bus_(bus),
       object_manager_proxy_(
           std::make_unique<org::freedesktop::DBus::ObjectManagerProxy>(
@@ -27,7 +28,9 @@ ModemManagerProxy::ModemManagerProxy(const scoped_refptr<dbus::Bus>& bus)
       mm_proxy_(std::make_unique<org::freedesktop::ModemManager1Proxy>(
           bus, modemmanager::kModemManager1ServiceName)),
       modem_appeared_(false),
+      sgp22_v25_enabled_(sgp22_v25_enabled),
       weak_factory_(this) {
+  VLOG(2) << __func__ << ": sgp22_v25_enabled=" << sgp22_v25_enabled_;
   auto on_interface_added = base::BindRepeating(
       &ModemManagerProxy::OnInterfaceAdded, weak_factory_.GetWeakPtr());
   auto on_interface_removed = base::BindRepeating(

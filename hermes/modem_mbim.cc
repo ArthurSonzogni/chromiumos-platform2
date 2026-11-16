@@ -45,18 +45,22 @@ std::unique_ptr<ModemMbim> ModemMbim::Create(
     Logger* logger,
     Executor* executor,
     std::unique_ptr<LibmbimInterface> libmbim,
-    std::unique_ptr<ModemManagerProxyInterface> modem_manager_proxy) {
+    std::unique_ptr<ModemManagerProxyInterface> modem_manager_proxy,
+    bool sgp22_v25_enabled) {
   VLOG(2) << __func__;
-  return std::unique_ptr<ModemMbim>(new ModemMbim(
-      logger, executor, std::move(libmbim), std::move(modem_manager_proxy)));
+  return std::unique_ptr<ModemMbim>(
+      new ModemMbim(logger, executor, std::move(libmbim),
+                    std::move(modem_manager_proxy), sgp22_v25_enabled));
 }
 
 ModemMbim::ModemMbim(
     Logger* logger,
     Executor* executor,
     std::unique_ptr<LibmbimInterface> libmbim,
-    std::unique_ptr<ModemManagerProxyInterface> modem_manager_proxy)
-    : Modem<MbimCmd>(logger, executor, std::move(modem_manager_proxy)),
+    std::unique_ptr<ModemManagerProxyInterface> modem_manager_proxy,
+    bool sgp22_v25_enabled)
+    : Modem<MbimCmd>(
+          logger, executor, std::move(modem_manager_proxy), sgp22_v25_enabled),
       libmbim_(std::move(libmbim)),
       channel_(kInvalidChannel),
       is_ready_state_valid_(false),

@@ -23,25 +23,31 @@
 #endif
 
 namespace hermes {
-Daemon::Daemon(const std::string& fw_path)
+Daemon::Daemon(const std::string& fw_path, bool sgp22_v25_enabled)
     : DBusServiceDaemon(kHermesServiceName),
       executor_(base::SingleThreadTaskRunner::GetCurrentDefault()),
       smdp_(&logger_, &executor_),
       glib_bridge_(std::make_unique<glib_bridge::GlibBridge>()),
-      fw_path_(fw_path) {
+      fw_path_(fw_path),
+      sgp22_v25_enabled_(sgp22_v25_enabled) {
   glib_bridge::ForwardLogs();
+  LOG(INFO) << "GSMA SGP.22 v2.5 support: "
+            << (sgp22_v25_enabled_ ? "enabled" : "disabled");
 }
 
 void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
-  auto modem_manager_proxy = std::make_unique<ModemManagerProxy>(bus_);
+  auto modem_manager_proxy =
+      std::make_unique<ModemManagerProxy>(bus_, sgp22_v25_enabled_);
 #if USE_QRTR
-  modem_ = ModemQrtr::Create(std::make_unique<SocketQrtr>(), &logger_,
-                             &executor_, std::move(modem_manager_proxy));
+  modem_ =
+      ModemQrtr::Create(std::make_unique<SocketQrtr>(), &logger_, &executor_,
+                        std::move(modem_manager_proxy), sgp22_v25_enabled_);
 #else
   libmbim_ = std::make_unique<LibmbimImpl>();
-  modem_ = ModemMbim::Create(&logger_, &executor_, std::move(libmbim_),
-                             std::move(modem_manager_proxy));
+  modem_ =
+      ModemMbim::Create(&logger_, &executor_, std::move(libmbim_),
+                        std::move(modem_manager_proxy), sgp22_v25_enabled_);
 #endif
 
   lpa::core::Lpa::Builder b;
@@ -49,8 +55,8 @@ void Daemon::RegisterDBusObjectsAsync(
       .SetSmdpClientFactory(&smdp_)
       .SetSmdsClientFactory(&smds_)
       .SetLogger(&logger_)
-      .SetLogger(&logger_)
-      .SetAutoSendNotifications(false);
+      .SetAutoSendNotifications(false)
+      .SetSgp22V25Enabled(sgp22_v25_enabled_);
   lpa_ = b.Build();
 
   Context::Initialize(bus_, lpa_.get(), &executor_, &adaptor_factory_,

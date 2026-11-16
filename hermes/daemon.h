@@ -27,7 +27,7 @@ namespace hermes {
 
 class Daemon : public brillo::DBusServiceDaemon {
  public:
-  explicit Daemon(const std::string& fw_path);
+  Daemon(const std::string& fw_path, bool sgp22_v25_enabled);
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
 
@@ -48,6 +48,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<Manager> manager_;
   std::unique_ptr<glib_bridge::GlibBridge> glib_bridge_;
   base::FilePath fw_path_;
+  const bool sgp22_v25_enabled_;
 };
 
 }  // namespace hermes

@@ -4,69 +4,105 @@
 
 #include "hermes/smdp.h"
 
-#include <vector>
+#include <memory>
+#include <utility>
 
 #include <base/functional/bind.h>
+#include <base/location.h>
+#include <base/threading/thread.h>
+#include <base/time/time.h>
+#include <brillo/http/mock_transport.h>
 #include <gmock/gmock.h>
+#include <google-lpa/lpa/data/proto/euicc_spec_version.pb.h>
 #include <gtest/gtest.h>
 
-using ::testing::_;
+#include "hermes/logger.h"
+#include "hermes/mock_executor.h"
 
 namespace hermes {
 
-class SmdpFiTester {
- public:
-  MOCK_METHOD(void,
-              OnInitiateAuth,
-              (const std::string&,
-               const std::vector<uint8_t>&,
-               const std::vector<uint8_t>&,
-               const std::vector<uint8_t>&,
-               const std::vector<uint8_t>&));
-  MOCK_METHOD(void,
-              OnAuthClient,
-              (const std::string&,
-               const std::vector<uint8_t>&,
-               const std::vector<uint8_t>&,
-               const std::vector<uint8_t>&,
-               const std::vector<uint8_t>&));
-  MOCK_METHOD(void, FakeError, (const std::vector<uint8_t>& error_data));
-};
+TEST(SmdpTest, Sgp22V25EnabledFlag) {
+  lpa::proto::EuiccSpecVersion version;
+  version.set_major(2);
+  version.set_minor(2);
+  version.set_revision(0);
 
-class SmdpTest : public testing::Test {
- public:
-  SmdpTest() : smdp_("") {}
-  ~SmdpTest() = default;
+  Logger logger;
+  MockExecutor executor;
+  auto transport = std::make_shared<brillo::http::MockTransport>();
+  EXPECT_CALL(
+      *transport,
+      UseCustomCertificate(brillo::http::Transport::Certificate::kHermesProd))
+      .Times(1);
 
- protected:
-  SmdpFiTester smdp_tester_;
-  Smdp smdp_;
-};
+  Smdp smdp("smdp.example.com", "/usr/share/hermes-ca-certificates/prod",
+            version, &logger, &executor, transport);
+  EXPECT_EQ(smdp.logger(), &logger);
+  EXPECT_FALSE(smdp.sgp22_v25_enabled());
 
-TEST_F(SmdpTest, InitiateAuthenticationTest) {
-  const std::vector<uint8_t> fake_info1 = {0x00, 0x01};
-  const std::vector<uint8_t> fake_challenge = {0x02, 0x03};
-  EXPECT_CALL(smdp_tester_, OnInitiateAuth(_, _, _, _, _)).Times(1);
-  EXPECT_CALL(smdp_tester_, FakeError(_)).Times(0);
+  smdp.SetSgp22V25Enabled(true);
+  EXPECT_TRUE(smdp.sgp22_v25_enabled());
 
-  smdp_.InitiateAuthentication(fake_info1, fake_challenge,
-                               base::BindOnce(&SmdpFiTester::OnInitiateAuth,
-                                              base::Unretained(&smdp_tester_)),
-                               base::BindOnce(&SmdpFiTester::FakeError,
-                                              base::Unretained(&smdp_tester_)));
+  smdp.SetSgp22V25Enabled(false);
+  EXPECT_FALSE(smdp.sgp22_v25_enabled());
 }
 
-TEST_F(SmdpTest, AuthenticateClientTest) {
-  const std::string transaction_id = "1";
-  const std::vector<uint8_t> esim_data = {0, 1, 2, 3, 4};
-  EXPECT_CALL(smdp_tester_, OnAuthClient(_, _, _, _, _)).Times(1);
-  EXPECT_CALL(smdp_tester_, FakeError(_)).Times(0);
+TEST(SmdpTest, NullLoggerFallsBackToBaseLogger) {
+  lpa::proto::EuiccSpecVersion version;
+  MockExecutor executor;
+  auto transport = std::make_shared<brillo::http::MockTransport>();
+  EXPECT_CALL(
+      *transport,
+      UseCustomCertificate(brillo::http::Transport::Certificate::kHermesTest))
+      .Times(1);
 
-  smdp_.AuthenticateClient(transaction_id, esim_data,
-                           base::BindOnce(&SmdpFiTester::OnAuthClient,
-                                          base::Unretained(&smdp_tester_)),
-                           base::BindOnce(&SmdpFiTester::FakeError,
-                                          base::Unretained(&smdp_tester_)));
+  Smdp smdp("smdp.example.com", "/usr/share/hermes-ca-certificates/test/",
+            version, nullptr, &executor, transport);
+  EXPECT_NE(smdp.logger(), nullptr);
+}
+
+TEST(SmdpTest, DestructorReleasesTransportOnExecutorThread) {
+  lpa::proto::EuiccSpecVersion version;
+  Logger logger;
+  MockExecutor executor;
+
+  // On-thread destruction releases server_transport_ synchronously.
+  {
+    auto transport = std::make_shared<brillo::http::MockTransport>();
+    std::weak_ptr<brillo::http::Transport> weak_transport = transport;
+    EXPECT_CALL(
+        *transport,
+        UseCustomCertificate(brillo::http::Transport::Certificate::kHermesProd))
+        .Times(1);
+    auto smdp = std::make_unique<Smdp>(
+        "smdp.example.com", "/usr/share/hermes-ca-certificates/prod", version,
+        &logger, &executor, std::move(transport));
+    smdp.reset();
+    EXPECT_TRUE(weak_transport.expired());
+  }
+
+  // Off-thread destruction (e.g. from Lpa::lpa_executor_) defers releasing
+  // server_transport_ onto executor_.
+  {
+    auto transport = std::make_shared<brillo::http::MockTransport>();
+    std::weak_ptr<brillo::http::Transport> weak_transport = transport;
+    EXPECT_CALL(
+        *transport,
+        UseCustomCertificate(brillo::http::Transport::Certificate::kHermesProd))
+        .Times(1);
+    auto smdp = std::make_unique<Smdp>(
+        "smdp.example.com", "/usr/share/hermes-ca-certificates/prod", version,
+        &logger, &executor, std::move(transport));
+    base::Thread worker("smdp_dtor_worker");
+    ASSERT_TRUE(worker.Start());
+    worker.task_runner()->PostTask(
+        FROM_HERE, base::BindOnce([](std::unique_ptr<Smdp> s) { s.reset(); },
+                                  std::move(smdp)));
+    worker.Stop();
+    EXPECT_FALSE(weak_transport.expired());
+    executor.FastForwardBy(base::TimeDelta());
+    EXPECT_TRUE(weak_transport.expired());
+  }
 }
 
 }  // namespace hermes

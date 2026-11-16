@@ -69,8 +69,10 @@ Smdp::Smdp(std::string server_addr,
            const std::string& certs_dir,
            const lpa::proto::EuiccSpecVersion& card_version,
            Logger* logger,
-           Executor* executor)
-    : server_transport_(brillo::http::Transport::CreateDefault()),
+           Executor* executor,
+           std::shared_ptr<brillo::http::Transport> transport)
+    : server_transport_(transport ? std::move(transport)
+                                  : brillo::http::Transport::CreateDefault()),
       logger_(logger),
       executor_(executor) {
   if (certs_dir.find("/test/") != std::string::npos) {
@@ -97,8 +99,15 @@ Smdp::Smdp(std::string server_addr,
   card_version_ = stringStream.str();
 }
 
+Smdp::~Smdp() {
+  if (server_transport_ && executor_ && !executor_->BelongsToCurrentThread()) {
+    executor_->Execute(
+        [t = std::move(server_transport_)]() mutable { t.reset(); });
+  }
+}
+
 lpa::util::EuiccLog* Smdp::logger() {
-  return logger_;
+  return logger_ ? logger_ : lpa::smdp::SmdpClient::logger();
 }
 
 lpa::util::Executor* Smdp::executor() {

@@ -138,7 +138,10 @@ if (use.test) {
   }
 
   executable("hermes_test") {
-    sources = [ "apdu_test.cc" ]
+    sources = [
+      "apdu_test.cc",
+      "smdp_test.cc",
+    ]
     if (use.qrtr) {
       sources += [ "modem_qrtr_test.cc" ]
     } else {

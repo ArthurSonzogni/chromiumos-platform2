@@ -40,7 +40,8 @@ class ModemMbim : public Modem<MbimCmd> {
       Logger* logger,
       Executor* executor,
       std::unique_ptr<LibmbimInterface> libmbim,
-      std::unique_ptr<ModemManagerProxyInterface> modem_manager_proxy);
+      std::unique_ptr<ModemManagerProxyInterface> modem_manager_proxy,
+      bool sgp22_v25_enabled);
   virtual ~ModemMbim();
   // EuiccInterface overrides
   void Initialize(EuiccManagerInterface* euicc_manager,
@@ -69,7 +70,8 @@ class ModemMbim : public Modem<MbimCmd> {
   ModemMbim(Logger* logger,
             Executor* executor,
             std::unique_ptr<LibmbimInterface> libmbim,
-            std::unique_ptr<ModemManagerProxyInterface> modem_manager_proxy);
+            std::unique_ptr<ModemManagerProxyInterface> modem_manager_proxy,
+            bool sgp22_v25_enabled);
   void Shutdown() override;
   void TransmitFromQueue() override;
   std::unique_ptr<MbimCmd> GetTagForSendApdu() override;

@@ -45,7 +45,9 @@ class Smdp : public lpa::smdp::SmdpClient {
        const std::string& certs_dir,
        const lpa::proto::EuiccSpecVersion& card_version,
        Logger* logger,
-       Executor* executor);
+       Executor* executor,
+       std::shared_ptr<brillo::http::Transport> transport = nullptr);
+  ~Smdp() override;
 
   // lpa::smdp::SmdpClient override.
   lpa::util::EuiccLog* logger() override;

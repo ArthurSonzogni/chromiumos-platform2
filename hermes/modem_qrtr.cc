@@ -59,22 +59,26 @@ std::unique_ptr<ModemQrtr> ModemQrtr::Create(
     std::unique_ptr<SocketInterface> socket,
     Logger* logger,
     Executor* executor,
-    std::unique_ptr<ModemManagerProxy> modem_manager_proxy) {
+    std::unique_ptr<ModemManagerProxy> modem_manager_proxy,
+    bool sgp22_v25_enabled) {
   // Open the socket prior to passing to ModemQrtr, such that it always has a
   // valid socket to write to.
   if (!socket || !socket->Open()) {
     LOG(ERROR) << "Failed to open socket";
     return nullptr;
   }
-  return std::unique_ptr<ModemQrtr>(new ModemQrtr(
-      std::move(socket), logger, executor, std::move(modem_manager_proxy)));
+  return std::unique_ptr<ModemQrtr>(
+      new ModemQrtr(std::move(socket), logger, executor,
+                    std::move(modem_manager_proxy), sgp22_v25_enabled));
 }
 
 ModemQrtr::ModemQrtr(std::unique_ptr<SocketInterface> socket,
                      Logger* logger,
                      Executor* executor,
-                     std::unique_ptr<ModemManagerProxy> modem_manager_proxy)
-    : Modem<QmiCmdInterface>(logger, executor, std::move(modem_manager_proxy)),
+                     std::unique_ptr<ModemManagerProxy> modem_manager_proxy,
+                     bool sgp22_v25_enabled)
+    : Modem<QmiCmdInterface>(
+          logger, executor, std::move(modem_manager_proxy), sgp22_v25_enabled),
       qmi_disabled_(false),
       retry_count_(0),
       channel_(kInvalidChannel),

@@ -11,9 +11,9 @@
 #include <string>
 #include <vector>
 
+#include <base/cancelable_callback.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
-#include <base/cancelable_callback.h>
 
 #include "hermes/dbus_bindings/mm-proxies.h"
 #include "hermes/executor.h"
@@ -28,7 +28,8 @@ class ModemManagerProxy : public ModemManagerProxyInterface {
       std::map<std::string, brillo::VariantDictionary>;
   using DBusObjectsWithProperties =
       std::map<dbus::ObjectPath, DBusInterfaceToProperties>;
-  explicit ModemManagerProxy(const scoped_refptr<dbus::Bus>& bus);
+  ModemManagerProxy(const scoped_refptr<dbus::Bus>& bus,
+                    bool sgp22_v25_enabled);
 
   // cb is executed when a new modem appears on DBus. Executed only once.
   void RegisterModemAppearedCallback(base::OnceClosure cb) override;
@@ -76,6 +77,7 @@ class ModemManagerProxy : public ModemManagerProxyInterface {
 
   std::optional<std::basic_string<char>> device_identifier_;
   bool modem_appeared_;
+  const bool sgp22_v25_enabled_ = false;
   base::OnceClosure on_modem_appeared_cb_;
 
   std::optional<std::basic_string<char>> inhibited_uid_;

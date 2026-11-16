@@ -296,7 +296,8 @@ class ModemQrtrTest : public testing::Test {
     socket_ = socket.get();
     auto modem_manager_proxy = std::make_unique<FakeModemManagerProxy>();
     modem_ = ModemQrtr::Create(std::move(socket), nullptr, &executor_,
-                               std::move(modem_manager_proxy));
+                               std::move(modem_manager_proxy),
+                               /*sgp22_v25_enabled=*/false);
     ASSERT_NE(modem_, nullptr);
 
     receive_ids_.clear();
@@ -490,6 +491,28 @@ TEST_F(ModemQrtrTest, SendTwoApdus) {
   ModemReceiveInitSlot(2);
   ModemReceiveData(kGetChallengeResp.begin(), kGetChallengeResp.end(),
                    kUimPort);
+}
+
+TEST_F(ModemQrtrTest, Sgp22V25EnabledFlagPropagation) {
+  EXPECT_FALSE(modem_->sgp22_v25_enabled());
+  EXPECT_FALSE(static_cast<const lpa::card::EuiccCard*>(modem_.get())
+                   ->sgp22_v25_enabled());
+
+  auto v25_socket = std::make_unique<MockSocketQrtr>();
+  MockSocketQrtr* v25_socket_ptr = v25_socket.get();
+  auto v25_mm_proxy = std::make_unique<FakeModemManagerProxy>();
+  auto v25_modem =
+      ModemQrtr::Create(std::move(v25_socket), nullptr, &executor_,
+                        std::move(v25_mm_proxy), /*sgp22_v25_enabled=*/true);
+  ASSERT_NE(v25_modem, nullptr);
+  EXPECT_TRUE(v25_modem->sgp22_v25_enabled());
+  EXPECT_TRUE(static_cast<const lpa::card::EuiccCard*>(v25_modem.get())
+                  ->sgp22_v25_enabled());
+
+  // v25_modem is still in State::kUninitialized, so ~ModemQrtr() only closes
+  // the socket without calling StopService().
+  EXPECT_CALL(*v25_socket_ptr, Close());
+  v25_modem.reset();
 }
 
 }  // namespace hermes
