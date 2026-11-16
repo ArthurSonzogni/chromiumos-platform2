@@ -55,7 +55,11 @@ SandboxedProcess::SandboxedProcess()
       set_capabilities_(false),
       inherit_usergroups_(false),
       user_(kDefaultUser),
-      group_(kDefaultGroup) {}
+      group_(kDefaultGroup) {
+  // Always close unused file descriptors before executing child processes
+  // to avoid leaking parent event loops, epoll handles, and daemon sockets.
+  SetCloseUnusedFileDescriptors(true);
+}
 
 bool SandboxedProcess::Init(
     const std::vector<std::string>& minijail_extra_args) {

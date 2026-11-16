@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 
 #include "debugd/src/error_utils.h"
 #include "debugd/src/process_with_id.h"
@@ -35,7 +36,7 @@ CrashSenderTool::CrashSenderTool() = default;
 
 void CrashSenderTool::UploadCrashes() {
   RunCrashSender(false /* ignore_hold_off_time */, false /* crash_loop_mode */,
-                 base::FilePath("") /* crash_directory */,
+                 base::ScopedFD() /* crash_directory_fd */,
                  false /* consent_already_checked_by_crash_reporter */);
 }
 
@@ -106,8 +107,8 @@ bool CrashSenderTool::UploadSingleCrash(
   }
 
   // Since crash_sender jails itself, it won't actually see our /tmp/<files>
-  // directory. Instead, open the directory and pass the /proc path to the
-  // directory file descriptor as the crash directory.
+  // directory. Instead, open the directory and pass the directory file
+  // descriptor as the crash directory.
   base::ScopedFD crash_directory_fd(
       HANDLE_EINTR(open(temp_dir.GetPath().value().c_str(), O_RDONLY)));
   if (!crash_directory_fd.is_valid()) {
@@ -115,17 +116,13 @@ bool CrashSenderTool::UploadSingleCrash(
     return false;
   }
 
-  base::FilePath munged_crash_directory("/proc/self/fd");
-  munged_crash_directory = munged_crash_directory.Append(
-      base::NumberToString(crash_directory_fd.get()));
-
   const bool ignore_hold_off_time = true;  // We already flushed all the files.
 
   // UploadSingleCrash is only called by CrashCollector when using
   // CrashLoopSendingMode.
   const bool crash_loop_mode = true;
 
-  RunCrashSender(ignore_hold_off_time, crash_loop_mode, munged_crash_directory,
+  RunCrashSender(ignore_hold_off_time, crash_loop_mode, crash_directory_fd,
                  consent_already_checked_by_crash_reporter);
 
   return true;
@@ -134,7 +131,7 @@ bool CrashSenderTool::UploadSingleCrash(
 void CrashSenderTool::RunCrashSender(
     bool ignore_hold_off_time,
     bool crash_loop_mode,
-    const base::FilePath& crash_directory,
+    const base::ScopedFD& crash_directory_fd,
     bool consent_already_checked_by_crash_reporter) {
   // 'crash_sender' requires accessing user mounts to upload user crashes.
   ProcessWithId* p =
@@ -153,8 +150,10 @@ void CrashSenderTool::RunCrashSender(
     p->AddArg("--crash_loop_mode");
   }
 
-  if (!crash_directory.empty()) {
-    p->AddArg("--crash_directory=" + crash_directory.value());
+  if (crash_directory_fd.is_valid()) {
+    int fd = crash_directory_fd.get();
+    p->BindFd(fd, fd);
+    p->AddArg(base::StringPrintf("--crash_directory=/proc/self/fd/%d", fd));
   }
 
   if (test_mode_) {
