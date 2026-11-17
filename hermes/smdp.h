@@ -60,6 +60,8 @@ class Smdp : public lpa::smdp::SmdpClient {
                  LpaCallback cb) override;
 
  private:
+  const char* GetAdminProtocolHeader() const;
+
   std::shared_ptr<brillo::http::Transport> server_transport_;
 
   std::string card_version_;

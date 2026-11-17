@@ -18,6 +18,8 @@
 #include <base/strings/string_util.h>
 #include <base/values.h>
 
+#include "hermes/hermes_common.h"
+
 namespace {
 
 constexpr auto kSmdxTimeout = base::Minutes(3);
@@ -106,6 +108,15 @@ Smdp::~Smdp() {
   }
 }
 
+const char* Smdp::GetAdminProtocolHeader() const {
+  if (!sgp22_v25_enabled()) {
+    return kLegacyAdminProtocolVersion;
+  }
+  // Per GSMA SGP.22 Section 6.5.1 (HTTP Header Fields), advertise the
+  // highest SGP.22 version supported by the LPAd ("gsma/rsp/v2.5.0").
+  return kSgp22AdminProtocolVersion;
+}
+
 lpa::util::EuiccLog* Smdp::logger() {
   return logger_ ? logger_ : lpa::smdp::SmdpClient::logger();
 }
@@ -133,7 +144,7 @@ void Smdp::SendHttps(const std::string& path,
                                      server_transport_);
   http_request.SetContentType("application/json");
   http_request.SetUserAgent("gsma-rsp-lpad");
-  http_request.AddHeader("X-Admin-Protocol", "gsma/rsp/v2.2.2");
+  http_request.AddHeader("X-Admin-Protocol", GetAdminProtocolHeader());
   http_request.AddRequestBody(&request[0], request.size(), &error);
   CHECK(!error);
 

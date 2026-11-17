@@ -22,6 +22,21 @@ constexpr auto kLpaRetryDelay = base::Seconds(2);
 // (e.g. those with high network latency or DNS resolution timeouts).
 constexpr auto kHermesTimeout = base::Minutes(6);
 
+// Legacy GSMA SGP.22 specification version advertised when --enable_sgp22_v25
+// is disabled.
+constexpr int kLegacySgp22SpecMajor = 2;
+constexpr int kLegacySgp22SpecMinor = 2;
+constexpr int kLegacySgp22SpecRevision = 0;
+constexpr char kLegacyAdminProtocolVersion[] = "gsma/rsp/v2.2.2";
+
+// GSMA SGP.22 specification version supported by this LPAd implementation
+// when --enable_sgp22_v25 is enabled (v2.5.0 per GSMA SGP.22 v2.5 / SGP.24
+// v2.7).
+constexpr int kSgp22SpecMajor = 2;
+constexpr int kSgp22SpecMinor = 5;
+constexpr int kSgp22SpecRevision = 0;
+constexpr char kSgp22AdminProtocolVersion[] = "gsma/rsp/v2.5.0";
+
 constexpr int kSuccess = 0;
 constexpr int kDefaultError = -1;
 // This error will be returned when a received mbim/qmi message cannot be parsed

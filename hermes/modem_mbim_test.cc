@@ -11,6 +11,7 @@
 #include <gtest/gtest.h>
 
 #include "hermes/fake_euicc_manager.h"
+#include "hermes/hermes_common.h"
 #include "hermes/mock_executor.h"
 #include "hermes/sgp_22.h"
 
@@ -409,6 +410,34 @@ TEST_F(ModemMbimTest, DeviceCapabilities4gVs5g) {
   EXPECT_EQ(modem_->GetNrEpcSupportedRelease(), kRel15);
   EXPECT_EQ(modem_->GetNr5gcSupportedRelease(), kRel15);
   EXPECT_EQ(modem_->GetEutran5gcSupportedRelease(), kRel15);
+}
+
+TEST_F(ModemMbimTest, CardSpecVersionGatedBySgp22V25Flag) {
+  // Default sgp22_v25_enabled is false -> legacy 2.2.0.
+  CreateModem();
+  EXPECT_EQ(modem_->GetCardVersion().major(), kLegacySgp22SpecMajor);
+  EXPECT_EQ(modem_->GetCardVersion().minor(), kLegacySgp22SpecMinor);
+  EXPECT_EQ(modem_->GetCardVersion().revision(), kLegacySgp22SpecRevision);
+
+  // Recreate with sgp22_v25_enabled = true -> SGP.22 v2.5.0.
+  modem_.reset();
+  libmbim_ = std::make_unique<FakeLibmbim>();
+  modem_manager_proxy_ = std::make_unique<MockModemManagerProxy>();
+  CreateModem(/*sgp22_v25_enabled=*/true);
+  EXPECT_EQ(modem_->GetCardVersion().major(), kSgp22SpecMajor);
+  EXPECT_EQ(modem_->GetCardVersion().minor(), kSgp22SpecMinor);
+  EXPECT_EQ(modem_->GetCardVersion().revision(), kSgp22SpecRevision);
+
+  // SetCardVersion() (invoked by Euicc::InitEuicc after GetEuiccInfo1) still
+  // overrides the initial fallback spec_version_.
+  lpa::proto::EuiccSpecVersion card_ver;
+  card_ver.set_major(2);
+  card_ver.set_minor(3);
+  card_ver.set_revision(1);
+  modem_->SetCardVersion(card_ver);
+  EXPECT_EQ(modem_->GetCardVersion().major(), 2);
+  EXPECT_EQ(modem_->GetCardVersion().minor(), 3);
+  EXPECT_EQ(modem_->GetCardVersion().revision(), 1);
 }
 
 }  // namespace hermes

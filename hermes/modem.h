@@ -61,11 +61,21 @@ class Modem : public EuiccInterface {
         current_transaction_id_(static_cast<uint16_t>(-1)),
         weak_factory_(this) {
     SetSgp22V25Enabled(sgp22_v25_enabled);
-    // Set SGP.22 specification version supported by this implementation (this
-    // is not currently constrained by the eUICC we use).
-    spec_version_.set_major(2);
-    spec_version_.set_minor(2);
-    spec_version_.set_revision(0);
+    if (sgp22_v25_enabled) {
+      // Set initial/fallback GSMA SGP.22 specification version supported by
+      // this LPAd implementation (v2.5.0 per SGP.22 v2.5 / SGP.24 v2.7);
+      // Euicc::InitEuicc updates spec_version_ via SetCardVersion() once
+      // ES10b.GetEuiccInfo1 runs.
+      spec_version_.set_major(kSgp22SpecMajor);
+      spec_version_.set_minor(kSgp22SpecMinor);
+      spec_version_.set_revision(kSgp22SpecRevision);
+    } else {
+      // Set initial/fallback legacy SGP.22 specification version before
+      // Euicc::InitEuicc updates it via SetCardVersion().
+      spec_version_.set_major(kLegacySgp22SpecMajor);
+      spec_version_.set_minor(kLegacySgp22SpecMinor);
+      spec_version_.set_revision(kLegacySgp22SpecRevision);
+    }
   }
 
   virtual ~Modem() = default;

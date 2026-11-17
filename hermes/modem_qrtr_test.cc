@@ -24,6 +24,7 @@
 
 #include "hermes/apdu.h"
 #include "hermes/fake_euicc_manager.h"
+#include "hermes/hermes_common.h"
 #include "hermes/mock_executor.h"
 #include "hermes/sgp_22.h"
 #include "hermes/socket_qrtr.h"
@@ -497,6 +498,9 @@ TEST_F(ModemQrtrTest, Sgp22V25EnabledFlagPropagation) {
   EXPECT_FALSE(modem_->sgp22_v25_enabled());
   EXPECT_FALSE(static_cast<const lpa::card::EuiccCard*>(modem_.get())
                    ->sgp22_v25_enabled());
+  EXPECT_EQ(modem_->GetCardVersion().major(), kLegacySgp22SpecMajor);
+  EXPECT_EQ(modem_->GetCardVersion().minor(), kLegacySgp22SpecMinor);
+  EXPECT_EQ(modem_->GetCardVersion().revision(), kLegacySgp22SpecRevision);
 
   auto v25_socket = std::make_unique<MockSocketQrtr>();
   MockSocketQrtr* v25_socket_ptr = v25_socket.get();
@@ -508,6 +512,9 @@ TEST_F(ModemQrtrTest, Sgp22V25EnabledFlagPropagation) {
   EXPECT_TRUE(v25_modem->sgp22_v25_enabled());
   EXPECT_TRUE(static_cast<const lpa::card::EuiccCard*>(v25_modem.get())
                   ->sgp22_v25_enabled());
+  EXPECT_EQ(v25_modem->GetCardVersion().major(), kSgp22SpecMajor);
+  EXPECT_EQ(v25_modem->GetCardVersion().minor(), kSgp22SpecMinor);
+  EXPECT_EQ(v25_modem->GetCardVersion().revision(), kSgp22SpecRevision);
 
   // v25_modem is still in State::kUninitialized, so ~ModemQrtr() only closes
   // the socket without calling StopService().
