@@ -10,6 +10,7 @@
 #include <sys/types.h>
 
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -33,8 +34,19 @@ constexpr char kSeccompFilterPath[] =
 constexpr int kMaxWorkerMessageSize = 4096;
 // Size of the buffer array used to read data from the worker's stderr.
 constexpr int kWorkerBufferSize = 1024;
-constexpr char kPrefixDirect[] = "direct://";
-constexpr char kPrefixHttp[] = "http://";
+constexpr std::string_view kPrefixDirect = "direct://";
+constexpr std::string_view kPrefixHttp = "http://";
+
+bool IsSupportedHttpProxy(std::string_view proxy) {
+  return base::StartsWith(proxy, kPrefixHttp,
+                          base::CompareCase::INSENSITIVE_ASCII) &&
+         proxy.size() > kPrefixHttp.size() && base::IsStringUTF8(proxy);
+}
+
+bool IsDirectProxy(std::string_view proxy) {
+  return base::StartsWith(proxy, kPrefixDirect,
+                          base::CompareCase::INSENSITIVE_ASCII);
+}
 }  // namespace
 
 namespace system_proxy {
@@ -187,6 +199,27 @@ bool SandboxedWorker::IsRunning() {
   return pid_ != 0 && !is_being_terminated_;
 }
 
+void SandboxedWorker::SetPipesForTesting(base::ScopedFD stdin_pipe,
+                                         base::ScopedFD stdout_pipe) {
+  stdout_watcher_.reset();
+  stdin_pipe_ = std::move(stdin_pipe);
+  stdout_pipe_ = std::move(stdout_pipe);
+  if (stdout_pipe_.is_valid()) {
+    stdout_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+        stdout_pipe_.get(),
+        base::BindRepeating(&SandboxedWorker::OnMessageReceived,
+                            base::Unretained(this)));
+  }
+}
+
+void SandboxedWorker::SetMaxAllowedProxyOriginsForTesting(size_t max_origins) {
+  allowed_proxy_origins_.UpdateMaxSize(max_origins);
+}
+
+bool SandboxedWorker::IsProxyOriginAllowed(const std::string& origin) {
+  return allowed_proxy_origins_.Get(origin) != allowed_proxy_origins_.end();
+}
+
 void SandboxedWorker::OnMessageReceived() {
   worker::WorkerRequest request;
 
@@ -201,6 +234,9 @@ void SandboxedWorker::OnMessageReceived() {
   }
 
   if (request.has_proxy_resolution_request()) {
+    if (!adaptor_) {
+      return;
+    }
     const worker::ProxyResolutionRequest& proxy_request =
         request.proxy_resolution_request();
 
@@ -214,8 +250,18 @@ void SandboxedWorker::OnMessageReceived() {
                             proxy_request.target_url()));
   }
   if (request.has_auth_required_request()) {
+    if (!adaptor_) {
+      return;
+    }
     const worker::AuthRequiredRequest& auth_request =
         request.auth_required_request();
+    const std::string& origin = auth_request.protection_space().origin();
+    if (!auth_request.has_protection_space() || !IsProxyOriginAllowed(origin)) {
+      LOG(ERROR) << "Rejecting AuthRequiredRequest with unauthorized origin '"
+                 << (base::IsStringUTF8(origin) ? origin : "<non-utf8>")
+                 << "' from worker " << pid_;
+      return;
+    }
     adaptor_->RequestAuthenticationCredentials(
         auth_request.protection_space(), auth_request.bad_cached_credentials());
   }
@@ -279,10 +325,10 @@ void SandboxedWorker::OnProxyResolved(
 
   // Only http and direct proxies are supported at the moment.
   for (const auto& proxy : proxy_servers) {
-    if (base::StartsWith(proxy, kPrefixHttp,
-                         base::CompareCase::INSENSITIVE_ASCII) ||
-        base::StartsWith(proxy, kPrefixDirect,
-                         base::CompareCase::INSENSITIVE_ASCII)) {
+    if (IsSupportedHttpProxy(proxy)) {
+      allowed_proxy_origins_.Put(std::string(proxy));
+      reply.add_proxy_servers(proxy);
+    } else if (IsDirectProxy(proxy)) {
       reply.add_proxy_servers(proxy);
     }
   }

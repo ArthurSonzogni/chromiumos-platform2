@@ -55,7 +55,7 @@ class SystemProxyAdaptor : public org::chromium::SystemProxyAdaptor,
   std::vector<uint8_t> ShutDownProcess(
       const std::vector<uint8_t>& request_blob) override;
 
-  void GetChromeProxyServersAsync(
+  virtual void GetChromeProxyServersAsync(
       const std::string& target_url,
       brillo::http::GetChromeProxyServersCallback callback);
 

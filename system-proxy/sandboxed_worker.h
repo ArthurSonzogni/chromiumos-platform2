@@ -4,12 +4,16 @@
 #ifndef SYSTEM_PROXY_SANDBOXED_WORKER_H_
 #define SYSTEM_PROXY_SANDBOXED_WORKER_H_
 
+#include <stddef.h>
+#include <sys/types.h>
+
 #include <array>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include <base/containers/lru_cache.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
@@ -25,6 +29,8 @@ class SystemProxyAdaptor;
 
 class SandboxedWorker {
  public:
+  static constexpr size_t kMaxAllowedProxyOrigins = 100;
+
   explicit SandboxedWorker(base::WeakPtr<SystemProxyAdaptor> adaptor);
   SandboxedWorker(const SandboxedWorker&) = delete;
   SandboxedWorker& operator=(const SandboxedWorker&) = delete;
@@ -75,6 +81,13 @@ class SandboxedWorker {
     return local_proxy_host_and_port_;
   }
 
+  // Configures communication pipes and starts watching |stdout_pipe| for worker
+  // requests without spawning a child process.
+  void SetPipesForTesting(base::ScopedFD stdin_pipe,
+                          base::ScopedFD stdout_pipe);
+
+  void SetMaxAllowedProxyOriginsForTesting(size_t max_origins);
+
  private:
   friend class SystemProxyAdaptorTest;
   FRIEND_TEST(SystemProxyAdaptorTest, SetAuthenticationDetails);
@@ -86,6 +99,9 @@ class SandboxedWorker {
 
   void OnMessageReceived();
   void OnErrorReceived();
+  // Returns true if |origin| matches an HTTP proxy server previously resolved
+  // for this worker via |OnProxyResolved|.
+  bool IsProxyOriginAllowed(const std::string& origin);
   // Called when a proxy resolver job is resolved. |proxy_servers| is the
   // ordered list of proxies returned by Chrome. In case of failure it will be
   // the direct proxy.
@@ -107,6 +123,12 @@ class SandboxedWorker {
 
   std::unique_ptr<base::FileDescriptorWatcher::Controller> stdout_watcher_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> stderr_watcher_;
+
+  // Bounded LRU set of HTTP proxy origins (formatted as scheme://host:port)
+  // resolved by Chrome and provided to this worker via |OnProxyResolved|. Used
+  // to validate |AuthRequiredRequest| messages from the sandboxed worker.
+  base::LRUCacheSet<std::string> allowed_proxy_origins_{
+      kMaxAllowedProxyOrigins};
 
   // The adaptor that owns this worker.
   base::WeakPtr<SystemProxyAdaptor> adaptor_;
