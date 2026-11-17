@@ -159,6 +159,10 @@ void ModemManagerProxy::OnPropertiesChanged(
     const std::string& prop) {
   VLOG(3) << __func__ << " : " << prop << " changed.";
 
+  if (sgp22_v25_enabled_ && prop == MM_MODEM_PROPERTY_CURRENTCAPABILITIES) {
+    UpdateCachedCapabilities();
+  }
+
   // wait for all properties that we will be read by ModemMbim.
   if (!modem_proxy_->GetProperties()->ports.is_valid() ||
       !modem_proxy_->GetProperties()->state.is_valid()) {
@@ -194,12 +198,26 @@ void ModemManagerProxy::OnPropertiesChanged(
   }
 }
 
+void ModemManagerProxy::UpdateCachedCapabilities() {
+  if (!modem_proxy_) {
+    return;
+  }
+  if (modem_proxy_->GetProperties()->current_capabilities.is_valid()) {
+    cached_is_5g_supported_ =
+        (modem_proxy_->current_capabilities() & MM_MODEM_CAPABILITY_5GNR) != 0;
+  }
+}
+
 std::string ModemManagerProxy::GetMbimPort() const {
   if (!cached_mbim_port_.has_value()) {
     LOG(ERROR) << __func__ << ": Primary port has never been read.";
     return "";
   }
   return cached_mbim_port_.value();
+}
+
+bool ModemManagerProxy::Is5gSupported() const {
+  return sgp22_v25_enabled_ && cached_is_5g_supported_.value_or(false);
 }
 
 void ModemManagerProxy::Uninhibit() {
@@ -259,6 +277,18 @@ void ModemManagerProxy::InhibitDevice(bool inhibit, ResultCallback cb) {
                        weak_factory_.GetWeakPtr(), std::move(cb2)),
         kInhibitTimeout);
     return;
+  }
+
+  if (inhibit && sgp22_v25_enabled_) {
+    // Cache 5G capability before inhibiting, since inhibiting removes the
+    // ModemManager1.Modem object from D-Bus and resets modem_proxy_.
+    UpdateCachedCapabilities();
+    if (!cached_is_5g_supported_.has_value()) {
+      auto* props = modem_proxy_->GetProperties();
+      if (props->current_capabilities.GetAndBlock()) {
+        UpdateCachedCapabilities();
+      }
+    }
   }
 
   auto uid = inhibit ? modem_proxy_->device() : inhibited_uid_.value();

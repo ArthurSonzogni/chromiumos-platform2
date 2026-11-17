@@ -36,6 +36,7 @@ class MockModemManagerProxy : public ModemManagerProxyInterface {
   MOCK_METHOD(void, WaitForModem, (base::OnceClosure cb), (override));
 
   MOCK_METHOD(std::string, GetMbimPort, (), (const, override));
+  MOCK_METHOD(bool, Is5gSupported, (), (const, override));
 
   MOCK_METHOD(void, ScheduleUninhibit, (base::TimeDelta timeout), (override));
   MOCK_METHOD(void, WaitForModemAndInhibit, (ResultCallback cb), (override));
@@ -47,6 +48,7 @@ class MockModemManagerProxy : public ModemManagerProxyInterface {
       std::move(cb).Run(kModemSuccess);
     });
     ON_CALL(*this, GetMbimPort).WillByDefault([]() { return "wwan0"; });
+    ON_CALL(*this, Is5gSupported).WillByDefault([]() { return false; });
   }
 };
 
@@ -369,6 +371,44 @@ TEST_F(ModemMbimTest, Sgp22V25EnabledFlagPropagation) {
   EXPECT_TRUE(modem_->sgp22_v25_enabled());
   EXPECT_TRUE(static_cast<const lpa::card::EuiccCard*>(modem_.get())
                   ->sgp22_v25_enabled());
+}
+
+TEST_F(ModemMbimTest, DeviceCapabilitiesLegacyWhenSgp22V25Disabled) {
+  auto* proxy_ptr = modem_manager_proxy_.get();
+  // Default sgp22_v25_enabled is false.
+  CreateModem();
+
+  const std::vector<uint8_t> kRel11 = {kDefault3GPPRelease, 0, 0};
+  ON_CALL(*proxy_ptr, Is5gSupported()).WillByDefault(testing::Return(true));
+  EXPECT_CALL(*proxy_ptr, Is5gSupported()).Times(0);
+  EXPECT_EQ(modem_->GetUtranSupportedRelease(), kRel11);
+  EXPECT_EQ(modem_->GetEutranSupportedRelease(), kRel11);
+  EXPECT_TRUE(modem_->GetNrEpcSupportedRelease().empty());
+  EXPECT_TRUE(modem_->GetNr5gcSupportedRelease().empty());
+  EXPECT_TRUE(modem_->GetEutran5gcSupportedRelease().empty());
+}
+
+TEST_F(ModemMbimTest, DeviceCapabilities4gVs5g) {
+  auto* proxy_ptr = modem_manager_proxy_.get();
+  CreateModem(/*sgp22_v25_enabled=*/true);
+
+  const std::vector<uint8_t> kRel15 = {kSgp22V253GPPRelease, 0, 0};
+  EXPECT_EQ(modem_->GetUtranSupportedRelease(), kRel15);
+  EXPECT_EQ(modem_->GetEutranSupportedRelease(), kRel15);
+
+  // Default 4G-only modem omits 5G NR / 5GC capability fields.
+  EXPECT_CALL(*proxy_ptr, Is5gSupported())
+      .WillRepeatedly(testing::Return(false));
+  EXPECT_TRUE(modem_->GetNrEpcSupportedRelease().empty());
+  EXPECT_TRUE(modem_->GetNr5gcSupportedRelease().empty());
+  EXPECT_TRUE(modem_->GetEutran5gcSupportedRelease().empty());
+
+  // 5G-capable modem reports 3GPP Release 15 ({15, 0, 0}).
+  EXPECT_CALL(*proxy_ptr, Is5gSupported())
+      .WillRepeatedly(testing::Return(true));
+  EXPECT_EQ(modem_->GetNrEpcSupportedRelease(), kRel15);
+  EXPECT_EQ(modem_->GetNr5gcSupportedRelease(), kRel15);
+  EXPECT_EQ(modem_->GetEutran5gcSupportedRelease(), kRel15);
 }
 
 }  // namespace hermes

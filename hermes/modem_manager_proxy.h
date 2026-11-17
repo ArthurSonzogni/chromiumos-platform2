@@ -38,6 +38,7 @@ class ModemManagerProxy : public ModemManagerProxyInterface {
   void WaitForModem(base::OnceClosure cb) override;
 
   std::string GetMbimPort() const override;
+  bool Is5gSupported() const override;
 
   void ScheduleUninhibit(base::TimeDelta timeout) override;
   void WaitForModemAndInhibit(ResultCallback cb) override;
@@ -59,6 +60,7 @@ class ModemManagerProxy : public ModemManagerProxyInterface {
   void OnPropertiesChanged(
       org::freedesktop::ModemManager1::ModemProxyInterface* /*unused*/,
       const std::string& prop);
+  void UpdateCachedCapabilities();
 
   void Uninhibit();
   bool IsModemSafeToInhibit();
@@ -73,6 +75,7 @@ class ModemManagerProxy : public ModemManagerProxyInterface {
       object_manager_proxy_;
   std::unique_ptr<org::freedesktop::ModemManager1Proxy> mm_proxy_;
   std::optional<std::string> cached_mbim_port_;
+  std::optional<bool> cached_is_5g_supported_;
   std::unique_ptr<org::freedesktop::ModemManager1::ModemProxy> modem_proxy_;
 
   std::optional<std::basic_string<char>> device_identifier_;

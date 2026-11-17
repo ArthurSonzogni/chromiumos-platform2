@@ -39,7 +39,8 @@ constexpr auto kUninhibitDelay = base::Seconds(4);
 
 constexpr int kModemSuccess = 0;
 
-constexpr int kDefault3GPPRelease = 11;
+constexpr uint8_t kDefault3GPPRelease = 11;
+constexpr uint8_t kSgp22V253GPPRelease = 15;
 
 // Modem houses code shared by ModemQrtr and ModemMbim
 // T is the type of message that the modem implementation uses. For
@@ -89,14 +90,28 @@ class Modem : public EuiccInterface {
 
   std::vector<uint8_t> GetUtranSupportedRelease() override {
     return std::vector<uint8_t>{
-        kDefault3GPPRelease, 0,
+        sgp22_v25_enabled() ? kSgp22V253GPPRelease : kDefault3GPPRelease, 0,
         0};  // Last two bytes are fixed to zero by SGP.22
   }
   std::vector<uint8_t> GetEutranSupportedRelease() override {
     return std::vector<uint8_t>{
-        kDefault3GPPRelease, 0,
+        sgp22_v25_enabled() ? kSgp22V253GPPRelease : kDefault3GPPRelease, 0,
         0};  // Last two bytes are fixed to zero by SGP.22
-  };
+  }
+  // Per GSMA SGP.22 v2.3+ / v2.5 Section 5.7.13 (DeviceCapabilities), report
+  // 3GPP Release 15 VersionType (3-octet {major, minor, revision} with the last
+  // two octets fixed to 0x00) for 5G NR EPC (tag 0x88), 5G NR 5GC (tag 0x89),
+  // and E-UTRAN 5GC (tag 0x8A) only when the modem supports 5G NR; return an
+  // empty vector on 4G-only modems so the 5G fields are omitted.
+  std::vector<uint8_t> GetNrEpcSupportedRelease() override {
+    return Get5gSupportedRelease();
+  }
+  std::vector<uint8_t> GetNr5gcSupportedRelease() override {
+    return Get5gSupportedRelease();
+  }
+  std::vector<uint8_t> GetEutran5gcSupportedRelease() override {
+    return Get5gSupportedRelease();
+  }
 
   // Used by third party code to send APDU's
   void TransmitApdu(const std::vector<uint8_t>& apduCommand,
@@ -184,6 +199,14 @@ class Modem : public EuiccInterface {
   std::unique_ptr<ModemManagerProxyInterface> modem_manager_proxy_;
 
  private:
+  std::vector<uint8_t> Get5gSupportedRelease() const {
+    if (!sgp22_v25_enabled() || !modem_manager_proxy_ ||
+        !modem_manager_proxy_->Is5gSupported()) {
+      return {};
+    }
+    return std::vector<uint8_t>{kSgp22V253GPPRelease, 0, 0};
+  }
+
   uint16_t current_transaction_id_;
   base::WeakPtrFactory<Modem<T>> weak_factory_;
 };

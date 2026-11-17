@@ -20,6 +20,7 @@ class ModemManagerProxyInterface {
   virtual void WaitForModem(base::OnceClosure cb) = 0;
 
   virtual std::string GetMbimPort() const = 0;
+  virtual bool Is5gSupported() const = 0;
 
   virtual void ScheduleUninhibit(base::TimeDelta timeout) = 0;
   virtual void WaitForModemAndInhibit(ResultCallback cb) = 0;
