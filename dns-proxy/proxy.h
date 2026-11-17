@@ -179,8 +179,7 @@ class Proxy : public brillo::DBusDaemon {
   // device's name servers by first querying shill for it.
   void UpdateNameServers();
 
-  // Update DoH providers. If proxy is the default proxy and VPN is connected,
-  // DoH is disabled. Force the provider to always be empty.
+  // Update DoH providers.
   void OnDoHProvidersChanged(const brillo::Any& value);
 
   // Update DoH excluded or included domains.
@@ -254,6 +253,7 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, ArcProxy_IgnoredIfDefaultServiceDrops);
   FRIEND_TEST(ProxyTest, StateClearedIfDefaultServiceIsNotOnline);
   FRIEND_TEST(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline);
+  FRIEND_TEST(ProxyTest, ArcProxy_NewResolverStartsListeningOnVirtualDevices);
   FRIEND_TEST(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline);
   FRIEND_TEST(ProxyTest, SystemProxy_IgnoresVPN);
   FRIEND_TEST(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN);
@@ -274,7 +274,6 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, MultipleDoHProvidersForAutomaticMode);
   FRIEND_TEST(ProxyTest, MultipleDoHProvidersForSecureWithFallbackMode);
   FRIEND_TEST(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode);
-  FRIEND_TEST(ProxyTest, DefaultProxy_DisableDoHProvidersOnVPN);
   FRIEND_TEST(ProxyTest, SystemProxy_SetsDnsRedirectionRule);
   FRIEND_TEST(ProxyTest,
               DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted);

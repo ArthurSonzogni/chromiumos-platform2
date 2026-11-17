@@ -8,16 +8,17 @@
 #include <net/if.h>
 #include <sysexits.h>
 
+#include <cerrno>
+#include <climits>
+#include <cstdint>
 #include <optional>
 #include <set>
 #include <tuple>
 
-#include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/string_split.h>
-#include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <chromeos/net-base/ip_address.h>
@@ -969,7 +970,7 @@ void Proxy::RTNLMessageHandler(const net_base::RTNLMessage& msg) {
     return;
   }
 
-  uint32_t ifindex = msg.interface_index();
+  int ifindex = msg.interface_index();
   switch (msg.mode()) {
     case net_base::RTNLMessage::kModeGet:
     case net_base::RTNLMessage::kModeAdd: {
@@ -1103,7 +1104,7 @@ void Proxy::StartGuestDnsRedirection(
                         net_base::IPAddress(device.host_ipv4_addr));
   }
   if (sa_family == AF_INET6) {
-    uint32_t ifindex = IfNameToIndex(device.ifname.c_str());
+    int ifindex = IfNameToIndex(device.ifname.c_str());
     const auto it = link_local_addresses_.find(ifindex);
     if (it != link_local_addresses_.end()) {
       StartDnsRedirection(device.ifname, net_base::IPAddress(it->second));

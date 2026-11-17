@@ -4,7 +4,9 @@
 
 #include <sysexits.h>
 
-#include <base/files/scoped_file.h>
+#include <string>
+
+#include <base/command_line.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
