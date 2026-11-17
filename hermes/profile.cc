@@ -88,7 +88,11 @@ std::unique_ptr<Profile> Profile::Create(
     return nullptr;
   }
   profile->SetState(state.value());
-  auto cls = LpaProfileClassToHermes(profile_info.profile_class());
+  // Per GSMA SGP.22 Section 5.5.3 and ITU-T X.690 Section 11.5, strict-DER
+  // metadata omits tag 0x95 for Operational Profiles.
+  auto cls = profile_info.has_profile_class()
+                 ? LpaProfileClassToHermes(profile_info.profile_class())
+                 : std::optional<profile::ProfileClass>(profile::kOperational);
   if (!cls.has_value()) {
     LOG(ERROR) << "Failed to create Profile for iccid " << profile_info.iccid()
                << "; invalid ProfileClass " << profile_info.profile_class();

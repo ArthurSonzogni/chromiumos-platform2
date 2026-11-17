@@ -99,8 +99,13 @@ const std::map<int, const char*>& GetMidErrorMap() {
   return err_map;
 }
 
-const std::map<int, InnerError>& GetInnerErrorMap() {
-  static std::map<int, InnerError> err_map{
+// LPA-level inner errors (1..10) — plus SmdpClient::kProfileBuild (303),
+// emitted by ProfileDownloadTransaction::Authenticate with lpa_mid_code == 0 —
+// are kept separate from card/SM-DP+ inner errors so they cannot collide with
+// raw eUICC ASN.1 error codes (e.g. LoadBoundProfilePackage ErrorReason = 10,
+// installFailedDueToInsufficientMemoryForProfile).
+const std::map<int, InnerError>& GetLpaInnerErrorMap() {
+  static const std::map<int, InnerError> err_map{
       {lpa::core::Lpa::kWrongState,
        {kErrorWrongState, "Invalid state for requested method"}},
       {lpa::core::Lpa::kIccidNotFound, {kErrorInvalidIccid, "Invalid iccid"}},
@@ -117,6 +122,16 @@ const std::map<int, InnerError>& GetInnerErrorMap() {
        {kErrorSendNotificationFailure, "Failed to send notifications"}},
       {lpa::core::Lpa::kNoOpForTestingProfile,
        {kErrorTestProfileInProd, "Non-test mode cannot use test profile"}},
+      {lpa::core::Lpa::kPprNotSupported,
+       {kErrorUnsupported, "Profile policy rules not allowed"}},
+      {lpa::smdp::SmdpClient::kProfileBuild,
+       {kErrorMalformedResponse, "Failed to build profile"}},
+  };
+  return err_map;
+}
+
+const std::map<int, InnerError>& GetCardAndSmdpInnerErrorMap() {
+  static const std::map<int, InnerError> err_map{
       {lpa::card::EuiccCard::kNoResponses,
        {kErrorNoResponse, "No response from eUICC"}},
       {lpa::card::EuiccCard::kMalformedResponse,
@@ -133,6 +148,18 @@ const std::map<int, InnerError>& GetInnerErrorMap() {
        {kErrorSendHttpsFailure, "Error sending HTTPS"}},
       {lpa::smdp::SmdpClient::kBadNotification,
        {kErrorBadNotification, "Bad notification"}},
+      // Per GSMA SGP.22 v2.5 Section 5.2.6, Section 5.6.2 (Table 40), and
+      // Section 6.5.1.4, ES9+.GetBoundProfilePackage statusCodeData reports
+      // subjectCode "8.2.7" (Confirmation Code) with reasonCode "2.2"
+      // (Mandatory Element Missing) when a confirmation code has not yet been
+      // supplied (surface kErrorNeedConfirmationCode so Chrome prompts for it),
+      // and reasonCode "3.8" (Refused) when a submitted confirmation code is
+      // rejected (surface kErrorMalformedResponse so Chrome displays an error
+      // on the confirmation code page and allows retry).
+      {lpa::smdp::SmdpClient::kConfirmationCodeRefused,
+       {kErrorMalformedResponse, "Confirmation code refused by SM-DP+"}},
+      {lpa::smdp::SmdpClient::kConfirmationCodeMissing,
+       {kErrorNeedConfirmationCode, "Confirmation code missing"}},
   };
   return err_map;
 }
@@ -170,9 +197,11 @@ brillo::ErrorPtr LpaErrorToBrillo(const base::Location& location, int error) {
       brillo::GetOrDefault(GetMidErrorMap(), lpa_mid_code, "UnknownMid: ");
 
   const auto& error_map =
-      lpa_mid_code == lpa::card::EuiccCard::kAuthenticateServerError
-          ? GetInnerErrorMapForAuthenticateServer()
-          : GetInnerErrorMap();
+      lpa_mid_code == 0
+          ? GetLpaInnerErrorMap()
+          : (lpa_mid_code == lpa::card::EuiccCard::kAuthenticateServerError
+                 ? GetInnerErrorMapForAuthenticateServer()
+                 : GetCardAndSmdpInnerErrorMap());
   const auto& inner_error = brillo::GetOrDefault(
       error_map, lpa_inner_code, {kErrorUnknown, "Unknown error"});
 

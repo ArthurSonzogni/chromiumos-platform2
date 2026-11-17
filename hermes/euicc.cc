@@ -122,6 +122,10 @@ void Euicc::DownloadProfile(std::string activation_code,
 
   lpa::core::Lpa::DownloadOptions options;
   options.enable_profile = false;
+  // google-lpa evaluates Profile Policy Rules against ES10b.GetRAT (0xBF43),
+  // allowing pprUpdateControl(0) and RAT-authorized non-consent PPRs while
+  // rejecting consentRequired(0) PPRs when allow_policy_rules is false (since
+  // ChromeOS does not display a PPR user-consent dialog).
   options.allow_policy_rules = false;
   options.confirmation_code = confirmation_code;
   context_->lpa()->DownloadProfile(activation_code, std::move(options),
@@ -358,7 +362,10 @@ void Euicc::OnInstalledProfilesReceived(
     }
   }
   for (const auto& info : profile_infos) {
-    if (!is_test_mode_ &&
+    // Per GSMA SGP.22 Section 5.5.3 and ITU-T X.690 Section 11.5, strict-DER
+    // metadata omits tag 0x95 for Operational Profiles; only treat explicit
+    // TESTING profiles as test profiles.
+    if (!is_test_mode_ && info.has_profile_class() &&
         info.profile_class() == lpa::proto::ProfileClass::TESTING) {
       continue;
     }

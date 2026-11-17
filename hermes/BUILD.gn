@@ -140,6 +140,7 @@ if (use.test) {
   executable("hermes_test") {
     sources = [
       "apdu_test.cc",
+      "lpa_util_test.cc",
       "smdp_test.cc",
     ]
     if (use.qrtr) {
