@@ -40,7 +40,7 @@ class Metrics {
     kPatchpanelNotReady = 9,
     kPatchpanelReset = 10,
     kPatchpanelShutdown = 11,
-    kPatchpanelNoNamespace = 12,
+    kPatchpanelNoNamespace = 12,  // Deprecated: DNS proxy runs in root ns.
     kPatchpanelNoRedirect = 13,
     kShillNotReady = 14,
     kShillReset = 15,

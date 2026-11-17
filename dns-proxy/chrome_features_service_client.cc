@@ -46,20 +46,6 @@ void ChromeFeaturesServiceClient::IsDNSProxyEnabled(
       std::move(callback)));
 }
 
-void ChromeFeaturesServiceClient::IsRootNsDNSProxyEnabled(
-    IsFeatureEnabledCallback callback) {
-  if (!proxy_) {
-    LOG(DFATAL) << "No object proxy";
-    return;
-  }
-
-  proxy_->WaitForServiceToBeAvailable(base::BindOnce(
-      &ChromeFeaturesServiceClient::OnWaitForServiceAndCallMethod,
-      weak_ptr_factory_.GetWeakPtr(),
-      chromeos::kChromeFeaturesServiceIsRootNsDnsProxyEnabledMethod,
-      std::move(callback)));
-}
-
 void ChromeFeaturesServiceClient::OnWaitForServiceAndCallMethod(
     const std::string& method_name,
     IsFeatureEnabledCallback callback,

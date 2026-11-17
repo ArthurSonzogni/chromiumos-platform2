@@ -142,15 +142,10 @@ void Controller::Setup() {
   if (features_) {
     features_->IsDNSProxyEnabled(base::BindOnce(&Controller::OnFeatureEnabled,
                                                 weak_factory_.GetWeakPtr()));
-    features_->IsRootNsDNSProxyEnabled(base::BindOnce(
-        &Controller::OnRootNsEnabled, weak_factory_.GetWeakPtr()));
   } else {
     LOG(ERROR) << "Failed to initialize Chrome features client - "
                << "service will be enabled by default";
     service_enabled_.emplace(true);
-    LOG(ERROR) << "Failed to initialize Chrome features client - "
-               << "service will be enabled inside a network namespace";
-    root_ns_enabled_.emplace(false);
   }
 
   patchpanel_ = patchpanel::Client::New(bus_);
@@ -191,23 +186,6 @@ void Controller::OnFeatureEnabled(std::optional<bool> enabled) {
     LOG(INFO) << "Service "
               << (service_enabled_.value() ? "enabled" : "disabled")
               << " by feature flag";
-  }
-}
-
-void Controller::OnRootNsEnabled(std::optional<bool> enabled) {
-  // Avoid starting child processes when the controller is shut down.
-  if (is_shutdown_) {
-    return;
-  }
-  if (!enabled.has_value()) {
-    LOG(ERROR) << "Failed to read feature flag - "
-               << "service will be enabled inside a network namespace";
-    root_ns_enabled_.emplace(true);
-  } else {
-    root_ns_enabled_.emplace(enabled.value());
-    LOG(INFO) << "Service is running on "
-              << (root_ns_enabled_.value() ? "root namespace"
-                                           : "network namespace");
   }
 }
 
@@ -269,7 +247,7 @@ void Controller::OnShillReset(bool reset) {
 }
 
 void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
-  if (!service_enabled_.has_value() || !root_ns_enabled_.has_value()) {
+  if (!service_enabled_.has_value()) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(&Controller::RunProxy,
                                   weak_factory_.GetWeakPtr(), type, ifname));
@@ -313,20 +291,16 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
   minijail_preserve_fd(jail.get(), proxy_fd.get(), proxy_fd.get());
   minijail_close_open_fds(jail.get());
 
-  if (root_ns_enabled_.value()) {
-    // DNS proxy uses SO_BINDTODEVICE to bind to a specific interface for
-    // sending DNS queries. Switch users to honor always-on VPN related routing
-    // and setup.
-    if (type == Proxy::Type::kDefault) {
-      minijail_change_user(jail.get(), kDnsProxyUser);
-    } else {
-      minijail_change_user(jail.get(), kDnsProxySystem);
-    }
-    // Required since we don't have the caps to wipe supplementary groups.
-    minijail_keep_supplementary_gids(jail.get());
+  // DNS proxy uses SO_BINDTODEVICE to bind to a specific interface for
+  // sending DNS queries. Switch users to honor always-on VPN related routing
+  // and setup.
+  if (type == Proxy::Type::kDefault) {
+    minijail_change_user(jail.get(), kDnsProxyUser);
   } else {
-    minijail_namespace_net(jail.get());
+    minijail_change_user(jail.get(), kDnsProxySystem);
   }
+  // Required since we don't have the caps to wipe supplementary groups.
+  minijail_keep_supplementary_gids(jail.get());
 
   std::vector<char*> argv;
   const std::string flag_t = "--t=" + std::string(Proxy::TypeToString(type));
@@ -341,10 +315,6 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
   argv.push_back(const_cast<char*>(flag_fd.c_str()));
   std::string flag_vmodule = "--vmodule=" + vmodule_;
   argv.push_back(const_cast<char*>(flag_vmodule.c_str()));
-  std::string flag_root_ns = "--root_ns";
-  if (root_ns_enabled_.value()) {
-    argv.push_back(const_cast<char*>(flag_root_ns.c_str()));
-  }
   argv.push_back(nullptr);
 
   pid_t pid;

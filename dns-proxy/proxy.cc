@@ -6,9 +6,7 @@
 
 #include <linux/rtnetlink.h>
 #include <net/if.h>
-#include <sys/types.h>
 #include <sysexits.h>
-#include <unistd.h>
 
 #include <optional>
 #include <set>
@@ -160,10 +158,8 @@ std::ostream& operator<<(std::ostream& stream, const Proxy& proxy) {
   return stream << "}";
 }
 
-Proxy::Proxy(const Proxy::Options& opts, int32_t fd, bool root_ns_enabled)
-    : opts_(opts),
-      metrics_proc_type_(ProcessTypeOf(opts_.type)),
-      root_ns_enabled_(root_ns_enabled) {
+Proxy::Proxy(const Proxy::Options& opts, int32_t fd)
+    : opts_(opts), metrics_proc_type_(ProcessTypeOf(opts_.type)) {
   doh_config_.set_logger(
       base::BindRepeating(&Proxy::LogName, weak_factory_.GetWeakPtr()));
   if (opts_.type == Type::kSystem) {
@@ -202,13 +198,11 @@ Proxy::Proxy(const Options& opts,
              std::unique_ptr<patchpanel::Client> patchpanel,
              std::unique_ptr<shill::Client> shill,
              std::unique_ptr<patchpanel::MessageDispatcher<SubprocessMessage>>
-                 msg_dispatcher,
-             bool root_ns_enabled)
+                 msg_dispatcher)
     : opts_(opts),
       patchpanel_(std::move(patchpanel)),
       shill_(std::move(shill)),
-      metrics_proc_type_(ProcessTypeOf(opts_.type)),
-      root_ns_enabled_(root_ns_enabled) {
+      metrics_proc_type_(ProcessTypeOf(opts_.type)) {
   msg_dispatcher_ = std::move(msg_dispatcher);
 }
 
@@ -250,51 +244,6 @@ void Proxy::Setup() {
       &Proxy::OnPatchpanelReset, weak_factory_.GetWeakPtr()));
 }
 
-bool Proxy::ConnectNamespace() {
-  // The default network proxy might actually be carrying Chrome, Crostini or
-  // if a VPN is on, even ARC traffic, but we attribute this as as "user"
-  // sourced.
-  patchpanel::Client::TrafficSource traffic_source;
-  switch (opts_.type) {
-    case Type::kSystem:
-      traffic_source = patchpanel::Client::TrafficSource::kSystem;
-      break;
-    case Type::kARC:
-      traffic_source = patchpanel::Client::TrafficSource::kArc;
-      break;
-    default:
-      traffic_source = patchpanel::Client::TrafficSource::kUser;
-  }
-
-  // Note that using getpid() here requires that this minijail is not creating a
-  // new PID namespace.
-  // The default proxy (only) needs to use the VPN, if applicable, the others
-  // expressly need to avoid it.
-  // TODO(b/273744897): Use the patchpanel Network id of the shill Device that
-  // this Proxy is associated to. Until the Network id is available, using the
-  // shill's Device kInterfaceProperty is consistent with patchpanel's tracking
-  // of shill's Devices. For multiplexed Cellular interfaces, patchpanel is
-  // responsible for using the correct multiplexed network interface
-  // (b/273741099). Callers of ConnectNamespace are expected to use the shill's
-  // Device kInterfaceProperty.
-  auto res = patchpanel_->ConnectNamespace(
-      getpid(), opts_.ifname, /*forward_user_traffic=*/true,
-      /*route_on_vpn=*/opts_.type == Type::kDefault, traffic_source,
-      /*static_ipv6=*/true);
-  if (!res.first.is_valid()) {
-    metrics_.RecordProcessEvent(metrics_proc_type_,
-                                Metrics::ProcessEvent::kPatchpanelNoNamespace);
-    LOG(ERROR) << *this << " Failed to establish private network namespace";
-    return false;
-  }
-  ns_fd_ = std::move(res.first);
-  ns_ = res.second;
-  ipv4_address_ = ns_.peer_ipv4_address;
-  LOG(INFO) << *this << " Successfully connected private network namespace: "
-            << ns_.host_ifname << " <--> " << ns_.peer_ifname;
-  return true;
-}
-
 void Proxy::OnPatchpanelReady(bool success) {
   if (!success) {
     metrics_.RecordProcessEvent(metrics_proc_type_,
@@ -304,30 +253,25 @@ void Proxy::OnPatchpanelReady(bool success) {
     return;
   }
 
-  if (root_ns_enabled_) {
-    switch (opts_.type) {
-      case Type::kSystem:
-        ipv4_address_ = patchpanel::kDnsProxySystemIPv4Address;
-        ipv6_address_ = patchpanel::kDnsProxySystemIPv6Address;
-        break;
-      case Type::kDefault:
-        ipv4_address_ = patchpanel::kDnsProxyDefaultIPv4Address;
-        ipv6_address_ = patchpanel::kDnsProxyDefaultIPv6Address;
-        break;
-      case Type::kARC:
-        break;
-    }
-  } else if (!ConnectNamespace()) {
-    QuitWithExitCode(EX_CANTCREAT);
-    return;
+  switch (opts_.type) {
+    case Type::kSystem:
+      ipv4_address_ = patchpanel::kDnsProxySystemIPv4Address;
+      ipv6_address_ = patchpanel::kDnsProxySystemIPv6Address;
+      break;
+    case Type::kDefault:
+      ipv4_address_ = patchpanel::kDnsProxyDefaultIPv4Address;
+      ipv6_address_ = patchpanel::kDnsProxyDefaultIPv6Address;
+      break;
+    case Type::kARC:
+      break;
   }
   initialized_ = true;
 
   // Now it's safe to connect shill.
   InitShill();
 
-  // Track single-networked guests' start up and shut down for redirecting
-  // traffic to the proxy.
+  // Track virtual devices' startup and shutdown to listen on their interfaces
+  // and redirect DNS traffic to the proxy.
   if (opts_.type == Type::kDefault) {
     patchpanel_->RegisterVirtualDeviceEventHandler(base::BindRepeating(
         &Proxy::OnVirtualDeviceChanged, weak_factory_.GetWeakPtr()));
@@ -362,7 +306,7 @@ void Proxy::StartDnsRedirection(const std::string& ifname,
   }
 
   auto fd = patchpanel_->RedirectDns(type, ifname, addr.ToString(), nameservers,
-                                     ns_.host_ifname);
+                                     /*host_ifname=*/"");
   // Restart the proxy if DNS redirection rules are failed to be set up. This
   // is necessary because when DNS proxy is running, /etc/resolv.conf is
   // replaced by the IP address of system proxy. This causes non-system traffic
@@ -390,9 +334,10 @@ void Proxy::OnPatchpanelReset(bool reset) {
     return;
   }
 
-  // If patchpanel crashes, the proxy is useless since the connected virtual
-  // network is gone. So the best bet is to exit and have the controller restart
-  // us. Note if this is the system proxy, it will inform shill on shutdown.
+  // If patchpanel crashes, the proxy is useless since the DNS redirection rules
+  // and virtual devices managed by patchpanel are gone. So the best bet is to
+  // exit and have the controller restart us. Note if this is the system proxy,
+  // it will clear its IP addresses in the controller on shutdown.
   metrics_.RecordProcessEvent(metrics_proc_type_,
                               Metrics::ProcessEvent::kPatchpanelShutdown);
   LOG(ERROR) << *this << " Patchpanel has been shutdown - restarting DNS proxy";
@@ -471,8 +416,6 @@ void Proxy::ApplyDeviceUpdate() {
   // Update the interface to use for sending DNS queries for:
   // - ARC proxies to use the network it is tied to.
   // - All proxies to be able to reach link-local addresses.
-  // This is only necessary when DNS proxy is running on the root namespace, as
-  // otherwise the routing is handled through ConnectNamespace.
   // The interface to use follows the rule of:
   // - For non-cell and non-VPN, use the current interface the proxy is tied to.
   // - For cell, use the primary multiplexed interface of the current interface
@@ -480,7 +423,7 @@ void Proxy::ApplyDeviceUpdate() {
   // multiplexed interface changes.
   // - For VPN, don't bind to any interface. Rely fully on the existing routing
   // rules. Binding to VPN interface does not work on IKEv2 VPNs.
-  if (root_ns_enabled_ && resolver_) {
+  if (resolver_) {
     if (device_->type == shill::Client::Device::Type::kVPN) {
       resolver_->ClearInterface();
     } else {
@@ -700,45 +643,31 @@ void Proxy::MaybeCreateResolver() {
   doh_config_.set_resolver(resolver_.get());
   resolver_->SetDomainDoHConfigs(doh_included_domains_, doh_excluded_domains_);
 
-  if (root_ns_enabled_) {
-    // Listen on the loopback interface.
-    if (ipv4_address_) {
-      struct sockaddr_in addr4 = {0};
-      addr4.sin_family = AF_INET;
-      addr4.sin_port = kDefaultPort;
-      addr4.sin_addr = ipv4_address_->ToInAddr();
-      if (!Listen(reinterpret_cast<struct sockaddr*>(&addr4))) {
-        QuitWithExitCode(EX_IOERR);
-      }
+  // Listen on the loopback interface.
+  if (ipv4_address_) {
+    struct sockaddr_in addr4 = {0};
+    addr4.sin_family = AF_INET;
+    addr4.sin_port = kDefaultPort;
+    addr4.sin_addr = ipv4_address_->ToInAddr();
+    if (!Listen(reinterpret_cast<struct sockaddr*>(&addr4))) {
+      QuitWithExitCode(EX_IOERR);
     }
-    if (ipv6_address_) {
-      struct sockaddr_in6 addr6 = {0};
-      addr6.sin6_family = AF_INET6;
-      addr6.sin6_port = kDefaultPort;
-      addr6.sin6_addr = ipv6_address_->ToIn6Addr();
-      if (!Listen(reinterpret_cast<struct sockaddr*>(&addr6))) {
-        QuitWithExitCode(EX_IOERR);
-      }
+  }
+  if (ipv6_address_) {
+    struct sockaddr_in6 addr6 = {0};
+    addr6.sin6_family = AF_INET6;
+    addr6.sin6_port = kDefaultPort;
+    addr6.sin6_addr = ipv6_address_->ToIn6Addr();
+    if (!Listen(reinterpret_cast<struct sockaddr*>(&addr6))) {
+      QuitWithExitCode(EX_IOERR);
     }
-    // Listen on the virtual interfaces.
-    for (const auto& d : patchpanel_->GetDevices()) {
-      if (!ListenOnVirtualDevice(d, AF_INET)) {
-        QuitWithExitCode(EX_IOERR);
-      }
-      if (!ListenOnVirtualDevice(d, AF_INET6)) {
-        QuitWithExitCode(EX_IOERR);
-      }
+  }
+  // Listen on the virtual interfaces.
+  for (const auto& d : patchpanel_->GetDevices()) {
+    if (!ListenOnVirtualDevice(d, AF_INET)) {
+      QuitWithExitCode(EX_IOERR);
     }
-  } else {
-    // Listen on IPv4 and IPv6. Listening on AF_INET explicitly is not needed
-    // because net.ipv6.bindv6only sysctl is defaulted to 0 and is not
-    // explicitly turned on in the codebase.
-    struct sockaddr_in6 addr = {0};
-    addr.sin6_family = AF_INET6;
-    addr.sin6_port = kDefaultPort;
-    addr.sin6_addr =
-        in6addr_any;  // Since we're running in the private namespace.
-    if (!Listen(reinterpret_cast<struct sockaddr*>(&addr))) {
+    if (!ListenOnVirtualDevice(d, AF_INET6)) {
       QuitWithExitCode(EX_IOERR);
     }
   }
@@ -1035,75 +964,6 @@ void Proxy::DoHConfig::set_logger(Proxy::Logger logger) {
 }
 
 void Proxy::RTNLMessageHandler(const net_base::RTNLMessage& msg) {
-  if (root_ns_enabled_) {
-    RootNSRTNLMessageHandler(msg);
-  } else {
-    NetNSRTNLMessageHandler(msg);
-  }
-}
-
-void Proxy::NetNSRTNLMessageHandler(const net_base::RTNLMessage& msg) {
-  // Listen only for global or site-local IPv6 address changes.
-  if (msg.address_status().scope != RT_SCOPE_UNIVERSE &&
-      msg.address_status().scope != RT_SCOPE_SITE) {
-    return;
-  }
-
-  // Listen only for the peer interface IPv6 changes.
-  if (msg.interface_index() != IfNameToIndex(ns_.peer_ifname.c_str())) {
-    return;
-  }
-
-  switch (msg.mode()) {
-    case net_base::RTNLMessage::kModeGet:
-    case net_base::RTNLMessage::kModeAdd: {
-      const auto ifa_addr = msg.GetAddress();
-      if (!ifa_addr || ifa_addr->GetFamily() != net_base::IPFamily::kIPv6) {
-        LOG(ERROR) << *this << " RTNL message does not have valid IPv6 address";
-        return;
-      }
-
-      const auto peer_ipv6_addr = ifa_addr->ToIPv6CIDR()->address();
-      if (ipv6_address_ == peer_ipv6_addr) {
-        return;
-      }
-      ipv6_address_ = peer_ipv6_addr;
-      LOG(INFO) << *this << " Peer IPv6 addr updated to "
-                << peer_ipv6_addr.ToString();
-      if (opts_.type == Type::kDefault && device_) {
-        StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv6_address_),
-                            ToStringVec(doh_config_.ipv6_nameservers()));
-      }
-      for (const auto& d : patchpanel_->GetDevices()) {
-        StartGuestDnsRedirection(d, AF_INET6);
-      }
-      if (opts_.type == Type::kSystem && device_) {
-        SendIPAddressesToController(ipv4_address_, ipv6_address_);
-        StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv6_address_));
-      }
-      return;
-    }
-    case net_base::RTNLMessage::kModeDelete:
-      ipv6_address_ = std::nullopt;
-      LOG(INFO) << *this << " Peer IPv6 addr removed";
-      if (opts_.type == Type::kDefault) {
-        StopDnsRedirection(/*ifname=*/"", AF_INET6);
-      }
-      for (const auto& d : patchpanel_->GetDevices()) {
-        StopGuestDnsRedirection(d, AF_INET6);
-      }
-      if (opts_.type == Type::kSystem && device_) {
-        SendIPAddressesToController(/*ipv4_addr=*/ipv4_address_,
-                                    /*ipv6_addr=*/std::nullopt);
-        StopDnsRedirection(/*ifname=*/"", AF_INET6);
-      }
-      return;
-    default:
-      return;
-  }
-}
-
-void Proxy::RootNSRTNLMessageHandler(const net_base::RTNLMessage& msg) {
   // Listen only for link-local IPv6 address changes.
   if (msg.address_status().scope != RT_SCOPE_LINK) {
     return;
@@ -1165,13 +1025,11 @@ void Proxy::OnVirtualDeviceChanged(
     const patchpanel::Client::VirtualDevice& device) {
   switch (event) {
     case patchpanel::Client::VirtualDeviceEvent::kAdded:
-      if (root_ns_enabled_) {
-        if (!ListenOnVirtualDevice(device, AF_INET)) {
-          QuitWithExitCode(EX_IOERR);
-        }
-        if (!ListenOnVirtualDevice(device, AF_INET6)) {
-          QuitWithExitCode(EX_IOERR);
-        }
+      if (!ListenOnVirtualDevice(device, AF_INET)) {
+        QuitWithExitCode(EX_IOERR);
+      }
+      if (!ListenOnVirtualDevice(device, AF_INET6)) {
+        QuitWithExitCode(EX_IOERR);
       }
       StartGuestDnsRedirection(device, AF_INET);
       StartGuestDnsRedirection(device, AF_INET6);
@@ -1179,10 +1037,8 @@ void Proxy::OnVirtualDeviceChanged(
     case patchpanel::Client::VirtualDeviceEvent::kRemoved:
       StopGuestDnsRedirection(device, AF_INET);
       StopGuestDnsRedirection(device, AF_INET6);
-      if (root_ns_enabled_) {
-        StopListenOnVirtualDevice(device, AF_INET);
-        StopListenOnVirtualDevice(device, AF_INET6);
-      }
+      StopListenOnVirtualDevice(device, AF_INET);
+      StopListenOnVirtualDevice(device, AF_INET6);
       break;
     default:
       NOTREACHED();
@@ -1242,24 +1098,15 @@ void Proxy::StartGuestDnsRedirection(
     return;
   }
 
-  if (root_ns_enabled_) {
-    if (sa_family == AF_INET) {
-      StartDnsRedirection(device.ifname,
-                          net_base::IPAddress(device.host_ipv4_addr));
-    }
-    if (sa_family == AF_INET6) {
-      uint32_t ifindex = IfNameToIndex(device.ifname.c_str());
-      const auto it = link_local_addresses_.find(ifindex);
-      if (it != link_local_addresses_.end()) {
-        StartDnsRedirection(device.ifname, net_base::IPAddress(it->second));
-      }
-    }
-  } else {
-    if (sa_family == AF_INET && ipv4_address_) {
-      StartDnsRedirection(device.ifname, net_base::IPAddress(*ipv4_address_));
-    }
-    if (sa_family == AF_INET6 && ipv6_address_) {
-      StartDnsRedirection(device.ifname, net_base::IPAddress(*ipv6_address_));
+  if (sa_family == AF_INET) {
+    StartDnsRedirection(device.ifname,
+                        net_base::IPAddress(device.host_ipv4_addr));
+  }
+  if (sa_family == AF_INET6) {
+    uint32_t ifindex = IfNameToIndex(device.ifname.c_str());
+    const auto it = link_local_addresses_.find(ifindex);
+    if (it != link_local_addresses_.end()) {
+      StartDnsRedirection(device.ifname, net_base::IPAddress(it->second));
     }
   }
 }
@@ -1286,10 +1133,9 @@ bool Proxy::IsValidVirtualDevice(
     case patchpanel::Client::GuestType::kArcVm:
       return opts_.type == Type::kARC && opts_.ifname == device.phys_ifname;
     case patchpanel::Client::GuestType::kConnectedNs:
-      // Only listen on ConnectedNamespace interface when root namespace feature
-      // is enabled. We expect ConnectNamespace API to only be called for
-      // tracking the default logical network (i.e. for system-proxy).
-      return root_ns_enabled_ && opts_.type == Type::kDefault;
+      // We expect ConnectNamespace API to only be called for tracking the
+      // default logical network (i.e. for system-proxy).
+      return opts_.type == Type::kDefault;
     default:
       return false;
   }

@@ -49,14 +49,13 @@ class Proxy : public brillo::DBusDaemon {
 
   using Logger = base::RepeatingCallback<void(std::ostream& stream)>;
 
-  Proxy(const Options& opts, int32_t fd, bool root_ns_enabled);
+  Proxy(const Options& opts, int32_t fd);
   // For testing.
   Proxy(const Options& opts,
         std::unique_ptr<patchpanel::Client> patchpanel,
         std::unique_ptr<shill::Client> shill,
         std::unique_ptr<patchpanel::MessageDispatcher<SubprocessMessage>>
-            msg_dispatcher,
-        bool root_ns_enabled);
+            msg_dispatcher);
   Proxy(const Proxy&) = delete;
   Proxy& operator=(const Proxy&) = delete;
   ~Proxy() = default;
@@ -222,27 +221,14 @@ class Proxy : public brillo::DBusDaemon {
   void OnControllerMessageFailure();
   void OnControllerMessage(const SubprocessMessage& msg);
 
-  // Callback from RTNL listener, calls NetNSRTNLMessageHandler or
-  // RootNSRTNLMessageHandler.
+  // Callback from RTNL listener. Processes IPv6 link-local address changes for
+  // virtual interfaces (guest TAP, ARC bridge, and connected namespaces).
   void RTNLMessageHandler(const net_base::RTNLMessage& msg);
-
-  // Callback from RTNL listener when DNS proxy is running on ConnectNamespace
-  // network namespace. Processes IPv6 address changes for the lan interface
-  // inside the network namespace.
-  void NetNSRTNLMessageHandler(const net_base::RTNLMessage& msg);
-
-  // Callback from RTNL listener when DNS proxy is running on the root network
-  // namespace. Processes IPv6 link-local address changes for guests TAP or
-  // bridges interface.
-  void RootNSRTNLMessageHandler(const net_base::RTNLMessage& msg);
-
-  // Calls patchpanel ConnectNamespace API and sets the necessary states.
-  bool ConnectNamespace();
 
   // Returns whether or not the virtual device |device| is expected to be
   // handled by the current DNS proxy process.
-  // The DEFAULT proxy handles all non-ARC VMs and the ARC proxies handles their
-  // respective ARC virtual devices.
+  // The DEFAULT proxy handles all non-ARC VMs and connected namespaces, and
+  // the ARC proxies handle their respective ARC virtual devices.
   bool IsValidVirtualDevice(
       const patchpanel::Client::VirtualDevice& device) const;
 
@@ -261,9 +247,9 @@ class Proxy : public brillo::DBusDaemon {
               SystemProxy_SendIPAddressesToControllerEmptyNameserver);
   FRIEND_TEST(ProxyTest, SystemProxy_ClearIPAddressesInController);
   FRIEND_TEST(ProxyTest, ShillInitializedWhenReady);
-  FRIEND_TEST(ProxyTest, SystemProxy_ConnectedNamedspace);
-  FRIEND_TEST(ProxyTest, DefaultProxy_ConnectedNamedspace);
-  FRIEND_TEST(ProxyTest, ArcProxy_ConnectedNamedspace);
+  FRIEND_TEST(ProxyTest, SystemProxy_OnPatchpanelReady);
+  FRIEND_TEST(ProxyTest, DefaultProxy_OnPatchpanelReady);
+  FRIEND_TEST(ProxyTest, ArcProxy_OnPatchpanelReady);
   FRIEND_TEST(ProxyTest, StateClearedIfDefaultServiceDrops);
   FRIEND_TEST(ProxyTest, ArcProxy_IgnoredIfDefaultServiceDrops);
   FRIEND_TEST(ProxyTest, StateClearedIfDefaultServiceIsNotOnline);
@@ -290,8 +276,6 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode);
   FRIEND_TEST(ProxyTest, DefaultProxy_DisableDoHProvidersOnVPN);
   FRIEND_TEST(ProxyTest, SystemProxy_SetsDnsRedirectionRule);
-  FRIEND_TEST(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added);
-  FRIEND_TEST(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Deleted);
   FRIEND_TEST(ProxyTest,
               DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted);
   FRIEND_TEST(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted);
@@ -326,25 +310,19 @@ class Proxy : public brillo::DBusDaemon {
   std::unique_ptr<shill::Client> shill_;
   std::unique_ptr<shill::Client::ManagerPropertyAccessor> shill_props_;
 
-  base::ScopedFD ns_fd_;
-  patchpanel::Client::ConnectedNamespace ns_;
-
   // Whether or not DNS proxy process is initialized. This is set to true when
-  // patchpanel client is connected, the network namespace for the proxy is
-  // ready, and the listening IP address is ready.
+  // patchpanel client is connected and the listening IP addresses are ready.
   bool initialized_ = false;
 
-  // The IPv4 and IPv6 addresses of address DNS proxy is listening on.
-  // When |root_ns_enabled_| is true, these contain the address allocated by
-  // patchpanel on the loopback interface for DNS proxy. The value only exists
-  // for the system and default instance of DNS proxy.
-  // When |root_ns_enabled_| is false, these contain the addresses of the
-  // interface inside the network namespace |ns_|.
+  // The IPv4 and IPv6 addresses allocated by patchpanel on the loopback
+  // interface that DNS proxy is listening on. The values only exist for the
+  // system and default instances of DNS proxy.
   std::optional<net_base::IPv4Address> ipv4_address_;
   std::optional<net_base::IPv6Address> ipv6_address_;
 
-  // Map of interface index to its link-local IPv6 addresses. This map is used
-  // to listen on the link-local address of the guest (Crostini, ARC, etc.).
+  // Map of interface index to its link-local IPv6 address. This map is used to
+  // listen on the link-local address of virtual interfaces (Crostini, ARC,
+  // connected namespaces, etc.).
   std::map<int, net_base::IPv6Address> link_local_addresses_;
 
   std::unique_ptr<Resolver> resolver_;
@@ -364,9 +342,6 @@ class Proxy : public brillo::DBusDaemon {
 
   Metrics metrics_;
   const Metrics::ProcessType metrics_proc_type_;
-
-  // Whether or not DNS proxy is running on the root namespace.
-  const bool root_ns_enabled_;
 
   // Helper to:
   // - Send system proxy's IP addresses to be the controller. This is
