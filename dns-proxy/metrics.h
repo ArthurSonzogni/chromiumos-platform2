@@ -46,6 +46,7 @@ class Metrics {
     kShillReset = 15,
     kShillShutdown = 16,
     kShillSetProxyAddressRetryExceeded = 17,
+    // Deprecated: Chrome features service is no longer used.
     kChromeFeaturesNotInitialized = 18,
     kResolverListenUDPFailure = 19,
     kResolverListenTCPFailure = 20,

@@ -134,20 +134,9 @@ void Controller::OnShutdown(int* code) {
   } else {
     LOG(INFO) << "Stopped all child processes properly";
   }
-  is_shutdown_ = true;
 }
 
 void Controller::Setup() {
-  features_ = ChromeFeaturesServiceClient::New(bus_);
-  if (features_) {
-    features_->IsDNSProxyEnabled(base::BindOnce(&Controller::OnFeatureEnabled,
-                                                weak_factory_.GetWeakPtr()));
-  } else {
-    LOG(ERROR) << "Failed to initialize Chrome features client - "
-               << "service will be enabled by default";
-    service_enabled_.emplace(true);
-  }
-
   patchpanel_ = patchpanel::Client::New(bus_);
   if (!patchpanel_) {
     metrics_.RecordProcessEvent(
@@ -170,23 +159,6 @@ void Controller::Setup() {
 
   RunProxy(Proxy::Type::kSystem);
   RunProxy(Proxy::Type::kDefault);
-}
-
-void Controller::OnFeatureEnabled(std::optional<bool> enabled) {
-  // Avoid starting child processes when the controller is shut down.
-  if (is_shutdown_) {
-    return;
-  }
-  if (!enabled.has_value()) {
-    LOG(ERROR) << "Failed to read feature flag - "
-               << "service will be enabled by default";
-    service_enabled_.emplace(true);
-  } else {
-    service_enabled_.emplace(enabled.value());
-    LOG(INFO) << "Service "
-              << (service_enabled_.value() ? "enabled" : "disabled")
-              << " by feature flag";
-  }
 }
 
 void Controller::OnPatchpanelReady(bool success) {
@@ -247,16 +219,6 @@ void Controller::OnShillReset(bool reset) {
 }
 
 void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
-  if (!service_enabled_.has_value()) {
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(&Controller::RunProxy,
-                                  weak_factory_.GetWeakPtr(), type, ifname));
-    return;
-  }
-  if (!service_enabled_.value()) {
-    return;
-  }
-
   ProxyProc proc(type, ifname);
   const auto& it = restarts_.find(proc);
   if (it != restarts_.end() && !it->second.is_valid()) {

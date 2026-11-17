@@ -58,7 +58,6 @@ proto_library("dnsproxy_ipc_protos") {
 static_library("libdnsproxy") {
   sources = [
     "ares_client.cc",
-    "chrome_features_service_client.cc",
     "controller.cc",
     "dns_util.cc",
     "doh_curl_client.cc",

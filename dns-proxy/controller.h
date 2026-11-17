@@ -8,7 +8,6 @@
 #include <iostream>
 #include <map>
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 
@@ -19,7 +18,6 @@
 #include <chromeos/patchpanel/message_dispatcher.h>
 #include <shill/dbus/client/client.h>
 
-#include "dns-proxy/chrome_features_service_client.h"
 #include "dns-proxy/ipc.pb.h"
 #include "dns-proxy/metrics.h"
 #include "dns-proxy/proxy.h"
@@ -126,10 +124,6 @@ class Controller : public brillo::DBusDaemon {
   void VirtualDeviceAdded(const patchpanel::Client::VirtualDevice& device);
   void VirtualDeviceRemoved(const patchpanel::Client::VirtualDevice& device);
 
-  // Triggered by the Chrome features client in response to checking
-  // IsDNSProxyEnabled.
-  void OnFeatureEnabled(std::optional<bool> enabled);
-
   FRIEND_TEST(ControllerTest, SetProxyAddrs);
   FRIEND_TEST(ControllerTest, ClearProxyAddrs);
 
@@ -151,12 +145,6 @@ class Controller : public brillo::DBusDaemon {
   bool shill_ready_{false};
   std::unique_ptr<shill::Client> shill_;
   std::unique_ptr<patchpanel::Client> patchpanel_;
-
-  bool is_shutdown_{false};
-
-  // Whether or not DNS proxy service is running.
-  std::optional<bool> service_enabled_;
-  std::unique_ptr<ChromeFeaturesServiceClient> features_;
 
   Metrics metrics_;
 
