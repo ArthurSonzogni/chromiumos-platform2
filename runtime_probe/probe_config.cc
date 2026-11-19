@@ -15,6 +15,7 @@
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/task/bind_post_task.h>
 #include <base/values.h>
 #include <brillo/map_utils.h>
 
@@ -117,11 +118,14 @@ void ProbeConfig::Eval(
     valid_category.push_back(it->first);
   }
 
+  // Post |callback| to the current task runner so the caller cannot
+  // synchronously destroy |this| before Eval() finishes unwinding.
   const auto barrier_callback =
       base::BarrierCallback<std::pair<std::string, base::ListValue>>(
           valid_category.size(),
-          base::BindOnce(&CollectComponentCategoryResults,
-                         std::move(callback)));
+          base::BindOnce(
+              &CollectComponentCategoryResults,
+              base::BindPostTaskToCurrentDefault(std::move(callback))));
 
   for (const auto& c : valid_category) {
     category_.at(c)->Eval(

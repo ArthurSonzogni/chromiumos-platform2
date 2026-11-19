@@ -315,4 +315,33 @@ TEST_F(ProbeConfigTest, GetComponentCategoryWithUndefinedCategory) {
   EXPECT_EQ(undefined_category, nullptr);
 }
 
+TEST_F(ProbeConfigTest, EvalDestroyConfigInCallback) {
+  auto dict_value =
+      base::JSONReader::Read("{}", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+  auto probe_config = ProbeConfig::FromValue(*dict_value);
+  ASSERT_TRUE(probe_config);
+
+  const std::string eval_content_1 = R"([
+    {
+      "name": "component_1",
+      "values": {
+        "field_1": "value_1"
+      }
+    }
+  ])";
+  SetProbeConfigCategory(*probe_config, "category_1", eval_content_1);
+  SetProbeConfigCategory(*probe_config, "category_2", eval_content_1);
+
+  base::test::TestFuture<base::DictValue> future;
+  auto* probe_config_ptr = probe_config.get();
+  probe_config_ptr->Eval(base::BindOnce(
+      [](std::unique_ptr<ProbeConfig> owned_config,
+         base::OnceCallback<void(base::DictValue)> cb, base::DictValue result) {
+        owned_config.reset();
+        std::move(cb).Run(std::move(result));
+      },
+      std::move(probe_config), future.GetCallback()));
+  EXPECT_EQ(future.Get().size(), 2u);
+}
+
 }  // namespace runtime_probe

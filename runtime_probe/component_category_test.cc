@@ -278,4 +278,45 @@ TEST_F(ComponentCategoryTest, GetComponentNames) {
   auto res = category->GetComponentNames();
   EXPECT_THAT(res, ElementsAre("component_1", "component_2"));
 }
+
+TEST_F(ComponentCategoryTest, EvalDestroyCategoryInCallback) {
+  auto dict_value =
+      base::JSONReader::Read("{}", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+  auto category = ComponentCategory::FromValue("category_1", *dict_value);
+  ASSERT_TRUE(category);
+
+  const auto eval_result = base::JSONReader::Read(
+      R"([{"field_1": "value_1"}])", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+  SetComponent(*category, "component_1", eval_result->GetList());
+  SetComponent(*category, "component_2", eval_result->GetList());
+
+  base::test::TestFuture<base::ListValue> future;
+  auto* category_ptr = category.get();
+  category_ptr->Eval(base::BindOnce(
+      [](std::unique_ptr<ComponentCategory> owned_category,
+         base::OnceCallback<void(base::ListValue)> cb, base::ListValue result) {
+        owned_category.reset();
+        std::move(cb).Run(std::move(result));
+      },
+      std::move(category), future.GetCallback()));
+  EXPECT_EQ(future.Get().size(), 2u);
+}
+
+TEST_F(ComponentCategoryTest, EvalEmptyDestroyCategoryInCallback) {
+  auto dict_value =
+      base::JSONReader::Read("{}", base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+  auto category = ComponentCategory::FromValue("category_1", *dict_value);
+  ASSERT_TRUE(category);
+
+  base::test::TestFuture<base::ListValue> future;
+  auto* category_ptr = category.get();
+  category_ptr->Eval(base::BindOnce(
+      [](std::unique_ptr<ComponentCategory> owned_category,
+         base::OnceCallback<void(base::ListValue)> cb, base::ListValue result) {
+        owned_category.reset();
+        std::move(cb).Run(std::move(result));
+      },
+      std::move(category), future.GetCallback()));
+  EXPECT_TRUE(future.Get().empty());
+}
 }  // namespace runtime_probe

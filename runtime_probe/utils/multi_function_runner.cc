@@ -10,6 +10,7 @@
 #include <base/barrier_callback.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
+#include <base/task/bind_post_task.h>
 #include <base/values.h>
 
 #include "runtime_probe/probe_function.h"
@@ -40,15 +41,20 @@ void MultiFunctionRunner::AddFunction(
 
 void MultiFunctionRunner::Run(
     base::OnceCallback<void(base::ListValue)> callback) const {
+  // Post |callback| to the current task runner so the caller cannot
+  // synchronously destroy |this| (and its ProbeFunctions) while Run() and
+  // ProbeFunction::Eval() are still unwinding on the stack.
+  auto posted_callback =
+      base::BindPostTaskToCurrentDefault(std::move(callback));
   if (!IsValid()) {
     LOG(ERROR) << "MultiFunctionRunner contains invalid probe functions.";
-    std::move(callback).Run(base::ListValue{});
+    std::move(posted_callback).Run(base::ListValue{});
     return;
   }
   auto barrier_callback = base::BarrierCallback<base::ListValue>(
       functions_.size(),
-      base::BindOnce(&CollectProbeResults, std::move(callback)));
-  for (auto& function : functions_) {
+      base::BindOnce(&CollectProbeResults, std::move(posted_callback)));
+  for (const auto& function : functions_) {
     function->Eval(barrier_callback);
   }
 }

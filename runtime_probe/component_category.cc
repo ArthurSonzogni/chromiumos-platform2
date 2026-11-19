@@ -11,6 +11,7 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
+#include <base/task/bind_post_task.h>
 #include <base/values.h>
 #include <brillo/map_utils.h>
 
@@ -85,9 +86,13 @@ std::unique_ptr<ComponentCategory> ComponentCategory::FromValue(
 
 void ComponentCategory::Eval(
     base::OnceCallback<void(base::ListValue)> callback) const {
+  // Post |callback| to the current task runner so synchronous ProbeStatement
+  // completion cannot destroy |this| (and |component_|) while the range-for
+  // loop is still iterating.
   auto barrier_callback = base::BarrierCallback<base::ListValue>(
       component_.size(),
-      base::BindOnce(&CollectProbeStatementResults, std::move(callback)));
+      base::BindOnce(&CollectProbeStatementResults,
+                     base::BindPostTaskToCurrentDefault(std::move(callback))));
   for (auto& [component_name, probe_statement] : component_) {
     probe_statement->Eval(base::BindOnce(
         &OnProbeStatementEvalCompleted, barrier_callback, component_name,
