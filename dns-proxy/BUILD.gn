@@ -47,6 +47,7 @@ pkg_config("target_defaults") {
   } else {
     pkg_deps += [ "protobuf-lite" ]
   }
+  defines = [ "CURL_STRICTER" ]
 }
 
 proto_library("dnsproxy_ipc_protos") {
