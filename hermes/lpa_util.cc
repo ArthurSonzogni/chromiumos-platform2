@@ -50,6 +50,11 @@ const std::map<int, const char*>& GetOuterErrorMap() {
   return err_map;
 }
 
+// NOTE: cellular.Hermes* Tast tests (e.g. HermesConfirmationCode,
+// HermesDuplicateInstall, HermesProfilePolicyRules,
+// HermesSessionCancelRecovery) substring-match the "<Component> <Method>"
+// prefixes below in D-Bus error messages formatted by LpaErrorToBrillo().
+// Keep these strings synchronized with those tests if modified.
 const std::map<int, const char*>& GetMidErrorMap() {
   static std::map<int, const char*> err_map{
       {0, ""},
@@ -205,6 +210,10 @@ brillo::ErrorPtr LpaErrorToBrillo(const base::Location& location, int error) {
   const auto& inner_error = brillo::GetOrDefault(
       error_map, lpa_inner_code, {kErrorUnknown, "Unknown error"});
 
+  // NOTE: cellular.Hermes* Tast tests substring-match the "<Component>
+  // <Method>" prefix from GetMidErrorMap() and the trailing
+  // "(<lpa_inner_code>)" suffix formatted here; keep this message format in
+  // sync with those tests.
   error_message +=
       base::StringPrintf("%s (%d)", inner_error.error_message_, lpa_inner_code);
 
