@@ -556,16 +556,12 @@ base::FilePath GetVmLogPath(const VmId& vm_id, const std::string& extension) {
 
 // Returns a hash string that is safe to use as a filename.
 std::string GetMd5HashForFilename(const std::string& str) {
-  std::string result;
   base::MD5Digest digest;
   base::MD5Sum(base::as_byte_span(str), &digest);
-  std::string_view hash_piece(reinterpret_cast<char*>(&digest.a[0]),
-                              sizeof(digest.a));
   // Note, we can not have '=' symbols in this path or it will break crosvm's
   // commandline argument parsing, so we use OMIT_PADDING.
-  base::Base64UrlEncode(hash_piece, base::Base64UrlEncodePolicy::OMIT_PADDING,
-                        &result);
-  return result;
+  return base::Base64UrlEncode(digest.a,
+                               base::Base64UrlEncodePolicy::OMIT_PADDING);
 }
 
 // Gets the balloon info. Since this function may take long, do not call
@@ -723,11 +719,10 @@ void Service::VmInstallStateSignal(VmInstallState state) {
 }
 
 base::FilePath Service::GetVmGpuCachePathInternal(const VmId& vm_id) {
-  std::string vm_dir;
   // Note, we can not have '=' symbols in this path or it will break crosvm's
   // commandline argument parsing, so we use OMIT_PADDING.
-  base::Base64UrlEncode(vm_id.name(), base::Base64UrlEncodePolicy::OMIT_PADDING,
-                        &vm_dir);
+  std::string vm_dir = base::Base64UrlEncode(
+      vm_id.name(), base::Base64UrlEncodePolicy::OMIT_PADDING);
 
   std::string cache_id;
   std::string error;

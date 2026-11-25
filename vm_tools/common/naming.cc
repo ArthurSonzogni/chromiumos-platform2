@@ -9,13 +9,11 @@
 namespace vm_tools {
 
 std::string GetEncodedName(const std::string& base_name) {
-  std::string encoded;
   // Padding is unnecessary you say? And you'd be right, but unfortunately
   // certain important files were created with padding and we can't now go back
   // and remove it.
-  base::Base64UrlEncode(base_name, base::Base64UrlEncodePolicy::INCLUDE_PADDING,
-                        &encoded);
-  return encoded;
+  return base::Base64UrlEncode(base_name,
+                               base::Base64UrlEncodePolicy::INCLUDE_PADDING);
 }
 
 std::string GetDecodedName(const std::string& encoded_name) {

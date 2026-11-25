@@ -219,10 +219,8 @@ bool GetLedgerPublicKeyEncoded(const crypto::ScopedEC_KEY& key,
     LOG(ERROR) << "Failed to encode EC_POINT to SubjectPublicKeyInfo";
     return false;
   }
-  std::string encoded;
-  base::Base64UrlEncode(brillo::BlobToString(spki_der),
-                        base::Base64UrlEncodePolicy::INCLUDE_PADDING, &encoded);
-  *result = brillo::BlobFromString(encoded);
+  *result = brillo::BlobFromString(base::Base64UrlEncode(
+      spki_der, base::Base64UrlEncodePolicy::INCLUDE_PADDING));
   return true;
 }
 
