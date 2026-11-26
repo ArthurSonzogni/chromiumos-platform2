@@ -166,8 +166,8 @@ GROUP BY conf_id, stream_id;
 -- Collect latency between key time points in a frame lifetime: exposure,
 -- v4l2_frame_sync_event, dqbuf, first capture result functions at different
 -- levels with at least one output buffer.
-DROP VIEW IF EXISTS frame_latency_slices;
-CREATE VIEW frame_latency_slices AS
+DROP TABLE IF EXISTS frame_latency_slices;
+CREATE TABLE frame_latency_slices AS
 WITH frame_latency_time_points AS (
   SELECT * FROM (
     SELECT
